@@ -1,24 +1,36 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-- `directus/` hosts the Docker stack and configuration (`.env`, compose files); `extensions/` and `uploads/` mount directly into the Directus container. Refresh `directus/template` after every schema migration to keep CLI seeds current.
-- `nextjs/` is the App Router frontend. Marketing lives under `src/app/(public)`, auth flows under `src/app/(auth)`, and dashboards inside `src/app/admin`. Shared UI sits in `src/components`; API helpers centralize in `src/lib/directus`; reusable state goes in `src/hooks`; contexts and types live in `src/contexts` and `src/types`.
-- Acceptance scenarios reside in `testsprite_tests/` (Python + JSON). Update or add cases whenever features change.
+## Project Structure
 
-## Build, Test, and Development Commands
-- `cd directus && cp .env.example .env && docker compose up -d` bootstraps Directus locally. Rebuild with `docker compose up -d --build directus` after schema or extension tweaks.
-- `cd nextjs && pnpm install && pnpm dev` starts the frontend (Turbopack). Use `pnpm build && pnpm start` for a production-like preview.
-- Quality gates: `pnpm lint`, `pnpm format`, and `pnpm generate:types` (Directus must be running). Run `python testsprite_tests/TC###_*.py` for targeted acceptance scenarios.
+- `apps/web/` contém o frontend Next.js App Router. Páginas públicas ficam em `src/app/(public)`, autenticação em `src/app/(auth)` e dashboards em `src/app/admin`.
+- `apps/api/` contém a API Fastify. Rotas HTTP ficam em `src/routes`, casos de uso em `src/application`, integrações em `src/infrastructure` e configuração em `src/config`.
+- `packages/contracts/` contém tipos de domínio e schemas Zod compartilhados. Nenhum segredo ou cliente privilegiado pode ser importado pelo frontend.
+- `supabase/` contém configuração local, migrations, políticas RLS e seed.
+- `testsprite_tests/` contém cenários de aceitação.
 
-## Coding Style & Naming Conventions
-- TypeScript-first with Prettier enforcing 2-space indentation, 120-character lines, single quotes, and auto-sorted imports. Do not hand-edit formatting—run `pnpm format`.
-- Components and contexts use PascalCase (`AdminDashboard.tsx`), hooks start with `use`, helpers stay camelCase, and constants/env keys are UPPER_SNAKE_CASE.
-- Compose UI with Tailwind utilities and Shadcn primitives; avoid ad-hoc class names that violate ESLint Tailwind rules.
+## Commands
 
-## Testing Guidelines
-- Acceptance coverage centers on Playwright-driven scripts under `testsprite_tests/`. Mirror the `TC###_Description.py` pattern and keep JSON metadata aligned.
-- Smoke-test signup, checkout, and dashboard flows against seeded Directus data before shipping. Note gaps if automated coverage is missing.
+- `pnpm dev` inicia Supabase, API e frontend.
+- `pnpm dev:apps` inicia apenas API e frontend quando o Supabase já está ativo.
+- `pnpm db:reset` recria o banco local e aplica o seed.
+- `pnpm lint`, `pnpm test` e `pnpm build` são os gates de qualidade.
+- `pnpm db:types` atualiza os tipos gerados do banco.
 
-## Commit & Pull Request Guidelines
-- Follow the concise Portuguese sentence-case convention observed in history (e.g., `Ajusta fluxo de checkout`). Scope each commit to a single concern.
-- PRs must list executed commands, highlight schema/env impacts, link updated docs (e.g., `DIRECTUS-SETUP.md`), and attach screenshots for UI changes. Call out Directus permission updates so reviewers can reseed.
+## Architecture and Style
+
+- O frontend nunca acessa o banco diretamente e nunca recebe `SUPABASE_SERVICE_ROLE_KEY`; toda regra de negócio passa pela API Fastify.
+- Use TypeScript, schemas Zod na fronteira HTTP e erros RFC 7807.
+- Preserve as camadas: domínio/contratos, aplicação, infraestrutura e interface HTTP.
+- Componentes usam PascalCase, hooks começam com `use`, helpers usam camelCase e variáveis de ambiente usam UPPER_SNAKE_CASE.
+- Execute o Prettier para formatação e preserve as convenções Tailwind/Shadcn existentes.
+
+## Database and Tests
+
+- Toda mudança de schema deve ser uma nova migration; mantenha RLS, índices, triggers e seed coerentes.
+- Teste autenticação, isolamento por organizador, checkout, upload e dashboards.
+- Novas rotas exigem teste de sucesso, validação e autorização.
+
+## Commits and Pull Requests
+
+- Use mensagens concisas em português, com um único assunto por commit.
+- PRs devem listar comandos executados, impactos de migration/env e evidências visuais quando houver mudança de UI.

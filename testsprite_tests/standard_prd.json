@@ -4,13 +4,13 @@
     "date": "2025-10-04",
     "prepared_by": "Software Development Manager"
   },
-  "product_overview": "Event Management Platform built with Next.js 15 and Directus CMS enabling event organizers to create, manage, and promote events, integrate with Stripe for secure ticket sales, and provide attendees with seamless ticket purchasing and management experience.",
+  "product_overview": "Event Management Platform built with Next.js 15 and Supabase enabling event organizers to create, manage, and promote events, integrate with AbacatePay for secure ticket sales, and provide attendees with seamless ticket purchasing and management experience.",
   "core_goals": [
     "Provide a secure, robust authentication and authorization system with role-based access control.",
     "Enable event organizers to efficiently create, edit, configure, and manage events and associated ticketing.",
-    "Seamlessly integrate Stripe for payment processing and organizer payout via Stripe Connect.",
+    "Seamlessly integrate AbacatePay for payment processing and organizer payout via AbacatePay Connect.",
     "Offer attendees intuitive ticket purchasing, viewing, and management capabilities.",
-    "Support content editors with a dynamic block-based page builder integrated with Directus CMS, including live preview and draft modes.",
+    "Support content editors with a dynamic block-based page builder integrated with Supabase, including live preview and draft modes.",
     "Implement a dynamic, extensible form system with validation and file upload capabilities.",
     "Deliver a public-facing event browsing and discovery experience with SEO optimization.",
     "Provide detailed dashboards for both organizers and users to manage their profiles, tickets, and event related data.",
@@ -20,30 +20,30 @@
     "Complete Authentication & Authorization system with JWT, password reset, role-based access control, and protected routes.",
     "Event Management System for organizers, including event creation, editing, settings, statistics, participant and registration management.",
     "Ticket System allowing ticket type creation, pricing, quantity management, and user ticket purchase and viewing.",
-    "Stripe Payment Integration supporting checkout sessions, organizer onboarding, webhook handling, and secure payment processing.",
+    "AbacatePay Payment Integration supporting checkout sessions, organizer onboarding, webhook handling, and secure payment processing.",
     "User dashboard to view purchased tickets, manage profile and passwords, and view their event registrations.",
-    "Organizer dashboard with statistics, event management, profile editing, Stripe connection status, and onboarding support.",
+    "Organizer dashboard with statistics, event management, profile editing, AbacatePay connection status, and onboarding support.",
     "Public event pages with event browsing, detailed views, slug-based routing, and ticket purchase checkout.",
-    "Directus CMS integration with dynamic block-based page builder supporting hero blocks, rich text, galleries, pricing, posts, forms, and events, plus live visual editing and draft previews.",
-    "Dynamic Forms system with multiple field types, Zod validation, and integration with Directus schema.",
+    "Supabase integration with dynamic block-based page builder supporting hero blocks, rich text, galleries, pricing, posts, forms, and events, plus live visual editing and draft previews.",
+    "Dynamic Forms system with multiple field types, Zod validation, and integration with Supabase schema.",
     "Blog system with post management, slug routing, and SEO metadata handling.",
     "Responsive navigation system with header, footer, mobile menus, user menu dropdown, and theme toggle for dark/light mode.",
     "Site-wide search functionality accessible via modal and powered with a dedicated search API endpoint.",
-    "Image upload and management integrated with Directus files for event media and organizer logos.",
+    "Image upload and management integrated with Supabase files for event media and organizer logos.",
     "UI Component Library built with Radix UI and Tailwind CSS for consistent and accessible UI elements.",
     "SEO optimization features including dynamic sitemap generation and metadata management.",
     "Middleware and route protection with secure permission handling and CSRF protection.",
     "Toast notifications system for user feedback and error alerts."
   ],
   "user_flow_summary": [
-    "Public user browses events via homepage or search modal, views event details, selects tickets, and completes payment through Stripe checkout.",
+    "Public user browses events via homepage or search modal, views event details, selects tickets, and completes payment through AbacatePay checkout.",
     "User creates account or logs in with secure authentication; can reset password if needed.",
     "After purchase, user views and manages tickets in their personal dashboard and profile settings.",
     "Organizer logs in, accesses organizer dashboard, creates new events filling details and uploading media.",
     "Organizer configures ticket types, pricing, and availability for events, then monitors ticket sales and revenue.",
     "Organizer manages event participants and registrations and configures event-specific settings.",
-    "Organizer sets up Stripe Connect onboarding to receive payments, monitors Stripe connection status.",
-    "Content editors use the dynamic page builder linked with Directus to create and preview site content, including blog posts and event listings.",
+    "Organizer sets up AbacatePay Connect onboarding to receive payments, monitors AbacatePay connection status.",
+    "Content editors use the dynamic page builder linked with Supabase to create and preview site content, including blog posts and event listings.",
     "Users and organizers can update profiles, change passwords, and manage account settings through dedicated pages.",
     "Administrators manage users and content with full CMS and platform access, leveraging admin sidebar and dashboards."
   ],
@@ -51,16 +51,16 @@
     "Authentication flow allows user registration, login, password reset, and correct role enforcement.",
     "Event creation and editing properly saves and displays event data, including images and complex configurations.",
     "Ticket types and inventory reflect accurately during purchase and dashboard views.",
-    "Stripe checkout and payment processing complete successfully with correct fee application and organizer payout.",
+    "AbacatePay checkout and payment processing complete successfully with correct fee application and organizer payout.",
     "User and organizer dashboards load accurate data, support profile management, and handle updates correctly.",
-    "Dynamic page builder renders content as configured in Directus with all block types appearing as expected.",
+    "Dynamic page builder renders content as configured in Supabase with all block types appearing as expected.",
     "Forms created with the dynamic form system validate inputs and handle file uploads securely and effectively.",
     "Public event pages are SEO optimized, load correctly with proper routing and metadata.",
     "Search feature returns relevant content across site sections with performant response times.",
     "Middleware effectively protects routes and APIs enforcing access control and security policies.",
     "Toast notifications appear for successful and erroneous actions providing clear user feedback.",
     "Dark/light theme toggle persists user preference across sessions and devices.",
-    "Image uploads are stored, retrievable, and displayed correctly with Directus integration."
+    "Image uploads are stored, retrievable, and displayed correctly with Supabase integration."
   ],
   "code_summary": {
     "tech_stack": [
@@ -68,9 +68,9 @@
       "Next.js 15",
       "React 19",
       "Tailwind CSS",
-      "Directus CMS",
+      "Supabase",
       "PostgreSQL",
-      "Stripe",
+      "AbacatePay",
       "Radix UI",
       "React Hook Form",
       "Zod",
@@ -79,7 +79,7 @@
     "features": [
       {
         "name": "Dynamic Page Builder",
-        "description": "Block-based page builder system that dynamically renders pages from Directus CMS with composable blocks (hero, richtext, gallery, pricing, posts, forms)",
+        "description": "Block-based page builder system that dynamically renders pages from Supabase with composable blocks (hero, richtext, gallery, pricing, posts, forms)",
         "files": [
           "src/components/layout/PageBuilder.tsx",
           "src/components/blocks/BaseBlock.tsx",
@@ -132,17 +132,17 @@
         ]
       },
       {
-        "name": "Stripe Payment Integration",
-        "description": "Complete Stripe integration for ticket purchases with checkout sessions, payment processing, and organizer onboarding with Stripe Connect",
+        "name": "AbacatePay Payment Integration",
+        "description": "Complete AbacatePay integration for ticket purchases with checkout sessions, payment processing, and organizer onboarding with AbacatePay Connect",
         "files": [
-          "src/app/api/stripe/checkout-session/route.ts",
-          "src/app/api/organizer/stripe/onboarding/route.ts",
-          "src/lib/stripe/server.ts",
-          "src/lib/stripe/client.ts",
-          "src/lib/stripe/webhooks.ts",
+          "src/app/api/abacatepay/checkout-session/route.ts",
+          "src/app/api/organizer/abacatepay/onboarding/route.ts",
+          "src/lib/abacatepay/server.ts",
+          "src/lib/abacatepay/client.ts",
+          "src/lib/abacatepay/webhooks.ts",
           "src/lib/fees.ts",
-          "src/components/organizer/StripeOnboardingButton.tsx",
-          "src/components/organizer/StripeStatusCard.tsx",
+          "src/components/organizer/AbacatePayOnboardingButton.tsx",
+          "src/components/organizer/AbacatePayStatusCard.tsx",
           "src/hooks/useCheckout.ts",
           "src/app/(public)/eventos/[slug]/checkout/page.tsx",
           "src/app/(public)/eventos/[slug]/checkout/success/page.tsx",
@@ -188,21 +188,21 @@
         ]
       },
       {
-        "name": "Directus CMS Integration",
-        "description": "Deep integration with Directus headless CMS including data fetching, type generation, rate limiting, and form handling",
+        "name": "Supabase Integration",
+        "description": "Deep integration with Supabase headless CMS including data fetching, type generation, rate limiting, and form handling",
         "files": [
-          "src/lib/directus/directus.ts",
-          "src/lib/directus/fetchers.ts",
-          "src/lib/directus/forms.ts",
-          "src/lib/directus/directus-utils.ts",
-          "src/lib/directus/generateDirectusTypes.ts",
-          "src/hooks/useDirectusClient.ts",
-          "src/types/directus-schema.ts"
+          "apps/api/src/Supabase.ts",
+          "apps/api/src/fetchers.ts",
+          "apps/api/src/forms.ts",
+          "apps/api/src/Supabase-utils.ts",
+          "apps/api/src/generateSupabaseTypes.ts",
+          "apps/web/src/lib/backend.ts",
+          "packages/contracts/src/domain.ts"
         ]
       },
       {
         "name": "Dynamic Forms System",
-        "description": "Dynamic form generation and validation system that creates forms based on Directus schema with Zod validation",
+        "description": "Dynamic form generation and validation system that creates forms based on Supabase schema with Zod validation",
         "files": [
           "src/components/forms/DynamicForm.tsx",
           "src/components/forms/FormBuilder.tsx",
@@ -226,7 +226,7 @@
       },
       {
         "name": "Visual Editing Integration",
-        "description": "Directus Live Preview and visual editing integration for content editors to preview changes in real-time",
+        "description": "Supabase Live Preview and visual editing integration for content editors to preview changes in real-time",
         "files": [
           "src/components/layout/VisualEditingLayout.tsx",
           "src/hooks/useVisualEditing.ts",
@@ -235,7 +235,7 @@
       },
       {
         "name": "Navigation System",
-        "description": "Dynamic navigation with header, footer, and mobile-responsive navigation menus generated from Directus",
+        "description": "Dynamic navigation with header, footer, and mobile-responsive navigation menus generated from Supabase",
         "files": [
           "src/components/layout/NavigationBar.tsx",
           "src/components/layout/Footer.tsx",
@@ -252,11 +252,11 @@
       },
       {
         "name": "Image Upload & Management",
-        "description": "Image upload functionality with Directus files integration for managing event images and logos",
+        "description": "Image upload functionality with Supabase files integration for managing event images and logos",
         "files": [
           "src/app/api/upload/route.ts",
           "src/components/admin/ImageUpload.tsx",
-          "src/components/shared/DirectusImage.tsx"
+          "apps/web/src/components/shared/MediaImage.tsx"
         ]
       },
       {
@@ -303,7 +303,7 @@
       },
       {
         "name": "Redirects Management",
-        "description": "Dynamic redirect management system for handling URL redirects configured in Directus",
+        "description": "Dynamic redirect management system for handling URL redirects configured in Supabase",
         "files": [
           "src/lib/redirects.ts"
         ]

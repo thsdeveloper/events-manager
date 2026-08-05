@@ -249,8 +249,8 @@
   },
   {
     "id": "TC009",
-    "title": "Stripe Checkout Payment Success",
-    "description": "Verify the complete Stripe payment process including creating checkout sessions, successful payment, and webhook processing.",
+    "title": "AbacatePay Checkout Payment Success",
+    "description": "Verify the complete AbacatePay payment process including creating checkout sessions, successful payment, and webhook processing.",
     "category": "functional",
     "priority": "High",
     "steps": [
@@ -260,7 +260,7 @@
       },
       {
         "type": "action",
-        "description": "Fill in required payment details in Stripe hosted checkout"
+        "description": "Fill in required payment details in AbacatePay hosted checkout"
       },
       {
         "type": "action",
@@ -278,14 +278,14 @@
   },
   {
     "id": "TC010",
-    "title": "Stripe Checkout Payment Failure and Cancel Handling",
+    "title": "AbacatePay Checkout Payment Failure and Cancel Handling",
     "description": "Verify that payment failures and user checkout cancellations are handled correctly with appropriate user feedback.",
     "category": "error handling",
     "priority": "High",
     "steps": [
       {
         "type": "action",
-        "description": "Start Stripe checkout flow for ticket purchase"
+        "description": "Start AbacatePay checkout flow for ticket purchase"
       },
       {
         "type": "action",
@@ -333,7 +333,7 @@
   {
     "id": "TC012",
     "title": "Organizer Dashboard Functionality",
-    "description": "Verify organizer dashboard shows statistics, event listings, Stripe account connection status, and profile management capabilities.",
+    "description": "Verify organizer dashboard shows statistics, event listings, AbacatePay account connection status, and profile management capabilities.",
     "category": "functional",
     "priority": "High",
     "steps": [
@@ -355,7 +355,7 @@
       },
       {
         "type": "assertion",
-        "description": "Verify Stripe onboarding and payout status are shown"
+        "description": "Verify AbacatePay onboarding and payout status are shown"
       },
       {
         "type": "action",
@@ -398,8 +398,8 @@
   },
   {
     "id": "TC014",
-    "title": "Directus CMS Block-Based Page Builder Functionality",
-    "description": "Verify that editing pages using the Directus block-based page builder with hero, rich text, gallery, forms, and other blocks updates pages dynamically with live preview.",
+    "title": "Supabase Block-Based Page Builder Functionality",
+    "description": "Verify that editing pages using the Supabase block-based page builder with hero, rich text, gallery, forms, and other blocks updates pages dynamically with live preview.",
     "category": "functional",
     "priority": "Medium",
     "steps": [
@@ -432,7 +432,7 @@
   {
     "id": "TC015",
     "title": "Dynamic Forms Validation and File Upload",
-    "description": "Verify dynamic forms built with various field types validate inputs correctly using Zod and support file uploads integrated with Directus file system.",
+    "description": "Verify dynamic forms built with various field types validate inputs correctly using Zod and support file uploads integrated with Supabase file system.",
     "category": "functional",
     "priority": "Medium",
     "steps": [
@@ -643,13 +643,13 @@
   {
     "id": "TC022",
     "title": "Redirects Management",
-    "description": "Verify that dynamic redirects configured through Directus are enforced correctly on the public site for all specified routes.",
+    "description": "Verify that dynamic redirects configured through Supabase are enforced correctly on the public site for all specified routes.",
     "category": "functional",
     "priority": "Low",
     "steps": [
       {
         "type": "action",
-        "description": "Configure a redirect rule in Directus"
+        "description": "Configure a redirect rule in Supabase"
       },
       {
         "type": "action",

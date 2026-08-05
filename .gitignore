@@ -1,7 +1,3 @@
-# Backend (moved to separate repo)
-events-flow-back/
-directus-backup/
-
 # Dependencies
 node_modules/
 
@@ -30,6 +26,9 @@ coverage/
 .eslintcache
 .stylelintcache
 .pnpm-store/
+.supabase/
+supabase/.branches/
+supabase/.temp/
 
 # Deployment Platforms
 .netlify/

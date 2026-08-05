@@ -649,7 +649,7 @@ quantity_sold = SUM(event_registrations.tickets_purchased
 **Inspirações:**
 - Sympla (cadastro de ingressos)
 - Eventbrite (gestão de tickets)
-- Stripe Dashboard (UX de formulários complexos)
+- AbacatePay Dashboard (UX de formulários complexos)
 
 **Design System:**
 - Shadcn/ui components

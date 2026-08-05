@@ -1,176 +1,79 @@
-# Next.js Simple CMS Template with Directus Integration
+# Events Manager
 
-This is a **Next.js-based Simple CMS Template** that is fully integrated with [Directus](https://directus.io/), offering
-a CMS solution for managing and delivering content seamlessly. The template leverages modern technologies like the
-**Next.js App Router**, **Tailwind CSS**, and **Shadcn components**, providing a complete and scalable starting point
-for building CMS-powered web applications.
+Monorepo para criação, publicação e venda de ingressos de eventos. O frontend Next.js consome exclusivamente a API Fastify; autenticação, Postgres e Storage são fornecidos pelo Supabase.
 
-## **Features**
+## Arquitetura
 
-- **Next.js App Router**: Uses the latest Next.js routing architecture for layouts and dynamic routes.
-- **Full Directus Integration**: Directus API integration for fetching and managing relational data.
-- **Tailwind CSS**: Fully integrated for rapid UI styling.
-- **TypeScript**: Ensures type safety and reliable code quality.
-- **Shadcn Components**: Pre-built, customizable UI components for modern design systems.
-- **ESLint & Prettier**: Enforces consistent code quality and formatting.
-- **Dynamic Page Builder**: A page builder interface for creating and customizing CMS-driven pages.
-- **Preview Mode**: Built-in draft/live preview for editing unpublished content.
-- **Optimized Dependency Management**: Project is set up with **pnpm** for faster and more efficient package management.
-
----
-
-## **Why pnpm?**
-
-This project uses `pnpm` for managing dependencies due to its speed and efficiency. If you’re familiar with `npm`,
-you’ll find `pnpm` very similar in usage. You can still use `npm` if you prefer by replacing `pnpm` commands with their
-`npm` equivalents.
-
----
-
-## **Draft Mode in Directus and Live Preview**
-
-### **Draft Mode Overview**
-
-Directus allows you to work on unpublished content using **Draft Mode**. This Next.js template is configured to support
-Directus Draft Mode out of the box, enabling live previews of unpublished or draft content as you make changes.
-
-### **Live Preview Setup**
-
-[Directus Live Preview](https://docs.directus.io/guides/headless-cms/live-preview/nextjs.html)
-
-- The live preview feature works seamlessly on deployed environments.
-- To preview content on **localhost**, deploy your application to a staging environment.
-- **Important Note**: Directus employs Content Security Policies (CSPs) that block live previews on `localhost` for
-  security reasons. For a smooth preview experience, deploy the application to a cloud environment and use the
-  deployment URL for Directus previews.
-
----
-
-## **Getting Started**
-
-### Prerequisites
-
-To set up this template, ensure you have the following:
-
-- **Node.js** (16.x or newer)
-- **npm** or **pnpm**
-- Access to a **Directus** instance ([cloud or self-hosted](../../README.md))
-
-## ⚠️ Directus Setup Instructions
-
-For instructions on setting up Directus, choose one of the following:
-
-- [Setting up Directus Cloud](https://github.com/directus-labs/starters?tab=readme-ov-file#using-directus-with-a-cloud-instance-recommended)
-- [Setting up Directus Self-Hosted](https://github.com/directus-labs/starters?tab=readme-ov-file#using-directus-locally)
-
-## 🚀 One-Click Deploy
-
-You can instantly deploy this template using one of the following platforms:
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/directus-labs/starters/tree/main/cms/nextjs&env=NEXT_PUBLIC_DIRECTUS_URL,NEXT_PUBLIC_SITE_URL,DIRECTUS_PUBLIC_TOKEN,NEXT_PUBLIC_ENABLE_VISUAL_EDITING)
-
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/directus-labs/starters&branch=main&create_from_path=cms/nextjs)
-
-
-### **Environment Variables**
-
-To get started, you need to configure environment variables. Follow these steps:
-
-1. **Copy the example environment file:**
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. **Update the following variables in your `.env` file:**
-
-   - **`NEXT_PUBLIC_DIRECTUS_URL`**: URL of your Directus instance.
-   - **`DIRECTUS_PUBLIC_TOKEN`**: Public token for accessing public resources in Directus. Use the token from the
-     **Webmaster** account.
-   - **`DIRECTUS_FORM_TOKEN`**: Token from the **Frontend Bot User** account in Directus for handling form submissions.
-   - **`NEXT_PUBLIC_SITE_URL`**: The public URL of your site. This is used for SEO metadata and blog post routing.
-   - **`DRAFT_MODE_SECRET`**: The secret you generate for live preview. This is used to view draft posts in directus and
-     live edits.
-   - **`NEXT_PUBLIC_ENABLE_VISUAL_EDITING`**: Enable or disable visual editing in Directus
-
-## **Running the Application**
-
-### Local Development
-
-1. Install dependencies:
-
-   ```bash
-   pnpm install
-   ```
-
-   _(You can also use `npm install` if you prefer.)_
-
-2. Start the development server:
-
-   ```bash
-   pnpm run dev
-   ```
-
-3. Visit [http://localhost:3000](http://localhost:3000).
-
-## Generate Directus Types
-
-This repository includes a [utility](https://www.npmjs.com/package/directus-sdk-typegen) to generate TypeScript types
-for your Directus schema.
-
-#### Usage
-
-1. Ensure your `.env` file is configured as described above.
-2. Run the following command:
-   ```bash
-   pnpm run generate:types
-   ```
-
-## Folder Structure
-
-```
-src/
-├── app/                              # Next.js App Router and APIs
-│   ├── blog/                         # Blog-related routes
-│   │   ├── [slug]/                   # Dynamic blog post route
-│   │   │   └── page.tsx
-│   ├── [permalink]/                  # Dynamic page route
-│   │   └── page.tsx
-│   ├── api/                          # API routes for draft/live preview and search
-│   │   ├── draft/                    # Routes for draft previews
-│   │   │   └── route.ts
-│   │   ├── search/                   # Routes for search functionality
-│   │   │   └── route.ts
-│   ├── layout.tsx                    # Shared layout for all routes
-├── components/                       # Reusable components
-│   ├── blocks/                       # CMS blocks (Hero, Gallery, etc.)
-│   │   └── ...
-│   ├── forms/                        # Form components
-│   │   ├── DynamicForm.tsx           # Renders dynamic forms with validation
-│   │   ├── FormBuilder.tsx           # Manages form lifecycles and submission
-│   │   ├── FormField.tsx             # Renders individual form fields dynamically
-│   │   └── fields/                   # Form fields components
-│   │   └── ...
-│   ├── layout/                       # Layout components
-│   │   ├── Footer.tsx
-│   │   ├── NavigationBar.tsx
-│   │   └── PageBuilder.tsx           # Assembles blocks into pages
-│   ├── shared/                       # Shared utilities
-│   │   └── DirectusImage.tsx         # Renders images from Directus
-│   ├── ui/                           # Shadcn and other base UI components
-│   │   └── ...
-├── lib/                              # Utility and global logic
-│   ├── directus/                     # Directus utilities
-│   │   ├── directus.ts               # Directus client setup
-│   │   ├── fetchers.ts               # API fetchers
-│   │   ├── forms.ts                  # Directus form handling
-│   │   ├── generateDirectusTypes.ts  # Generates Directus types
-│   │   └── directus-utils.ts         # General Directus helpers
-│   ├── zodSchemaBuilder.ts           # Zod validation schemas
-├── styles/                           # Global styles
-│   └── ...
-├── types/                            # TypeScript types
-│   └── directus-schema.ts            # Directus-generated types
+```text
+apps/web                 Next.js 15 (interface pública e administrativa)
+apps/api                 Fastify (autenticação, conteúdo, eventos e pagamentos)
+packages/contracts       Tipos e schemas Zod compartilhados
+supabase/migrations      Schema Postgres, RLS, funções e políticas
+supabase/seed.sql        Conteúdo mínimo para desenvolvimento
+testsprite_tests         Cenários de aceitação
 ```
 
----
+O navegador chama caminhos `/api/*` no Next.js. Em desenvolvimento, o Next encaminha essas chamadas para `http://127.0.0.1:3333`, onde a API executa as regras de negócio e acessa o Supabase. A chave `service_role` existe apenas na API.
+
+## Desenvolvimento local
+
+Pré-requisitos: Node.js 22+, pnpm 10+, Docker e Docker Compose. O repositório inclui `.nvmrc`; com NVM, execute
+`nvm use` antes da instalação. A API fornece um transporte WebSocket compatível com Node 18/20 somente para facilitar a
+transição, mas essas versões não são mais suportadas pelo cliente Supabase.
+
+```bash
+pnpm install
+cp .env.example .env
+pnpm dev
+```
+
+O comando inicia o Supabase e, depois, a API e o frontend:
+
+- Frontend: http://localhost:3003
+- API/health check: http://localhost:3333/health
+- Supabase API: http://127.0.0.1:55321
+- Supabase Studio: http://127.0.0.1:55323
+- Caixa de e-mail local: http://127.0.0.1:55324
+
+O frontend usa a porta fixa 3003 para evitar conflitos com outros projetos locais. Se ela estiver ocupada, encerre o processo antigo ou altere em conjunto o script do web, `WEB_URL`, `NEXT_PUBLIC_SITE_URL` e `supabase/config.toml`.
+
+## Banco e autenticação
+
+O schema inicial cria perfis, organizadores, conteúdo modular, eventos, ingressos, inscrições, pagamentos, e-mails e arquivos. As tabelas expostas possuem Row Level Security. O seed adiciona identidade visual, navegação, categorias e um evento público de demonstração.
+
+```bash
+pnpm supabase:status   # credenciais e URLs locais
+pnpm db:reset         # reaplica migrations e seed
+pnpm db:types         # atualiza os tipos gerados do banco
+pnpm supabase:stop
+```
+
+Cadastre um usuário pela aplicação. Com `PAYMENTS_MODE=mock`, a solicitação feita em **Minha conta** é ativada
+automaticamente como organizador e pagamentos e repasses são simulados. Para testar a integração externa, use
+`PAYMENTS_MODE=abacatepay` com uma chave de desenvolvimento e configure o webhook assinado.
+
+## Serviços opcionais
+
+`PAYMENTS_MODE=mock` confirma pagamentos localmente sem chamadas externas. O modo `abacatepay` usa checkout hospedado,
+PIX e webhooks HMAC do AbacatePay. O SMTP local aponta para o Inbucket; OpenAI e Google Places ficam desativados enquanto
+suas chaves estiverem vazias.
+
+## Qualidade
+
+```bash
+pnpm lint
+pnpm test
+pnpm build
+pnpm format
+```
+
+As rotas da API retornam erros no formato RFC 7807. Alterações de banco devem ser feitas por uma nova migration em `supabase/migrations`, acompanhadas da atualização do seed e dos contratos quando aplicável.
+
+## Administração e pagamentos
+
+O painel do organizador fica em `/admin` e o painel global, protegido pelo papel `super_admin`, em `/super-admin`.
+O usuário local `ths.pereira@gmail.com` já está promovido para testes. Para promover outro perfil, use
+`pnpm admin:promote -- usuario@exemplo.com`.
+
+Checkout, PIX, webhooks e repasses usam uma abstração de gateway com adapters local e AbacatePay. Veja o fluxo completo,
+as variáveis e o roteiro para o ambiente de desenvolvimento em [docs/PAGAMENTOS-ABACATEPAY.md](docs/PAGAMENTOS-ABACATEPAY.md).
