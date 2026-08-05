@@ -19,6 +19,7 @@ const env: ApiEnv = {
   SUPABASE_ANON_KEY: 'test-anon-key',
   SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
   COOKIE_SECRET: 'test-cookie-secret-value',
+  ABACATEPAY_BASE_URL: 'https://api.abacatepay.com/v2',
   PAYMENTS_MODE: 'mock',
   SMTP_HOST: '127.0.0.1',
   SMTP_PORT: 55325,
