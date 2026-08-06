@@ -6,12 +6,10 @@ export default async function PublicLayout({ children }: { children: ReactNode }
 	const { globals, headerNavigation, footerNavigation } = await fetchSiteData();
 
 	return (
-		<SiteLayout
-			headerNavigation={headerNavigation}
-			footerNavigation={footerNavigation}
-			globals={globals}
-		>
-			<main className="flex-grow">{children}</main>
+		<SiteLayout headerNavigation={headerNavigation} footerNavigation={footerNavigation} globals={globals}>
+			<main className="flex-grow" id="main-content" tabIndex={-1}>
+				{children}
+			</main>
 		</SiteLayout>
 	);
 }

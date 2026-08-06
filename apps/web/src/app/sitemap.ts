@@ -32,10 +32,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 			lastModified: event.date_updated || event.start_date || new Date().toISOString(),
 		}));
 
-		return [...pageUrls, ...postUrls, ...eventUrls];
+		const entries = [{ url: `${siteUrl}/eventos`, lastModified: new Date().toISOString() }, ...pageUrls, ...postUrls, ...eventUrls];
+
+		return [...new Map(entries.map((entry) => [entry.url, entry])).values()];
 	} catch (error) {
 		console.error('Error generating sitemap:', error);
-		
-return [{ url: siteUrl, lastModified: new Date().toISOString() }];
+
+		return [
+			{ url: siteUrl, lastModified: new Date().toISOString() },
+			{ url: `${siteUrl}/eventos`, lastModified: new Date().toISOString() },
+		];
 	}
 }

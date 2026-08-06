@@ -12,7 +12,7 @@ const SelectField = ({ name, options, placeholder, form }: SelectFieldProps) => 
 	return (
 		<Select onValueChange={(value) => form.setValue(name, value)} value={form.getValues(name)}>
 			<SelectTrigger>
-				<SelectValue placeholder={placeholder || 'Select an option'} />
+				<SelectValue placeholder={placeholder || 'Selecione uma opção'} />
 			</SelectTrigger>
 			<SelectContent>
 				{options.map((option) => (

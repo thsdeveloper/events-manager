@@ -99,7 +99,7 @@ export function OrganizerRequestCard({
 							</li>
 							<li className="flex items-start gap-2">
 								<CheckCircle2 className="mt-0.5 size-4 text-primary" />
-								<span>Receba suporte dedicado da nossa equipe de curadoria.</span>
+								<span>Acompanhe inscrições, check-ins e resultados no painel.</span>
 							</li>
 						</ul>
 						<Button variant="outline" onClick={() => setShowForm(true)} size="sm" className="mt-2">

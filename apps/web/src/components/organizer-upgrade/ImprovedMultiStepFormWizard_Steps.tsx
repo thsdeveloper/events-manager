@@ -6,14 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from '@/components/ui/form';
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Sparkles, Info, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
 
 const EVENT_TYPES = [
@@ -22,7 +15,7 @@ const EVENT_TYPES = [
 	{ value: 'corporate', label: 'Eventos Corporativos', emoji: '💼' },
 	{ value: 'workshops', label: 'Workshops e Cursos', emoji: '📚' },
 	{ value: 'sports', label: 'Esportivos', emoji: '⚽' },
-	{ value: 'culture', label: 'Teatro e Cultura', emoji: '🎭' }
+	{ value: 'culture', label: 'Teatro e Cultura', emoji: '🎭' },
 ];
 
 // Step 2: Sobre seus Eventos
@@ -36,10 +29,10 @@ export function Step2Fields({ form, experience }: { form: any; experience: strin
 			{/* Seção: Tipos de Evento */}
 			<section className="space-y-4">
 				<div className="flex items-center gap-2">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-						Tipos de Evento
-					</h3>
-					<Badge variant="secondary" className="text-xs">Obrigatório</Badge>
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Tipos de Evento</h3>
+					<Badge variant="secondary" className="text-xs">
+						Obrigatório
+					</Badge>
 				</div>
 
 				<FormField
@@ -47,12 +40,8 @@ export function Step2Fields({ form, experience }: { form: any; experience: strin
 					name="eventTypes"
 					render={() => (
 						<FormItem>
-							<FormLabel className="text-base">
-								Que tipos de eventos você organiza? *
-							</FormLabel>
-							<FormDescription>
-								Selecione todos que se aplicam
-							</FormDescription>
+							<FormLabel className="text-base">Que tipos de eventos você organiza? *</FormLabel>
+							<FormDescription>Selecione todos que se aplicam</FormDescription>
 							<div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
 								{EVENT_TYPES.map((type) => (
 									<FormField
@@ -79,7 +68,7 @@ export function Step2Fields({ form, experience }: { form: any; experience: strin
 																	field.onChange(
 																		checked
 																			? [...current, type.value]
-																			: current.filter((v: string) => v !== type.value)
+																			: current.filter((v: string) => v !== type.value),
 																	);
 																}}
 																className="size-5"
@@ -109,10 +98,10 @@ export function Step2Fields({ form, experience }: { form: any; experience: strin
 			{/* Seção: Escala dos Eventos */}
 			<section className="space-y-4">
 				<div className="flex items-center gap-2">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-						Escala dos Eventos
-					</h3>
-					<Badge variant="secondary" className="text-xs">Obrigatório</Badge>
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Escala dos Eventos</h3>
+					<Badge variant="secondary" className="text-xs">
+						Obrigatório
+					</Badge>
 				</div>
 
 				<div className="grid gap-6 md:grid-cols-2">
@@ -177,10 +166,10 @@ export function Step2Fields({ form, experience }: { form: any; experience: strin
 			{/* Seção: Conte mais */}
 			<section className="space-y-4">
 				<div className="flex items-center gap-2">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-						Conte Mais
-					</h3>
-					<Badge variant="secondary" className="text-xs">Obrigatório</Badge>
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Conte Mais</h3>
+					<Badge variant="secondary" className="text-xs">
+						Obrigatório
+					</Badge>
 				</div>
 
 				<FormField
@@ -272,11 +261,7 @@ export function Step2Fields({ form, experience }: { form: any; experience: strin
 										{...field}
 									/>
 									<div className="absolute bottom-3 right-3">
-										<span
-											className={`text-xs ${
-												goals.length >= 300 ? 'text-orange-500' : 'text-gray-400'
-											}`}
-										>
+										<span className={`text-xs ${goals.length >= 300 ? 'text-orange-500' : 'text-gray-400'}`}>
 											{goals.length}/300
 										</span>
 									</div>
@@ -284,9 +269,7 @@ export function Step2Fields({ form, experience }: { form: any; experience: strin
 							</FormControl>
 							<FormDescription>
 								{goals.length < 20 ? (
-									<span className="text-red-600">
-										Continue escrevendo... faltam {20 - goals.length} caracteres
-									</span>
+									<span className="text-red-600">Continue escrevendo... faltam {20 - goals.length} caracteres</span>
 								) : (
 									'Ajuda nossa equipe a personalizar sua experiência ✓'
 								)}
@@ -309,9 +292,7 @@ export function Step3Review({ form }: { form: any }) {
 			{/* Info Box */}
 			<Alert className="border-2 border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/20">
 				<Sparkles className="size-5 text-purple-600" />
-				<AlertTitle className="text-purple-900 dark:text-purple-100">
-					Quase lá! Revise suas informações
-				</AlertTitle>
+				<AlertTitle className="text-purple-900 dark:text-purple-100">Quase lá! Revise suas informações</AlertTitle>
 				<AlertDescription className="text-purple-700 dark:text-purple-300">
 					Certifique-se de que todos os dados estão corretos. Você poderá editar depois se necessário.
 				</AlertDescription>
@@ -337,7 +318,7 @@ export function Step3Review({ form }: { form: any }) {
 									? 'Alguns eventos'
 									: values.hasExperience === 'beginner'
 										? 'Iniciante'
-										: 'Não informado'
+										: 'Não informado',
 					}}
 				/>
 
@@ -350,11 +331,11 @@ export function Step3Review({ form }: { form: any }) {
 							const types = values.eventTypes || [];
 							const typeLabels = types.map((t: string) => {
 								const found = EVENT_TYPES.find((et) => et.value === t);
-								
-return found ? `${found.emoji} ${found.label}` : t;
+
+								return found ? `${found.emoji} ${found.label}` : t;
 							});
-							
-return typeLabels.length > 0 ? typeLabels.join(', ') : 'Nenhum selecionado';
+
+							return typeLabels.length > 0 ? typeLabels.join(', ') : 'Nenhum selecionado';
 						})(),
 						'Público estimado': (() => {
 							const attendees = values.estimatedAttendees;
@@ -363,10 +344,10 @@ return typeLabels.length > 0 ? typeLabels.join(', ') : 'Nenhum selecionado';
 								'100-500': '100 a 500 pessoas',
 								'500-1000': '500 a 1.000 pessoas',
 								'1000-5000': '1.000 a 5.000 pessoas',
-								'5000+': 'Mais de 5.000 pessoas'
+								'5000+': 'Mais de 5.000 pessoas',
 							};
-							
-return labels[attendees] || 'Não informado';
+
+							return labels[attendees] || 'Não informado';
 						})(),
 						Frequência: (() => {
 							const frequency = values.eventFrequency;
@@ -375,11 +356,11 @@ return labels[attendees] || 'Não informado';
 								biweekly: 'Quinzenalmente',
 								monthly: 'Mensalmente',
 								quarterly: 'Trimestralmente',
-								occasional: 'Ocasionalmente'
+								occasional: 'Ocasionalmente',
 							};
-							
-return labels[frequency] || 'Não informado';
-						})()
+
+							return labels[frequency] || 'Não informado';
+						})(),
 					}}
 				/>
 
@@ -408,9 +389,7 @@ return labels[frequency] || 'Não informado';
 			{/* What Happens Next */}
 			<Alert className="border-2 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20">
 				<Info className="size-5 text-blue-600" />
-				<AlertTitle className="text-blue-900 dark:text-blue-100">
-					O que acontece depois?
-				</AlertTitle>
+				<AlertTitle className="text-blue-900 dark:text-blue-100">O que acontece depois?</AlertTitle>
 				<AlertDescription className="text-sm text-blue-700 dark:text-blue-300">
 					<ol className="mt-2 space-y-2">
 						<li className="flex items-start gap-2">
@@ -419,7 +398,7 @@ return labels[frequency] || 'Não informado';
 						</li>
 						<li className="flex items-start gap-2">
 							<CheckCircle2 className="size-4 flex-shrink-0 text-green-600" />
-							<span>Você recebe email de aprovação em até 48 horas úteis</span>
+							<span>O status da revisão ficará disponível no seu perfil</span>
 						</li>
 						<li className="flex items-start gap-2">
 							<CheckCircle2 className="size-4 flex-shrink-0 text-green-600" />
@@ -436,36 +415,14 @@ return labels[frequency] || 'Não informado';
 				render={({ field }) => (
 					<FormItem className="flex items-start space-x-3 space-y-0 rounded-lg border-2 border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
 						<FormControl>
-							<Checkbox
-								checked={field.value}
-								onCheckedChange={field.onChange}
-								className="mt-1 size-5"
-							/>
+							<Checkbox checked={field.value} onCheckedChange={field.onChange} className="mt-1 size-5" />
 						</FormControl>
 						<div className="flex-1 space-y-1 leading-none">
 							<FormLabel className="cursor-pointer text-base font-semibold">
-								Aceito os termos de uso e política de privacidade *
+								Confirmo que as informações são verdadeiras *
 							</FormLabel>
 							<FormDescription className="text-sm">
-								Li e concordo com os{' '}
-								<a
-									href="/termos"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-purple-600 underline hover:text-purple-700"
-								>
-									termos de uso
-								</a>{' '}
-								e a{' '}
-								<a
-									href="/privacidade"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-purple-600 underline hover:text-purple-700"
-								>
-									política de privacidade
-								</a>{' '}
-								da plataforma.
+								Os dados informados serão usados para analisar a solicitação de organizador.
 							</FormDescription>
 						</div>
 					</FormItem>
@@ -484,15 +441,7 @@ return labels[frequency] || 'Não informado';
 }
 
 // Componente auxiliar: Card de revisão
-function ReviewCard({
-	title,
-	emoji,
-	data
-}: {
-	title: string;
-	emoji: string;
-	data: Record<string, string>;
-}) {
+function ReviewCard({ title, emoji, data }: { title: string; emoji: string; data: Record<string, string> }) {
 	return (
 		<div className="rounded-lg border-2 border-gray-200 p-4 dark:border-gray-800">
 			<h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-900 dark:text-white">

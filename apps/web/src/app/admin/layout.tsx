@@ -2,7 +2,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import { ReactQueryProvider } from '@/contexts/ReactQueryProvider';
 import { requireOrganizer } from '@/lib/auth/server-auth';
-import React from "react";
+import React from 'react';
 
 /**
  * Admin Area Layout (Server Component)
@@ -10,11 +10,7 @@ import React from "react";
  * Protected area exclusively for organizers to manage events
  * Regular users are automatically redirected to their profile
  */
-export default async function AdminLayout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
 	// ⭐ SSR Authentication - validates organizer role
 	const { user, organizer } = await requireOrganizer();
 
@@ -30,10 +26,8 @@ export default async function AdminLayout({
 					<AdminHeader user={user} organizer={organizer} />
 
 					{/* Page Content */}
-					<main className="p-4 sm:p-6 lg:p-8">
-						<div className="mx-auto max-w-[1600px]">
-							{children}
-						</div>
+					<main className="p-4 sm:p-6 lg:p-8" id="main-content" tabIndex={-1}>
+						<div className="mx-auto max-w-[1600px]">{children}</div>
 					</main>
 				</div>
 			</div>

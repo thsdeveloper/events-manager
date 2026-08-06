@@ -16,7 +16,7 @@ import {
 	ArrowLeft,
 	Save,
 	Sparkles,
-	AlertCircle
+	AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +52,7 @@ const formSchema = z.object({
 	howDidYouKnow: z.string(),
 
 	// Step 5: Termos
-	acceptTerms: z.boolean().refine(val => val === true, 'Você deve aceitar os termos')
+	acceptTerms: z.boolean().refine((val) => val === true, 'Confirme que as informações são verdadeiras'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -63,7 +63,7 @@ const EVENT_TYPES = [
 	'Eventos Corporativos',
 	'Workshops e Cursos',
 	'Esportivos',
-	'Teatro e Cultura'
+	'Teatro e Cultura',
 ];
 
 const steps = [
@@ -71,32 +71,32 @@ const steps = [
 		id: 1,
 		title: 'Informações Básicas',
 		icon: Building2,
-		description: 'Dados principais da organização'
+		description: 'Dados principais da organização',
 	},
 	{
 		id: 2,
 		title: 'Presença Digital',
 		icon: Globe,
-		description: 'Redes sociais e portfolio'
+		description: 'Redes sociais e portfolio',
 	},
 	{
 		id: 3,
 		title: 'Sobre seus Eventos',
 		icon: Sparkles,
-		description: 'Tipo e escala das operações'
+		description: 'Tipo e escala das operações',
 	},
 	{
 		id: 4,
 		title: 'Experiência',
 		icon: FileText,
-		description: 'Histórico e objetivos'
+		description: 'Histórico e objetivos',
 	},
 	{
 		id: 5,
 		title: 'Revisão',
 		icon: CheckCircle2,
-		description: 'Confirmar e enviar'
-	}
+		description: 'Confirmar e enviar',
+	},
 ];
 
 interface MultiStepFormWizardProps {
@@ -132,8 +132,8 @@ export function MultiStepFormWizard({ user, onSuccess }: MultiStepFormWizardProp
 			hasExperience: '',
 			goals: '',
 			howDidYouKnow: '',
-			acceptTerms: false
-		}
+			acceptTerms: false,
+		},
 	});
 
 	// Auto-save a cada 30s
@@ -170,12 +170,12 @@ export function MultiStepFormWizard({ user, onSuccess }: MultiStepFormWizardProp
 		const isValid = await form.trigger(fieldsToValidate as any);
 
 		if (isValid) {
-			setCurrentStep(prev => Math.min(prev + 1, steps.length));
+			setCurrentStep((prev) => Math.min(prev + 1, steps.length));
 		}
 	};
 
 	const prevStep = () => {
-		setCurrentStep(prev => Math.max(prev - 1, 1));
+		setCurrentStep((prev) => Math.max(prev - 1, 1));
 	};
 
 	const getFieldsForStep = (step: number): (keyof FormData)[] => {
@@ -249,9 +249,7 @@ export function MultiStepFormWizard({ user, onSuccess }: MultiStepFormWizardProp
 						<h3 className="text-sm font-semibold text-gray-900 dark:text-white">
 							Etapa {currentStep} de {steps.length}
 						</h3>
-						<p className="text-xs text-gray-500">
-							Tempo estimado: ~5 minutos
-						</p>
+						<p className="text-xs text-gray-500">Você poderá revisar tudo antes de enviar</p>
 					</div>
 					{lastSaved && (
 						<div className="flex items-center gap-2 text-xs text-gray-500">
@@ -266,7 +264,7 @@ export function MultiStepFormWizard({ user, onSuccess }: MultiStepFormWizardProp
 						className="h-full bg-gradient-to-r from-purple-600 to-indigo-600"
 						initial={{ width: 0 }}
 						animate={{ width: `${progress}%` }}
-						transition={{ duration: 0.5, ease: "easeOut" }}
+						transition={{ duration: 0.5, ease: 'easeOut' }}
 					/>
 				</div>
 
@@ -280,35 +278,25 @@ export function MultiStepFormWizard({ user, onSuccess }: MultiStepFormWizardProp
 						return (
 							<div
 								key={step.id}
-								className={`flex flex-col items-center gap-2 ${
-									index < steps.length - 1 ? 'flex-1' : ''
-								}`}
+								className={`flex flex-col items-center gap-2 ${index < steps.length - 1 ? 'flex-1' : ''}`}
 							>
 								<motion.div
 									initial={false}
 									animate={{
 										scale: isCurrent ? 1.1 : 1,
-										backgroundColor: isCompleted
-											? '#8b5cf6'
-											: isCurrent
-												? '#8b5cf6'
-												: '#e5e7eb'
+										backgroundColor: isCompleted ? '#8b5cf6' : isCurrent ? '#8b5cf6' : '#e5e7eb',
 									}}
 									className={`size-10 rounded-full flex items-center justify-center ${
-										isCompleted || isCurrent
-											? 'text-white'
-											: 'text-gray-400'
+										isCompleted || isCurrent ? 'text-white' : 'text-gray-400'
 									}`}
 								>
-									{isCompleted ? (
-										<CheckCircle2 className="size-5" />
-									) : (
-										<StepIcon className="size-5" />
-									)}
+									{isCompleted ? <CheckCircle2 className="size-5" /> : <StepIcon className="size-5" />}
 								</motion.div>
-								<span className={`text-xs text-center hidden md:block ${
-									isCurrent ? 'text-purple-600 font-semibold' : 'text-gray-500'
-								}`}>
+								<span
+									className={`text-xs text-center hidden md:block ${
+										isCurrent ? 'text-purple-600 font-semibold' : 'text-gray-500'
+									}`}
+								>
 									{step.title}
 								</span>
 							</div>
@@ -330,9 +318,7 @@ export function MultiStepFormWizard({ user, onSuccess }: MultiStepFormWizardProp
 								})()}
 								{steps[currentStep - 1].title}
 							</CardTitle>
-							<CardDescription>
-								{steps[currentStep - 1].description}
-							</CardDescription>
+							<CardDescription>{steps[currentStep - 1].description}</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-6">
 							<AnimatePresence mode="wait">
@@ -355,24 +341,14 @@ export function MultiStepFormWizard({ user, onSuccess }: MultiStepFormWizardProp
 
 					{/* Navigation */}
 					<div className="mt-6 flex justify-between items-center">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={prevStep}
-							disabled={currentStep === 1}
-							className="gap-2"
-						>
+						<Button type="button" variant="outline" onClick={prevStep} disabled={currentStep === 1} className="gap-2">
 							<ArrowLeft className="size-4" />
 							Voltar
 						</Button>
 
 						<div className="flex gap-3">
 							{currentStep < steps.length ? (
-								<Button
-									type="button"
-									onClick={nextStep}
-									className="gap-2"
-								>
+								<Button type="button" onClick={nextStep} className="gap-2">
 									Continuar
 									<ArrowRight className="size-4" />
 								</Button>
@@ -386,7 +362,7 @@ export function MultiStepFormWizard({ user, onSuccess }: MultiStepFormWizardProp
 										<>
 											<motion.div
 												animate={{ rotate: 360 }}
-												transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+												transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
 											>
 												<Save className="size-4" />
 											</motion.div>
@@ -421,9 +397,7 @@ function Step1Fields({ form }: { form: any }) {
 						<FormControl>
 							<Input placeholder="Ex: Eventos XYZ" {...field} />
 						</FormControl>
-						<FormDescription>
-							Como sua marca aparecerá nos eventos publicados
-						</FormDescription>
+						<FormDescription>Como sua marca aparecerá nos eventos publicados</FormDescription>
 						<FormMessage />
 					</FormItem>
 				)}
@@ -474,9 +448,7 @@ function Step1Fields({ form }: { form: any }) {
 						<FormControl>
 							<Input placeholder="000.000.000-00 ou 00.000.000/0000-00" {...field} />
 						</FormControl>
-						<FormDescription>
-							Facilita a aprovação e futura emissão de notas fiscais
-						</FormDescription>
+						<FormDescription>Facilita a aprovação e futura emissão de notas fiscais</FormDescription>
 						<FormMessage />
 					</FormItem>
 				)}
@@ -514,9 +486,7 @@ function Step2Fields({ form }: { form: any }) {
 						<FormControl>
 							<Input placeholder="@suamarca" {...field} />
 						</FormControl>
-						<FormDescription>
-							Ajuda nossa equipe a conhecer melhor seu trabalho
-						</FormDescription>
+						<FormDescription>Ajuda nossa equipe a conhecer melhor seu trabalho</FormDescription>
 						<FormMessage />
 					</FormItem>
 				)}
@@ -562,17 +532,11 @@ function Step3Fields({ form }: { form: any }) {
 													checked={field.value?.includes(type)}
 													onCheckedChange={(checked) => {
 														const current = field.value || [];
-														field.onChange(
-															checked
-																? [...current, type]
-																: current.filter((t: string) => t !== type)
-														);
+														field.onChange(checked ? [...current, type] : current.filter((t: string) => t !== type));
 													}}
 												/>
 											</FormControl>
-											<FormLabel className="font-normal cursor-pointer">
-												{type}
-											</FormLabel>
+											<FormLabel className="font-normal cursor-pointer">{type}</FormLabel>
 										</FormItem>
 									)}
 								/>
@@ -591,10 +555,7 @@ function Step3Fields({ form }: { form: any }) {
 						<FormItem>
 							<FormLabel>Público estimado por evento *</FormLabel>
 							<FormControl>
-								<select
-									{...field}
-									className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-950"
-								>
+								<select {...field} className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-950">
 									<option value="">Selecione...</option>
 									<option value="0-100">Até 100 pessoas</option>
 									<option value="100-500">100 a 500 pessoas</option>
@@ -614,10 +575,7 @@ function Step3Fields({ form }: { form: any }) {
 						<FormItem>
 							<FormLabel>Frequência de eventos *</FormLabel>
 							<FormControl>
-								<select
-									{...field}
-									className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-950"
-								>
+								<select {...field} className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-950">
 									<option value="">Selecione...</option>
 									<option value="weekly">Semanais</option>
 									<option value="monthly">Mensais</option>
@@ -645,14 +603,10 @@ function Step3Fields({ form }: { form: any }) {
 									{...field}
 									maxLength={500}
 								/>
-								<div className="absolute bottom-2 right-2 text-xs text-gray-400">
-									{field.value?.length || 0}/500
-								</div>
+								<div className="absolute bottom-2 right-2 text-xs text-gray-400">{field.value?.length || 0}/500</div>
 							</div>
 						</FormControl>
-						<FormDescription>
-							Quanto mais detalhes, mais rápida será a análise
-						</FormDescription>
+						<FormDescription>Quanto mais detalhes, mais rápida será a análise</FormDescription>
 						<FormMessage />
 					</FormItem>
 				)}
@@ -671,10 +625,7 @@ function Step4Fields({ form }: { form: any }) {
 					<FormItem>
 						<FormLabel>Já organizou eventos antes? *</FormLabel>
 						<FormControl>
-							<select
-								{...field}
-								className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-950"
-							>
+							<select {...field} className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-950">
 								<option value="">Selecione...</option>
 								<option value="yes">Sim, sou experiente</option>
 								<option value="some">Alguns eventos</option>
@@ -711,10 +662,7 @@ function Step4Fields({ form }: { form: any }) {
 					<FormItem>
 						<FormLabel>Como conheceu o EventsFlow?</FormLabel>
 						<FormControl>
-							<select
-								{...field}
-								className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-950"
-							>
+							<select {...field} className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-950">
 								<option value="">Selecione...</option>
 								<option value="google">Google</option>
 								<option value="social">Redes sociais</option>
@@ -742,33 +690,42 @@ function Step5Review({ form }: { form: any }) {
 					<div className="text-sm text-blue-900 dark:text-blue-100">
 						<p className="font-semibold mb-1">Revise suas informações</p>
 						<p className="text-blue-700 dark:text-blue-300">
-							Certifique-se de que todos os dados estão corretos antes de enviar.
-							Você poderá editar depois se necessário.
+							Certifique-se de que todos os dados estão corretos antes de enviar. Você poderá editar depois se
+							necessário.
 						</p>
 					</div>
 				</div>
 			</div>
 
 			<div className="space-y-4">
-				<ReviewSection title="Informações Básicas" data={{
-					'Organização': values.organizationName,
-					'Email': values.contactEmail,
-					'Telefone': values.phone,
-					'CPF/CNPJ': values.document || 'Não informado'
-				}} />
+				<ReviewSection
+					title="Informações Básicas"
+					data={{
+						Organização: values.organizationName,
+						Email: values.contactEmail,
+						Telefone: values.phone,
+						'CPF/CNPJ': values.document || 'Não informado',
+					}}
+				/>
 
-				<ReviewSection title="Presença Digital" data={{
-					'Website': values.website || 'Não informado',
-					'Instagram': values.instagram || 'Não informado',
-					'Portfolio': values.portfolio || 'Não informado'
-				}} />
+				<ReviewSection
+					title="Presença Digital"
+					data={{
+						Website: values.website || 'Não informado',
+						Instagram: values.instagram || 'Não informado',
+						Portfolio: values.portfolio || 'Não informado',
+					}}
+				/>
 
-				<ReviewSection title="Sobre os Eventos" data={{
-					'Tipos': values.eventTypes?.join(', ') || 'Nenhum selecionado',
-					'Público estimado': values.estimatedAttendees,
-					'Frequência': values.eventFrequency,
-					'Descrição': values.description
-				}} />
+				<ReviewSection
+					title="Sobre os Eventos"
+					data={{
+						Tipos: values.eventTypes?.join(', ') || 'Nenhum selecionado',
+						'Público estimado': values.estimatedAttendees,
+						Frequência: values.eventFrequency,
+						Descrição: values.description,
+					}}
+				/>
 			</div>
 
 			<FormField
@@ -777,17 +734,12 @@ function Step5Review({ form }: { form: any }) {
 				render={({ field }) => (
 					<FormItem className="flex items-start space-x-3 space-y-0 rounded-lg border p-4">
 						<FormControl>
-							<Checkbox
-								checked={field.value}
-								onCheckedChange={field.onChange}
-							/>
+							<Checkbox checked={field.value} onCheckedChange={field.onChange} />
 						</FormControl>
 						<div className="space-y-1 leading-none">
-							<FormLabel className="cursor-pointer">
-								Aceito os termos de uso e política de privacidade *
-							</FormLabel>
+							<FormLabel className="cursor-pointer">Confirmo que as informações são verdadeiras *</FormLabel>
 							<FormDescription>
-								Li e concordo com os <a href="/termos" className="text-purple-600 hover:underline">termos de uso</a> e a <a href="/privacidade" className="text-purple-600 hover:underline">política de privacidade</a>
+								Os dados informados serão usados para analisar a solicitação de organizador.
 							</FormDescription>
 						</div>
 					</FormItem>
@@ -805,9 +757,7 @@ function ReviewSection({ title, data }: { title: string; data: Record<string, st
 				{Object.entries(data).map(([key, value]) => (
 					<div key={key} className="flex justify-between text-sm">
 						<dt className="text-gray-600 dark:text-gray-400">{key}:</dt>
-						<dd className="text-gray-900 dark:text-white font-medium text-right max-w-[60%]">
-							{value}
-						</dd>
+						<dd className="text-gray-900 dark:text-white font-medium text-right max-w-[60%]">{value}</dd>
 					</div>
 				))}
 			</dl>

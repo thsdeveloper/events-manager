@@ -78,6 +78,12 @@ const Posts = ({ data }: PostsProps) => {
 			router.replace(`?page=${page}`, { scroll: false });
 		}
 	};
+	const pageHref = (page: number) => {
+		const next = new URLSearchParams(searchParams.toString());
+		next.set('page', String(page));
+
+		return `?${next.toString()}`;
+	};
 
 	const generatePagination = () => {
 		const pages: (number | string)[] = [];
@@ -100,20 +106,10 @@ const Posts = ({ data }: PostsProps) => {
 
 	return (
 		<div>
-			{tagline && (
-				<Tagline
-					tagline={tagline}
-				/>
-			)}
-			{headline && (
-				<Headline
-					headline={headline}
-				/>
-			)}
+			{tagline && <Tagline tagline={tagline} />}
+			{headline && <Headline headline={headline} />}
 
-			<div
-				className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
-			>
+			<div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
 				{paginatedPosts.length > 0 ? (
 					paginatedPosts.map((post) => (
 						<Link key={post.id} href={`/blog/${post.slug}`} className="group block overflow-hidden rounded-lg">
@@ -147,7 +143,7 @@ const Posts = ({ data }: PostsProps) => {
 						{totalPages > visiblePages && currentPage > 1 && (
 							<PaginationItem>
 								<PaginationLink
-									href="#"
+									href={pageHref(1)}
 									onClick={(e) => {
 										e.preventDefault();
 										handlePageChange(1);
@@ -161,7 +157,7 @@ const Posts = ({ data }: PostsProps) => {
 						{totalPages > visiblePages && currentPage > 1 && (
 							<PaginationItem>
 								<PaginationPrevious
-									href="#"
+									href={pageHref(currentPage - 1)}
 									onClick={(e) => {
 										e.preventDefault();
 										handlePageChange(currentPage - 1);
@@ -174,7 +170,7 @@ const Posts = ({ data }: PostsProps) => {
 							typeof page === 'number' ? (
 								<PaginationItem key={index}>
 									<PaginationLink
-										href="#"
+										href={pageHref(page)}
 										isActive={currentPage === page}
 										onClick={(e) => {
 											e.preventDefault();
@@ -194,7 +190,7 @@ const Posts = ({ data }: PostsProps) => {
 						{totalPages > visiblePages && currentPage < totalPages && (
 							<PaginationItem>
 								<PaginationNext
-									href="#"
+									href={pageHref(currentPage + 1)}
 									onClick={(e) => {
 										e.preventDefault();
 										handlePageChange(currentPage + 1);
@@ -206,7 +202,7 @@ const Posts = ({ data }: PostsProps) => {
 						{totalPages > visiblePages && currentPage < totalPages && (
 							<PaginationItem>
 								<PaginationLink
-									href="#"
+									href={pageHref(totalPages)}
 									onClick={(e) => {
 										e.preventDefault();
 										handlePageChange(totalPages);

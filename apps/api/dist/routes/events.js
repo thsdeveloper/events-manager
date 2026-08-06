@@ -1,11 +1,38 @@
-import { eventInputSchema } from '@events-manager/contracts';
+import { eventInputSchema, eventPatchSchema } from '@events-manager/contracts';
 import { z } from 'zod';
 import { requireUser } from '../application/auth/session.js';
 import { ApiError } from '../shared/errors.js';
-const eventSelection = `
+const publicEventSelection = `
+  id,
+  status,
+  sort,
+  date_created,
+  date_updated,
+  title,
+  slug,
+  description,
+  short_description,
+  event_type,
+  start_date,
+  end_date,
+  location_name,
+  location_address,
+  online_url,
+  max_attendees,
+  registration_start,
+  registration_end,
+  is_free,
+  tags,
+  featured,
+  cover_image:media_files(id,bucket,path,filename,title,type,filesize,width,height,description,metadata,date_created),
+  organizer_id:organizers(id,name,email,phone,description,logo,website),
+  category_id:event_categories(id,sort,name,slug,description,icon,color),
+  tickets:event_tickets(id,event_id,title,description,status,quantity,quantity_sold,price,service_fee_type,buyer_price,sale_start_date,sale_end_date,min_quantity_per_purchase,max_quantity_per_purchase,visibility,allow_installments,max_installments,min_amount_for_installments,sort,date_created,date_updated)
+`;
+const organizerEventSelection = `
   *,
   cover_image:media_files(*),
-  organizer_id:organizers(id,name,email,phone,description,logo,website,payout_status),
+  organizer_id:organizers(id,name,email,phone,description,logo,website),
   category_id:event_categories(*),
   tickets:event_tickets(*),
   registrations:event_registrations(id,status,payment_status,quantity)
@@ -16,7 +43,7 @@ export async function eventRoutes(app, options) {
         const { slug } = z.object({ slug: z.string() }).parse(request.params);
         const { data, error } = await clients.public
             .from('events')
-            .select(eventSelection)
+            .select(publicEventSelection)
             .eq('slug', slug)
             .eq('status', 'published')
             .eq('event_tickets.status', 'active')
@@ -33,7 +60,11 @@ export async function eventRoutes(app, options) {
     app.get('/api/events', async (request) => {
         const auth = await requireUser(request, clients);
         const database = clients.forAccessToken(auth.accessToken);
-        const { data: organizer } = await database.from('organizers').select('id').eq('user_id', auth.user.id).maybeSingle();
+        const { data: organizer } = await clients.admin
+            .from('organizers')
+            .select('id')
+            .eq('user_id', auth.user.id)
+            .maybeSingle();
         if (!organizer)
             return { data: [] };
         const { data, error } = await database
@@ -46,7 +77,10 @@ export async function eventRoutes(app, options) {
         return { data: data ?? [] };
     });
     app.get('/api/event-categories', async () => {
-        const { data, error } = await clients.public.from('event_categories').select('*').order('name');
+        const { data, error } = await clients.public
+            .from('event_categories')
+            .select('id,sort,name,slug,description,icon,color')
+            .order('name');
         if (error)
             throw error;
         return { data: data ?? [] };
@@ -55,7 +89,11 @@ export async function eventRoutes(app, options) {
         const auth = await requireUser(request, clients);
         const database = clients.forAccessToken(auth.accessToken);
         const input = eventInputSchema.parse(request.body);
-        const { data: organizer } = await database.from('organizers').select('id,status').eq('user_id', auth.user.id).maybeSingle();
+        const { data: organizer } = await clients.admin
+            .from('organizers')
+            .select('id,status')
+            .eq('user_id', auth.user.id)
+            .maybeSingle();
         if (!organizer || organizer.status !== 'active')
             throw new ApiError('Seu perfil de organizador ainda não está ativo.', 403, 'ORGANIZER_REQUIRED');
         const { data, error } = await database
@@ -71,7 +109,7 @@ export async function eventRoutes(app, options) {
         const auth = await requireUser(request, clients);
         const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
         const database = clients.forAccessToken(auth.accessToken);
-        const { data, error } = await database.from('events').select(eventSelection).eq('id', id).maybeSingle();
+        const { data, error } = await database.from('events').select(organizerEventSelection).eq('id', id).maybeSingle();
         if (error)
             throw error;
         if (!data)
@@ -81,8 +119,14 @@ export async function eventRoutes(app, options) {
     app.patch('/api/events/:id', async (request) => {
         const auth = await requireUser(request, clients);
         const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-        const input = eventInputSchema.partial().parse(request.body);
+        const input = eventPatchSchema.parse(request.body);
         const database = clients.forAccessToken(auth.accessToken);
+        const { data: current, error: currentError } = await database.from('events').select('*').eq('id', id).maybeSingle();
+        if (currentError)
+            throw currentError;
+        if (!current)
+            throw new ApiError('Evento não encontrado ou sem permissão.', 404, 'EVENT_NOT_FOUND');
+        eventInputSchema.parse({ ...current, ...input });
         const { data, error } = await database
             .from('events')
             .update({ ...input, user_updated: auth.user.id })

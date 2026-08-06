@@ -105,10 +105,22 @@ const config: Config = {
     				DEFAULT: 'hsl(var(--muted))',
     				foreground: 'hsl(var(--muted-foreground))'
     			},
-    			destructive: {
-    				DEFAULT: 'hsl(var(--destructive))',
-    				foreground: 'hsl(var(--destructive-foreground))'
-    			},
+				destructive: {
+					DEFAULT: 'hsl(var(--destructive))',
+					foreground: 'hsl(var(--destructive-foreground))'
+				},
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))'
+				},
+				info: {
+					DEFAULT: 'hsl(var(--info))',
+					foreground: 'hsl(var(--info-foreground))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))'
+				},
     			border: 'hsl(var(--border))',
     			ring: 'hsl(var(--ring))',
     			chart: {
@@ -238,8 +250,8 @@ const config: Config = {
     							textDecoration: 'underline'
     						}
     					},
-    					blockquote: {
-    						borderLeftColor: 'var(--gray-700)'
+					blockquote: {
+						borderLeftColor: 'hsl(var(--border))'
     					}
     				}
     			}

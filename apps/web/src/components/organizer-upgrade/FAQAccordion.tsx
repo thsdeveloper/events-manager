@@ -2,88 +2,85 @@
 
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { useRef, useState } from 'react';
-import { Search, ChevronDown, HelpCircle, MessageCircle } from 'lucide-react';
+import { Search, ChevronDown, HelpCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 
 const faqs = [
 	{
 		id: 1,
 		category: 'Aprovação',
 		question: 'Quanto tempo leva para minha conta ser aprovada?',
-		answer: 'O processo de aprovação geralmente leva de 24 a 48 horas úteis. Nossa equipe analisa cuidadosamente cada solicitação para garantir a qualidade da plataforma. Você receberá um email assim que sua conta for aprovada.'
+		answer:
+			'O prazo depende da revisão da plataforma. O status da solicitação fica visível no seu perfil; quando o acesso for ativado, o painel de organizador será liberado.',
 	},
 	{
 		id: 2,
 		category: 'Aprovação',
 		question: 'Quais documentos preciso fornecer?',
-		answer: 'Você precisará fornecer informações básicas como nome da organização, email, telefone e CPF/CNPJ. Não é necessário enviar documentos escaneados no momento da solicitação. Caso nossa equipe precise de mais informações, entraremos em contato.'
+		answer:
+			'Informe o nome da organização, um e-mail válido e uma descrição da atividade. Telefone, site e documento podem ser solicitados conforme a operação e a configuração de pagamentos.',
 	},
 	{
 		id: 3,
 		category: 'Custos',
-		question: 'Existem taxas para criar uma conta de organizador?',
-		answer: 'Não! A criação da conta de organizador é 100% gratuita, sem taxas de adesão ou mensalidades. Cobramos apenas uma pequena porcentagem sobre cada ingresso vendido (taxa de serviço + processamento de pagamento).'
+		question: 'Como consulto as taxas aplicadas aos ingressos?',
+		answer:
+			'As taxas são definidas na configuração atual da plataforma e entram no cálculo do preço ao comprador. O resumo do checkout e o painel financeiro mostram os valores aplicados à operação.',
 	},
 	{
 		id: 4,
 		category: 'Custos',
-		question: 'Quanto custa para vender ingressos?',
-		answer: 'Nossa taxa de serviço é de 3% a 5% sobre o valor do ingresso, dependendo do volume de vendas. Além disso, há a taxa de processamento de pagamento da AbacatePay (geralmente 3,99% + R$0,50 por transação). Você pode escolher se absorve essa taxa ou repassa ao comprador.'
+		question: 'Posso absorver ou repassar a taxa de serviço?',
+		answer:
+			'Sim. Cada tipo de ingresso permite escolher se a taxa da plataforma será absorvida pelo organizador ou incorporada ao preço pago pelo comprador.',
 	},
 	{
 		id: 5,
 		category: 'Pagamentos',
 		question: 'Como e quando recebo meus pagamentos?',
-		answer: 'Utilizamos o AbacatePay Connect para processar pagamentos. Os repasses são automáticos e ocorrem de 2 a 7 dias úteis após cada venda, diretamente na sua conta bancária. Você pode acompanhar tudo em tempo real no dashboard financeiro.'
+		answer:
+			'Depois que sua chave PIX for cadastrada e aprovada, os repasses podem ser processados pela administração da plataforma. Saldo, status e comprovante ficam disponíveis no painel financeiro.',
 	},
 	{
 		id: 6,
 		category: 'Pagamentos',
-		question: 'Preciso ter conta no AbacatePay?',
-		answer: 'Sim, você precisará conectar ou criar uma conta AbacatePay Connect. O processo é simples e guiado pela plataforma. A AbacatePay é a líder global em processamento de pagamentos online e garante total segurança para você e seus clientes.'
+		question: 'Quais meios de pagamento estão disponíveis?',
+		answer:
+			'O checkout usa os meios liberados pelo gateway configurado na plataforma. Na integração atual, o checkout padrão oferece PIX e cartão; planos parcelados geram cobranças PIX individuais.',
 	},
 	{
 		id: 7,
 		category: 'Eventos',
 		question: 'Posso criar eventos gratuitos?',
-		answer: 'Sim! Você pode criar tanto eventos pagos quanto gratuitos. Para eventos gratuitos, não cobramos taxa de serviço, apenas uma taxa simbólica de processamento caso haja ingressos com valor zero mas com taxa de reserva.'
+		answer:
+			'Sim, quando eventos gratuitos estão habilitados na configuração da plataforma. Ingressos com valor zero são confirmados sem iniciar uma cobrança no gateway.',
 	},
 	{
 		id: 8,
 		category: 'Eventos',
-		question: 'Existe limite de ingressos ou eventos?',
-		answer: 'Não há limite! Você pode criar quantos eventos quiser e vender quantos ingressos precisar. Nossa infraestrutura foi projetada para escalar e suportar desde eventos pequenos até grandes festivais com milhares de participantes.'
+		question: 'Como funcionam os limites de ingressos?',
+		answer:
+			'Cada ingresso tem quantidade total e limites mínimo e máximo por compra. O estoque é reservado de forma atômica durante o checkout para evitar vendas acima da disponibilidade.',
 	},
 	{
 		id: 9,
 		category: 'Recursos',
 		question: 'Quais recursos estão incluídos?',
-		answer: 'Você terá acesso a: criação ilimitada de eventos, QR codes para check-in, lista de participantes, envio de emails em massa, análises em tempo real, dashboard completo, suporte prioritário, integração com AbacatePay, geração de relatórios e muito mais.'
+		answer:
+			'O painel reúne criação e edição de eventos, ingressos, lista de participantes, check-in, reenvio individual de confirmação, análises, exportações e acompanhamento financeiro.',
 	},
 	{
 		id: 10,
 		category: 'Recursos',
-		question: 'Posso adicionar membros da equipe?',
-		answer: 'Sim! Você pode convidar colaboradores para ajudar na gestão dos eventos. É possível definir diferentes níveis de permissão para cada membro da equipe, controlando o que cada um pode visualizar e editar.'
+		question: 'Posso oferecer pagamento parcelado?',
+		answer:
+			'Sim, em ingressos elegíveis. Você define o número máximo de parcelas e o valor mínimo; o participante acompanha as cobranças PIX e o status do plano na própria conta.',
 	},
-	{
-		id: 11,
-		category: 'Suporte',
-		question: 'Que tipo de suporte vocês oferecem?',
-		answer: 'Organizadores aprovados têm acesso a suporte prioritário via chat, email e WhatsApp, com tempo médio de resposta de menos de 2 horas. Também oferecemos central de ajuda completa, tutoriais em vídeo e onboarding personalizado.'
-	},
-	{
-		id: 12,
-		category: 'Cancelamento',
-		question: 'Posso cancelar minha conta a qualquer momento?',
-		answer: 'Sim, você pode cancelar sua conta de organizador a qualquer momento, sem multas ou taxas de cancelamento. Seus dados serão mantidos por 90 dias para permitir reativação, caso mude de ideia.'
-	}
 ];
 
-const categories = Array.from(new Set(faqs.map(faq => faq.category)));
+const categories = Array.from(new Set(faqs.map((faq) => faq.category)));
 
 export function FAQAccordion() {
 	const containerRef = useRef(null);
@@ -93,13 +90,11 @@ export function FAQAccordion() {
 	const [openItems, setOpenItems] = useState<number[]>([]);
 
 	const toggleItem = (id: number) => {
-		setOpenItems(prev =>
-			prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-		);
+		setOpenItems((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
 	};
 
 	// Filter FAQs based on search and category
-	const filteredFaqs = faqs.filter(faq => {
+	const filteredFaqs = faqs.filter((faq) => {
 		const matchesSearch =
 			searchTerm === '' ||
 			faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,9 +116,7 @@ export function FAQAccordion() {
 					<HelpCircle className="size-4" />
 					Dúvidas frequentes
 				</div>
-				<h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-					Perguntas e respostas
-				</h2>
+				<h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Perguntas e respostas</h2>
 				<p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
 					Tudo que você precisa saber para começar como organizador
 				</p>
@@ -163,7 +156,7 @@ export function FAQAccordion() {
 				>
 					Todas
 				</Button>
-				{categories.map(category => (
+				{categories.map((category) => (
 					<Button
 						key={category}
 						variant={selectedCategory === category ? 'default' : 'outline'}
@@ -179,15 +172,9 @@ export function FAQAccordion() {
 			{/* FAQ Items */}
 			<div className="max-w-3xl mx-auto space-y-4">
 				{filteredFaqs.length === 0 ? (
-					<motion.div
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						className="text-center py-12"
-					>
+					<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
 						<HelpCircle className="size-16 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-						<p className="text-gray-600 dark:text-gray-400">
-							Nenhuma pergunta encontrada para "{searchTerm}"
-						</p>
+						<p className="text-gray-600 dark:text-gray-400">Nenhuma pergunta encontrada para "{searchTerm}"</p>
 					</motion.div>
 				) : (
 					filteredFaqs.map((faq, index) => (
@@ -232,9 +219,7 @@ export function FAQAccordion() {
 											className="overflow-hidden"
 										>
 											<CardContent className="px-6 pb-6 pt-0">
-												<p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-													{faq.answer}
-												</p>
+												<p className="text-gray-600 dark:text-gray-400 leading-relaxed">{faq.answer}</p>
 											</CardContent>
 										</motion.div>
 									)}
@@ -244,39 +229,6 @@ export function FAQAccordion() {
 					))
 				)}
 			</div>
-
-			{/* Contact Support */}
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={isInView ? { opacity: 1, y: 0 } : {}}
-				transition={{ delay: 0.8, duration: 0.6 }}
-				className="mt-12 max-w-2xl mx-auto"
-			>
-				<Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20">
-					<CardContent className="p-8 text-center">
-						<MessageCircle className="size-12 text-purple-600 dark:text-purple-400 mx-auto mb-4" />
-						<h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-							Ainda tem dúvidas?
-						</h3>
-						<p className="text-gray-600 dark:text-gray-400 mb-6">
-							Nossa equipe está pronta para ajudar você a começar
-						</p>
-						<div className="flex flex-col sm:flex-row gap-3 justify-center">
-							<Button asChild className="gap-2">
-								<Link href="/suporte">
-									<MessageCircle className="size-4" />
-									Falar com suporte
-								</Link>
-							</Button>
-							<Button variant="outline" asChild>
-								<Link href="/docs">
-									Ver documentação
-								</Link>
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-			</motion.div>
 		</section>
 	);
 }

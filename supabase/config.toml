@@ -41,7 +41,14 @@ enable_anonymous_sign_ins = false
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
-enable_confirmations = false
+enable_confirmations = true
+max_frequency = "1m"
+otp_length = 6
+otp_expiry = 900
+
+[auth.email.template.confirmation]
+subject = "Seu código de confirmação"
+content_path = "./supabase/templates/confirmation.html"
 
 [analytics]
 enabled = false

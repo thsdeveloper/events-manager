@@ -29,16 +29,16 @@ export interface AppUser {
 }
 
 export interface ExtensionSeoMetadata {
-    title?: string;
-    meta_description?: string;
-    og_image?: string;
-    additional_fields?: Record<string, unknown>;
-    sitemap?: {
-        change_frequency: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
-        priority: string;
-    };
-    no_index?: boolean;
-    no_follow?: boolean;
+	title?: string;
+	meta_description?: string;
+	og_image?: string;
+	additional_fields?: Record<string, unknown>;
+	sitemap?: {
+		change_frequency: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
+		priority: string;
+	};
+	no_index?: boolean;
+	no_follow?: boolean;
 }
 
 export interface AiPrompt {
@@ -374,6 +374,10 @@ export interface EventRegistration {
 	installment_plan_status?: 'active' | 'completed' | 'defaulted' | null;
 	/** @description Razão do bloqueio (ex: overdue_installments) */
 	blocked_reason?: string | null;
+	/** @description Indica que a quantidade desta inscrição já está contabilizada no estoque. */
+	inventory_reserved?: boolean;
+	/** @description Última consulta do estado do checkout no provedor. */
+	reconciliation_checked_at?: string | null;
 	/** @description Parcelas de pagamento relacionadas */
 	installments?: PaymentInstallment[] | string[];
 }
@@ -561,7 +565,10 @@ export interface Globals {
 	/** @primaryKey */
 	id: string;
 	/** @description Social media profile URLs */
-	social_links?: Array<{ url: string; service: 'facebook' | 'instagram' | 'linkedin' | 'x' | 'vimeo' | 'youtube' | 'github' | 'discord' | 'docker' }> | null;
+	social_links?: Array<{
+		url: string;
+		service: 'facebook' | 'instagram' | 'linkedin' | 'x' | 'vimeo' | 'youtube' | 'github' | 'discord' | 'docker';
+	}> | null;
 	/** @description Short phrase describing the site. */
 	tagline?: string | null;
 	/** @description Main site title */
@@ -572,10 +579,6 @@ export interface Globals {
 	favicon?: MediaFile | string | null;
 	/** @description Main logo shown on the site (for light mode). */
 	logo?: MediaFile | string | null;
-	/** @description Secret OpenAI API key. Don't share with anyone outside your team. */
-	openai_api_key?: string | null;
-	/** @description The public URL for this API instance. Used in Flows. */
-	api_url?: string | null;
 	/** @description Main logo shown on the site (for dark mode). */
 	logo_dark_mode?: MediaFile | string | null;
 	/** @description Accent color for the website (used on buttons, links, etc). */
@@ -792,4 +795,3 @@ export interface Redirect {
 	date_updated?: string | null;
 	user_updated?: AppUser | string | null;
 }
-

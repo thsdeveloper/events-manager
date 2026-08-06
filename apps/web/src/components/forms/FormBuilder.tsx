@@ -29,7 +29,7 @@ const FormBuilder = ({ form, className }: FormBuilderProps) => {
 
 	if (!form.is_active) return null;
 
-	const handleSubmit = async (data: Record<string, any>) => {
+	const handleSubmit = async (data: Record<string, unknown>) => {
 		setError(null);
 		try {
 			const fieldsWithNames = form.fields.map((field) => ({
@@ -46,8 +46,7 @@ const FormBuilder = ({ form, className }: FormBuilderProps) => {
 				setIsSubmitted(true);
 			}
 		} catch (err) {
-			console.error('Error submitting form:', err);
-			setError('Failed to submit the form. Please try again later.');
+			setError(err instanceof Error ? err.message : 'Não foi possível enviar o formulário. Tente novamente.');
 		}
 	};
 
@@ -55,7 +54,7 @@ const FormBuilder = ({ form, className }: FormBuilderProps) => {
 		return (
 			<div className="flex flex-col items-center justify-center space-y-4 p-6 text-center">
 				<CheckCircle className="size-12 text-green-500" />
-				<p className="text-gray-600">{form.success_message || 'Your form has been submitted successfully.'}</p>
+				<p className="text-gray-600">{form.success_message || 'Formulário enviado com sucesso.'}</p>
 			</div>
 		);
 	}
@@ -65,15 +64,15 @@ const FormBuilder = ({ form, className }: FormBuilderProps) => {
 			{form.title && <h3 className="text-xl font-semibold mb-4">{form.title}</h3>}
 
 			{error && (
-				<div className="p-4 text-red-500 bg-red-100 rounded-md">
-					<strong>Error:</strong> {error}
+				<div className="p-4 text-red-700 bg-red-50 rounded-md" role="alert">
+					<strong>Erro:</strong> {error}
 				</div>
 			)}
 
 			<DynamicForm
 				fields={form.fields}
 				onSubmit={handleSubmit}
-				submitLabel={form.submit_label || 'Submit'}
+				submitLabel={form.submit_label || 'Enviar'}
 				id={form.id}
 			/>
 		</div>

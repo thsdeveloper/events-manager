@@ -1,106 +1,92 @@
-import { eventInputSchema } from '@events-manager/contracts';
+import { eventInputSchema, eventPatchSchema } from '@events-manager/contracts';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { requireUser } from '../application/auth/session.js';
+import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
+import { requireUser } from './auth-context.js';
+import { EventNotFound, EventService, OrganizerRequired } from '../application/events/event-service.js';
 import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
+import { SupabaseEventRepository } from '../infrastructure/supabase/event-repository.js';
 import { ApiError } from '../shared/errors.js';
 
-const eventSelection = `
-  *,
-  cover_image:media_files(*),
-  organizer_id:organizers(id,name,email,phone,description,logo,website,payout_status),
-  category_id:event_categories(*),
-  tickets:event_tickets(*),
-  registrations:event_registrations(id,status,payment_status,quantity)
-`;
+function mapEventError(error: unknown): never {
+	if (error instanceof EventNotFound) throw new ApiError('Evento não encontrado.', 404, 'EVENT_NOT_FOUND');
+	if (error instanceof OrganizerRequired) {
+		throw new ApiError('Seu perfil de organizador ainda não está ativo.', 403, 'ORGANIZER_REQUIRED');
+	}
+	throw error;
+}
 
 export async function eventRoutes(app: FastifyInstance, options: { clients: SupabaseClients }) {
-  const { clients } = options;
+	const { clients } = options;
+	const auth = createSupabaseAuthService(clients);
+	const events = new EventService(new SupabaseEventRepository(clients));
 
-  app.get('/api/events/slug/:slug', async (request) => {
-    const { slug } = z.object({ slug: z.string() }).parse(request.params);
-    const { data, error } = await clients.public
-      .from('events')
-      .select(eventSelection)
-      .eq('slug', slug)
-      .eq('status', 'published')
-      .eq('event_tickets.status', 'active')
-      .eq('event_tickets.visibility', 'public')
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) throw new ApiError('Evento não encontrado.', 404, 'EVENT_NOT_FOUND');
-    if (Array.isArray(data.tickets)) data.tickets.sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0));
-    return data;
-  });
+	app.get('/api/events/slug/:slug', async (request) => {
+		const { slug } = z.object({ slug: z.string() }).parse(request.params);
+		try {
+			return await events.getPublicBySlug(slug);
+		} catch (error) {
+			mapEventError(error);
+		}
+	});
 
-  app.get('/api/events', async (request) => {
-    const auth = await requireUser(request, clients);
-    const database = clients.forAccessToken(auth.accessToken);
-    const { data: organizer } = await database.from('organizers').select('id').eq('user_id', auth.user.id).maybeSingle();
-    if (!organizer) return { data: [] };
-    const { data, error } = await database
-      .from('events')
-      .select('*,cover_image:media_files(*),category_id:event_categories(*),tickets:event_tickets(*),registrations:event_registrations(id,status,payment_status,quantity)')
-      .eq('organizer_id', organizer.id)
-      .order('date_created', { ascending: false });
-    if (error) throw error;
-    return { data: data ?? [] };
-  });
+	app.get('/api/events', async (request) => {
+		const context = await requireUser(request, auth);
+		return { data: await events.listForUser(context.user.id) };
+	});
 
-  app.get('/api/event-categories', async () => {
-    const { data, error } = await clients.public.from('event_categories').select('*').order('name');
-    if (error) throw error;
-    return { data: data ?? [] };
-  });
+	app.get('/api/events/public', async (request) => {
+		const query = z
+			.object({
+				limit: z.coerce.number().int().min(1).max(48).default(12),
+				page: z.coerce.number().int().positive().default(1),
+				search: z.string().trim().max(100).default(''),
+			})
+			.parse(request.query);
+		return events.listPublic(query);
+	});
 
-  app.post('/api/events', async (request, reply) => {
-    const auth = await requireUser(request, clients);
-    const database = clients.forAccessToken(auth.accessToken);
-    const input = eventInputSchema.parse(request.body);
-    const { data: organizer } = await database.from('organizers').select('id,status').eq('user_id', auth.user.id).maybeSingle();
-    if (!organizer || organizer.status !== 'active') throw new ApiError('Seu perfil de organizador ainda não está ativo.', 403, 'ORGANIZER_REQUIRED');
-    const { data, error } = await database
-      .from('events')
-      .insert({ ...input, organizer_id: organizer.id, user_created: auth.user.id })
-      .select('*')
-      .single();
-    if (error) throw error;
-    return reply.code(201).send(data);
-  });
+	app.get('/api/event-categories', async () => ({ data: await events.listCategories() }));
 
-  app.get('/api/events/:id', async (request) => {
-    const auth = await requireUser(request, clients);
-    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-    const database = clients.forAccessToken(auth.accessToken);
-    const { data, error } = await database.from('events').select(eventSelection).eq('id', id).maybeSingle();
-    if (error) throw error;
-    if (!data) throw new ApiError('Evento não encontrado.', 404, 'EVENT_NOT_FOUND');
-    return data;
-  });
+	app.post('/api/events', async (request, reply) => {
+		const context = await requireUser(request, auth);
+		const input = eventInputSchema.parse(request.body);
+		try {
+			return reply.code(201).send(await events.create(context.user.id, input));
+		} catch (error) {
+			mapEventError(error);
+		}
+	});
 
-  app.patch('/api/events/:id', async (request) => {
-    const auth = await requireUser(request, clients);
-    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-    const input = eventInputSchema.partial().parse(request.body);
-    const database = clients.forAccessToken(auth.accessToken);
-    const { data, error } = await database
-      .from('events')
-      .update({ ...input, user_updated: auth.user.id })
-      .eq('id', id)
-      .select('*')
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) throw new ApiError('Evento não encontrado ou sem permissão.', 404, 'EVENT_NOT_FOUND');
-    return data;
-  });
+	app.get('/api/events/:id', async (request) => {
+		const context = await requireUser(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		try {
+			return await events.getForUser(context.user.id, id);
+		} catch (error) {
+			mapEventError(error);
+		}
+	});
 
-  app.delete('/api/events/:id', async (request, reply) => {
-    const auth = await requireUser(request, clients);
-    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-    const database = clients.forAccessToken(auth.accessToken);
-    const { error, count } = await database.from('events').delete({ count: 'exact' }).eq('id', id);
-    if (error) throw error;
-    if (!count) throw new ApiError('Evento não encontrado ou sem permissão.', 404, 'EVENT_NOT_FOUND');
-    return reply.code(204).send();
-  });
+	app.patch('/api/events/:id', async (request) => {
+		const context = await requireUser(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		const input = eventPatchSchema.parse(request.body);
+		try {
+			return await events.update(context.user.id, id, input);
+		} catch (error) {
+			mapEventError(error);
+		}
+	});
+
+	app.delete('/api/events/:id', async (request, reply) => {
+		const context = await requireUser(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		try {
+			await events.delete(context.user.id, id);
+			return reply.code(204).send();
+		} catch (error) {
+			mapEventError(error);
+		}
+	});
 }

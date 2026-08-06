@@ -1,7 +1,3 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import Tagline from '@/components/ui/Tagline';
 import Headline from '@/components/ui/Headline';
@@ -21,37 +17,6 @@ interface RichTextProps {
 const RichText = ({ data, className }: RichTextProps) => {
 	const { id, tagline, headline, content, alignment = 'left' } = data;
 
-	const router = useRouter();
-
-	useEffect(() => {
-		const container = document.querySelector('.prose');
-		const links = container?.querySelectorAll('a');
-
-		links?.forEach((link) => {
-			const href = link.getAttribute('href');
-			if (href && href.startsWith('/')) {
-				link.onclick = (event) => {
-					event.preventDefault();
-					router.push(href);
-				};
-			}
-		});
-
-		const iframes = container?.querySelectorAll('iframe');
-		iframes?.forEach((iframe) => {
-			const wrapper = document.createElement('div');
-			wrapper.className = 'relative aspect-video';
-			iframe.parentNode?.insertBefore(wrapper, iframe);
-			wrapper.appendChild(iframe);
-
-			iframe.style.position = 'absolute';
-			iframe.style.top = '0';
-			iframe.style.left = '0';
-			iframe.style.width = '100%';
-			iframe.style.height = '100%';
-		});
-	}, [content, router]);
-
 	return (
 		<div
 			className={cn(
@@ -60,21 +25,9 @@ const RichText = ({ data, className }: RichTextProps) => {
 				className,
 			)}
 		>
-			{tagline && (
-				<Tagline
-					tagline={tagline}
-				/>
-			)}
-			{headline && (
-				<Headline
-					headline={headline}
-				/>
-			)}
-			{content && (
-				<Text
-					content={content}
-				/>
-			)}
+			{tagline && <Tagline tagline={tagline} />}
+			{headline && <Headline headline={headline} />}
+			{content && <Text content={content} />}
 		</div>
 	);
 };

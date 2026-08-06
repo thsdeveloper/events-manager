@@ -21,7 +21,7 @@ import { installErrorHandler } from './shared/errors.js';
 export async function buildApp(env) {
     const app = Fastify({
         logger: env.NODE_ENV !== 'test',
-        trustProxy: env.NODE_ENV === 'production',
+        trustProxy: env.TRUST_PROXY_HOPS || false,
     });
     const clients = createSupabaseClients(env);
     const payments = createPaymentGateway(env);
@@ -30,6 +30,10 @@ export async function buildApp(env) {
     await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024, files: 1 } });
     await app.register(rawBody, { global: false, field: 'rawBody', encoding: false, runFirst: true });
     installErrorHandler(app);
+    app.addHook('onRequest', async (request, reply) => {
+        reply.header('x-request-id', request.id);
+        reply.header('x-content-type-options', 'nosniff');
+    });
     app.get('/health', async () => {
         const { error } = await clients.public.from('site_settings').select('id').limit(1);
         return { status: error ? 'degraded' : 'ok', database: error ? 'unavailable' : 'connected' };

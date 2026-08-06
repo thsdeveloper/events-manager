@@ -1,15 +1,15 @@
-import { redirect } from 'next/navigation';
-import { requireAuth } from '@/lib/auth/server-auth';
+import type { Metadata } from 'next';
 
-export const metadata = {
-	title: 'Meus Ingressos | Plataforma de Eventos',
-	description: 'Gerencie seus ingressos de eventos',
+import { requireAuth } from '@/lib/auth/server-auth';
+import { TicketsPageClient } from './TicketsPageClient';
+
+export const metadata: Metadata = {
+	title: 'Meus ingressos',
+	description: 'Consulte e gerencie seus ingressos de eventos.',
 };
 
-export default async function MeusIngressosPage() {
-	// ⭐ SSR Authentication - validates user authentication
-	await requireAuth();
+export default async function MyTicketsPage() {
+	await requireAuth('/meus-ingressos');
 
-	// Redirect to profile page with tickets tab active
-	redirect('/perfil?tab=ingressos');
+	return <TicketsPageClient />;
 }

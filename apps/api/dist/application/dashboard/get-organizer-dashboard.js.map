@@ -1,0 +1,1 @@
+{"version":3,"file":"get-organizer-dashboard.js","sourceRoot":"","sources":["../../../src/application/dashboard/get-organizer-dashboard.ts"],"names":[],"mappings":"AAMA,MAAM,OAAO,qBAAqB;IACJ;IAA7B,YAA6B,UAAwC;QAAxC,eAAU,GAAV,UAAU,CAA8B;IAAG,CAAC;IAEzE,OAAO,CAAC,WAAmB;QAC1B,OAAO,IAAI,CAAC,UAAU,CAAC,gBAAgB,CAAC,WAAW,CAAC,CAAC;IACtD,CAAC;CACD"}

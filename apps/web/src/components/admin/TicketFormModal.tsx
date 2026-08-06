@@ -16,78 +16,84 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 
 // Zod schema para validação
-const ticketFormSchema = z.object({
-	// Basic fields
-	title: z.string()
-		.min(1, 'O título é obrigatório')
-		.max(255, 'O título deve ter no máximo 255 caracteres'),
+const ticketFormSchema = z
+	.object({
+		// Basic fields
+		title: z.string().min(1, 'O título é obrigatório').max(255, 'O título deve ter no máximo 255 caracteres'),
 
-	description: z.string().optional(),
+		description: z.string().optional(),
 
-	quantity: z.coerce.number()
-		.int('Deve ser um número inteiro')
-		.min(1, 'Quantidade mínima é 1')
-		.max(1000000, 'Quantidade muito alta'),
+		quantity: z.coerce
+			.number()
+			.int('Deve ser um número inteiro')
+			.min(1, 'Quantidade mínima é 1')
+			.max(1000000, 'Quantidade muito alta'),
 
-	// Pricing fields
-	price: z.coerce.number()
-		.min(0, 'O preço não pode ser negativo')
-		.optional()
-		.or(z.literal(0)),
+		// Pricing fields
+		price: z.coerce.number().min(0, 'O preço não pode ser negativo').optional().or(z.literal(0)),
 
-	service_fee_type: z.enum(['absorbed', 'passed_to_buyer'], {
-		required_error: 'Selecione como a taxa será cobrada',
-	}),
+		service_fee_type: z.enum(['absorbed', 'passed_to_buyer'], {
+			required_error: 'Selecione como a taxa será cobrada',
+		}),
 
-	// Sale period
-	sale_start_date: z.string().optional(),
-	sale_end_date: z.string().optional(),
+		// Sale period
+		sale_start_date: z.string().optional(),
+		sale_end_date: z.string().optional(),
 
-	// Purchase limits
-	min_quantity_per_purchase: z.coerce.number()
-		.int('Deve ser um número inteiro')
-		.min(1, 'Mínimo de 1')
-		.max(100, 'Máximo de 100'),
+		// Purchase limits
+		min_quantity_per_purchase: z.coerce
+			.number()
+			.int('Deve ser um número inteiro')
+			.min(1, 'Mínimo de 1')
+			.max(100, 'Máximo de 100'),
 
-	max_quantity_per_purchase: z.coerce.number()
-		.int('Deve ser um número inteiro')
-		.min(1, 'Mínimo de 1')
-		.max(100, 'Máximo de 100'),
+		max_quantity_per_purchase: z.coerce
+			.number()
+			.int('Deve ser um número inteiro')
+			.min(1, 'Mínimo de 1')
+			.max(100, 'Máximo de 100'),
 
-	// Visibility
-	visibility: z.enum(['public', 'invited_only', 'manual'], {
-		required_error: 'Selecione a visibilidade',
-	}),
+		// Visibility
+		visibility: z.enum(['public', 'invited_only', 'manual'], {
+			required_error: 'Selecione a visibilidade',
+		}),
 
-	// Installment fields
-	allow_installments: z.boolean().default(false),
+		// Installment fields
+		allow_installments: z.boolean().default(false),
 
-	max_installments: z.coerce.number()
-		.int('Deve ser um número inteiro')
-		.min(2, 'Mínimo de 2 parcelas')
-		.max(4, 'Máximo de 4 parcelas')
-		.optional(),
+		max_installments: z.coerce
+			.number()
+			.int('Deve ser um número inteiro')
+			.min(2, 'Mínimo de 2 parcelas')
+			.max(4, 'Máximo de 4 parcelas')
+			.optional(),
 
-	min_amount_for_installments: z.coerce.number()
-		.min(0, 'Valor não pode ser negativo')
-		.optional(),
-}).refine((data) => {
-	// Validação: max_quantity deve ser >= min_quantity
-	return data.max_quantity_per_purchase >= data.min_quantity_per_purchase;
-}, {
-	message: 'Máximo deve ser maior ou igual ao mínimo',
-	path: ['max_quantity_per_purchase'],
-}).refine((data) => {
-	// Validação: se allow_installments estiver ativo e houver min_amount, o price deve ser >= min_amount
-	if (data.allow_installments && data.min_amount_for_installments && data.price) {
-		return data.price >= data.min_amount_for_installments;
-	}
+		min_amount_for_installments: z.coerce.number().min(0, 'Valor não pode ser negativo').optional(),
+	})
+	.refine(
+		(data) => {
+			// Validação: max_quantity deve ser >= min_quantity
+			return data.max_quantity_per_purchase >= data.min_quantity_per_purchase;
+		},
+		{
+			message: 'Máximo deve ser maior ou igual ao mínimo',
+			path: ['max_quantity_per_purchase'],
+		},
+	)
+	.refine(
+		(data) => {
+			// Validação: se allow_installments estiver ativo e houver min_amount, o price deve ser >= min_amount
+			if (data.allow_installments && data.min_amount_for_installments && data.price) {
+				return data.price >= data.min_amount_for_installments;
+			}
 
-	return true;
-}, {
-	message: 'O valor do ingresso deve ser maior ou igual ao valor mínimo para parcelamento',
-	path: ['price'],
-});
+			return true;
+		},
+		{
+			message: 'O valor do ingresso deve ser maior ou igual ao valor mínimo para parcelamento',
+			path: ['price'],
+		},
+	);
 
 type TicketFormValues = z.infer<typeof ticketFormSchema>;
 
@@ -143,7 +149,10 @@ export default function TicketFormModal({
 			if (!isOpen) return;
 
 			try {
-				const response = await fetch('/api/event-config', { cache: 'no-store' });
+				const response = await fetch('/api/admin/event-configurations', {
+					cache: 'no-store',
+					credentials: 'include',
+				});
 
 				if (!response.ok) {
 					throw new Error('Failed to fetch event configuration');
@@ -169,20 +178,20 @@ export default function TicketFormModal({
 	// Carregar dados do ticket em edição
 	useEffect(() => {
 		if (editingTicket) {
-		form.reset({
-			title: editingTicket.title || '',
-			description: editingTicket.description || '',
-			quantity: editingTicket.quantity ?? 100,
-			price: editingTicket.price ?? 0,
-			service_fee_type: (editingTicket.service_fee_type ?? 'passed_to_buyer') as 'absorbed' | 'passed_to_buyer',
-			sale_start_date: editingTicket.sale_start_date || '',
-			sale_end_date: editingTicket.sale_end_date || '',
-			min_quantity_per_purchase: editingTicket.min_quantity_per_purchase ?? 1,
-			max_quantity_per_purchase: editingTicket.max_quantity_per_purchase ?? 10,
-			visibility: (editingTicket.visibility ?? 'public') as 'public' | 'invited_only' | 'manual',
-			allow_installments: editingTicket.allow_installments ?? false,
-			max_installments: editingTicket.max_installments ?? 4,
-			min_amount_for_installments: editingTicket.min_amount_for_installments ?? undefined,
+			form.reset({
+				title: editingTicket.title || '',
+				description: editingTicket.description || '',
+				quantity: editingTicket.quantity ?? 100,
+				price: editingTicket.price ?? 0,
+				service_fee_type: (editingTicket.service_fee_type ?? 'passed_to_buyer') as 'absorbed' | 'passed_to_buyer',
+				sale_start_date: editingTicket.sale_start_date || '',
+				sale_end_date: editingTicket.sale_end_date || '',
+				min_quantity_per_purchase: editingTicket.min_quantity_per_purchase ?? 1,
+				max_quantity_per_purchase: editingTicket.max_quantity_per_purchase ?? 10,
+				visibility: (editingTicket.visibility ?? 'public') as 'public' | 'invited_only' | 'manual',
+				allow_installments: editingTicket.allow_installments ?? false,
+				max_installments: editingTicket.max_installments ?? 4,
+				min_amount_for_installments: editingTicket.min_amount_for_installments ?? undefined,
 			});
 		}
 	}, [editingTicket, form]);
@@ -194,13 +203,10 @@ export default function TicketFormModal({
 	const maxInstallments = form.watch('max_installments');
 
 	// Calcular taxas
-	const fees = ticketType === 'paid' && price
-		? calculateFees(Number(price), serviceFeeType, feeConfig)
-		: null;
+	const fees = ticketType === 'paid' && price ? calculateFees(Number(price), serviceFeeType, feeConfig) : null;
 
-	const convenienceFeePercentage = ticketType === 'paid' && price
-		? calculateConvenienceFeePercentage(Number(price), feeConfig)
-		: 0;
+	const convenienceFeePercentage =
+		ticketType === 'paid' && price ? calculateConvenienceFeePercentage(Number(price), feeConfig) : 0;
 
 	// Submit handler
 	const onSubmit = async (values: TicketFormValues) => {
@@ -231,14 +237,13 @@ export default function TicketFormModal({
 				status: 'active',
 				allow_installments: ticketType === 'paid' ? values.allow_installments : false,
 				max_installments: ticketType === 'paid' && values.allow_installments ? values.max_installments || null : null,
-				min_amount_for_installments: ticketType === 'paid' && values.allow_installments && values.min_amount_for_installments
-					? Number(values.min_amount_for_installments)
-					: null,
+				min_amount_for_installments:
+					ticketType === 'paid' && values.allow_installments && values.min_amount_for_installments
+						? Number(values.min_amount_for_installments)
+						: null,
 			};
 
-			const endpoint = editingTicket
-				? `/api/admin/ingressos/${editingTicket.id}`
-				: '/api/admin/ingressos';
+			const endpoint = editingTicket ? `/api/admin/ingressos/${editingTicket.id}` : '/api/admin/ingressos';
 			const response = await fetch(endpoint, {
 				method: editingTicket ? 'PATCH' : 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -251,9 +256,7 @@ export default function TicketFormModal({
 
 			toast({
 				title: 'Sucesso',
-				description: editingTicket
-					? 'Ingresso atualizado com sucesso!'
-					: 'Ingresso criado com sucesso!',
+				description: editingTicket ? 'Ingresso atualizado com sucesso!' : 'Ingresso criado com sucesso!',
 				variant: 'success',
 			});
 
@@ -301,10 +304,7 @@ export default function TicketFormModal({
 									<FormItem>
 										<FormLabel>Título do Ingresso *</FormLabel>
 										<FormControl>
-											<Input
-												placeholder="Ex: Ingresso Único, Meia-Entrada, VIP"
-												{...field}
-											/>
+											<Input placeholder="Ex: Ingresso Único, Meia-Entrada, VIP" {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -318,11 +318,7 @@ export default function TicketFormModal({
 									<FormItem>
 										<FormLabel>Descrição (opcional)</FormLabel>
 										<FormControl>
-											<Textarea
-												placeholder="Informações adicionais sobre este ingresso"
-												rows={3}
-												{...field}
-											/>
+											<Textarea placeholder="Informações adicionais sobre este ingresso" rows={3} {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -336,11 +332,7 @@ export default function TicketFormModal({
 									<FormItem>
 										<FormLabel>Quantidade Disponível *</FormLabel>
 										<FormControl>
-											<Input
-												type="number"
-												min={1}
-												{...field}
-											/>
+											<Input type="number" min={1} {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -351,9 +343,7 @@ export default function TicketFormModal({
 						{/* Pricing (only for paid tickets) */}
 						{ticketType === 'paid' && (
 							<div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-									💰 Valores e Taxa de Serviço
-								</h3>
+								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">💰 Valores e Taxa de Serviço</h3>
 
 								<FormField
 									control={form.control}
@@ -362,13 +352,7 @@ export default function TicketFormModal({
 										<FormItem>
 											<FormLabel>Valor a Receber (R$) *</FormLabel>
 											<FormControl>
-												<Input
-													type="number"
-													min={0}
-													step="0.01"
-													placeholder="100.00"
-													{...field}
-												/>
+												<Input type="number" min={0} step="0.01" placeholder="100.00" {...field} />
 											</FormControl>
 											<p className="text-xs text-muted-foreground">
 												Valor que você receberá por ingresso (sem taxa de serviço)
@@ -387,20 +371,19 @@ export default function TicketFormModal({
 											<div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
 												<p className="text-sm text-blue-800 dark:text-blue-300">
 													<Info className="inline size-4 mr-1" />
-													<strong>Recomendação:</strong> No modelo "Comprador paga", o organizador recebe quase o valor total do ingresso.
+													<strong>Recomendação:</strong> No modelo "Comprador paga", o organizador recebe quase o valor
+													total do ingresso.
 												</p>
 											</div>
 											<FormControl>
-												<RadioGroup
-													value={field.value}
-													onValueChange={field.onChange}
-													className="space-y-3"
-												>
-													<label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
-														field.value === 'passed_to_buyer'
-															? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-															: 'border-gray-300 dark:border-gray-600'
-													}`}>
+												<RadioGroup value={field.value} onValueChange={field.onChange} className="space-y-3">
+													<label
+														className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+															field.value === 'passed_to_buyer'
+																? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+																: 'border-gray-300 dark:border-gray-600'
+														}`}
+													>
 														<RadioGroupItem value="passed_to_buyer" className="mt-1" />
 														<div className="flex-1">
 															<div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
@@ -410,7 +393,8 @@ export default function TicketFormModal({
 																</span>
 															</div>
 															<div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-																Você recebe quase o valor total. A taxa de conveniência (~{convenienceFeePercentage.toFixed(2)}%) é cobrada do comprador
+																Você recebe quase o valor total. A taxa de conveniência (~
+																{convenienceFeePercentage.toFixed(2)}%) é cobrada do comprador
 															</div>
 															{fees && field.value === 'passed_to_buyer' && (
 																<div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -424,12 +408,17 @@ export default function TicketFormModal({
 																			<span className="font-medium">{formatCurrency(fees.convenienceFee)}</span>
 																		</div>
 																		<div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-																			<span className="font-semibold text-gray-900 dark:text-white">Comprador paga:</span>
+																			<span className="font-semibold text-gray-900 dark:text-white">
+																				Comprador paga:
+																			</span>
 																			<span className="font-bold text-lg">{formatCurrency(fees.buyerPrice)}</span>
 																		</div>
 																		<div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
 																			<div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-																				<span>Taxa AbacatePay ({feeConfig.providerPercentageFee}% + {formatCurrency(feeConfig.providerFixedFee)}):</span>
+																				<span>
+																					Taxa AbacatePay ({feeConfig.providerPercentageFee}% +{' '}
+																					{formatCurrency(feeConfig.providerFixedFee)}):
+																				</span>
 																				<span>-{formatCurrency(fees.providerFee)}</span>
 																			</div>
 																			<div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
@@ -438,8 +427,12 @@ export default function TicketFormModal({
 																			</div>
 																		</div>
 																		<div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-																			<span className="font-semibold text-green-600 dark:text-green-400">Você recebe:</span>
-																			<span className="font-bold text-green-600 dark:text-green-400">{formatCurrency(fees.organizerReceives)}</span>
+																			<span className="font-semibold text-green-600 dark:text-green-400">
+																				Você recebe:
+																			</span>
+																			<span className="font-bold text-green-600 dark:text-green-400">
+																				{formatCurrency(fees.organizerReceives)}
+																			</span>
 																		</div>
 																	</div>
 																</div>
@@ -447,11 +440,13 @@ export default function TicketFormModal({
 														</div>
 													</label>
 
-													<label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
-														field.value === 'absorbed'
-															? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
-															: 'border-gray-300 dark:border-gray-600'
-													}`}>
+													<label
+														className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+															field.value === 'absorbed'
+																? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
+																: 'border-gray-300 dark:border-gray-600'
+														}`}
+													>
 														<RadioGroupItem value="absorbed" className="mt-1" />
 														<div className="flex-1">
 															<div className="font-medium text-gray-900 dark:text-white">
@@ -464,12 +459,17 @@ export default function TicketFormModal({
 																<div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 																	<div className="space-y-2 text-sm">
 																		<div className="flex justify-between">
-																			<span className="font-semibold text-gray-900 dark:text-white">Comprador paga:</span>
+																			<span className="font-semibold text-gray-900 dark:text-white">
+																				Comprador paga:
+																			</span>
 																			<span className="font-bold text-lg">{formatCurrency(fees.buyerPrice)}</span>
 																		</div>
 																		<div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
 																			<div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-																				<span>Taxa AbacatePay ({feeConfig.providerPercentageFee}% + {formatCurrency(feeConfig.providerFixedFee)}):</span>
+																				<span>
+																					Taxa AbacatePay ({feeConfig.providerPercentageFee}% +{' '}
+																					{formatCurrency(feeConfig.providerFixedFee)}):
+																				</span>
 																				<span>-{formatCurrency(fees.providerFee)}</span>
 																			</div>
 																			<div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
@@ -478,8 +478,12 @@ export default function TicketFormModal({
 																			</div>
 																		</div>
 																		<div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-																			<span className="font-semibold text-yellow-600 dark:text-yellow-400">Você recebe:</span>
-																			<span className="font-bold text-yellow-600 dark:text-yellow-400">{formatCurrency(fees.organizerReceives)}</span>
+																			<span className="font-semibold text-yellow-600 dark:text-yellow-400">
+																				Você recebe:
+																			</span>
+																			<span className="font-bold text-yellow-600 dark:text-yellow-400">
+																				{formatCurrency(fees.organizerReceives)}
+																			</span>
 																		</div>
 																	</div>
 																</div>
@@ -498,16 +502,17 @@ export default function TicketFormModal({
 						{/* Installment Options */}
 						{ticketType === 'paid' && (
 							<div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-									💳 Parcelamento via Pix
-								</h3>
+								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">💳 Parcelamento via Pix</h3>
 
 								<div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
 									<div className="flex items-start gap-3">
 										<Info className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
 										<div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
 											<p className="font-medium">Como funciona o Pix Parcelado?</p>
-											<p>O cliente paga a primeira parcela via Pix no ato da compra e as demais conforme vencimento mensal. Cada parcela é um pagamento Pix separado gerenciado pela plataforma.</p>
+											<p>
+												O cliente paga a primeira parcela via Pix no ato da compra e as demais conforme vencimento
+												mensal. Cada parcela é um pagamento Pix separado gerenciado pela plataforma.
+											</p>
 										</div>
 									</div>
 								</div>
@@ -518,17 +523,15 @@ export default function TicketFormModal({
 									render={({ field }) => (
 										<FormItem className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
 											<FormControl>
-												<Checkbox
-													checked={field.value}
-													onCheckedChange={field.onChange}
-												/>
+												<Checkbox checked={field.value} onCheckedChange={field.onChange} />
 											</FormControl>
 											<div className="flex-1">
 												<FormLabel className="font-medium text-gray-900 dark:text-white cursor-pointer">
 													Permitir parcelamento via Pix para este ingresso
 												</FormLabel>
 												<p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-													Cliente poderá pagar em parcelas mensais via Pix. A primeira parcela é obrigatória no ato da compra.
+													Cliente poderá pagar em parcelas mensais via Pix. A primeira parcela é obrigatória no ato da
+													compra.
 												</p>
 											</div>
 										</FormItem>
@@ -559,9 +562,7 @@ export default function TicketFormModal({
 																<SelectItem value="4">4x (recomendado)</SelectItem>
 															</SelectContent>
 														</Select>
-														<p className="text-xs text-muted-foreground">
-															Número máximo de parcelas permitidas
-														</p>
+														<p className="text-xs text-muted-foreground">Número máximo de parcelas permitidas</p>
 														<FormMessage />
 													</FormItem>
 												)}
@@ -574,17 +575,9 @@ export default function TicketFormModal({
 													<FormItem>
 														<FormLabel>Valor Mínimo para Parcelar (R$)</FormLabel>
 														<FormControl>
-															<Input
-																type="number"
-																min={0}
-																step="0.01"
-																placeholder="Ex: 50.00"
-																{...field}
-															/>
+															<Input type="number" min={0} step="0.01" placeholder="Ex: 50.00" {...field} />
 														</FormControl>
-														<p className="text-xs text-muted-foreground">
-															Deixe vazio para permitir qualquer valor
-														</p>
+														<p className="text-xs text-muted-foreground">Deixe vazio para permitir qualquer valor</p>
 														<FormMessage />
 													</FormItem>
 												)}
@@ -602,7 +595,9 @@ export default function TicketFormModal({
 
 														return (
 															<p key={installments}>
-																<strong>{installments}x de {formatCurrency(installmentValue)}</strong>
+																<strong>
+																	{installments}x de {formatCurrency(installmentValue)}
+																</strong>
 															</p>
 														);
 													})}
@@ -615,7 +610,9 @@ export default function TicketFormModal({
 
 										<div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
 											<p className="text-xs text-yellow-800 dark:text-yellow-300">
-												⚠️ <strong>Atenção:</strong> Cada parcela é um pagamento Pix separado. A primeira parcela deve ser paga no ato da compra. As demais terão vencimento mensal. Parcelas vencidas bloqueiam o check-in do participante.
+												⚠️ <strong>Atenção:</strong> Cada parcela é um pagamento Pix separado. A primeira parcela deve
+												ser paga no ato da compra. As demais terão vencimento mensal. Parcelas vencidas bloqueiam o
+												check-in do participante.
 											</p>
 										</div>
 									</div>
@@ -625,9 +622,7 @@ export default function TicketFormModal({
 
 						{/* Sale Period */}
 						<div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-								📅 Período de Vendas
-							</h3>
+							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">📅 Período de Vendas</h3>
 
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<FormField
@@ -662,9 +657,7 @@ export default function TicketFormModal({
 
 						{/* Purchase Limits */}
 						<div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-								🎯 Limites por Compra
-							</h3>
+							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">🎯 Limites por Compra</h3>
 
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<FormField
@@ -699,9 +692,7 @@ export default function TicketFormModal({
 
 						{/* Visibility */}
 						<div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-								👁️ Visibilidade
-							</h3>
+							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">👁️ Visibilidade</h3>
 
 							<FormField
 								control={form.control}
@@ -709,26 +700,18 @@ export default function TicketFormModal({
 								render={({ field }) => (
 									<FormItem>
 										<FormControl>
-											<RadioGroup
-												value={field.value}
-												onValueChange={field.onChange}
-												className="space-y-2"
-											>
+											<RadioGroup value={field.value} onValueChange={field.onChange} className="space-y-2">
 												<label className="flex items-center gap-2 cursor-pointer">
 													<RadioGroupItem value="public" />
 													<span className="text-sm text-gray-700 dark:text-gray-300">Público</span>
 												</label>
 												<label className="flex items-center gap-2 cursor-pointer">
 													<RadioGroupItem value="invited_only" />
-													<span className="text-sm text-gray-700 dark:text-gray-300">
-														Restrito a Convidados
-													</span>
+													<span className="text-sm text-gray-700 dark:text-gray-300">Restrito a Convidados</span>
 												</label>
 												<label className="flex items-center gap-2 cursor-pointer">
 													<RadioGroupItem value="manual" />
-													<span className="text-sm text-gray-700 dark:text-gray-300">
-														Adicionar Manualmente
-													</span>
+													<span className="text-sm text-gray-700 dark:text-gray-300">Adicionar Manualmente</span>
 												</label>
 											</RadioGroup>
 										</FormControl>

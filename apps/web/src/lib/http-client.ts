@@ -10,22 +10,22 @@
 'use client';
 
 import { apiFetch, type ApiFetchOptions } from './http';
-import { presentProblemToast, type PresentProblemToastOptions , Toast } from './toast-problem';
+import { presentProblemToast, type PresentProblemToastOptions, Toast } from './toast-problem';
 
 /**
  * Opções estendidas com suporte a toast automático
  */
 export interface ApiFetchClientOptions extends ApiFetchOptions {
-  /**
-   * Se deve mostrar toast automaticamente em caso de erro
-   * @default true
-   */
-  toastOnError?: boolean;
+	/**
+	 * Se deve mostrar toast automaticamente em caso de erro
+	 * @default true
+	 */
+	toastOnError?: boolean;
 
-  /**
-   * Opções para customizar o toast de erro
-   */
-  toastOptions?: PresentProblemToastOptions;
+	/**
+	 * Opções para customizar o toast de erro
+	 */
+	toastOptions?: PresentProblemToastOptions;
 }
 
 /**
@@ -61,12 +61,9 @@ let globalToastOptions: PresentProblemToastOptions = {};
  * }
  * ```
  */
-export function configureToast(
-  toast: Toast,
-  options: PresentProblemToastOptions = {}
-): void {
-  globalToast = toast;
-  globalToastOptions = options;
+export function configureToast(toast: Toast, options: PresentProblemToastOptions = {}): void {
+	globalToast = toast;
+	globalToastOptions = options;
 }
 
 /**
@@ -123,78 +120,58 @@ export function configureToast(
  * }
  * ```
  */
-export async function apiFetchClient<T = unknown>(
-  url: string,
-  options: ApiFetchClientOptions = {}
-): Promise<T> {
-  const {
-    toastOnError = true,
-    toastOptions = {},
-    ...fetchOptions
-  } = options;
+export async function apiFetchClient<T = unknown>(url: string, options: ApiFetchClientOptions = {}): Promise<T> {
+	const { toastOnError = true, toastOptions = {}, ...fetchOptions } = options;
 
-  try {
-    return await apiFetch<T>(url, fetchOptions);
-  } catch (error) {
-    // Mostra toast se habilitado e toast foi configurado
-    if (toastOnError && globalToast) {
-      presentProblemToast(globalToast, error, {
-        ...globalToastOptions,
-        ...toastOptions,
-      });
-    }
+	try {
+		return await apiFetch<T>(url, fetchOptions);
+	} catch (error) {
+		// Mostra toast se habilitado e toast foi configurado
+		if (toastOnError && globalToast) {
+			presentProblemToast(globalToast, error, {
+				...globalToastOptions,
+				...toastOptions,
+			});
+		}
 
-    // Re-lança erro para permitir tratamento adicional
-    throw error;
-  }
+		// Re-lança erro para permitir tratamento adicional
+		throw error;
+	}
 }
 
 /**
  * Helpers para métodos HTTP comuns com toast automático
  */
 export const httpClient = {
-  /**
-   * GET com toast automático
-   */
-  get: <T = unknown>(
-    url: string,
-    options?: Omit<ApiFetchClientOptions, 'method' | 'body'>
-  ) => apiFetchClient<T>(url, { ...options, method: 'GET' }),
+	/**
+	 * GET com toast automático
+	 */
+	get: <T = unknown>(url: string, options?: Omit<ApiFetchClientOptions, 'method' | 'body'>) =>
+		apiFetchClient<T>(url, { ...options, method: 'GET' }),
 
-  /**
-   * POST com toast automático
-   */
-  post: <T = unknown>(
-    url: string,
-    body?: unknown,
-    options?: Omit<ApiFetchClientOptions, 'method'>
-  ) => apiFetchClient<T>(url, { ...options, method: 'POST', body }),
+	/**
+	 * POST com toast automático
+	 */
+	post: <T = unknown>(url: string, body?: unknown, options?: Omit<ApiFetchClientOptions, 'method'>) =>
+		apiFetchClient<T>(url, { ...options, method: 'POST', body }),
 
-  /**
-   * PUT com toast automático
-   */
-  put: <T = unknown>(
-    url: string,
-    body?: unknown,
-    options?: Omit<ApiFetchClientOptions, 'method'>
-  ) => apiFetchClient<T>(url, { ...options, method: 'PUT', body }),
+	/**
+	 * PUT com toast automático
+	 */
+	put: <T = unknown>(url: string, body?: unknown, options?: Omit<ApiFetchClientOptions, 'method'>) =>
+		apiFetchClient<T>(url, { ...options, method: 'PUT', body }),
 
-  /**
-   * PATCH com toast automático
-   */
-  patch: <T = unknown>(
-    url: string,
-    body?: unknown,
-    options?: Omit<ApiFetchClientOptions, 'method'>
-  ) => apiFetchClient<T>(url, { ...options, method: 'PATCH', body }),
+	/**
+	 * PATCH com toast automático
+	 */
+	patch: <T = unknown>(url: string, body?: unknown, options?: Omit<ApiFetchClientOptions, 'method'>) =>
+		apiFetchClient<T>(url, { ...options, method: 'PATCH', body }),
 
-  /**
-   * DELETE com toast automático
-   */
-  delete: <T = unknown>(
-    url: string,
-    options?: Omit<ApiFetchClientOptions, 'method' | 'body'>
-  ) => apiFetchClient<T>(url, { ...options, method: 'DELETE' }),
+	/**
+	 * DELETE com toast automático
+	 */
+	delete: <T = unknown>(url: string, options?: Omit<ApiFetchClientOptions, 'method' | 'body'>) =>
+		apiFetchClient<T>(url, { ...options, method: 'DELETE' }),
 };
 
 /**
@@ -221,68 +198,47 @@ export const httpClient = {
  * const posts = await cmsClient.get<Post[]>('/posts')
  * ```
  */
-export function createHttpClient(
-  baseUrl: string,
-  defaultOptions: ApiFetchClientOptions = {}
-) {
-  return {
-    fetch: <T = unknown>(url: string, options?: ApiFetchClientOptions) =>
-      apiFetchClient<T>(baseUrl + url, { ...defaultOptions, ...options }),
+export function createHttpClient(baseUrl: string, defaultOptions: ApiFetchClientOptions = {}) {
+	return {
+		fetch: <T = unknown>(url: string, options?: ApiFetchClientOptions) =>
+			apiFetchClient<T>(baseUrl + url, { ...defaultOptions, ...options }),
 
-    get: <T = unknown>(
-      url: string,
-      options?: Omit<ApiFetchClientOptions, 'method' | 'body'>
-    ) =>
-      apiFetchClient<T>(baseUrl + url, {
-        ...defaultOptions,
-        ...options,
-        method: 'GET',
-      }),
+		get: <T = unknown>(url: string, options?: Omit<ApiFetchClientOptions, 'method' | 'body'>) =>
+			apiFetchClient<T>(baseUrl + url, {
+				...defaultOptions,
+				...options,
+				method: 'GET',
+			}),
 
-    post: <T = unknown>(
-      url: string,
-      body?: unknown,
-      options?: Omit<ApiFetchClientOptions, 'method'>
-    ) =>
-      apiFetchClient<T>(baseUrl + url, {
-        ...defaultOptions,
-        ...options,
-        method: 'POST',
-        body,
-      }),
+		post: <T = unknown>(url: string, body?: unknown, options?: Omit<ApiFetchClientOptions, 'method'>) =>
+			apiFetchClient<T>(baseUrl + url, {
+				...defaultOptions,
+				...options,
+				method: 'POST',
+				body,
+			}),
 
-    put: <T = unknown>(
-      url: string,
-      body?: unknown,
-      options?: Omit<ApiFetchClientOptions, 'method'>
-    ) =>
-      apiFetchClient<T>(baseUrl + url, {
-        ...defaultOptions,
-        ...options,
-        method: 'PUT',
-        body,
-      }),
+		put: <T = unknown>(url: string, body?: unknown, options?: Omit<ApiFetchClientOptions, 'method'>) =>
+			apiFetchClient<T>(baseUrl + url, {
+				...defaultOptions,
+				...options,
+				method: 'PUT',
+				body,
+			}),
 
-    patch: <T = unknown>(
-      url: string,
-      body?: unknown,
-      options?: Omit<ApiFetchClientOptions, 'method'>
-    ) =>
-      apiFetchClient<T>(baseUrl + url, {
-        ...defaultOptions,
-        ...options,
-        method: 'PATCH',
-        body,
-      }),
+		patch: <T = unknown>(url: string, body?: unknown, options?: Omit<ApiFetchClientOptions, 'method'>) =>
+			apiFetchClient<T>(baseUrl + url, {
+				...defaultOptions,
+				...options,
+				method: 'PATCH',
+				body,
+			}),
 
-    delete: <T = unknown>(
-      url: string,
-      options?: Omit<ApiFetchClientOptions, 'method' | 'body'>
-    ) =>
-      apiFetchClient<T>(baseUrl + url, {
-        ...defaultOptions,
-        ...options,
-        method: 'DELETE',
-      }),
-  };
+		delete: <T = unknown>(url: string, options?: Omit<ApiFetchClientOptions, 'method' | 'body'>) =>
+			apiFetchClient<T>(baseUrl + url, {
+				...defaultOptions,
+				...options,
+				method: 'DELETE',
+			}),
+	};
 }

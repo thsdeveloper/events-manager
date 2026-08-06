@@ -14,7 +14,7 @@ interface ServerAuthState {
 	user: User | null;
 	isLoading: boolean;
 	isAuthenticated: boolean;
- 	isOrganizer: boolean;
+	isOrganizer: boolean;
 	organizerStatus: string | null;
 	hasPendingOrganizerRequest: boolean;
 }
@@ -62,8 +62,7 @@ export function useServerAuth(): ServerAuthState & {
 			setIsOrganizer(Boolean(data.isOrganizer));
 			setOrganizerStatus(data.organizerStatus ?? null);
 			setHasPendingOrganizerRequest(Boolean(data.hasPendingOrganizerRequest));
-		} catch (error) {
-			console.error('Error fetching user:', error);
+		} catch {
 			setUser(null);
 			setIsOrganizer(false);
 			setOrganizerStatus(null);
@@ -79,8 +78,8 @@ export function useServerAuth(): ServerAuthState & {
 			setUser(null);
 			router.push('/login');
 			router.refresh();
-		} catch (error) {
-			console.error('Logout error:', error);
+		} catch {
+			// The session remains unchanged; the next authenticated request will retry.
 		}
 	};
 

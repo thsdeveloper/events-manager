@@ -34,18 +34,26 @@ function normalizeError(error) {
             return new ApiError('Este registro já existe.', 409, 'CONFLICT');
         if (code === '23503')
             return new ApiError('Um registro relacionado não foi encontrado.', 422, 'INVALID_RELATION');
+        if (code === '23514')
+            return new ApiError('Os dados violam uma regra de negócio.', 422, 'CONSTRAINT_VIOLATION');
     }
     if (error && typeof error === 'object' && 'statusCode' in error) {
         const statusCode = Number(error.statusCode);
         if (Number.isInteger(statusCode) && statusCode >= 400 && statusCode <= 599) {
-            const message = error instanceof Error ? error.message : 'A requisição não pôde ser processada.';
+            const message = statusCode >= 500
+                ? 'Ocorreu um erro interno. Tente novamente em alguns instantes.'
+                : error instanceof Error
+                    ? error.message
+                    : 'A requisição não pôde ser processada.';
             const code = statusCode === 404 ? 'NOT_FOUND' : statusCode < 500 ? 'BAD_REQUEST' : 'INTERNAL_ERROR';
             return new ApiError(message, statusCode, code);
         }
     }
-    return new ApiError(error instanceof Error ? error.message : 'Erro interno do servidor.');
+    return new ApiError('Ocorreu um erro interno. Tente novamente em alguns instantes.');
 }
 function sendProblem(reply, request, error, requestId) {
+    if (error.statusCode === 429)
+        reply.header('retry-after', '60');
     return reply
         .code(error.statusCode)
         .type('application/problem+json')
@@ -54,7 +62,7 @@ function sendProblem(reply, request, error, requestId) {
         type: `https://events-manager.local/problems/${error.code.toLowerCase()}`,
         title: error.code,
         status: error.statusCode,
-        detail: error.message,
+        detail: error.statusCode >= 500 ? 'Ocorreu um erro interno. Tente novamente em alguns instantes.' : error.message,
         instance: request.url,
         requestId,
         ...(error.context ? { context: error.context } : {}),

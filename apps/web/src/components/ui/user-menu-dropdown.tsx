@@ -26,14 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-	Sheet,
-	SheetTrigger,
-	SheetContent,
-	SheetTitle,
-	SheetDescription,
-	SheetClose,
-} from '@/components/ui/sheet';
+import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 
 const NAVIGATIONS: Array<{
 	key: string;
@@ -68,13 +61,7 @@ const NAVIGATIONS: Array<{
 
 export function UserMenuDropdown() {
 	const [open, setOpen] = useState(false);
-	const {
-		user,
-		logout,
-		isLoading,
-		isOrganizer,
-		hasPendingOrganizerRequest,
-	} = useServerAuth();
+	const { user, logout, isLoading, isOrganizer, hasPendingOrganizerRequest } = useServerAuth();
 	const { theme, setTheme, resolvedTheme } = useTheme();
 
 	const isDarkMode = theme === 'dark' || resolvedTheme === 'dark';
@@ -160,6 +147,17 @@ export function UserMenuDropdown() {
 	const navigationItems = useMemo(() => {
 		const items = [...NAVIGATIONS];
 
+		if (user?.role === 'super_admin') {
+			items.unshift({
+				key: 'super-admin',
+				label: 'Super admin',
+				description: 'Visão global, organizadores, finanças e taxas',
+				href: '/super-admin',
+				icon: ShieldCheck,
+				badge: 'Global',
+			});
+		}
+
 		if (isOrganizer) {
 			items.unshift({
 				key: 'organizer',
@@ -172,7 +170,7 @@ export function UserMenuDropdown() {
 		}
 
 		return items;
-	}, [isOrganizer]);
+	}, [isOrganizer, user?.role]);
 
 	if (isLoading) {
 		return (
@@ -208,11 +206,7 @@ export function UserMenuDropdown() {
 					aria-label="Abrir menu do usuário"
 				>
 					<Avatar className="size-10">
-						<AvatarImage
-							src={avatarUrl || undefined}
-							alt={displayName}
-							className="object-cover"
-						/>
+						<AvatarImage src={avatarUrl || undefined} alt={displayName} className="object-cover" />
 						<AvatarFallback className="bg-transparent text-sm font-semibold uppercase text-white">
 							{initials}
 						</AvatarFallback>
@@ -234,9 +228,7 @@ export function UserMenuDropdown() {
 				className="z-[70] flex size-full max-w-md flex-col overflow-hidden border-l border-white/10 bg-slate-900 text-white shadow-2xl transition-transform duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 data-[state=closed]:translate-x-full data-[state=open]:translate-x-0"
 			>
 				<SheetTitle className="sr-only">Menu da conta do usuário EventsFlow</SheetTitle>
-				<SheetDescription className="sr-only">
-					Acesse atalhos, preferências e suporte da sua conta.
-				</SheetDescription>
+				<SheetDescription className="sr-only">Acesse atalhos, preferências e suporte da sua conta.</SheetDescription>
 
 				<motion.div
 					initial={{ x: 48, opacity: 0 }}
@@ -258,11 +250,7 @@ export function UserMenuDropdown() {
 							<div className="flex items-start gap-4">
 								<div className="relative">
 									<Avatar className="size-16 border-4 border-white/30 shadow-xl">
-										<AvatarImage
-											src={avatarUrl || undefined}
-											alt={displayName}
-											className="object-cover"
-										/>
+										<AvatarImage src={avatarUrl || undefined} alt={displayName} className="object-cover" />
 										<AvatarFallback className="bg-white/20 text-lg font-semibold uppercase text-white">
 											{initials}
 										</AvatarFallback>
@@ -277,12 +265,8 @@ export function UserMenuDropdown() {
 								</div>
 
 								<div className="space-y-1">
-									<p className="text-sm font-medium uppercase tracking-[0.3em] text-white/70">
-										Bem-vindo(a)
-									</p>
-									<h2 className="text-2xl font-semibold tracking-tight text-white">
-										{displayName}
-									</h2>
+									<p className="text-sm font-medium uppercase tracking-[0.3em] text-white/70">Bem-vindo(a)</p>
+									<h2 className="text-2xl font-semibold tracking-tight text-white">{displayName}</h2>
 									<p className="text-sm text-white/80">{user.email}</p>
 									<div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium">
 										<Badge className="bg-white/15 text-white backdrop-blur">
@@ -298,9 +282,7 @@ export function UserMenuDropdown() {
 														: 'bg-amber-400 text-slate-900',
 												)}
 											>
-												{organizerBadge.variant === 'success' ? (
-													<ShieldCheck className="mr-1 size-3.5" />
-												) : null}
+												{organizerBadge.variant === 'success' ? <ShieldCheck className="mr-1 size-3.5" /> : null}
 												{organizerBadge.label}
 											</Badge>
 										)}
@@ -344,17 +326,10 @@ export function UserMenuDropdown() {
 										key={item.label}
 										className={cn(
 											'inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium',
-											item.done
-												? 'bg-emerald-400/20 text-white'
-												: 'bg-white/10 text-white/70',
+											item.done ? 'bg-emerald-400/20 text-white' : 'bg-white/10 text-white/70',
 										)}
 									>
-										<span
-											className={cn(
-												'size-1.5 rounded-full',
-												item.done ? 'bg-emerald-300' : 'bg-white/40',
-											)}
-										/>
+										<span className={cn('size-1.5 rounded-full', item.done ? 'bg-emerald-300' : 'bg-white/40')} />
 										{item.label}
 									</span>
 								))}
@@ -369,14 +344,12 @@ export function UserMenuDropdown() {
 									<p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
 										Navegação principal
 									</p>
-									<Badge className="bg-purple-500/20 text-xs text-purple-200">
-										Atualizado
-									</Badge>
+									<Badge className="bg-purple-500/20 text-xs text-purple-200">Atualizado</Badge>
 								</div>
 								<ul className="space-y-2">
 									{navigationItems.map((item) => {
 										const Icon = item.icon;
-										const isOrganizerEntry = item.key === 'organizer';
+										const isFeaturedEntry = item.key === 'organizer' || item.key === 'super-admin';
 
 										return (
 											<li key={item.key}>
@@ -385,14 +358,14 @@ export function UserMenuDropdown() {
 														href={item.href}
 														className={cn(
 															'group flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 hover:border-white/10 hover:bg-white/10',
-															isOrganizerEntry && 'border-purple-400/60 bg-purple-500/10',
+															isFeaturedEntry && 'border-purple-400/60 bg-purple-500/10',
 														)}
 													>
 														<div className="flex items-center gap-3">
 															<span
 																className={cn(
 																	'flex size-12 items-center justify-center rounded-xl bg-white/10 text-white transition group-hover:bg-white/20',
-																	isOrganizerEntry && 'bg-purple-500/20 text-purple-50 group-hover:bg-purple-500/30',
+																	isFeaturedEntry && 'bg-purple-500/20 text-purple-50 group-hover:bg-purple-500/30',
 																)}
 															>
 																<Icon className="size-5" strokeWidth={1.8} />
@@ -419,19 +392,17 @@ export function UserMenuDropdown() {
 							</div>
 
 							<div className="space-y-3">
-								<p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-									Preferências
-								</p>
-								<div
-									className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3 focus-within:ring-2 focus-within:ring-purple-400/70 focus-within:ring-offset-2 focus-within:ring-offset-slate-900 hover:border-white/10 hover:bg-white/10"
-								>
+								<p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Preferências</p>
+								<div className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3 focus-within:ring-2 focus-within:ring-purple-400/70 focus-within:ring-offset-2 focus-within:ring-offset-slate-900 hover:border-white/10 hover:bg-white/10">
 									<div>
 										<p className="text-sm font-semibold text-white flex items-center gap-2">
 											{isDarkMode ? <Moon className="size-4" /> : <Sun className="size-4" />}
 											Modo escuro
 										</p>
 										<p className="text-xs text-slate-300">
-											{isDarkMode ? 'Experiência otimizada para ambientes com pouca luz' : 'Prefira cores claras e alto contraste'}
+											{isDarkMode
+												? 'Experiência otimizada para ambientes com pouca luz'
+												: 'Prefira cores claras e alto contraste'}
 										</p>
 									</div>
 									<Switch
@@ -444,12 +415,10 @@ export function UserMenuDropdown() {
 							</div>
 
 							<div className="space-y-3">
-								<p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-									Suporte
-								</p>
+								<p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Conta</p>
 								<SheetClose asChild>
 									<Link
-										href="/ajuda"
+										href="/perfil"
 										className="group flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3 transition hover:border-white/10 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
 									>
 										<div className="flex items-center gap-3">
@@ -457,10 +426,8 @@ export function UserMenuDropdown() {
 												<LifeBuoy className="size-5" strokeWidth={1.8} />
 											</span>
 											<div>
-												<p className="text-sm font-semibold text-white">Central de ajuda</p>
-												<p className="text-xs text-slate-300">
-													Tutoriais, suporte em tempo real e status do sistema
-												</p>
+												<p className="text-sm font-semibold text-white">Perfil e segurança</p>
+												<p className="text-xs text-slate-300">Dados pessoais, senha e preferências da conta</p>
 											</div>
 										</div>
 										<ChevronRight className="size-4 text-white/60 transition group-hover:translate-x-1 group-hover:text-white" />

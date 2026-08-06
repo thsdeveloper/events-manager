@@ -1,15 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, type FormEvent, type KeyboardEvent } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldPath, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader2 } from 'lucide-react';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
@@ -19,420 +14,359 @@ import { PricingStepForm } from './steps/PricingStepForm';
 import { AvailabilityStepForm } from './steps/AvailabilityStepForm';
 import { SalePeriodStepForm } from './steps/SalePeriodStepForm';
 import {
-  ticketFormSchema,
-  basicInfoSchema,
-  pricingSchema,
-  availabilitySchema,
-  salePeriodSchema,
-  type TicketFormData,
+	ticketFormSchema,
+	basicInfoSchema,
+	pricingSchema,
+	availabilitySchema,
+	salePeriodSchema,
+	type TicketFormData,
 } from '../_lib/schemas';
 import type { EventTicket } from '../_lib/types';
 import { useEventConfig } from '../_hooks/useEventConfig';
-import { useAuthToken } from '../_hooks/useAuthToken';
 
 interface TicketDrawerFormProps {
-  open: boolean;
-  onClose: () => void;
-  ticket: EventTicket | null;
-  onSaved: () => void;
-  eventOptions: Array<{ id: string; title: string; start_date: string }>;
+	open: boolean;
+	onClose: () => void;
+	ticket: EventTicket | null;
+	onSaved: () => void;
+	eventOptions: Array<{ id: string; title: string; start_date: string }>;
 }
 
 const STEPS: WizardStepMeta[] = [
-  { id: 'basic', title: 'Básico', description: 'Informações básicas do ingresso', estimatedMinutes: 2 },
-  { id: 'pricing', title: 'Preços', description: 'Preços e taxas', estimatedMinutes: 2 },
-  { id: 'availability', title: 'Disponibilidade', description: 'Quantidades', estimatedMinutes: 1 },
-  { id: 'period', title: 'Período', description: 'Período de vendas', estimatedMinutes: 1 },
+	{ id: 'basic', title: 'Básico', description: 'Informações básicas do ingresso', estimatedMinutes: 2 },
+	{ id: 'pricing', title: 'Preços', description: 'Preços e taxas', estimatedMinutes: 2 },
+	{ id: 'availability', title: 'Disponibilidade', description: 'Quantidades', estimatedMinutes: 1 },
+	{ id: 'period', title: 'Período', description: 'Período de vendas', estimatedMinutes: 1 },
 ];
 
 const STEP_SCHEMAS = [basicInfoSchema, pricingSchema, availabilitySchema, salePeriodSchema];
 
 export function TicketDrawerForm({ open, onClose, ticket, onSaved, eventOptions }: TicketDrawerFormProps) {
-  const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [visitedSteps, setVisitedSteps] = useState<Set<number>>(new Set([0]));
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const isLastStep = currentStep === STEPS.length - 1;
+	const { toast } = useToast();
+	const [currentStep, setCurrentStep] = useState(0);
+	const [visitedSteps, setVisitedSteps] = useState<Set<number>>(new Set([0]));
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const isLastStep = currentStep === STEPS.length - 1;
 
-  // Buscar configurações de evento pela API
-  const { config: eventConfig, feeConfig } = useEventConfig();
+	// Buscar configurações de evento pela API
+	const { config: eventConfig, feeConfig } = useEventConfig();
 
-  // Token de autenticação
-  const { token } = useAuthToken();
+	const form = useForm<TicketFormData>({
+		resolver: zodResolver(ticketFormSchema) as Resolver<TicketFormData>,
+		mode: 'onBlur',
+		shouldUnregister: false, // Mantém campos mesmo quando não visíveis
+		defaultValues: {
+			event_id: '',
+			title: '',
+			description: '',
+			visibility: 'public',
+			status: 'active',
+			price: undefined,
+			service_fee_type: 'passed_to_buyer',
+			allow_installments: false,
+			max_installments: null,
+			min_amount_for_installments: null,
+			quantity: undefined,
+			min_quantity_per_purchase: null,
+			max_quantity_per_purchase: null,
+			sale_start_date: null,
+			sale_end_date: null,
+		},
+	});
 
-  const form = useForm<TicketFormData>({
-	resolver: zodResolver(ticketFormSchema) as any,
-    mode: 'onBlur',
-    shouldUnregister: false, // Mantém campos mesmo quando não visíveis
-    defaultValues: {
-      event_id: '',
-      title: '',
-      description: '',
-      visibility: 'public',
-      status: 'active',
-      price: undefined,
-      service_fee_type: 'passed_to_buyer',
-      allow_installments: false,
-      max_installments: null,
-      min_amount_for_installments: null,
-      quantity: undefined,
-      min_quantity_per_purchase: null,
-      max_quantity_per_purchase: null,
-      sale_start_date: null,
-      sale_end_date: null,
-    },
-  });
+	// Reset form when drawer opens/closes or ticket changes
+	useEffect(() => {
+		if (open) {
+			if (ticket) {
+				form.reset({
+					event_id: ticket.event_id.id,
+					title: ticket.title,
+					description: ticket.description || '',
+					visibility: ticket.visibility ?? 'public',
+					price: ticket.price ?? 0,
+					service_fee_type: ticket.service_fee_type ?? 'passed_to_buyer',
+					allow_installments: ticket.allow_installments ?? false,
+					max_installments: ticket.max_installments ?? null,
+					min_amount_for_installments: ticket.min_amount_for_installments ?? null,
+					quantity: ticket.quantity ?? 1,
+					min_quantity_per_purchase: ticket.min_quantity_per_purchase,
+					max_quantity_per_purchase: ticket.max_quantity_per_purchase,
+					sale_start_date: ticket.sale_start_date,
+					sale_end_date: ticket.sale_end_date,
+					status: ticket.status,
+				});
+			} else {
+				form.reset({
+					event_id: '',
+					title: '',
+					description: '',
+					visibility: 'public',
+					status: 'active',
+					price: undefined,
+					service_fee_type: 'passed_to_buyer',
+					allow_installments: false,
+					max_installments: null,
+					min_amount_for_installments: null,
+					quantity: undefined,
+					min_quantity_per_purchase: null,
+					max_quantity_per_purchase: null,
+					sale_start_date: null,
+					sale_end_date: null,
+				});
+			}
+			setCurrentStep(0);
+			setVisitedSteps(new Set([0]));
+		}
+	}, [open, ticket, form]);
 
-  // Reset form when drawer opens/closes or ticket changes
-  useEffect(() => {
-    if (open) {
-      if (ticket) {
-        form.reset({
-          event_id: ticket.event_id.id,
-          title: ticket.title,
-          description: ticket.description || '',
-		  visibility: ticket.visibility ?? 'public',
-		  price: ticket.price ?? 0,
-		  service_fee_type: ticket.service_fee_type ?? 'passed_to_buyer',
-		  allow_installments: ticket.allow_installments ?? false,
-          max_installments: ticket.max_installments ?? null,
-          min_amount_for_installments: ticket.min_amount_for_installments ?? null,
-		  quantity: ticket.quantity ?? 1,
-          min_quantity_per_purchase: ticket.min_quantity_per_purchase,
-          max_quantity_per_purchase: ticket.max_quantity_per_purchase,
-          sale_start_date: ticket.sale_start_date,
-          sale_end_date: ticket.sale_end_date,
-          status: ticket.status,
-        });
-      } else {
-        form.reset({
-          event_id: '',
-          title: '',
-          description: '',
-          visibility: 'public',
-          status: 'active',
-          price: undefined,
-          service_fee_type: 'passed_to_buyer',
-          allow_installments: false,
-          max_installments: null,
-          min_amount_for_installments: null,
-          quantity: undefined,
-          min_quantity_per_purchase: null,
-          max_quantity_per_purchase: null,
-          sale_start_date: null,
-          sale_end_date: null,
-        });
-      }
-      setCurrentStep(0);
-      setVisitedSteps(new Set([0]));
-    }
-  }, [open, ticket, form]);
+	const validateCurrentStep = useCallback(async () => {
+		const currentSchema = STEP_SCHEMAS[currentStep];
 
-  const validateCurrentStep = useCallback(async () => {
-    const currentSchema = STEP_SCHEMAS[currentStep];
+		if (!currentSchema) return true;
 
-    if (!currentSchema) return true;
+		const result = await currentSchema.safeParseAsync(form.getValues());
 
-    const values = form.getValues();
-    console.log('[TicketDrawerForm] Validating step', currentStep, 'with values:', values);
+		if (!result.success) {
+			result.error.errors.forEach((error) => {
+				form.setError(String(error.path[0]) as FieldPath<TicketFormData>, {
+					type: 'manual',
+					message: error.message,
+				});
+			});
 
-    const result = await currentSchema.safeParseAsync(values);
+			return false;
+		}
 
-    if (!result.success) {
-      console.log('[TicketDrawerForm] Validation failed:', result.error.errors);
-      // Set errors for the current step fields
-      result.error.errors.forEach((error) => {
-        form.setError(error.path[0] as any, {
-          type: 'manual',
-          message: error.message,
-        });
-      });
-      
-return false;
-    }
+		return true;
+	}, [currentStep, form]);
 
-    console.log('[TicketDrawerForm] Validation passed for step', currentStep);
-    
-return true;
-  }, [currentStep, form]);
+	const onSubmit = useCallback(
+		async (data: TicketFormData, isDraft: boolean = false) => {
+			// Prevenir submit se não estiver na última etapa (exceto para rascunho)
+			if (!isDraft && currentStep !== STEPS.length - 1) {
+				return;
+			}
 
-  const onSubmit = useCallback(async (data: TicketFormData, isDraft: boolean = false) => {
-    console.log('[TicketDrawerForm] onSubmit called with:', { data, isDraft, currentStep });
+			setIsSubmitting(true);
 
-    // Prevenir submit se não estiver na última etapa (exceto para rascunho)
-    if (!isDraft && currentStep !== STEPS.length - 1) {
-      console.log('[TicketDrawerForm] Not on last step, preventing submit');
-      
-return;
-    }
+			try {
+				const normalizedPrice = typeof data.price === 'number' && Number.isFinite(data.price) ? data.price : 0;
+				const normalizedQuantity =
+					typeof data.quantity === 'number' && Number.isFinite(data.quantity) ? data.quantity : 0;
 
-    setIsSubmitting(true);
+				if (!isDraft && normalizedPrice < 0) {
+					throw new Error('O preço não pode ser negativo');
+				}
+				if (!isDraft && normalizedQuantity <= 0) {
+					throw new Error('A quantidade de ingressos é obrigatória');
+				}
 
-    try {
-      console.log('[TicketDrawerForm] Submit raw data:', data);
-      console.log('[TicketDrawerForm] Data types:', {
-        price: typeof data.price,
-        quantity: typeof data.quantity,
-        priceValue: data.price,
-        quantityValue: data.quantity,
-      });
+				let finalServiceFeeType: TicketFormData['service_fee_type'] = data.service_fee_type ?? 'passed_to_buyer';
+				let buyer_price: number | undefined;
 
-      const normalizedPrice = typeof data.price === 'number' && Number.isFinite(data.price)
-        ? data.price
-        : 0;
-      const normalizedQuantity = typeof data.quantity === 'number' && Number.isFinite(data.quantity)
-        ? data.quantity
-        : 0;
+				if (normalizedPrice > 0) {
+					const { calculateBuyerPrice } = await import('@/lib/fees');
+					buyer_price = calculateBuyerPrice(normalizedPrice, finalServiceFeeType, feeConfig);
+				} else {
+					finalServiceFeeType = 'absorbed';
+				}
 
-      console.log('[TicketDrawerForm] Normalized values -> price:', normalizedPrice, 'quantity:', normalizedQuantity);
+				const finalData: Record<string, unknown> = {
+					...data,
+					service_fee_type: finalServiceFeeType,
+					status: isDraft ? 'inactive' : data.status,
+				};
 
-      if (!isDraft && normalizedPrice < 0) {
-        throw new Error('O preço não pode ser negativo');
-      }
-      if (!isDraft && normalizedQuantity <= 0) {
-        throw new Error('A quantidade de ingressos é obrigatória');
-      }
+				finalData.price = normalizedPrice;
+				finalData.quantity = normalizedQuantity;
 
-      let finalServiceFeeType: TicketFormData['service_fee_type'] = data.service_fee_type ?? 'passed_to_buyer';
-      let buyer_price: number | undefined;
+				if (buyer_price !== undefined) {
+					finalData.buyer_price = buyer_price;
+				} else {
+					delete finalData.buyer_price;
+				}
 
-      if (normalizedPrice > 0) {
-        const { calculateBuyerPrice } = await import('@/lib/fees');
-        buyer_price = calculateBuyerPrice(normalizedPrice, finalServiceFeeType, feeConfig);
-      } else {
-        finalServiceFeeType = 'absorbed';
-      }
+				const url = ticket ? `/api/admin/ingressos/${ticket.id}` : '/api/admin/ingressos';
 
-      const finalData: Record<string, unknown> = {
-        ...data,
-        service_fee_type: finalServiceFeeType,
-        status: isDraft ? 'inactive' : data.status,
-      };
+				const method = ticket ? 'PATCH' : 'POST';
 
-      finalData.price = normalizedPrice;
-      finalData.quantity = normalizedQuantity;
+				const response = await fetch(url, {
+					method,
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					credentials: 'include',
+					body: JSON.stringify(finalData),
+				});
 
-      if (buyer_price !== undefined) {
-        finalData.buyer_price = buyer_price;
-      } else {
-        delete finalData.buyer_price;
-      }
+				if (!response.ok) {
+					const error = await response.json();
+					throw new Error(error.detail || 'Erro ao salvar ingresso');
+				}
 
-      console.log('[TicketDrawerForm] Final payload:', finalData);
+				toast({
+					title: ticket ? 'Ingresso atualizado' : 'Ingresso criado',
+					description: `O ingresso foi ${ticket ? 'atualizado' : 'criado'} com sucesso.`,
+					variant: 'success',
+				});
 
-      const url = ticket
-        ? `/api/admin/ingressos/${ticket.id}`
-        : '/api/admin/ingressos';
+				onSaved();
+			} catch (error) {
+				toast({
+					title: 'Erro',
+					description: error instanceof Error ? error.message : 'Não foi possível salvar o ingresso.',
+					variant: 'destructive',
+				});
+			} finally {
+				setIsSubmitting(false);
+			}
+		},
+		[currentStep, feeConfig, ticket, toast, onSaved],
+	);
 
-      const method = ticket ? 'PATCH' : 'POST';
+	const handleSaveDraft = useCallback(() => {
+		if (isSubmitting || !isLastStep) return;
+		form.handleSubmit((data) => onSubmit(data, true))();
+	}, [form, isSubmitting, isLastStep, onSubmit]);
 
-      if (!token) {
-        throw new Error('Não autenticado. Por favor, faça login novamente.');
-      }
+	const handlePublish = useCallback(async () => {
+		if (isSubmitting || !isLastStep) return;
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(finalData),
-      });
+		const currentValues = form.getValues();
+		const validationResult = await ticketFormSchema.safeParseAsync(currentValues);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao salvar ingresso');
-      }
+		if (!validationResult.success) {
+			validationResult.error.errors.forEach((error) => {
+				const fieldName = String(error.path[0]) as FieldPath<TicketFormData>;
+				form.setError(fieldName, {
+					type: 'manual',
+					message: error.message,
+				});
+			});
 
-      toast({
-        title: ticket ? 'Ingresso atualizado' : 'Ingresso criado',
-        description: `O ingresso foi ${ticket ? 'atualizado' : 'criado'} com sucesso.`,
-        variant: 'success',
-      });
+			toast({
+				title: 'Erro de validação',
+				description: 'Por favor, corrija os erros antes de continuar.',
+				variant: 'destructive',
+			});
 
-      onSaved();
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: error instanceof Error ? error.message : 'Não foi possível salvar o ingresso.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [currentStep, feeConfig, ticket, token, toast, onSaved]);
+			return;
+		}
 
-  const handleSaveDraft = useCallback(() => {
-    if (isSubmitting || !isLastStep) return;
-    form.handleSubmit((data) => onSubmit(data, true))();
-  }, [form, isSubmitting, isLastStep, onSubmit]);
+		await onSubmit(validationResult.data, false);
+	}, [form, isSubmitting, isLastStep, onSubmit, toast]);
 
-  const handlePublish = useCallback(async () => {
-    if (isSubmitting || !isLastStep) return;
+	const handleNext = useCallback(async () => {
+		const isValid = await validateCurrentStep();
 
-    // Pegar valores diretamente do formulário sem passar pelo Zod
-    const currentValues = form.getValues();
-    console.log('[TicketDrawerForm] Form values before submit:', currentValues);
-    console.log('[TicketDrawerForm] Form state:', form.formState);
+		if (!isValid) {
+			return;
+		}
 
-    // Validar manualmente com Zod
-    const validationResult = await ticketFormSchema.safeParseAsync(currentValues);
-    console.log('[TicketDrawerForm] Manual validation result:', validationResult);
-    console.log('[TicketDrawerForm] Validated data keys:', validationResult.success ? Object.keys(validationResult.data) : 'N/A');
-    console.log('[TicketDrawerForm] Validated data:', validationResult.success ? validationResult.data : 'N/A');
+		setCurrentStep((prev) => {
+			const nextStep = Math.min(prev + 1, STEPS.length - 1);
+			setVisitedSteps((visited) => {
+				const updated = new Set(visited);
+				updated.add(nextStep);
 
-    if (!validationResult.success) {
-      console.log('[TicketDrawerForm] Validation errors:', validationResult.error.errors);
+				return updated;
+			});
 
-      // Setar erros manualmente
-      validationResult.error.errors.forEach((error) => {
-        const fieldName = error.path[0] as any;
-        form.setError(fieldName, {
-          type: 'manual',
-          message: error.message,
-        });
-      });
+			return nextStep;
+		});
+	}, [validateCurrentStep]);
 
-      toast({
-        title: 'Erro de validação',
-        description: 'Por favor, corrija os erros antes de continuar.',
-        variant: 'destructive',
-      });
-      
-return;
-    }
+	const handleBack = useCallback(() => {
+		setCurrentStep((prev) => Math.max(prev - 1, 0));
+	}, []);
 
-    // Se passou na validação, submeter com os valores validados
-    await onSubmit(validationResult.data, false);
-  }, [form, isSubmitting, isLastStep, onSubmit, toast]);
+	const handleStepSelect = useCallback(
+		(index: number) => {
+			if (!visitedSteps.has(index)) return;
+			setCurrentStep(index);
+		},
+		[visitedSteps],
+	);
 
-  const handleNext = useCallback(async () => {
-    console.log('[TicketDrawerForm] handleNext called, current step:', currentStep);
-    const isValid = await validateCurrentStep();
-    console.log('[TicketDrawerForm] Validation result:', isValid);
+	const handleFormSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+	}, []);
 
-    if (!isValid) {
-      console.log('[TicketDrawerForm] Validation failed, not advancing');
-      
-return;
-    }
+	const handleFormKeyDown = useCallback((event: KeyboardEvent<HTMLFormElement>) => {
+		if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+			event.preventDefault();
+		}
+	}, []);
 
-    setCurrentStep((prev) => {
-      const nextStep = Math.min(prev + 1, STEPS.length - 1);
-      console.log('[TicketDrawerForm] Advancing from step', prev, 'to step', nextStep);
-      setVisitedSteps((visited) => {
-        const updated = new Set(visited);
-        updated.add(nextStep);
-        
-return updated;
-      });
-      
-return nextStep;
-    });
-  }, [validateCurrentStep, currentStep]);
+	return (
+		<Sheet open={open} onOpenChange={onClose}>
+			<SheetContent side="right" className="w-full sm:max-w-[700px] overflow-y-auto p-0 flex flex-col">
+				<SheetHeader className="px-6 pt-6 pb-4 border-b">
+					<div className="flex items-center justify-between">
+						<SheetTitle>{ticket ? `Editar Ingresso` : 'Novo Ingresso'}</SheetTitle>
+						<Button variant="ghost" size="icon" onClick={onClose}>
+							<X className="size-4" />
+						</Button>
+					</div>
+					<div className="mt-4">
+						<WizardProgressBar
+							steps={STEPS}
+							currentStep={currentStep}
+							visitedSteps={visitedSteps}
+							onStepSelect={handleStepSelect}
+						/>
+					</div>
+				</SheetHeader>
 
-  const handleBack = useCallback(() => {
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
-  }, []);
+				<Form {...form}>
+					<form onSubmit={handleFormSubmit} onKeyDown={handleFormKeyDown} className="flex-1 flex flex-col">
+						<div className="flex-1 p-6 overflow-y-auto">
+							<div style={{ display: currentStep === 0 ? 'block' : 'none' }}>
+								<BasicInfoStepForm form={form} eventOptions={eventOptions} />
+							</div>
+							<div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
+								<PricingStepForm form={form} feeConfig={feeConfig} eventConfig={eventConfig} />
+							</div>
+							<div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
+								<AvailabilityStepForm form={form} quantitySold={ticket?.quantity_sold || 0} />
+							</div>
+							<div style={{ display: currentStep === 3 ? 'block' : 'none' }}>
+								<SalePeriodStepForm form={form} eventOptions={eventOptions} />
+							</div>
+						</div>
 
-  const handleStepSelect = useCallback(
-    (index: number) => {
-      if (!visitedSteps.has(index)) return;
-      setCurrentStep(index);
-    },
-    [visitedSteps],
-  );
-
-  const handleFormSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-  }, []);
-
-  const handleFormKeyDown = useCallback((event: KeyboardEvent<HTMLFormElement>) => {
-    if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
-      event.preventDefault();
-    }
-  }, []);
-
-  return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-[700px] overflow-y-auto p-0 flex flex-col">
-        <SheetHeader className="px-6 pt-6 pb-4 border-b">
-          <div className="flex items-center justify-between">
-            <SheetTitle>
-              {ticket ? `Editar Ingresso` : 'Novo Ingresso'}
-            </SheetTitle>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="size-4" />
-            </Button>
-          </div>
-          <div className="mt-4">
-            <WizardProgressBar
-              steps={STEPS}
-              currentStep={currentStep}
-              visitedSteps={visitedSteps}
-              onStepSelect={handleStepSelect}
-            />
-          </div>
-        </SheetHeader>
-
-        <Form {...form}>
-          <form onSubmit={handleFormSubmit} onKeyDown={handleFormKeyDown} className="flex-1 flex flex-col">
-            <div className="flex-1 p-6 overflow-y-auto">
-              <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>
-                <BasicInfoStepForm form={form} eventOptions={eventOptions} />
-              </div>
-              <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
-                <PricingStepForm form={form} feeConfig={feeConfig} eventConfig={eventConfig} />
-              </div>
-              <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
-                <AvailabilityStepForm form={form} quantitySold={ticket?.quantity_sold || 0} />
-              </div>
-              <div style={{ display: currentStep === 3 ? 'block' : 'none' }}>
-                <SalePeriodStepForm form={form} eventOptions={eventOptions} />
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t bg-background flex items-center justify-between gap-2">
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  Cancelar
-                </Button>
-                {isLastStep && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleSaveDraft}
-                    disabled={isSubmitting}
-                  >
-                    Salvar Rascunho
-                  </Button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                {currentStep > 0 && (
-                  <Button type="button" variant="outline" onClick={handleBack}>
-                    Voltar
-                  </Button>
-                )}
-                {currentStep < STEPS.length - 1 ? (
-                  <Button type="button" onClick={handleNext}>
-                    Próximo
-                  </Button>
-                ) : (
-                  <Button type="button" onClick={handlePublish} disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    {isSubmitting
-                      ? 'Salvando...'
-                      : ticket
-                      ? 'Atualizar Ingresso'
-                      : 'Publicar Ingresso'}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </form>
-        </Form>
-      </SheetContent>
-    </Sheet>
-  );
+						<div className="px-6 py-4 border-t bg-background flex items-center justify-between gap-2">
+							<div className="flex gap-2">
+								<Button type="button" variant="outline" onClick={onClose}>
+									Cancelar
+								</Button>
+								{isLastStep && (
+									<Button type="button" variant="outline" onClick={handleSaveDraft} disabled={isSubmitting}>
+										Salvar Rascunho
+									</Button>
+								)}
+							</div>
+							<div className="flex gap-2">
+								{currentStep > 0 && (
+									<Button type="button" variant="outline" onClick={handleBack}>
+										Voltar
+									</Button>
+								)}
+								{currentStep < STEPS.length - 1 ? (
+									<Button type="button" onClick={handleNext}>
+										Próximo
+									</Button>
+								) : (
+									<Button type="button" onClick={handlePublish} disabled={isSubmitting}>
+										{isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+										{isSubmitting ? 'Salvando...' : ticket ? 'Atualizar Ingresso' : 'Publicar Ingresso'}
+									</Button>
+								)}
+							</div>
+						</div>
+					</form>
+				</Form>
+			</SheetContent>
+		</Sheet>
+	);
 }

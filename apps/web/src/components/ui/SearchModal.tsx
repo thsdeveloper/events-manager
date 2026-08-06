@@ -12,23 +12,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { debounce } from '@/lib/utils';
 import { DialogDescription, DialogTitle } from './dialog';
 import { useRouter } from 'next/navigation';
-
-type SearchResult = {
-	id: string;
-	title: string;
-	description: string;
-	type: string;
-	link: string;
-};
+import { toSearchResults, type SearchResponse, type SearchResult } from './search-results';
 
 export default function SearchModal() {
 	const [open, setOpen] = useState(false);
 	const [results, setResults] = useState<SearchResult[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [searched, setSearched] = useState(false);
+	const [query, setQuery] = useState('');
+	const [searchError, setSearchError] = useState<string | null>(null);
 
 	const router = useRouter();
 
@@ -49,61 +43,76 @@ export default function SearchModal() {
 			setResults([]);
 			setSearched(false);
 			setLoading(false);
+			setQuery('');
+			setSearchError(null);
 		}
 	}, [open]);
 
-	const fetchResults = async (search: string) => {
+	useEffect(() => {
+		const search = query.trim();
 		if (search.length < 3) {
 			setResults([]);
 			setSearched(false);
+			setSearchError(null);
 
-			return;
+			return undefined;
 		}
 
-		setLoading(true);
-		setSearched(true);
+		const controller = new AbortController();
+		const timer = window.setTimeout(async () => {
+			setLoading(true);
+			setSearched(true);
+			setSearchError(null);
 
-		try {
-			const res = await fetch(`/api/search?search=${encodeURIComponent(search)}`);
-			if (!res.ok) throw new Error('Failed to fetch results');
-			const data: SearchResult[] = await res.json();
-			setResults(data.filter((r) => r.link));
-		} catch (error) {
-			console.error('Error fetching search results:', error);
-			setResults([]);
-		} finally {
-			setLoading(false);
-		}
-	};
+			try {
+				const response = await fetch(`/api/search?search=${encodeURIComponent(search)}`, {
+					signal: controller.signal,
+				});
+				if (!response.ok) throw new Error('Não foi possível buscar agora.');
+				const data = (await response.json()) as SearchResponse;
+				setResults(toSearchResults(data));
+			} catch (error) {
+				if (controller.signal.aborted) return;
+				setResults([]);
+				setSearchError(error instanceof Error ? error.message : 'Não foi possível buscar agora.');
+			} finally {
+				if (!controller.signal.aborted) setLoading(false);
+			}
+		}, 300);
 
-	const debouncedFetchResults = debounce(fetchResults, 300);
+		return () => {
+			window.clearTimeout(timer);
+			controller.abort();
+		};
+	}, [query]);
 
 	return (
 		<div className="sm:max-w-[540px] max-w-full">
-			<Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Search">
+			<Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Buscar">
 				<Search className="size-5" />
 			</Button>
 
 			<CommandDialog open={open} onOpenChange={setOpen}>
-				<DialogTitle className="p-2 sr-only">Search</DialogTitle>
-				<DialogDescription className="px-2 sr-only">Search for pages or posts</DialogDescription>
+				<DialogTitle className="p-2 sr-only">Busca global</DialogTitle>
+				<DialogDescription className="px-2 sr-only">Busque páginas, artigos e eventos</DialogDescription>
 
 				<CommandInput
-					placeholder="Search for pages or posts"
-					onValueChange={(value) => debouncedFetchResults(value)}
+					placeholder="Buscar páginas, artigos e eventos"
+					onValueChange={setQuery}
 					className="m-2 p-4 focus:outline-none text-base leading-normal"
 				/>
 
 				<CommandList className="p-2 text-foreground max-h-[500px] overflow-auto">
 					{!loading && !searched && (
-						<CommandEmpty className="py-2 text-sm text-center">Enter a search term above to see results</CommandEmpty>
+						<CommandEmpty className="py-2 text-sm text-center">Digite ao menos três caracteres</CommandEmpty>
 					)}
-					{loading && <CommandEmpty className="py-2 text-sm text-center">Loading...</CommandEmpty>}
-					{!loading && searched && results.length === 0 && (
-						<CommandEmpty className="py-2 text-sm text-center">No results found</CommandEmpty>
+					{loading && <CommandEmpty className="py-2 text-sm text-center">Buscando...</CommandEmpty>}
+					{!loading && searchError && <CommandEmpty className="py-2 text-sm text-center">{searchError}</CommandEmpty>}
+					{!loading && !searchError && searched && results.length === 0 && (
+						<CommandEmpty className="py-2 text-sm text-center">Nenhum resultado encontrado</CommandEmpty>
 					)}
 					{!loading && results.length > 0 && (
-						<CommandGroup heading="Search Results" className="pt-2" forceMount>
+						<CommandGroup heading="Resultados" className="pt-2" forceMount>
 							{results.map((result) => (
 								<CommandItem
 									key={result.id}

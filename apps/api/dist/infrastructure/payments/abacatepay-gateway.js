@@ -52,10 +52,25 @@ export class AbacatePayGateway {
         });
         return { id: checkout.id, url: checkout.url, amountInCents: checkout.amount };
     }
+    async getCheckout(checkoutId) {
+        const checkout = await this.request(`/checkouts/get?id=${encodeURIComponent(checkoutId)}`, { method: 'GET' });
+        const status = checkout.status.toUpperCase();
+        if (!['PENDING', 'PAID', 'EXPIRED', 'CANCELLED', 'REFUNDED'].includes(status)) {
+            throw new ApiError('O provedor retornou um status de checkout desconhecido.', 502, 'PAYMENT_PROVIDER_ERROR');
+        }
+        return {
+            id: checkout.id,
+            externalId: checkout.externalId ?? null,
+            status: status,
+            amountInCents: checkout.amount,
+            paidAmountInCents: checkout.paidAmount ?? null,
+        };
+    }
     async createPixCharge(input) {
         const charge = await this.request('/transparents/create', {
             method: 'POST',
             body: JSON.stringify({
+                method: 'PIX',
                 externalId: input.externalId,
                 data: {
                     amount: input.amountInCents,
@@ -71,6 +86,18 @@ export class AbacatePayGateway {
             copyPasteCode: charge.brCode,
             qrCodeBase64: charge.brCodeBase64,
             expiresAt: charge.expiresAt,
+        };
+    }
+    async getPixCharge(chargeId) {
+        const charge = await this.request(`/transparents/check?id=${encodeURIComponent(chargeId)}`, { method: 'GET' });
+        const status = charge.status.toUpperCase();
+        if (!['PENDING', 'PAID', 'EXPIRED', 'CANCELLED'].includes(status)) {
+            throw new ApiError('O provedor retornou um status PIX desconhecido.', 502, 'PAYMENT_PROVIDER_ERROR');
+        }
+        return {
+            id: charge.id,
+            status: status,
+            expiresAt: charge.expiresAt ?? null,
         };
     }
     async sendPix(input) {

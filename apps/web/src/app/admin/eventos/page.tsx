@@ -12,32 +12,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { EventsTable } from './_components/EventsTable';
+import { PageErrorState } from '@/components/design-system/molecules/PageErrorState';
+import { PageLoadingState } from '@/components/design-system/molecules/PageLoadingState';
 
 export default function EventosPage() {
-	const { user } = useServerAuth();
+	const { user, isLoading: authLoading } = useServerAuth();
 	const [events, setEvents] = useState<Event[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 
 	const fetchEvents = useCallback(async () => {
+		setLoading(true);
+		setError(null);
 		try {
 			const response = await fetch('/api/events', { credentials: 'include' });
 			if (!response.ok) throw new Error('Não foi possível carregar os eventos.');
 			const payload = (await response.json()) as { data: Event[] };
 			setEvents(payload.data ?? []);
 		} catch (error) {
-			console.error('Error fetching events:', error);
+			setError(error instanceof Error ? error.message : 'Não foi possível carregar os eventos.');
 		} finally {
 			setLoading(false);
 		}
 	}, []);
 
 	useEffect(() => {
+		if (authLoading) return;
 		if (user) {
-			fetchEvents();
+			void fetchEvents();
 		} else {
 			setLoading(false);
 		}
-	}, [user, fetchEvents]);
+	}, [authLoading, user, fetchEvents]);
 
 	const preparedEvents = useMemo(
 		() =>
@@ -91,16 +97,9 @@ export default function EventosPage() {
 		return totals;
 	}, [preparedEvents]);
 
-	if (loading) {
-		return (
-			<div className="flex items-center justify-center min-h-[400px]">
-				<div className="text-center">
-					<div className="inline-block animate-spin rounded-full size-8 border-b-2 border-accent"></div>
-					<p className="mt-4 text-gray-600 dark:text-gray-400">Carregando eventos...</p>
-				</div>
-			</div>
-		);
-	}
+	if (authLoading || loading) return <PageLoadingState label="Carregando eventos" />;
+	if (error)
+		return <PageErrorState description={error} onRetry={() => void fetchEvents()} title="Eventos indisponíveis" />;
 
 	return (
 		<div className="space-y-8">
@@ -159,9 +158,7 @@ export default function EventosPage() {
 					<Card className="border-dashed">
 						<CardHeader className="pb-2">
 							<CardDescription>Eventos em destaque</CardDescription>
-							<CardTitle className="text-3xl">
-								{preparedEvents.filter(({ event }) => event.featured).length}
-							</CardTitle>
+							<CardTitle className="text-3xl">{preparedEvents.filter(({ event }) => event.featured).length}</CardTitle>
 						</CardHeader>
 						<CardContent className="flex items-center gap-2 pt-0 text-xs text-muted-foreground">
 							<Badge variant="secondary" className="border-transparent">
@@ -236,7 +233,7 @@ function EventCard({ event, participantsCount }: EventCardProps) {
 
 		const date = new Date(dateString);
 
-return date.toLocaleDateString('pt-BR', {
+		return date.toLocaleDateString('pt-BR', {
 			day: 'numeric',
 			month: 'long',
 			year: 'numeric',
@@ -259,8 +256,7 @@ return date.toLocaleDateString('pt-BR', {
 			},
 			cancelled: {
 				label: 'Cancelado',
-				className:
-					'border-transparent bg-red-500/10 text-red-600 shadow-none dark:bg-red-500/20 dark:text-red-200',
+				className: 'border-transparent bg-red-500/10 text-red-600 shadow-none dark:bg-red-500/20 dark:text-red-200',
 			},
 			archived: {
 				label: 'Arquivado',
@@ -271,7 +267,7 @@ return date.toLocaleDateString('pt-BR', {
 
 		const statusInfo = statusMap[status || 'draft'];
 
-return (
+		return (
 			<Badge
 				variant="outline"
 				className={cn('whitespace-nowrap border border-transparent text-xs font-medium', statusInfo.className)}
@@ -289,7 +285,7 @@ return (
 			return `${event.location_address || 'Híbrido'} (Online e Presencial)`;
 		}
 
-return event.location_address || event.location_name || 'Local a definir';
+		return event.location_address || event.location_name || 'Local a definir';
 	};
 
 	const eventTypeMap: Record<string, string> = {

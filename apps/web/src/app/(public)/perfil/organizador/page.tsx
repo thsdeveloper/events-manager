@@ -9,20 +9,13 @@ import { Button } from '@/components/ui/button';
 // Import new components
 import { HeroSection } from '@/components/organizer-upgrade/HeroSection';
 import { BenefitsGrid } from '@/components/organizer-upgrade/BenefitsGrid';
-import { SocialProof } from '@/components/organizer-upgrade/SocialProof';
 import { StatusTimeline } from '@/components/organizer-upgrade/StatusTimeline';
 import { SuccessState } from '@/components/organizer-upgrade/SuccessState';
 import { FAQAccordion } from '@/components/organizer-upgrade/FAQAccordion';
 
 export default function PerfilOrganizadorPage() {
 	const router = useRouter();
-	const {
-		user,
-		isLoading,
-		isOrganizer,
-		hasPendingOrganizerRequest,
-		organizerStatus,
-	} = useServerAuth();
+	const { user, isLoading, isOrganizer, hasPendingOrganizerRequest, organizerStatus } = useServerAuth();
 
 	useEffect(() => {
 		if (!isLoading && !user) {
@@ -66,18 +59,12 @@ export default function PerfilOrganizadorPage() {
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
 			<div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-
 				{/* STATE 1: Regular User - Show Full Marketing Flow */}
 				{isRegularUser && (
 					<div className="space-y-16">
-						<HeroSection
-							onGetStarted={handleGetStarted}
-							onLearnMore={handleLearnMore}
-						/>
+						<HeroSection onGetStarted={handleGetStarted} onLearnMore={handleLearnMore} />
 
 						<BenefitsGrid />
-
-						<SocialProof />
 
 						{/* CTA Section */}
 						<div className="text-center py-12">

@@ -18,9 +18,7 @@ const eventFormBaseSchema = z.object({
 		.min(50, 'A descrição resumida deve ter no mínimo 50 caracteres para SEO')
 		.max(160, 'A descrição resumida deve ter no máximo 160 caracteres')
 		.optional(),
-	description: z
-		.string()
-		.min(100, 'A descrição completa deve ter no mínimo 100 caracteres'),
+	description: z.string().min(100, 'A descrição completa deve ter no mínimo 100 caracteres'),
 	tags: z.array(z.string()).max(10, 'Máximo de 10 tags permitidas').optional(),
 
 	// Datas e Horários
@@ -41,7 +39,12 @@ const eventFormBaseSchema = z.object({
 	event_type: z.enum(['in_person', 'online', 'hybrid']),
 	location_name: z.string().optional(),
 	location_address: z.string().optional(),
-	online_url: z.string().url('URL inválida').optional().or(z.literal('')),
+	online_url: z
+		.string()
+		.url('URL inválida')
+		.refine((value) => /^https?:\/\//i.test(value), 'Use uma URL HTTP ou HTTPS')
+		.optional()
+		.or(z.literal('')),
 
 	// Ingressos e Vagas
 	is_free: z.boolean().default(true),
@@ -50,49 +53,52 @@ const eventFormBaseSchema = z.object({
 });
 
 // Schema with cross-field validations (for form submission)
-export const eventFormSchema = eventFormBaseSchema.refine(
-	(data) => {
-		// End date must be after start date
-		if (data.end_date) {
-			const start = new Date(data.start_date);
-			const end = new Date(data.end_date);
+export const eventFormSchema = eventFormBaseSchema
+	.refine(
+		(data) => {
+			// End date must be after start date
+			if (data.end_date) {
+				const start = new Date(data.start_date);
+				const end = new Date(data.end_date);
 
-			return end >= start;
-		}
+				return end >= start;
+			}
 
-		return true;
-	},
-	{
-		message: 'A data de término deve ser posterior à data de início',
-		path: ['end_date'],
-	}
-).refine(
-	(data) => {
-		// If event is online or hybrid, online_url is required
-		if (data.event_type === 'online' || data.event_type === 'hybrid') {
-			return !!data.online_url && data.online_url.length > 0;
-		}
+			return true;
+		},
+		{
+			message: 'A data de término deve ser posterior à data de início',
+			path: ['end_date'],
+		},
+	)
+	.refine(
+		(data) => {
+			// If event is online or hybrid, online_url is required
+			if (data.event_type === 'online' || data.event_type === 'hybrid') {
+				return !!data.online_url && data.online_url.length > 0;
+			}
 
-		return true;
-	},
-	{
-		message: 'URL do evento online é obrigatória para eventos online ou híbridos',
-		path: ['online_url'],
-	}
-).refine(
-	(data) => {
-		// If event is in_person or hybrid, location_name is required
-		if (data.event_type === 'in_person' || data.event_type === 'hybrid') {
-			return !!data.location_name && data.location_name.length > 0;
-		}
+			return true;
+		},
+		{
+			message: 'URL do evento online é obrigatória para eventos online ou híbridos',
+			path: ['online_url'],
+		},
+	)
+	.refine(
+		(data) => {
+			// If event is in_person or hybrid, location_name is required
+			if (data.event_type === 'in_person' || data.event_type === 'hybrid') {
+				return !!data.location_name && data.location_name.length > 0;
+			}
 
-		return true;
-	},
-	{
-		message: 'Nome do local é obrigatório para eventos presenciais ou híbridos',
-		path: ['location_name'],
-	}
-);
+			return true;
+		},
+		{
+			message: 'Nome do local é obrigatório para eventos presenciais ou híbridos',
+			path: ['location_name'],
+		},
+	);
 
 export type EventFormData = z.infer<typeof eventFormSchema>;
 

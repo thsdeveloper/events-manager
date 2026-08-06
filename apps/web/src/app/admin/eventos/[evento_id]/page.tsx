@@ -1,6 +1,6 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { Event } from '@events-manager/contracts';
-import { authenticatedBackendFetch } from '@/lib/backend-auth';
+import { authenticatedBackendFetch, BackendRequestError } from '@/lib/backend-auth';
 import EventoDetalhesClient from './EventoDetalhesClient';
 
 interface PageProps {
@@ -20,15 +20,8 @@ export default async function EventoDetalhesPage({ params }: PageProps) {
 
 		// Pass server-fetched data to client component
 		return <EventoDetalhesClient initialEvent={event} evento_id={evento_id} />;
-	} catch (error: any) {
-		console.error('Error fetching event:', error);
-
-		// If event not found or access denied
-		if (error?.message?.includes('404')) {
-			notFound();
-		}
-
-		// For other errors, redirect to events list
-		redirect('/admin/eventos');
+	} catch (error) {
+		if (error instanceof BackendRequestError && error.status === 404) notFound();
+		throw error;
 	}
 }

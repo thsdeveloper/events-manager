@@ -19,7 +19,7 @@ import {
 	Trophy,
 	Info,
 	XCircle,
-	AlertCircle
+	AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,64 +31,54 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Schema de validação otimizado com mensagens humanizadas
 const formSchema = z.object({
 	// Etapa 1: Quem é Você
-	organizationName: z.string()
+	organizationName: z
+		.string()
 		.min(3, 'Que tal um nome mais completo? Mínimo 3 letras 😊')
 		.max(100, 'Nome muito longo. Máximo 100 caracteres'),
 
-	contactEmail: z.string()
+	contactEmail: z
+		.string()
 		.email('Ops! Confira se digitou o email corretamente (precisa ter @ e domínio)')
 		.max(100, 'Email muito longo'),
 
-	phone: z.string()
+	phone: z
+		.string()
 		.min(10, 'Digite o DDD seguido do número — ex: 61999998888')
 		.max(15, 'Telefone muito longo. Use apenas números com DDD')
 		.regex(/^\d+$/, 'Use apenas números (sem traços ou parênteses)'),
 
 	document: z.string().optional(),
 
-	website: z.string()
-		.url('URL inválida. Deve começar com https:// ou http://')
-		.optional()
-		.or(z.literal('')),
+	website: z.string().url('URL inválida. Deve começar com https:// ou http://').optional().or(z.literal('')),
 
-	instagram: z.string()
-		.max(50, 'Nome de usuário muito longo')
-		.optional(),
+	instagram: z.string().max(50, 'Nome de usuário muito longo').optional(),
 
-	hasExperience: z.string()
-		.min(1, 'Escolha uma opção para continuar'),
+	hasExperience: z.string().min(1, 'Escolha uma opção para continuar'),
 
 	// Etapa 2: Sobre seus Eventos
-	eventTypes: z.array(z.string())
-		.min(1, 'Escolha pelo menos um tipo de evento que você organiza'),
+	eventTypes: z.array(z.string()).min(1, 'Escolha pelo menos um tipo de evento que você organiza'),
 
-	estimatedAttendees: z.string()
-		.min(1, 'Selecione o tamanho médio do público'),
+	estimatedAttendees: z.string().min(1, 'Selecione o tamanho médio do público'),
 
-	eventFrequency: z.string()
-		.min(1, 'Informe com que frequência você organiza eventos'),
+	eventFrequency: z.string().min(1, 'Informe com que frequência você organiza eventos'),
 
-	description: z.string()
+	description: z
+		.string()
 		.min(50, 'Conte um pouco mais sobre seus eventos (mínimo 50 caracteres)')
 		.max(500, 'Descrição muito longa (máximo 500 caracteres)'),
 
-	goals: z.string()
+	goals: z
+		.string()
 		.min(20, 'Compartilhe seus objetivos com mais detalhes (mínimo 20 caracteres)')
 		.max(300, 'Muito texto! Resuma em até 300 caracteres'),
 
 	// Etapa 3: Confirmação
-	acceptTerms: z.boolean()
-		.refine(val => val === true, 'Você precisa aceitar os termos para continuar')
+	acceptTerms: z.boolean().refine((val) => val === true, 'Confirme que as informações são verdadeiras'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -100,13 +90,13 @@ const EVENT_TYPES = [
 	{ value: 'corporate', label: 'Eventos Corporativos', emoji: '💼' },
 	{ value: 'workshops', label: 'Workshops e Cursos', emoji: '📚' },
 	{ value: 'sports', label: 'Esportivos', emoji: '⚽' },
-	{ value: 'culture', label: 'Teatro e Cultura', emoji: '🎭' }
+	{ value: 'culture', label: 'Teatro e Cultura', emoji: '🎭' },
 ];
 
 const EXPERIENCE_LEVELS = [
 	{ value: 'yes', label: 'Sim, sou experiente', description: 'Já organizei vários eventos' },
 	{ value: 'some', label: 'Alguns eventos', description: 'Tenho alguma experiência' },
-	{ value: 'beginner', label: 'Estou começando', description: 'Primeiro contato com produção' }
+	{ value: 'beginner', label: 'Estou começando', description: 'Primeiro contato com produção' },
 ];
 
 const steps = [
@@ -116,7 +106,7 @@ const steps = [
 		shortTitle: 'Identificação',
 		icon: User,
 		description: 'Informações básicas e contato',
-		estimatedTime: '60 segundos'
+		estimatedTime: '60 segundos',
 	},
 	{
 		id: 2,
@@ -124,7 +114,7 @@ const steps = [
 		shortTitle: 'Eventos',
 		icon: Sparkles,
 		description: 'Tipo, escala e frequência',
-		estimatedTime: '90 segundos'
+		estimatedTime: '90 segundos',
 	},
 	{
 		id: 3,
@@ -132,8 +122,8 @@ const steps = [
 		shortTitle: 'Confirmar',
 		icon: CheckCircle2,
 		description: 'Revise e envie',
-		estimatedTime: '30 segundos'
-	}
+		estimatedTime: '30 segundos',
+	},
 ];
 
 interface ImprovedMultiStepFormWizardProps {
@@ -168,8 +158,8 @@ export function ImprovedMultiStepFormWizard({ user, onSuccess }: ImprovedMultiSt
 			eventFrequency: '',
 			description: '',
 			goals: '',
-			acceptTerms: false
-		}
+			acceptTerms: false,
+		},
 	});
 
 	// Auto-save inteligente com debounce
@@ -178,10 +168,13 @@ export function ImprovedMultiStepFormWizard({ user, onSuccess }: ImprovedMultiSt
 		const values = form.getValues();
 
 		try {
-			localStorage.setItem('organizer_form_draft', JSON.stringify({
-				...values,
-				savedAt: new Date().toISOString()
-			}));
+			localStorage.setItem(
+				'organizer_form_draft',
+				JSON.stringify({
+					...values,
+					savedAt: new Date().toISOString(),
+				}),
+			);
 
 			setTimeout(() => {
 				setSaveStatus('saved');
@@ -197,8 +190,8 @@ export function ImprovedMultiStepFormWizard({ user, onSuccess }: ImprovedMultiSt
 	useEffect(() => {
 		const subscription = form.watch(() => {
 			const timeout = setTimeout(handleAutoSave, 2000);
-			
-return () => clearTimeout(timeout);
+
+			return () => clearTimeout(timeout);
 		});
 
 		return () => subscription.unsubscribe();
@@ -235,7 +228,7 @@ return () => clearTimeout(timeout);
 		const isValid = await form.trigger(fieldsToValidate as any);
 
 		if (isValid) {
-			setCurrentStep(prev => Math.min(prev + 1, steps.length));
+			setCurrentStep((prev) => Math.min(prev + 1, steps.length));
 			window.scrollTo({ top: 0, behavior: 'smooth' });
 		} else {
 			toast({
@@ -247,7 +240,7 @@ return () => clearTimeout(timeout);
 	};
 
 	const prevStep = () => {
-		setCurrentStep(prev => Math.max(prev - 1, 1));
+		setCurrentStep((prev) => Math.max(prev - 1, 1));
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
 
@@ -283,7 +276,7 @@ return () => clearTimeout(timeout);
 					estimated_attendees: values.estimatedAttendees,
 					event_frequency: values.eventFrequency,
 					goals: values.goals,
-					has_experience: values.hasExperience
+					has_experience: values.hasExperience,
 				}),
 			});
 
@@ -296,7 +289,7 @@ return () => clearTimeout(timeout);
 
 			toast({
 				title: 'Solicitação enviada com sucesso! 🎉',
-				description: 'Nossa equipe vai analisar e liberar seu acesso em até 48 horas.',
+				description: 'A solicitação foi enviada e o status ficará disponível no seu perfil.',
 				variant: 'default',
 			});
 
@@ -330,11 +323,9 @@ return () => clearTimeout(timeout);
 							<Shield className="size-5 text-white" />
 						</div>
 						<div className="flex-1">
-							<h3 className="font-semibold text-green-900 dark:text-green-100">
-								Seus dados estão seguros
-							</h3>
+							<h3 className="font-semibold text-green-900 dark:text-green-100">Seus dados estão seguros</h3>
 							<p className="text-sm text-green-700 dark:text-green-300">
-								Nossa equipe revisa cada solicitação manualmente. Aprovações em até 48h úteis.
+								A solicitação será revisada e o status ficará disponível no seu perfil.
 							</p>
 						</div>
 						<Badge className="bg-green-600 text-white">
@@ -427,14 +418,12 @@ return () => clearTimeout(timeout);
 								<CardTitle className="flex items-center gap-3">
 									{(() => {
 										const Icon = steps[currentStep - 1].icon;
-										
-return <Icon className="size-6 text-purple-600" />;
+
+										return <Icon className="size-6 text-purple-600" />;
 									})()}
 									{steps[currentStep - 1].title}
 								</CardTitle>
-								<CardDescription>
-									{steps[currentStep - 1].description}
-								</CardDescription>
+								<CardDescription>{steps[currentStep - 1].description}</CardDescription>
 							</CardHeader>
 
 							<CardContent className="space-y-8">
@@ -446,15 +435,9 @@ return <Icon className="size-6 text-purple-600" />;
 										exit={{ opacity: 0, x: -20 }}
 										transition={{ duration: 0.3 }}
 									>
-										{currentStep === 1 && (
-											<Step1Fields form={form} experience={experience} />
-										)}
-										{currentStep === 2 && (
-											<Step2Fields form={form} experience={experience} />
-										)}
-										{currentStep === 3 && (
-											<Step3Review form={form} />
-										)}
+										{currentStep === 1 && <Step1Fields form={form} experience={experience} />}
+										{currentStep === 2 && <Step2Fields form={form} experience={experience} />}
+										{currentStep === 3 && <Step3Review form={form} />}
 									</motion.div>
 								</AnimatePresence>
 							</CardContent>
@@ -462,13 +445,7 @@ return <Icon className="size-6 text-purple-600" />;
 
 						{/* Navigation */}
 						<div className="mt-6 flex items-center justify-between">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={prevStep}
-								disabled={currentStep === 1}
-								className="gap-2"
-							>
+							<Button type="button" variant="outline" onClick={prevStep} disabled={currentStep === 1} className="gap-2">
 								<ArrowLeft className="size-4" />
 								Voltar
 							</Button>
@@ -523,10 +500,10 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 			{/* Seção: Dados Básicos */}
 			<section className="space-y-4">
 				<div className="flex items-center gap-2">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-						Dados Básicos
-					</h3>
-					<Badge variant="secondary" className="text-xs">Obrigatório</Badge>
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Dados Básicos</h3>
+					<Badge variant="secondary" className="text-xs">
+						Obrigatório
+					</Badge>
 				</div>
 
 				<FormField
@@ -542,8 +519,8 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 									</TooltipTrigger>
 									<TooltipContent className="max-w-xs">
 										<p className="text-sm">
-											Este nome aparecerá em todos os eventos que você publicar na plataforma.
-											Pode ser o nome da sua empresa, marca ou até seu nome pessoal.
+											Este nome aparecerá em todos os eventos que você publicar na plataforma. Pode ser o nome da sua
+											empresa, marca ou até seu nome pessoal.
 										</p>
 									</TooltipContent>
 								</Tooltip>
@@ -564,9 +541,7 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 									)}
 								</div>
 							</FormControl>
-							<FormDescription>
-								Como sua marca aparecerá nos eventos publicados
-							</FormDescription>
+							<FormDescription>Como sua marca aparecerá nos eventos publicados</FormDescription>
 							<FormMessage />
 						</FormItem>
 					)}
@@ -628,9 +603,7 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 										)}
 									</div>
 								</FormControl>
-								<FormDescription>
-									Digite apenas números com DDD — ex: 61999998888
-								</FormDescription>
+								<FormDescription>Digite apenas números com DDD — ex: 61999998888</FormDescription>
 								<FormMessage />
 							</FormItem>
 						)}
@@ -650,15 +623,13 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 									</TooltipTrigger>
 									<TooltipContent className="max-w-xs">
 										<p className="mb-2 text-sm font-semibold">Por que pedimos isso?</p>
-										<p className="mb-2 text-sm">
-											Facilita a aprovação e permite emissão de notas fiscais futuramente.
-										</p>
-										<p className="text-sm text-purple-600">
-											✨ Perfis com documento são aprovados 2x mais rápido!
-										</p>
+										<p className="mb-2 text-sm">Facilita a aprovação e permite emissão de notas fiscais futuramente.</p>
+										<p className="text-sm text-purple-600">✨ Perfis com documento são aprovados 2x mais rápido!</p>
 									</TooltipContent>
 								</Tooltip>
-								<Badge variant="outline" className="text-xs">Opcional</Badge>
+								<Badge variant="outline" className="text-xs">
+									Opcional
+								</Badge>
 							</FormLabel>
 							<FormControl>
 								<Input
@@ -668,9 +639,7 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 									{...field}
 								/>
 							</FormControl>
-							<FormDescription>
-								Facilita aprovação e emissão de notas fiscais
-							</FormDescription>
+							<FormDescription>Facilita aprovação e emissão de notas fiscais</FormDescription>
 							<FormMessage />
 						</FormItem>
 					)}
@@ -682,10 +651,10 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 			{/* Seção: Presença Online */}
 			<section className="space-y-4">
 				<div className="flex items-center gap-2">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-						Presença Online
-					</h3>
-					<Badge variant="outline" className="text-xs">Opcional mas recomendado</Badge>
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Presença Online</h3>
+					<Badge variant="outline" className="text-xs">
+						Opcional mas recomendado
+					</Badge>
 				</div>
 
 				<div className="grid gap-6 md:grid-cols-2">
@@ -728,9 +697,7 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 										{...field}
 									/>
 								</FormControl>
-								<FormDescription>
-									Ajuda nossa equipe a conhecer melhor seu trabalho
-								</FormDescription>
+								<FormDescription>Ajuda nossa equipe a conhecer melhor seu trabalho</FormDescription>
 								<FormMessage />
 							</FormItem>
 						)}
@@ -743,10 +710,10 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 			{/* Seção: Experiência */}
 			<section className="space-y-4">
 				<div className="flex items-center gap-2">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-						Sua Experiência
-					</h3>
-					<Badge variant="secondary" className="text-xs">Obrigatório</Badge>
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Sua Experiência</h3>
+					<Badge variant="secondary" className="text-xs">
+						Obrigatório
+					</Badge>
 				</div>
 
 				<FormField
@@ -754,9 +721,7 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 					name="hasExperience"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel className="text-base">
-								Já organizou eventos antes? *
-							</FormLabel>
+							<FormLabel className="text-base">Já organizou eventos antes? *</FormLabel>
 							<FormControl>
 								<div className="grid gap-3">
 									{EXPERIENCE_LEVELS.map((level) => (
@@ -776,12 +741,8 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 												onChange={() => field.onChange(level.value)}
 											/>
 											<div className="flex-1">
-												<div className="font-semibold text-gray-900 dark:text-white">
-													{level.label}
-												</div>
-												<div className="text-sm text-gray-600 dark:text-gray-400">
-													{level.description}
-												</div>
+												<div className="font-semibold text-gray-900 dark:text-white">{level.label}</div>
+												<div className="text-sm text-gray-600 dark:text-gray-400">{level.description}</div>
 											</div>
 										</label>
 									))}
@@ -796,12 +757,10 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 				{experience === 'beginner' && (
 					<Alert className="border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/20">
 						<Sparkles className="size-4 text-purple-600" />
-						<AlertTitle className="text-purple-900 dark:text-purple-100">
-							Dica para iniciantes
-						</AlertTitle>
+						<AlertTitle className="text-purple-900 dark:text-purple-100">Dica para iniciantes</AlertTitle>
 						<AlertDescription className="text-purple-700 dark:text-purple-300">
-							Não tem site ou Instagram ainda? Sem problemas! Você pode adicionar depois no seu perfil.
-							O importante agora é contar sobre seus planos para os eventos.
+							Não tem site ou Instagram ainda? Sem problemas! Você pode adicionar depois no seu perfil. O importante
+							agora é contar sobre seus planos para os eventos.
 						</AlertDescription>
 					</Alert>
 				)}
@@ -809,12 +768,9 @@ function Step1Fields({ form, experience }: { form: any; experience: string }) {
 				{experience === 'yes' && (
 					<Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20">
 						<Trophy className="size-4 text-blue-600" />
-						<AlertTitle className="text-blue-900 dark:text-blue-100">
-							Organizador experiente!
-						</AlertTitle>
+						<AlertTitle className="text-blue-900 dark:text-blue-100">Organizador experiente!</AlertTitle>
 						<AlertDescription className="text-blue-700 dark:text-blue-300">
-							Compartilhe links de eventos anteriores ou portfolio na próxima etapa.
-							Isso acelera muito a aprovação.
+							Compartilhe links de eventos anteriores ou portfolio na próxima etapa. Isso acelera muito a aprovação.
 						</AlertDescription>
 					</Alert>
 				)}
@@ -834,10 +790,10 @@ function Step2Fields({ form, experience }: { form: any; experience: string }) {
 			{/* Seção: Tipos de Evento */}
 			<section className="space-y-4">
 				<div className="flex items-center gap-2">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-						Tipos de Evento
-					</h3>
-					<Badge variant="secondary" className="text-xs">Obrigatório</Badge>
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Tipos de Evento</h3>
+					<Badge variant="secondary" className="text-xs">
+						Obrigatório
+					</Badge>
 				</div>
 
 				<FormField
@@ -845,12 +801,8 @@ function Step2Fields({ form, experience }: { form: any; experience: string }) {
 					name="eventTypes"
 					render={() => (
 						<FormItem>
-							<FormLabel className="text-base">
-								Que tipos de eventos você organiza? *
-							</FormLabel>
-							<FormDescription>
-								Selecione todos que se aplicam
-							</FormDescription>
+							<FormLabel className="text-base">Que tipos de eventos você organiza? *</FormLabel>
+							<FormDescription>Selecione todos que se aplicam</FormDescription>
 							<div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
 								{EVENT_TYPES.map((type) => (
 									<FormField
@@ -877,7 +829,7 @@ function Step2Fields({ form, experience }: { form: any; experience: string }) {
 																	field.onChange(
 																		checked
 																			? [...current, type.value]
-																			: current.filter((v: string) => v !== type.value)
+																			: current.filter((v: string) => v !== type.value),
 																	);
 																}}
 																className="size-5"
@@ -907,10 +859,10 @@ function Step2Fields({ form, experience }: { form: any; experience: string }) {
 			{/* Seção: Escala dos Eventos */}
 			<section className="space-y-4">
 				<div className="flex items-center gap-2">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-						Escala dos Eventos
-					</h3>
-					<Badge variant="secondary" className="text-xs">Obrigatório</Badge>
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Escala dos Eventos</h3>
+					<Badge variant="secondary" className="text-xs">
+						Obrigatório
+					</Badge>
 				</div>
 
 				<div className="grid gap-6 md:grid-cols-2">
@@ -975,10 +927,10 @@ function Step2Fields({ form, experience }: { form: any; experience: string }) {
 			{/* Seção: Conte mais */}
 			<section className="space-y-4">
 				<div className="flex items-center gap-2">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-						Conte Mais
-					</h3>
-					<Badge variant="secondary" className="text-xs">Obrigatório</Badge>
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Conte Mais</h3>
+					<Badge variant="secondary" className="text-xs">
+						Obrigatório
+					</Badge>
 				</div>
 
 				<FormField
@@ -1070,11 +1022,7 @@ function Step2Fields({ form, experience }: { form: any; experience: string }) {
 										{...field}
 									/>
 									<div className="absolute bottom-3 right-3">
-										<span
-											className={`text-xs ${
-												goals.length >= 300 ? 'text-orange-500' : 'text-gray-400'
-											}`}
-										>
+										<span className={`text-xs ${goals.length >= 300 ? 'text-orange-500' : 'text-gray-400'}`}>
 											{goals.length}/300
 										</span>
 									</div>
@@ -1082,9 +1030,7 @@ function Step2Fields({ form, experience }: { form: any; experience: string }) {
 							</FormControl>
 							<FormDescription>
 								{goals.length < 20 ? (
-									<span className="text-red-600">
-										Continue escrevendo... faltam {20 - goals.length} caracteres
-									</span>
+									<span className="text-red-600">Continue escrevendo... faltam {20 - goals.length} caracteres</span>
 								) : (
 									'Ajuda nossa equipe a personalizar sua experiência ✓'
 								)}
@@ -1107,9 +1053,7 @@ function Step3Review({ form }: { form: any }) {
 			{/* Info Box */}
 			<Alert className="border-2 border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/20">
 				<Sparkles className="size-5 text-purple-600" />
-				<AlertTitle className="text-purple-900 dark:text-purple-100">
-					Quase lá! Revise suas informações
-				</AlertTitle>
+				<AlertTitle className="text-purple-900 dark:text-purple-100">Quase lá! Revise suas informações</AlertTitle>
 				<AlertDescription className="text-purple-700 dark:text-purple-300">
 					Certifique-se de que todos os dados estão corretos. Você poderá editar depois se necessário.
 				</AlertDescription>
@@ -1135,7 +1079,7 @@ function Step3Review({ form }: { form: any }) {
 									? 'Alguns eventos'
 									: values.hasExperience === 'beginner'
 										? 'Iniciante'
-										: 'Não informado'
+										: 'Não informado',
 					}}
 				/>
 
@@ -1148,11 +1092,11 @@ function Step3Review({ form }: { form: any }) {
 							const types = values.eventTypes || [];
 							const typeLabels = types.map((t: string) => {
 								const found = EVENT_TYPES.find((et) => et.value === t);
-								
-return found ? `${found.emoji} ${found.label}` : t;
+
+								return found ? `${found.emoji} ${found.label}` : t;
 							});
-							
-return typeLabels.length > 0 ? typeLabels.join(', ') : 'Nenhum selecionado';
+
+							return typeLabels.length > 0 ? typeLabels.join(', ') : 'Nenhum selecionado';
 						})(),
 						'Público estimado': (() => {
 							const attendees = values.estimatedAttendees;
@@ -1161,10 +1105,10 @@ return typeLabels.length > 0 ? typeLabels.join(', ') : 'Nenhum selecionado';
 								'100-500': '100 a 500 pessoas',
 								'500-1000': '500 a 1.000 pessoas',
 								'1000-5000': '1.000 a 5.000 pessoas',
-								'5000+': 'Mais de 5.000 pessoas'
+								'5000+': 'Mais de 5.000 pessoas',
 							};
-							
-return labels[attendees] || 'Não informado';
+
+							return labels[attendees] || 'Não informado';
 						})(),
 						Frequência: (() => {
 							const frequency = values.eventFrequency;
@@ -1173,11 +1117,11 @@ return labels[attendees] || 'Não informado';
 								biweekly: 'Quinzenalmente',
 								monthly: 'Mensalmente',
 								quarterly: 'Trimestralmente',
-								occasional: 'Ocasionalmente'
+								occasional: 'Ocasionalmente',
 							};
-							
-return labels[frequency] || 'Não informado';
-						})()
+
+							return labels[frequency] || 'Não informado';
+						})(),
 					}}
 				/>
 
@@ -1206,9 +1150,7 @@ return labels[frequency] || 'Não informado';
 			{/* What Happens Next */}
 			<Alert className="border-2 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20">
 				<Info className="size-5 text-blue-600" />
-				<AlertTitle className="text-blue-900 dark:text-blue-100">
-					O que acontece depois?
-				</AlertTitle>
+				<AlertTitle className="text-blue-900 dark:text-blue-100">O que acontece depois?</AlertTitle>
 				<AlertDescription className="text-sm text-blue-700 dark:text-blue-300">
 					<ol className="mt-2 space-y-2">
 						<li className="flex items-start gap-2">
@@ -1217,7 +1159,7 @@ return labels[frequency] || 'Não informado';
 						</li>
 						<li className="flex items-start gap-2">
 							<CheckCircle2 className="size-4 flex-shrink-0 text-green-600" />
-							<span>Você recebe email de aprovação em até 48 horas úteis</span>
+							<span>O status da revisão ficará disponível no seu perfil</span>
 						</li>
 						<li className="flex items-start gap-2">
 							<CheckCircle2 className="size-4 flex-shrink-0 text-green-600" />
@@ -1234,36 +1176,14 @@ return labels[frequency] || 'Não informado';
 				render={({ field }) => (
 					<FormItem className="flex items-start space-x-3 space-y-0 rounded-lg border-2 border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
 						<FormControl>
-							<Checkbox
-								checked={field.value}
-								onCheckedChange={field.onChange}
-								className="mt-1 size-5"
-							/>
+							<Checkbox checked={field.value} onCheckedChange={field.onChange} className="mt-1 size-5" />
 						</FormControl>
 						<div className="flex-1 space-y-1 leading-none">
 							<FormLabel className="cursor-pointer text-base font-semibold">
-								Aceito os termos de uso e política de privacidade *
+								Confirmo que as informações são verdadeiras *
 							</FormLabel>
 							<FormDescription className="text-sm">
-								Li e concordo com os{' '}
-								<a
-									href="/termos"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-purple-600 underline hover:text-purple-700"
-								>
-									termos de uso
-								</a>{' '}
-								e a{' '}
-								<a
-									href="/privacidade"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-purple-600 underline hover:text-purple-700"
-								>
-									política de privacidade
-								</a>{' '}
-								da plataforma.
+								Os dados informados serão usados para analisar a solicitação de organizador.
 							</FormDescription>
 						</div>
 					</FormItem>
@@ -1282,15 +1202,7 @@ return labels[frequency] || 'Não informado';
 }
 
 // Componente auxiliar: Card de revisão
-function ReviewCard({
-	title,
-	emoji,
-	data
-}: {
-	title: string;
-	emoji: string;
-	data: Record<string, string>;
-}) {
+function ReviewCard({ title, emoji, data }: { title: string; emoji: string; data: Record<string, string> }) {
 	return (
 		<div className="rounded-lg border-2 border-gray-200 p-4 dark:border-gray-800">
 			<h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-900 dark:text-white">

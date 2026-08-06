@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Building2, CheckCircle2, Shield, Sparkles, TrendingDown } from 'lucide-react';
+import { Building2, CheckCircle2, Shield, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -18,60 +18,55 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 			transition={{ duration: 0.6 }}
 			className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 p-8 md:p-12 text-white"
 		>
-			{/* Background Pattern */}
 			<div className="absolute inset-0 opacity-10">
-				<div className="absolute inset-0" style={{
-					backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-					backgroundSize: '32px 32px'
-				}} />
+				<div
+					className="absolute inset-0"
+					style={{
+						backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+						backgroundSize: '32px 32px',
+					}}
+				/>
 			</div>
 
-			{/* Floating Elements */}
 			<motion.div
 				animate={{
 					y: [0, -10, 0],
-					rotate: [0, 5, 0]
+					rotate: [0, 5, 0],
 				}}
 				transition={{
 					duration: 4,
 					repeat: Infinity,
-					ease: "easeInOut"
+					ease: 'easeInOut',
 				}}
 				className="absolute top-8 right-8 size-20 rounded-2xl bg-white/10 backdrop-blur-sm"
 			/>
 			<motion.div
 				animate={{
 					y: [0, 10, 0],
-					rotate: [0, -5, 0]
+					rotate: [0, -5, 0],
 				}}
 				transition={{
 					duration: 5,
 					repeat: Infinity,
-					ease: "easeInOut",
-					delay: 1
+					ease: 'easeInOut',
+					delay: 1,
 				}}
 				className="absolute bottom-12 left-12 size-16 rounded-full bg-white/10 backdrop-blur-sm"
 			/>
 
 			<div className="relative z-10 max-w-3xl">
-				{/* Badge */}
 				<motion.div
 					initial={{ opacity: 0, x: -20 }}
 					animate={{ opacity: 1, x: 0 }}
 					transition={{ delay: 0.2 }}
 					className="flex flex-wrap gap-3 mb-6"
 				>
-					<Badge className="bg-gradient-to-r from-green-400 to-emerald-500 text-white border-0 hover:from-green-500 hover:to-emerald-600 shadow-lg">
-						<TrendingDown className="size-3 mr-1" />
-						Menor taxa do mercado: 5,99%
-					</Badge>
 					<Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">
 						<Shield className="size-3 mr-1" />
-						Plataforma verificada e segura
+						Acesso de organizador sujeito à aprovação
 					</Badge>
 				</motion.div>
 
-				{/* Headline */}
 				<motion.h1
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
@@ -90,19 +85,15 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 					</span>
 				</motion.h1>
 
-				{/* Subheadline */}
 				<motion.p
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ delay: 0.4 }}
 					className="text-xl md:text-2xl mb-8 text-white/90 leading-relaxed"
 				>
-					Publique eventos, venda ingressos e gerencie tudo em um só lugar com a{' '}
-					<strong className="text-green-300">menor taxa do Brasil: apenas 5,99%</strong>.
-					Junte-se a <strong className="text-white">+500 organizadores</strong> que já economizam com o EventsFlow.
+					Publique eventos, configure ingressos e acompanhe participantes, pagamentos e check-ins em um só lugar.
 				</motion.p>
 
-				{/* Features Quick List */}
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
@@ -110,10 +101,10 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 					className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8"
 				>
 					{[
-						'Apenas 5,99% por transação',
-						'Aprovação em até 48h',
-						'Pagamentos automáticos',
-						'Suporte dedicado 24/7'
+						'Criação guiada de eventos',
+						'Ingressos com controle de disponibilidade',
+						'Checkout integrado ao gateway configurado',
+						'Painéis de participantes e financeiro',
 					].map((feature, index) => (
 						<motion.div
 							key={feature}
@@ -128,7 +119,6 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 					))}
 				</motion.div>
 
-				{/* CTAs */}
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
@@ -154,18 +144,16 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 					</Button>
 				</motion.div>
 
-				{/* Trust Signal */}
 				<motion.p
 					initial={{ opacity: 0 }}
 					animate={{ opacity: 1 }}
 					transition={{ delay: 0.9 }}
 					className="mt-6 text-sm text-white/70"
 				>
-					✓ Sem cartão de crédito • ✓ Configuração em 5 minutos • ✓ Cancele quando quiser
+					A solicitação usa os dados informados no seu perfil e pode exigir revisão da plataforma.
 				</motion.p>
 			</div>
 
-			{/* Decorative Icon */}
 			<motion.div
 				initial={{ opacity: 0, scale: 0.8 }}
 				animate={{ opacity: 1, scale: 1 }}
@@ -175,7 +163,7 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 				<div className="relative">
 					<motion.div
 						animate={{ rotate: 360 }}
-						transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+						transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
 						className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 to-transparent blur-2xl"
 					/>
 					<Building2 className="relative size-32 text-white/20" />

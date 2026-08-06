@@ -6,6 +6,15 @@ export class MockPaymentGateway {
     async createCheckout(input) {
         return { id: `mock_checkout_${input.externalId}`, url: input.completionUrl, amountInCents: 0 };
     }
+    async getCheckout(checkoutId) {
+        return {
+            id: checkoutId,
+            externalId: checkoutId.replace(/^mock_checkout_/, ''),
+            status: 'PAID',
+            amountInCents: 0,
+            paidAmountInCents: 0,
+        };
+    }
     async createPixCharge(input) {
         return {
             id: `mock_pix_${input.externalId}`,
@@ -13,6 +22,9 @@ export class MockPaymentGateway {
             qrCodeBase64: null,
             expiresAt: new Date(Date.now() + input.expiresInSeconds * 1000).toISOString(),
         };
+    }
+    async getPixCharge(chargeId) {
+        return { id: chargeId, status: 'PAID', expiresAt: null };
     }
     async sendPix(input) {
         return {

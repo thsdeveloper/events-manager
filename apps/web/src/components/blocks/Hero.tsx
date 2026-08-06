@@ -2,7 +2,6 @@
 
 import Tagline from '../ui/Tagline';
 import Headline from '@/components/ui/Headline';
-import BaseText from '@/components/ui/Text';
 import MediaImage from '@/components/shared/MediaImage';
 import ButtonGroup from '@/components/blocks/ButtonGroup';
 import { cn } from '@/lib/utils';
@@ -42,7 +41,10 @@ export default function Hero({ data }: HeroProps) {
 			{/* Animated Background Elements */}
 			<div className="absolute inset-0 -z-10 overflow-hidden">
 				<div className="absolute -top-40 -right-40 size-80 bg-purple-300/30 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
-				<div className="absolute -bottom-40 -left-40 size-80 bg-indigo-300/30 dark:bg-indigo-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+				<div
+					className="absolute -bottom-40 -left-40 size-80 bg-indigo-300/30 dark:bg-indigo-500/10 rounded-full blur-3xl animate-pulse"
+					style={{ animationDelay: '1s' }}
+				/>
 			</div>
 
 			<div
@@ -62,9 +64,7 @@ export default function Hero({ data }: HeroProps) {
 					)}
 				>
 					{tagline && (
-						<div
-							className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 backdrop-blur-sm"
-						>
+						<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 backdrop-blur-sm">
 							<Sparkles className="size-4 text-purple-600 dark:text-purple-400" />
 							<span className="text-sm font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
 								{tagline}
@@ -72,8 +72,7 @@ export default function Hero({ data }: HeroProps) {
 						</div>
 					)}
 
-					<div
-					>
+					<div>
 						<h1
 							className={cn(
 								'font-bold leading-tight tracking-tight',
@@ -100,9 +99,7 @@ export default function Hero({ data }: HeroProps) {
 					)}
 
 					{button_group && button_group.buttons.length > 0 && (
-						<div
-							className={cn(layout === 'image_center' && 'flex justify-center', 'mt-4')}
-						>
+						<div className={cn(layout === 'image_center' && 'flex justify-center', 'mt-4')}>
 							<ButtonGroup buttons={button_group.buttons} />
 						</div>
 					)}
@@ -112,7 +109,9 @@ export default function Hero({ data }: HeroProps) {
 					<div
 						className={cn(
 							'relative w-full group',
-							layout === 'image_center' ? 'md:w-3/4 xl:w-2/3 h-[400px] md:h-[500px]' : 'md:w-1/2 h-[400px] md:h-[600px]',
+							layout === 'image_center'
+								? 'md:w-3/4 xl:w-2/3 h-[400px] md:h-[500px]'
+								: 'md:w-1/2 h-[400px] md:h-[600px]',
 						)}
 					>
 						{/* Image Glow Effect */}
@@ -131,7 +130,10 @@ export default function Hero({ data }: HeroProps) {
 
 						{/* Decorative Elements */}
 						<div className="absolute -top-4 -right-4 size-24 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full blur-2xl opacity-50 animate-pulse" />
-						<div className="absolute -bottom-4 -left-4 size-32 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-full blur-2xl opacity-50 animate-pulse" style={{ animationDelay: '1.5s' }} />
+						<div
+							className="absolute -bottom-4 -left-4 size-32 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-full blur-2xl opacity-50 animate-pulse"
+							style={{ animationDelay: '1.5s' }}
+						/>
 					</div>
 				)}
 			</div>

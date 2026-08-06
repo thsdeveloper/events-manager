@@ -36,6 +36,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 	return (
 		<html lang="pt-BR" style={{ '--accent-color': accentColor } as React.CSSProperties} suppressHydrationWarning>
 			<body className="antialiased font-sans flex flex-col min-h-screen">
+				<a className="skip-link" href="#main-content">
+					Pular para o conteúdo principal
+				</a>
 				<ThemeProvider>
 					<AuthProvider>
 						<ToastConfig />

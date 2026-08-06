@@ -1,11 +1,14 @@
-import { credentialsSchema, registerSchema, updateProfileSchema } from '@events-manager/contracts';
+import { credentialsSchema, emailConfirmationSchema, registerSchema, resendEmailConfirmationSchema, updateProfileSchema, } from '@events-manager/contracts';
 import { z } from 'zod';
-import { clearSessionCookies, readAccessToken, requireUser, serializeUser, setSessionCookies } from '../application/auth/session.js';
+import { clearSessionCookies, readAccessToken, requireUser, serializeUser, setSessionCookies, } from '../application/auth/session.js';
 import { ApiError } from '../shared/errors.js';
-const compatibleRegisterSchema = registerSchema.partial({ first_name: true, last_name: true }).extend({
+const compatibleRegisterSchema = registerSchema
+    .partial({ first_name: true, last_name: true })
+    .extend({
     firstName: z.string().trim().min(1).optional(),
     lastName: z.string().trim().min(1).optional(),
-}).superRefine((value, context) => {
+})
+    .superRefine((value, context) => {
     if (!value.first_name && !value.firstName)
         context.addIssue({ code: 'custom', path: ['first_name'], message: 'Nome obrigatório' });
     if (!value.last_name && !value.lastName)
@@ -20,19 +23,74 @@ export async function authRoutes(app, options) {
         const { data, error } = await clients.public.auth.signUp({
             email: input.email,
             password: input.password,
-            options: { data: { first_name: firstName, last_name: lastName } },
+            options: {
+                data: { first_name: firstName, last_name: lastName },
+                emailRedirectTo: `${env.WEB_URL}/confirmar-email`,
+            },
         });
         if (error)
             throw new ApiError(error.message, error.status ?? 400, 'REGISTRATION_ERROR');
         if (!data.user)
             throw new ApiError('Não foi possível criar o usuário.', 500, 'REGISTRATION_ERROR');
-        if (data.session)
+        if (data.session) {
             setSessionCookies(reply, env, data.session);
-        return reply.code(201).send({ success: true, user: await serializeUser(clients, data.user) });
+            return reply.code(201).send({
+                success: true,
+                confirmationRequired: false,
+                user: await serializeUser(clients, data.user),
+                redirect: '/perfil',
+            });
+        }
+        return reply.code(201).send({
+            success: true,
+            confirmationRequired: true,
+            email: input.email,
+            message: 'Enviamos um código de confirmação para o seu e-mail.',
+        });
+    });
+    app.post('/api/auth/register/confirm', async (request, reply) => {
+        const input = emailConfirmationSchema.parse(request.body);
+        const { data, error } = await clients.public.auth.verifyOtp({
+            email: input.email,
+            token: input.token,
+            type: 'email',
+        });
+        if (error || !data.session || !data.user) {
+            throw new ApiError('Código inválido ou expirado.', 400, 'INVALID_EMAIL_CONFIRMATION_CODE');
+        }
+        setSessionCookies(reply, env, data.session);
+        const user = await serializeUser(clients, data.user);
+        const isSuperAdmin = user.role === 'super_admin';
+        const isOrganizer = user.role === 'organizer' || user.role === 'admin' || user.organizer?.status === 'active';
+        return {
+            success: true,
+            user,
+            isOrganizer,
+            isSuperAdmin,
+            redirect: isSuperAdmin ? '/super-admin' : isOrganizer ? '/admin' : '/perfil',
+        };
+    });
+    app.post('/api/auth/register/resend', async (request) => {
+        const input = resendEmailConfirmationSchema.parse(request.body);
+        const { error } = await clients.public.auth.resend({
+            type: 'signup',
+            email: input.email,
+            options: { emailRedirectTo: `${env.WEB_URL}/confirmar-email` },
+        });
+        if (error) {
+            const isRateLimited = error.status === 429 || error.code === 'over_email_send_rate_limit';
+            throw new ApiError(isRateLimited
+                ? 'Aguarde um minuto antes de solicitar outro código.'
+                : 'Não foi possível reenviar o código de confirmação.', isRateLimited ? 429 : 400, isRateLimited ? 'EMAIL_CONFIRMATION_RATE_LIMIT' : 'EMAIL_CONFIRMATION_RESEND_ERROR');
+        }
+        return { success: true, message: 'Enviamos um novo código de confirmação para o seu e-mail.' };
     });
     app.post('/api/auth/login', async (request, reply) => {
         const input = credentialsSchema.parse(request.body);
         const { data, error } = await clients.public.auth.signInWithPassword(input);
+        if (error?.code === 'email_not_confirmed') {
+            throw new ApiError('Confirme seu e-mail antes de entrar.', 403, 'EMAIL_NOT_CONFIRMED');
+        }
         if (error || !data.session || !data.user)
             throw new ApiError('E-mail ou senha inválidos.', 401, 'INVALID_CREDENTIALS');
         setSessionCookies(reply, env, data.session);
@@ -89,10 +147,6 @@ export async function authRoutes(app, options) {
         await clients.public.auth.resetPasswordForEmail(email, { redirectTo: `${env.WEB_URL}/redefinir-senha` });
         return { success: true, message: 'Se o e-mail estiver cadastrado, as instruções serão enviadas.' };
     });
-    app.get('/api/auth/token', async (request) => {
-        await requireUser(request, clients);
-        return { authenticated: true, access_token: 'cookie-session' };
-    });
     app.post('/api/auth/password/reset', async (request) => {
         const input = z.object({ access_token: z.string(), password: z.string().min(8) }).parse(request.body);
         const client = clients.forAccessToken(input.access_token);
@@ -110,7 +164,10 @@ export async function authRoutes(app, options) {
         if (input.last_name)
             metadata.last_name = input.last_name;
         if (input.email) {
-            const { error } = await clients.admin.auth.admin.updateUserById(auth.user.id, { email: input.email, user_metadata: metadata });
+            const { error } = await clients.admin.auth.admin.updateUserById(auth.user.id, {
+                email: input.email,
+                user_metadata: metadata,
+            });
             if (error)
                 throw error;
         }
@@ -120,7 +177,12 @@ export async function authRoutes(app, options) {
                 throw error;
         }
         const profileUpdate = { ...input, email: input.email ?? auth.user.email };
-        const { data, error } = await clients.admin.from('profiles').update(profileUpdate).eq('id', auth.user.id).select().single();
+        const { data, error } = await clients.admin
+            .from('profiles')
+            .update(profileUpdate)
+            .eq('id', auth.user.id)
+            .select()
+            .single();
         if (error)
             throw error;
         return { success: true, user: data };

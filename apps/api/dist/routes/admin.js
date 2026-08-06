@@ -1,6 +1,8 @@
-import { ticketInputSchema } from '@events-manager/contracts';
+import { ticketInputSchema, ticketPatchSchema } from '@events-manager/contracts';
 import { z } from 'zod';
 import { getOwnedRegistration, requireOrganizer } from '../application/auth/organizer-context.js';
+import { GetOrganizerDashboard } from '../application/dashboard/get-organizer-dashboard.js';
+import { SupabaseOrganizerDashboardRepository } from '../infrastructure/supabase/organizer-dashboard-repository.js';
 import { ApiError } from '../shared/errors.js';
 const registrationSelect = `
   *,
@@ -26,6 +28,11 @@ async function getPlatformFeePercentage(clients) {
 }
 export async function adminRoutes(app, options) {
     const { clients } = options;
+    const getOrganizerDashboard = new GetOrganizerDashboard(new SupabaseOrganizerDashboardRepository(clients.admin));
+    app.get('/api/admin/dashboard', async (request) => {
+        const context = await requireOrganizer(request, clients);
+        return getOrganizerDashboard.execute(context.organizer.id);
+    });
     app.get('/api/admin/event-configurations', async (request) => {
         await requireOrganizer(request, clients);
         const { data, error } = await clients.admin.from('event_configurations').select('*').eq('id', 1).single();
@@ -46,13 +53,15 @@ export async function adminRoutes(app, options) {
     });
     app.get('/api/admin/ingressos', async (request) => {
         const context = await requireOrganizer(request, clients);
-        const query = z.object({
+        const query = z
+            .object({
             page: z.coerce.number().int().positive().default(1),
             search: z.string().default(''),
             eventIds: z.string().optional(),
             status: z.string().optional(),
-        }).parse(request.query);
-        const eventIds = query.eventIds?.split(',').filter(Boolean) ?? await organizerEventIds(clients, context.organizer.id);
+        })
+            .parse(request.query);
+        const eventIds = query.eventIds?.split(',').filter(Boolean) ?? (await organizerEventIds(clients, context.organizer.id));
         if (!eventIds.length)
             return { data: [], meta: { total: 0, page: query.page, pageCount: 0, perPage: 20 } };
         const from = (query.page - 1) * 20;
@@ -69,7 +78,10 @@ export async function adminRoutes(app, options) {
         const { data, count, error } = await builder;
         if (error)
             throw error;
-        return { data: data ?? [], meta: { total: count ?? 0, page: query.page, pageCount: Math.ceil((count ?? 0) / 20), perPage: 20 } };
+        return {
+            data: data ?? [],
+            meta: { total: count ?? 0, page: query.page, pageCount: Math.ceil((count ?? 0) / 20), perPage: 20 },
+        };
     });
     app.post('/api/admin/ingressos', async (request, reply) => {
         const context = await requireOrganizer(request, clients);
@@ -92,10 +104,16 @@ export async function adminRoutes(app, options) {
     app.patch('/api/admin/ingressos/:id', async (request) => {
         const context = await requireOrganizer(request, clients);
         const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-        const input = ticketInputSchema.partial().parse(request.body);
-        const { data: current } = await clients.admin.from('event_tickets').select('*,event_id:events!inner(organizer_id)').eq('id', id).maybeSingle();
-        if (!current || current.event_id.organizer_id !== context.organizer.id)
+        const input = ticketPatchSchema.parse(request.body);
+        const { data: current } = await clients.admin
+            .from('event_tickets')
+            .select('*,event_id:events!inner(id,organizer_id)')
+            .eq('id', id)
+            .maybeSingle();
+        const eventRelation = current?.event_id;
+        if (!current || !eventRelation || eventRelation.organizer_id !== context.organizer.id)
             throw new ApiError('Ingresso não encontrado.', 404, 'TICKET_NOT_FOUND');
+        ticketInputSchema.parse({ ...current, ...input, event_id: eventRelation.id });
         const price = input.price ?? Number(current.price);
         const feeType = input.service_fee_type ?? current.service_fee_type;
         const platformFeePercentage = await getPlatformFeePercentage(clients);
@@ -117,8 +135,13 @@ export async function adminRoutes(app, options) {
     app.delete('/api/admin/ingressos/:id', async (request) => {
         const context = await requireOrganizer(request, clients);
         const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-        const { data: current } = await clients.admin.from('event_tickets').select('event_id:events!inner(organizer_id)').eq('id', id).maybeSingle();
-        if (!current || current.event_id.organizer_id !== context.organizer.id)
+        const { data: current } = await clients.admin
+            .from('event_tickets')
+            .select('event_id:events!inner(id,organizer_id)')
+            .eq('id', id)
+            .maybeSingle();
+        const eventRelation = current?.event_id;
+        if (!current || eventRelation?.organizer_id !== context.organizer.id)
             throw new ApiError('Ingresso não encontrado.', 404, 'TICKET_NOT_FOUND');
         const { error } = await clients.admin.from('event_tickets').delete().eq('id', id);
         if (error)
@@ -128,13 +151,25 @@ export async function adminRoutes(app, options) {
     app.post('/api/admin/ingressos/:id/duplicate', async (request, reply) => {
         const context = await requireOrganizer(request, clients);
         const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-        const { data: current } = await clients.admin.from('event_tickets').select('*,event_id:events!inner(organizer_id)').eq('id', id).maybeSingle();
-        if (!current || current.event_id.organizer_id !== context.organizer.id)
+        const { data: current } = await clients.admin
+            .from('event_tickets')
+            .select('*,event_id:events!inner(id,organizer_id)')
+            .eq('id', id)
+            .maybeSingle();
+        const ownedEvent = current?.event_id;
+        if (!current || !ownedEvent || ownedEvent.organizer_id !== context.organizer.id)
             throw new ApiError('Ingresso não encontrado.', 404, 'TICKET_NOT_FOUND');
         const { event_id: eventRelation, id: ignoredId, date_created: ignoredCreated, date_updated: ignoredUpdated, provider_product_id: ignoredProduct, ...copy } = current;
         const { data, error } = await clients.admin
             .from('event_tickets')
-            .insert({ ...copy, provider_product_id: null, event_id: current.event_id.id ?? current.event_id, title: `${current.title} - Cópia`, status: 'inactive', quantity_sold: 0 })
+            .insert({
+            ...copy,
+            provider_product_id: null,
+            event_id: ownedEvent.id,
+            title: `${current.title} - Cópia`,
+            status: 'inactive',
+            quantity_sold: 0,
+        })
             .select('*')
             .single();
         if (error)
@@ -146,7 +181,9 @@ export async function adminRoutes(app, options) {
         const eventIds = await organizerEventIds(clients, context.organizer.id);
         const [events, tickets] = await Promise.all([
             clients.admin.from('events').select('id,title').in('id', eventIds).order('date_created', { ascending: false }),
-            eventIds.length ? clients.admin.from('event_tickets').select('id,title').in('event_id', eventIds).order('title') : Promise.resolve({ data: [], error: null }),
+            eventIds.length
+                ? clients.admin.from('event_tickets').select('id,title').in('event_id', eventIds).order('title')
+                : Promise.resolve({ data: [], error: null }),
         ]);
         if (events.error)
             throw events.error;
@@ -156,18 +193,33 @@ export async function adminRoutes(app, options) {
     });
     app.get('/api/admin/participantes', async (request) => {
         const context = await requireOrganizer(request, clients);
-        const query = z.object({
-            page: z.coerce.number().int().positive().default(1), limit: z.coerce.number().int().min(1).max(100).default(25),
-            search: z.string().default(''), eventIds: z.string().optional(), ticketTypeIds: z.string().optional(),
-            registrationStatus: z.string().optional(), paymentStatus: z.string().optional(), hasCheckedIn: z.enum(['true', 'false']).optional(),
-            sortField: z.string().default('date_created'), sortDirection: z.enum(['asc', 'desc']).default('desc'),
-        }).parse(request.query);
+        const query = z
+            .object({
+            page: z.coerce.number().int().positive().default(1),
+            limit: z.coerce.number().int().min(1).max(100).default(25),
+            search: z.string().default(''),
+            eventIds: z.string().optional(),
+            ticketTypeIds: z.string().optional(),
+            registrationStatus: z.string().optional(),
+            paymentStatus: z.string().optional(),
+            hasCheckedIn: z.enum(['true', 'false']).optional(),
+            sortField: z.string().default('date_created'),
+            sortDirection: z.enum(['asc', 'desc']).default('desc'),
+        })
+            .parse(request.query);
         const ownedEventIds = await organizerEventIds(clients, context.organizer.id);
         const requestedIds = query.eventIds?.split(',').filter((id) => ownedEventIds.includes(id));
         const eventIds = requestedIds?.length ? requestedIds : ownedEventIds;
         if (!eventIds.length)
-            return { data: [], meta: { total: 0, page: query.page, limit: query.limit, pageCount: 0 }, metrics: { total: 0, checkedIn: 0, pending: 0, checkInRate: 0 } };
-        let builder = clients.admin.from('event_registrations').select(registrationSelect, { count: 'exact' }).in('event_id', eventIds);
+            return {
+                data: [],
+                meta: { total: 0, page: query.page, limit: query.limit, pageCount: 0 },
+                metrics: { total: 0, checkedIn: 0, pending: 0, checkInRate: 0 },
+            };
+        let builder = clients.admin
+            .from('event_registrations')
+            .select(registrationSelect, { count: 'exact' })
+            .in('event_id', eventIds);
         if (query.search)
             builder = builder.or(`participant_name.ilike.%${query.search}%,participant_email.ilike.%${query.search}%,ticket_code.ilike.%${query.search}%`);
         if (query.ticketTypeIds)
@@ -181,16 +233,30 @@ export async function adminRoutes(app, options) {
         if (query.hasCheckedIn === 'false')
             builder = builder.is('check_in_date', null);
         const from = (query.page - 1) * query.limit;
-        const result = await builder.order(query.sortField, { ascending: query.sortDirection === 'asc' }).range(from, from + query.limit - 1);
+        const result = await builder
+            .order(query.sortField, { ascending: query.sortDirection === 'asc' })
+            .range(from, from + query.limit - 1);
         if (result.error)
             throw result.error;
-        const { data: metricRows, error: metricsError } = await clients.admin.from('event_registrations').select('status,check_in_date').in('event_id', eventIds);
+        const { data: metricRows, error: metricsError } = await clients.admin
+            .from('event_registrations')
+            .select('status,check_in_date')
+            .in('event_id', eventIds);
         if (metricsError)
             throw metricsError;
         const total = result.count ?? 0;
         const checkedIn = metricRows?.filter((row) => row.check_in_date).length ?? 0;
         const pending = metricRows?.filter((row) => row.status === 'pending').length ?? 0;
-        return { data: result.data ?? [], meta: { total, page: query.page, limit: query.limit, pageCount: Math.ceil(total / query.limit) }, metrics: { total: metricRows?.length ?? 0, checkedIn, pending, checkInRate: metricRows?.length ? (checkedIn / metricRows.length) * 100 : 0 } };
+        return {
+            data: result.data ?? [],
+            meta: { total, page: query.page, limit: query.limit, pageCount: Math.ceil(total / query.limit) },
+            metrics: {
+                total: metricRows?.length ?? 0,
+                checkedIn,
+                pending,
+                checkInRate: metricRows?.length ? (checkedIn / metricRows.length) * 100 : 0,
+            },
+        };
     });
     app.get('/api/admin/participantes/:id', async (request) => {
         const context = await requireOrganizer(request, clients);
@@ -201,11 +267,21 @@ export async function adminRoutes(app, options) {
         const context = await requireOrganizer(request, clients);
         const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
         await getOwnedRegistration(clients, context.organizer.id, id);
-        const input = z.object({
-            participant_name: z.string().trim().min(1), participant_email: z.string().email(), participant_phone: z.string().nullable().optional(),
-            participant_document: z.string().nullable().optional(), notes: z.string().nullable().optional(),
-        }).parse(request.body);
-        const { data, error } = await clients.admin.from('event_registrations').update(input).eq('id', id).select('*').single();
+        const input = z
+            .object({
+            participant_name: z.string().trim().min(1),
+            participant_email: z.string().email(),
+            participant_phone: z.string().nullable().optional(),
+            participant_document: z.string().nullable().optional(),
+            notes: z.string().nullable().optional(),
+        })
+            .parse(request.body);
+        const { data, error } = await clients.admin
+            .from('event_registrations')
+            .update(input)
+            .eq('id', id)
+            .select('*')
+            .single();
         if (error)
             throw error;
         return { success: true, data };
@@ -214,7 +290,12 @@ export async function adminRoutes(app, options) {
         const context = await requireOrganizer(request, clients);
         const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
         await getOwnedRegistration(clients, context.organizer.id, id);
-        const { data, error } = await clients.admin.from('event_registrations').update({ status: 'checked_in', check_in_date: new Date().toISOString() }).eq('id', id).select('*').single();
+        const { data, error } = await clients.admin
+            .from('event_registrations')
+            .update({ status: 'checked_in', check_in_date: new Date().toISOString() })
+            .eq('id', id)
+            .select('*')
+            .single();
         if (error)
             throw error;
         return { success: true, data };
@@ -223,7 +304,12 @@ export async function adminRoutes(app, options) {
         const context = await requireOrganizer(request, clients);
         const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
         await getOwnedRegistration(clients, context.organizer.id, id);
-        const { data, error } = await clients.admin.from('event_registrations').update({ status: 'confirmed', check_in_date: null }).eq('id', id).select('*').single();
+        const { data, error } = await clients.admin
+            .from('event_registrations')
+            .update({ status: 'confirmed', check_in_date: null })
+            .eq('id', id)
+            .select('*')
+            .single();
         if (error)
             throw error;
         return { success: true, data };
@@ -233,7 +319,12 @@ export async function adminRoutes(app, options) {
         const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
         await getOwnedRegistration(clients, context.organizer.id, id);
         const { reason } = z.object({ reason: z.string().trim().min(3) }).parse(request.body);
-        const { data, error } = await clients.admin.from('event_registrations').update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_reason: reason }).eq('id', id).select('*').single();
+        const { data, error } = await clients.admin
+            .from('event_registrations')
+            .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_reason: reason })
+            .eq('id', id)
+            .select('*')
+            .single();
         if (error)
             throw error;
         return { success: true, data };
@@ -242,13 +333,34 @@ export async function adminRoutes(app, options) {
         const context = await requireOrganizer(request, clients);
         const eventIds = await organizerEventIds(clients, context.organizer.id);
         const { data, error } = eventIds.length
-            ? await clients.admin.from('event_registrations').select(registrationSelect).in('event_id', eventIds).order('date_created', { ascending: false })
+            ? await clients.admin
+                .from('event_registrations')
+                .select(registrationSelect)
+                .in('event_id', eventIds)
+                .order('date_created', { ascending: false })
             : { data: [], error: null };
         if (error)
             throw error;
         const escape = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
-        const csv = ['Nome,Email,Telefone,Evento,Ingresso,Status,Pagamento,Check-in', ...(data ?? []).map((row) => [row.participant_name, row.participant_email, row.participant_phone, row.event_id?.title, row.ticket_type_id?.title, row.status, row.payment_status, row.check_in_date].map(escape).join(','))].join('\n');
-        return reply.type('text/csv; charset=utf-8').header('content-disposition', 'attachment; filename="participantes.csv"').send(`\uFEFF${csv}`);
+        const csv = [
+            'Nome,Email,Telefone,Evento,Ingresso,Status,Pagamento,Check-in',
+            ...(data ?? []).map((row) => [
+                row.participant_name,
+                row.participant_email,
+                row.participant_phone,
+                row.event_id?.title,
+                row.ticket_type_id?.title,
+                row.status,
+                row.payment_status,
+                row.check_in_date,
+            ]
+                .map(escape)
+                .join(',')),
+        ].join('\n');
+        return reply
+            .type('text/csv; charset=utf-8')
+            .header('content-disposition', 'attachment; filename="participantes.csv"')
+            .send(`\uFEFF${csv}`);
     });
 }
 //# sourceMappingURL=admin.js.map

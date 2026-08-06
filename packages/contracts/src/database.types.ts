@@ -647,6 +647,7 @@ export type Database = {
           event_id: string
           id: string
           installment_plan_status: string | null
+          inventory_reserved: boolean
           is_installment_payment: boolean
           notes: string | null
           participant_document: string | null
@@ -663,6 +664,7 @@ export type Database = {
           provider_refund_id: string | null
           provider_transaction_id: string | null
           quantity: number
+          reconciliation_checked_at: string | null
           service_fee: number | null
           sort: number | null
           status: string
@@ -684,6 +686,7 @@ export type Database = {
           event_id: string
           id?: string
           installment_plan_status?: string | null
+          inventory_reserved?: boolean
           is_installment_payment?: boolean
           notes?: string | null
           participant_document?: string | null
@@ -700,6 +703,7 @@ export type Database = {
           provider_refund_id?: string | null
           provider_transaction_id?: string | null
           quantity?: number
+          reconciliation_checked_at?: string | null
           service_fee?: number | null
           sort?: number | null
           status?: string
@@ -721,6 +725,7 @@ export type Database = {
           event_id?: string
           id?: string
           installment_plan_status?: string | null
+          inventory_reserved?: boolean
           is_installment_payment?: boolean
           notes?: string | null
           participant_document?: string | null
@@ -737,6 +742,7 @@ export type Database = {
           provider_refund_id?: string | null
           provider_transaction_id?: string | null
           quantity?: number
+          reconciliation_checked_at?: string | null
           service_fee?: number | null
           sort?: number | null
           status?: string
@@ -1838,6 +1844,143 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_organizer_profile: {
+        Args: {
+          target_description: string | null
+          target_document: string | null
+          target_email: string
+          target_logo: string | null
+          target_name: string
+          target_phone: string | null
+          target_status: string
+          target_user: string
+          target_website: string | null
+        }
+        Returns: Json
+      }
+      create_organizer_payout: {
+        Args: {
+          target_actor: string
+          target_amount: number
+          target_id: string
+          target_organizer: string
+          target_provider: string
+          target_provider_fee: number
+        }
+        Returns: Json
+      }
+      get_organizer_available_balance: {
+        Args: { target_organizer: string }
+        Returns: number
+      }
+      claim_email_delivery: {
+        Args: {
+          target_idempotency_key: string
+          target_payload: Json
+          target_recipient: string
+          target_template: string
+        }
+        Returns: Json
+      }
+      cancel_registration_by_organizer: {
+        Args: {
+          target_organizer: string
+          target_reason: string
+          target_registration: string
+        }
+        Returns: Json
+      }
+      consume_api_rate_limit: {
+        Args: {
+          target_key: string
+          target_limit: number
+          target_window_seconds: number
+        }
+        Returns: boolean
+      }
+      cancel_reconciled_installment: {
+        Args: {
+          target_charge_id: string
+          target_installment_id: string
+          target_provider_status: string
+          target_registration_id: string
+        }
+        Returns: undefined
+      }
+      cancel_reconciled_checkout: {
+        Args: {
+          target_checkout_id: string
+          target_provider_status: string
+          target_registrations: string[]
+        }
+        Returns: undefined
+      }
+      claim_pending_checkout_reconciliations: {
+        Args: { target_batch_size?: number; target_before: string }
+        Returns: {
+          checkout_id: string
+          registration_ids: string[]
+        }[]
+      }
+      claim_pending_installment_reconciliations: {
+        Args: { target_batch_size?: number; target_before: string }
+        Returns: {
+          charge_id: string
+          installment_id: string
+          registration_id: string
+        }[]
+      }
+      create_validated_form_submission: {
+        Args: {
+          target_form: string
+          target_submitted_by: string | null
+          target_values: Json
+        }
+        Returns: string
+      }
+      get_organizer_dashboard: {
+        Args: { target_organizer: string }
+        Returns: Json
+      }
+      list_super_admin_transactions: {
+        Args: {
+          target_limit: number
+          target_page: number
+          target_search?: string
+          target_status?: string | null
+        }
+        Returns: Json
+      }
+      release_registration_inventory: {
+        Args: { target_registrations: string[] }
+        Returns: undefined
+      }
+      reserve_registration_inventory: {
+        Args: { target_registrations: string[] }
+        Returns: undefined
+      }
+      settle_reconciled_checkout: {
+        Args: { target_checkout_id: string; target_registrations: string[] }
+        Returns: undefined
+      }
+      settle_reconciled_installment: {
+        Args: {
+          target_charge_id: string
+          target_installment_id: string
+          target_registration_id: string
+        }
+        Returns: undefined
+      }
+      settle_installment_webhook: {
+        Args: {
+          target_charge_id: string
+          target_installment_id: string
+          target_metadata: Json
+          target_provider_fee: number
+          target_registration_id: string
+        }
+        Returns: undefined
+      }
       increment_ticket_sales: {
         Args: { sold_amount: number; target_ticket: string }
         Returns: {
@@ -1892,12 +2035,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1919,13 +2062,12 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1944,13 +2086,12 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1969,13 +2110,12 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1988,11 +2128,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2009,4 +2149,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

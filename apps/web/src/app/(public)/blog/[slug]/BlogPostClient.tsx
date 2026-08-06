@@ -33,9 +33,7 @@ export default function BlogPostClient({
 			<Container className="py-12">
 				{post.image && (
 					<div className="mb-8">
-						<div
-							className="relative w-full h-[400px] overflow-hidden rounded-lg"
-						>
+						<div className="relative w-full h-[400px] overflow-hidden rounded-lg">
 							<MediaImage
 								uuid={post.image as string}
 								alt={post.title || 'post header image'}
@@ -46,25 +44,17 @@ export default function BlogPostClient({
 					</div>
 				)}
 
-				<Headline
-					as="h2"
-					headline={post.title}
-					className="!text-accent mb-4"
-				/>
+				<Headline as="h2" headline={post.title} className="!text-accent mb-4" />
 				<Separator className="mb-8" />
 
 				<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,_2fr)_400px] gap-12">
-					<main className="text-left">
-						<BaseText
-							content={post.content || ''}
-						/>
-					</main>
+					<article className="text-left">
+						<BaseText content={post.content || ''} />
+					</article>
 
 					<aside className="space-y-6 p-6 rounded-lg max-w-[496px] h-fit bg-background-muted">
 						{author && (
-							<div
-								className="flex items-center space-x-4"
-							>
+							<div className="flex items-center space-x-4">
 								{author.avatar && (
 									<MediaImage
 										uuid={typeof author.avatar === 'string' ? author.avatar : author.avatar.id}
@@ -78,12 +68,7 @@ export default function BlogPostClient({
 							</div>
 						)}
 
-						{post.description && (
-							<p
-							>
-								{post.description}
-							</p>
-						)}
+						{post.description && <p>{post.description}</p>}
 
 						<div className="flex justify-start">
 							<ShareDialog postUrl={postUrl} postTitle={post.title} />

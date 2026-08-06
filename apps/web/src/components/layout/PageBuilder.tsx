@@ -12,19 +12,19 @@ const PageBuilder = ({ sections }: PageBuilderProps) => {
 	);
 
 	return (
-		<main>
+		<div>
 			{validBlocks.map((block) => (
 				<div key={block.id} data-background={block.background}>
-						<BaseBlock
-							block={{
-								collection: block.collection,
-								item: block.item,
-								id: block.id,
-							}}
-						/>
+					<BaseBlock
+						block={{
+							collection: block.collection,
+							item: block.item,
+							id: block.id,
+						}}
+					/>
 				</div>
 			))}
-		</main>
+		</div>
 	);
 };
 

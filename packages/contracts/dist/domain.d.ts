@@ -359,6 +359,10 @@ export interface EventRegistration {
     installment_plan_status?: 'active' | 'completed' | 'defaulted' | null;
     /** @description Razão do bloqueio (ex: overdue_installments) */
     blocked_reason?: string | null;
+    /** @description Indica que a quantidade desta inscrição já está contabilizada no estoque. */
+    inventory_reserved?: boolean;
+    /** @description Última consulta do estado do checkout no provedor. */
+    reconciliation_checked_at?: string | null;
     /** @description Parcelas de pagamento relacionadas */
     installments?: PaymentInstallment[] | string[];
 }
@@ -560,10 +564,6 @@ export interface Globals {
     favicon?: MediaFile | string | null;
     /** @description Main logo shown on the site (for light mode). */
     logo?: MediaFile | string | null;
-    /** @description Secret OpenAI API key. Don't share with anyone outside your team. */
-    openai_api_key?: string | null;
-    /** @description The public URL for this API instance. Used in Flows. */
-    api_url?: string | null;
     /** @description Main logo shown on the site (for dark mode). */
     logo_dark_mode?: MediaFile | string | null;
     /** @description Accent color for the website (used on buttons, links, etc). */

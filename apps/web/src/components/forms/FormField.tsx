@@ -83,7 +83,7 @@ const Field = ({ field, form }: FieldProps) => {
 									</TooltipProvider>
 								)}
 							</div>
-							{field.required && <span className="text-sm text-gray-400">*Required</span>}
+							{field.required && <span className="text-sm text-gray-500">*Obrigatório</span>}
 						</FormLabel>
 						<FormControl>{fieldElement}</FormControl>
 						<FormMessage className="text-red-500 italic text-sm" />
