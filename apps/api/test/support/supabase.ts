@@ -49,17 +49,27 @@ export function createSupabaseClientsStub(options: SupabaseStubOptions = {}) {
 		user ? { data: { user }, error: null } : { data: { user: null }, error: { message: 'invalid token' } },
 	);
 
+	const storageBucket = {
+		upload: vi.fn(async () => ({ data: null, error: null })),
+		remove: vi.fn(async () => ({ data: null, error: null })),
+		getPublicUrl: vi.fn((path: string) => ({ data: { publicUrl: `https://storage.test/media/${path}` } })),
+	};
+	const storage = { from: vi.fn(() => storageBucket) };
+
 	const admin = {
 		from,
 		rpc: vi.fn(async () => ({ data: null, error: null, ...rpc })),
 		auth: { getUser, admin: { signOut: vi.fn(), updateUserById: vi.fn() } },
+		storage,
 	};
-	const publicClient = { from, auth: {} };
+	const publicClient = { from, auth: {}, storage };
 	const forAccessToken = vi.fn(() => ({ from, auth: { getUser } }));
 
 	return {
 		clients: { admin, public: publicClient, forAccessToken } as unknown as SupabaseClients,
 		from,
 		getUser,
+		storage,
+		storageBucket,
 	};
 }

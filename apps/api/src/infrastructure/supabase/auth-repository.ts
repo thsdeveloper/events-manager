@@ -9,6 +9,7 @@ import type {
 } from '../../application/auth/auth-service.js';
 import { AuthProviderError, AuthService } from '../../application/auth/auth-service.js';
 import type { SupabaseClients } from './clients.js';
+import { SupabaseMediaRepository } from './media-repository.js';
 
 function toIdentity(user: { email?: string; id: string; user_metadata?: Record<string, unknown> }): AuthIdentity {
 	return { id: user.id, email: user.email, userMetadata: user.user_metadata };
@@ -100,6 +101,8 @@ export class SupabaseAuthRepository implements AuthRepository {
 			location: profile?.location ?? null,
 			city_id: profile?.city_id ?? null,
 			city: profile?.city ?? null,
+			title: profile?.title ?? null,
+			description: profile?.description ?? null,
 			role: profile?.role ?? 'attendee',
 			status: profile?.status ?? 'active',
 			organizer: (organizer as SerializedUser['organizer']) ?? null,
@@ -269,6 +272,12 @@ export class SupabaseAuthRepository implements AuthRepository {
 		return data as unknown as OrganizerAuthorization;
 	}
 
+	async findAvatarId(userId: string) {
+		const { data, error } = await this.clients.admin.from('profiles').select('avatar').eq('id', userId).maybeSingle();
+		if (error) throw error;
+		return (data?.avatar as string | null | undefined) ?? null;
+	}
+
 	async findSuperAdminProfile(userId: string) {
 		const { data, error } = await this.clients.admin.from('profiles').select('*').eq('id', userId).maybeSingle();
 		if (error) throw error;
@@ -299,5 +308,5 @@ export class SupabaseAuthRepository implements AuthRepository {
 }
 
 export function createSupabaseAuthService(clients: SupabaseClients) {
-	return new AuthService(new SupabaseAuthRepository(clients));
+	return new AuthService(new SupabaseAuthRepository(clients), new SupabaseMediaRepository(clients));
 }

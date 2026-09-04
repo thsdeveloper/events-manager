@@ -53,8 +53,17 @@ export class AuthProviderError extends Error {
 	}
 }
 
+/**
+ * Remove um arquivo que o próprio usuário enviou. Devolve `false` sem tocar em
+ * nada quando o arquivo não existe ou pertence a outra pessoa.
+ */
+export interface AvatarStorage {
+	removeOwnedFile(fileId: string, ownerId: string): Promise<boolean>;
+}
+
 export interface AuthRepository {
 	assertOrganizerOwnsEvent(organizerId: string, eventId: string): Promise<boolean>;
+	findAvatarId(userId: string): Promise<string | null>;
 	confirmEmail(email: string, token: string): Promise<AuthResult>;
 	createOrganizer(userId: string, input: { email: string; name: string }): Promise<OrganizerAuthorization>;
 	findActiveOrganizer(userId: string, preferredId?: string): Promise<OrganizerAuthorization | null>;
@@ -84,7 +93,10 @@ export interface AuthRepository {
 }
 
 export class AuthService {
-	constructor(private readonly repository: AuthRepository) {}
+	constructor(
+		private readonly repository: AuthRepository,
+		private readonly avatarStorage?: AvatarStorage,
+	) {}
 
 	async authenticate(accessToken: string | null) {
 		if (!accessToken) throw new ApiError('Você precisa estar autenticado.', 401, 'UNAUTHORIZED');
@@ -181,8 +193,22 @@ export class AuthService {
 		}
 	}
 
-	updateProfile(user: AuthIdentity, input: UserProfileInput) {
-		return this.repository.updateProfile(user, input);
+	/**
+	 * Trocar ou limpar a foto apaga a anterior do storage: cada avatar é usado
+	 * só pelo perfil, então mantê-lo seria acumular arquivos órfãos a cada troca.
+	 * A limpeza acontece depois de o perfil estar salvo e nunca desfaz a troca:
+	 * uma falha ao apagar deixa um arquivo sobrando, que é preferível a
+	 * devolver erro para uma foto que já foi atualizada.
+	 */
+	async updateProfile(user: AuthIdentity, input: UserProfileInput) {
+		const previousAvatar = input.avatar === undefined ? null : await this.repository.findAvatarId(user.id);
+		const profile = await this.repository.updateProfile(user, input);
+
+		if (previousAvatar && previousAvatar !== input.avatar) {
+			await this.avatarStorage?.removeOwnedFile(previousAvatar, user.id).catch(() => undefined);
+		}
+
+		return profile;
 	}
 
 	updatePassword(userId: string, password: string) {

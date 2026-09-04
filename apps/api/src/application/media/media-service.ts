@@ -17,6 +17,8 @@ export interface StoredMedia {
 
 export interface MediaRepository {
 	findPublicUrl(id: string): Promise<string | null>;
+	/** Apaga registro e objeto de um arquivo enviado pelo próprio usuário; `false` se não for dele. */
+	removeOwnedFile(id: string, ownerId: string): Promise<boolean>;
 	store(upload: MediaUpload): Promise<StoredMedia>;
 }
 

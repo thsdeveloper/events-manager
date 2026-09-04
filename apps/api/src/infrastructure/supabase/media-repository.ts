@@ -43,6 +43,30 @@ export class SupabaseMediaRepository implements MediaRepository {
 		return { file: data, url: publicUrl.publicUrl };
 	}
 
+	/**
+	 * A propriedade é checada na própria consulta (`uploaded_by`), então um id de
+	 * arquivo alheio não apaga nada. O registro sai antes do objeto: as chaves
+	 * estrangeiras ficam nulas na hora, e se a remoção no bucket falhar sobra um
+	 * objeto sem referência, e não uma referência para um objeto que não existe.
+	 */
+	async removeOwnedFile(id: string, ownerId: string) {
+		const { data, error } = await this.clients.admin
+			.from('media_files')
+			.select('bucket,path')
+			.eq('id', id)
+			.eq('uploaded_by', ownerId)
+			.maybeSingle();
+		if (error) throw error;
+		if (!data) return false;
+
+		const { error: deleteError } = await this.clients.admin.from('media_files').delete().eq('id', id);
+		if (deleteError) throw deleteError;
+
+		const { error: storageError } = await this.clients.admin.storage.from(data.bucket).remove([data.path]);
+		if (storageError) throw storageError;
+		return true;
+	}
+
 	async findPublicUrl(id: string) {
 		const { data, error } = await this.clients.admin
 			.from('media_files')
