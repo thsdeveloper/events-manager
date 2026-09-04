@@ -7,6 +7,7 @@ import type {
 	OrganizerAuthorization,
 	ProfileNotifications,
 	SerializedUser,
+	SessionTokens,
 	UserProfileInput,
 } from '../../application/auth/auth-service.js';
 import { AuthProviderError, AuthService, DocumentAlreadyInUse } from '../../application/auth/auth-service.js';
@@ -118,6 +119,8 @@ export class SupabaseAuthRepository implements AuthRepository {
 			description: profile?.description ?? null,
 			birth_date: profile?.birth_date ?? null,
 			document: profile?.document ?? null,
+			phone: profile?.phone ?? null,
+			phone_verified_at: profile?.phone_verified_at ?? null,
 			// Espelha a regra do caso de uso: CPF já informado e atividade paga.
 			document_locked: Boolean(profile?.document) && billingActivity,
 			role: profile?.role ?? 'attendee',
@@ -317,6 +320,38 @@ export class SupabaseAuthRepository implements AuthRepository {
 			user_agent: change.userAgent ?? null,
 		});
 		if (error) throw error;
+	}
+
+	/**
+	 * `auth.updateUser` só funciona com a sessão dentro do cliente, então ela é
+	 * montada a partir dos tokens dos cookies num cliente descartável. O provedor
+	 * registra o número em `phone_change` e envia o código.
+	 */
+	async requestPhoneChange(session: SessionTokens, phoneE164: string) {
+		const client = this.clients.forAccessToken(session.accessToken);
+		const { error: sessionError } = await client.auth.setSession({
+			access_token: session.accessToken,
+			refresh_token: session.refreshToken,
+		});
+		if (sessionError) throw providerError(sessionError);
+		const { error } = await client.auth.updateUser({ phone: phoneE164 });
+		if (error) throw providerError(error);
+	}
+
+	async verifyPhoneChange(phoneE164: string, token: string) {
+		const { error } = await this.clients.public.auth.verifyOtp({ phone: phoneE164, token, type: 'phone_change' });
+		if (error) throw providerError(error);
+	}
+
+	async markPhoneVerified(userId: string, phoneDigits: string) {
+		const { data, error } = await this.clients.admin
+			.from('profiles')
+			.update({ phone: phoneDigits, phone_verified_at: new Date().toISOString() })
+			.eq('id', userId)
+			.select('*,city:cities(id,state_id,name,state:states(id,uf,name))')
+			.single();
+		if (error) throw error;
+		return data;
 	}
 
 	async findAvatarId(userId: string) {

@@ -2,13 +2,22 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 
 export class ApiError extends Error {
+	/**
+	 * Details of 5xx problems are masked by default, so an unexpected failure
+	 * never leaks internals. An application error can opt in when its message was
+	 * written for the person (e.g. "SMS is not configured in this environment").
+	 */
+	readonly exposeDetail: boolean;
+
 	constructor(
 		message: string,
 		public readonly statusCode = 500,
 		public readonly code = 'INTERNAL_ERROR',
 		public readonly context?: Record<string, unknown>,
+		options: { exposeDetail?: boolean } = {},
 	) {
 		super(message);
+		this.exposeDetail = options.exposeDetail ?? false;
 	}
 }
 
@@ -69,7 +78,10 @@ function sendProblem(reply: FastifyReply, request: FastifyRequest, error: ApiErr
 			type: `https://events-manager.local/problems/${error.code.toLowerCase()}`,
 			title: error.code,
 			status: error.statusCode,
-			detail: error.statusCode >= 500 ? 'Ocorreu um erro interno. Tente novamente em alguns instantes.' : error.message,
+			detail:
+				error.statusCode >= 500 && !error.exposeDetail
+					? 'Ocorreu um erro interno. Tente novamente em alguns instantes.'
+					: error.message,
 			instance: request.url,
 			requestId,
 			...(error.context ? { context: error.context } : {}),

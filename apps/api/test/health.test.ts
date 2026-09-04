@@ -78,6 +78,26 @@ describe('API boundaries', () => {
 		expect(response.body).not.toContain('password=secret');
 	});
 
+	it('keeps the detail of a 5xx problem the application chose to expose', async () => {
+		const app = await buildApp(env);
+		app.get('/test/unavailable', async () => {
+			throw new ApiError(
+				'O envio de SMS não está configurado neste ambiente.',
+				503,
+				'SMS_PROVIDER_UNAVAILABLE',
+				undefined,
+				{
+					exposeDetail: true,
+				},
+			);
+		});
+		const response = await app.inject({ method: 'GET', url: '/test/unavailable' });
+		await app.close();
+
+		expect(response.statusCode).toBe(503);
+		expect(response.json().detail).toBe('O envio de SMS não está configurado neste ambiente.');
+	});
+
 	it('returns the retry window for throttled operations', async () => {
 		const app = await buildApp(env);
 		app.get('/test/rate-limit', async () => {

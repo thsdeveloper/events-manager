@@ -27,6 +27,8 @@ export async function buildRouteTestApp<Options extends object>(
 /**
  * Serializa um cookie de sessão para simular um usuário autenticado nas rotas.
  */
-export function sessionCookie(accessToken = 'access-token'): Record<string, string> {
-	return { cookie: `access_token=${accessToken}` };
+export function sessionCookie(accessToken = 'access-token', refreshToken?: string): Record<string, string> {
+	return {
+		cookie: refreshToken ? `access_token=${accessToken}; refresh_token=${refreshToken}` : `access_token=${accessToken}`,
+	};
 }

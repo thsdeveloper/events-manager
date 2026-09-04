@@ -91,6 +91,18 @@ describe('NavigationBar', () => {
 		expect(screen.getAllByText('Menu de Ana (organizador) (administrador)').length).toBeGreaterThan(0);
 	});
 
+	it('no longer repeats "Meus ingressos" in the header: it lives in the account menu', () => {
+		useServerAuth.mockReturnValue({
+			...baseAuth,
+			isAuthenticated: true,
+			user: { id: 'u1', email: 'ana@example.com', first_name: 'Ana', last_name: 'Silva' },
+		});
+
+		renderHeader();
+
+		expect(screen.queryByRole('link', { name: /meus ingressos/i })).not.toBeInTheDocument();
+	});
+
 	it('replaces the sign-in link with the user menu once authenticated', () => {
 		useServerAuth.mockReturnValue({
 			...baseAuth,

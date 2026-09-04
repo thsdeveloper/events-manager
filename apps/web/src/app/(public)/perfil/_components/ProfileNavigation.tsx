@@ -76,22 +76,26 @@ export function ProfileNavigation({
 						</div>
 					</div>
 
-					<div className="mt-5">
-						<div className="mb-2 flex items-center justify-between text-xs">
-							<span className="font-medium text-slate-600 dark:text-slate-300">Perfil completo</span>
-							<span className="font-semibold text-slate-900 dark:text-white">{completion}%</span>
+					{/* A full meter only says "done"; once there is nothing to fill in,
+					    the header keeps just the person and their role. */}
+					{completion < 100 && (
+						<div className="mt-5">
+							<div className="mb-2 flex items-center justify-between text-xs">
+								<span className="font-medium text-slate-600 dark:text-slate-300">Perfil completo</span>
+								<span className="font-semibold text-slate-900 dark:text-white">{completion}%</span>
+							</div>
+							<div
+								className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+								role="progressbar"
+								aria-valuemin={0}
+								aria-valuemax={100}
+								aria-valuenow={completion}
+								aria-label="Perfil completo"
+							>
+								<div className="h-full rounded-full bg-violet-600 transition-all" style={{ width: `${completion}%` }} />
+							</div>
 						</div>
-						<div
-							className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
-							role="progressbar"
-							aria-valuemin={0}
-							aria-valuemax={100}
-							aria-valuenow={completion}
-							aria-label="Perfil completo"
-						>
-							<div className="h-full rounded-full bg-violet-600 transition-all" style={{ width: `${completion}%` }} />
-						</div>
-					</div>
+					)}
 				</div>
 
 				<div className="max-w-full min-w-0 overflow-x-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-visible">

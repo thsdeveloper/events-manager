@@ -33,6 +33,10 @@ export interface AppUser {
 	document?: string | null;
 	/** CPF já ligado a atividade paga: só o suporte altera. Calculado pela API. */
 	document_locked?: boolean;
+	/** Telefone com DDD, só dígitos, opcional. */
+	phone?: string | null;
+	/** Quando o telefone atual foi confirmado por código; nulo se trocado depois. */
+	phone_verified_at?: string | null;
 	role?: 'attendee' | 'organizer' | 'admin' | 'super_admin' | null;
 	status?: 'active' | 'suspended' | 'archived';
 	created_at?: string | null;

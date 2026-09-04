@@ -29,6 +29,7 @@ const profile = {
 	description: 'Organizo festivais independentes desde 2015.',
 	birth_date: '1990-05-20',
 	document: '52998224725',
+	phone: '11912345678',
 	role: 'attendee',
 	status: 'active',
 };
@@ -45,6 +46,7 @@ describe('SupabaseAuthRepository.serialize', () => {
 			description: 'Organizo festivais independentes desde 2015.',
 			birth_date: '1990-05-20',
 			document: '52998224725',
+			phone: '11912345678',
 			location: 'Uberlândia - MG',
 			city_id: 3170206,
 		});

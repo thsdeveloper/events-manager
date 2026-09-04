@@ -15,7 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { Ticket, Calendar, CalendarCheck, Building2, Clock, LogIn } from 'lucide-react';
+import { Calendar, CalendarCheck, Building2, Clock, LogIn } from 'lucide-react';
 import { ChevronDown } from '@/components/animate-ui/icons/chevron-down';
 import { AnimateIcon } from '@/components/animate-ui/icons/icon';
 import { Menu } from '@/components/animate-ui/icons/menu';
@@ -155,12 +155,6 @@ return () => window.removeEventListener('scroll', handleScroll);
 										</Button>
 									</>
 								)}
-								<Button variant="ghost" size="sm" asChild className="gap-2">
-									<Link href="/perfil?section=ingressos">
-										<Ticket className="size-4" />
-										<span className="hidden xl:inline">Meus ingressos</span>
-									</Link>
-								</Button>
 								{!isOrganizer && (
 									<Button
 										size="sm"
@@ -211,11 +205,6 @@ return () => window.removeEventListener('scroll', handleScroll);
 										</Button>
 									</>
 								)}
-								<Button variant="ghost" size="icon" asChild>
-									<Link href="/perfil?section=ingressos" aria-label="Meus ingressos">
-										<Ticket className="size-4" />
-									</Link>
-								</Button>
 								{!isOrganizer && (
 									<Button
 										size="icon"

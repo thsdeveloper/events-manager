@@ -79,6 +79,27 @@ export const emailConfirmationSchema = z.object({
 export const resendEmailConfirmationSchema = z.object({
     email: z.string().trim().email(),
 });
+/**
+ * Phone and taxpayer id are stored as digits, so these normalise first and then
+ * validate the number itself — the same rules the masked inputs apply.
+ */
+export const brPhoneSchema = z
+    .string()
+    .transform(onlyDigits)
+    .refine((value) => value.length === 0 || isValidPhone(value), 'Informe um telefone válido com DDD.');
+/**
+ * Confirmação de telefone pelo Supabase Auth (phone_change): pedir o código
+ * exige um número válido; confirmar exige o mesmo número e o código de 6 dígitos.
+ */
+export const phoneVerificationRequestSchema = z.object({
+    phone: brPhoneSchema.refine((value) => value.length > 0, 'Informe um telefone válido com DDD.'),
+});
+export const phoneVerificationConfirmSchema = phoneVerificationRequestSchema.extend({
+    token: z
+        .string()
+        .trim()
+        .regex(/^\d{6}$/, 'O código deve conter 6 dígitos.'),
+});
 export const updateProfileSchema = z.object({
     first_name: z.string().trim().min(1).nullable().optional(),
     last_name: z.string().trim().min(1).nullable().optional(),
@@ -91,6 +112,8 @@ export const updateProfileSchema = z.object({
     city_id: z.number().int().positive().nullable().optional(),
     description: z.string().nullable().optional(),
     document: cpfSchema.nullable().optional(),
+    /** Telefone brasileiro com DDD, guardado só com dígitos. */
+    phone: brPhoneSchema.nullable().optional(),
     /** Pode ser corrigida no perfil, mas nunca apagada nem abaixo da idade mínima. */
     birth_date: birthDateSchema.optional(),
     /** Exigida pela API quando o CPF muda: reautentica antes de alterar um dado sensível. */
@@ -253,14 +276,6 @@ export const checkoutStatusSchema = z.object({
         }),
     })),
 });
-/**
- * Phone and taxpayer id are stored as digits, so these normalise first and then
- * validate the number itself — the same rules the masked inputs apply.
- */
-export const brPhoneSchema = z
-    .string()
-    .transform(onlyDigits)
-    .refine((value) => value.length === 0 || isValidPhone(value), 'Informe um telefone válido com DDD.');
 export const brDocumentSchema = z
     .string()
     .transform(onlyDigits)

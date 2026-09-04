@@ -80,14 +80,31 @@ export function createSupabaseClientsStub(options: SupabaseStubOptions = {}) {
 		auth: { getUser, admin: { signOut: vi.fn(), updateUserById: vi.fn() } },
 		storage,
 	};
-	const publicClient = { from, auth: { signInWithPassword }, storage };
-	const forAccessToken = vi.fn(() => ({ from, auth: { getUser } }));
+	// Cliente montado com a sessão da pessoa (confirmação de telefone).
+	const sessionAuth = {
+		getUser,
+		setSession: vi.fn(async () => ({ data: { session: null, user }, error: null })),
+		updateUser: vi.fn(async () => ({ data: { user }, error: null })),
+	};
+	const verifyOtp = vi.fn(
+		async (): Promise<{
+			data: { user: unknown; session: null };
+			error: { message: string; status?: number } | null;
+		}> => ({
+			data: { user, session: null },
+			error: null,
+		}),
+	);
+	const publicClient = { from, auth: { signInWithPassword, verifyOtp }, storage };
+	const forAccessToken = vi.fn(() => ({ from, auth: sessionAuth }));
 
 	return {
 		clients: { admin, public: publicClient, forAccessToken } as unknown as SupabaseClients,
 		from,
 		getUser,
 		signInWithPassword,
+		sessionAuth,
+		verifyOtp,
 		storage,
 		storageBucket,
 	};

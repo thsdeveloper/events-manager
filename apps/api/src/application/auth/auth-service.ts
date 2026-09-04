@@ -46,6 +46,10 @@ export interface UserProfileInput {
 	last_name?: string | null;
 	/** Escrito só pelo repositório, a partir de `city_id`. */
 	location?: string | null;
+	/** Telefone com DDD, só dígitos, já validado pelo contrato. */
+	phone?: string | null;
+	/** Escrito só pelo caso de uso: trocar o telefone zera a confirmação. */
+	phone_verified_at?: string | null;
 }
 
 /** O CPF informado já pertence a outra conta. */
@@ -68,6 +72,17 @@ export interface ProfileNotifications {
 export interface ProfileUpdateContext {
 	ip?: string;
 	userAgent?: string;
+}
+
+/** Tokens da sessão da pessoa; o provedor exige a sessão para trocar o telefone. */
+export interface SessionTokens {
+	accessToken: string;
+	refreshToken: string;
+}
+
+/** Números brasileiros: DDD + número, guardados só com dígitos; o provedor fala E.164. */
+export function toBrazilianE164(phoneDigits: string) {
+	return `+55${phoneDigits}`;
 }
 
 export class AuthProviderError extends Error {
@@ -95,6 +110,12 @@ export interface AuthRepository {
 	/** Há ingresso pago ou movimentação financeira ligada à conta. */
 	hasBillingActivity(userId: string): Promise<boolean>;
 	recordDocumentChange(change: DocumentChange): Promise<void>;
+	/** Pede ao provedor o código de confirmação para o novo telefone (fluxo phone_change). */
+	requestPhoneChange(session: SessionTokens, phoneE164: string): Promise<void>;
+	/** Confirma o código junto ao provedor; lança AuthProviderError se inválido ou expirado. */
+	verifyPhoneChange(phoneE164: string, token: string): Promise<void>;
+	/** Grava o telefone confirmado no perfil, com a data da confirmação. */
+	markPhoneVerified(userId: string, phoneDigits: string): Promise<unknown>;
 	confirmEmail(email: string, token: string): Promise<AuthResult>;
 	createOrganizer(userId: string, input: { email: string; name: string }): Promise<OrganizerAuthorization>;
 	findActiveOrganizer(userId: string, preferredId?: string): Promise<OrganizerAuthorization | null>;
@@ -242,6 +263,8 @@ export class AuthService {
 	 */
 	async updateProfile(user: AuthIdentity, input: UserProfileInput, context: ProfileUpdateContext = {}) {
 		const { current_password: currentPassword, ...profileInput } = input;
+		// Um telefone novo ainda não foi confirmado; só confirmPhoneVerification marca.
+		if (profileInput.phone !== undefined) profileInput.phone_verified_at = null;
 		const documentChange = await this.authorizeDocumentChange(user, profileInput.document, currentPassword);
 		const previousAvatar = input.avatar === undefined ? null : await this.repository.findAvatarId(user.id);
 		const profile = await this.repository.updateProfile(user, profileInput);
@@ -252,6 +275,52 @@ export class AuthService {
 		if (documentChange) await this.recordDocumentChange(user, documentChange, context);
 
 		return profile;
+	}
+
+	/**
+	 * Confirmação de telefone pelo provedor (Supabase Auth, fluxo phone_change):
+	 * o código vai por SMS para o número informado e só o provedor o valida. O
+	 * intervalo mínimo entre envios é do provedor; aqui ele vira um 429 legível.
+	 */
+	async requestPhoneVerification(user: AuthIdentity, session: SessionTokens, phoneDigits: string) {
+		try {
+			await this.repository.requestPhoneChange(session, toBrazilianE164(phoneDigits));
+		} catch (error) {
+			if (error instanceof AuthProviderError && error.status === 429) {
+				throw new ApiError('Aguarde um minuto antes de pedir outro código.', 429, 'PHONE_CODE_RATE_LIMITED');
+			}
+			// Sem provedor de SMS (ambiente local sem [auth.sms.twilio] e número fora
+			// de test_otp, ou projeto hospedado sem provedor): é configuração, não um
+			// problema com o telefone digitado, e a mensagem precisa dizer isso.
+			if (error instanceof AuthProviderError && /sms provider/i.test(error.message)) {
+				throw new ApiError(
+					'O envio de SMS não está configurado neste ambiente.',
+					503,
+					'SMS_PROVIDER_UNAVAILABLE',
+					{ reason: error.message },
+					{ exposeDetail: true },
+				);
+			}
+			// O provedor mantém um telefone por conta; a pessoa precisa saber qual campo.
+			if (error instanceof AuthProviderError && (error.code === 'phone_exists' || error.status === 422)) {
+				throw new ApiError('Este telefone já está confirmado em outra conta.', 409, 'PHONE_ALREADY_IN_USE', {
+					field: 'phone',
+				});
+			}
+			throw new ApiError('Não foi possível enviar o código para este telefone.', 400, 'PHONE_CODE_REQUEST_ERROR', {
+				field: 'phone',
+			});
+		}
+	}
+
+	async confirmPhoneVerification(user: AuthIdentity, phoneDigits: string, token: string) {
+		try {
+			await this.repository.verifyPhoneChange(toBrazilianE164(phoneDigits), token);
+		} catch {
+			throw new ApiError('Código inválido ou expirado.', 400, 'INVALID_PHONE_CODE', { field: 'token' });
+		}
+
+		return this.repository.markPhoneVerified(user.id, phoneDigits);
 	}
 
 	/**

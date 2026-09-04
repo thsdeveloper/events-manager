@@ -1,18 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { CalendarDays, Check, IdCard, KeyRound, Mail, MapPin, Save, UserRound } from 'lucide-react';
+import { CalendarDays, Check, IdCard, KeyRound, Mail, MapPin, Phone, Save, UserRound } from 'lucide-react';
 
 import { birthDateSchema, MIN_REGISTRATION_AGE } from '@events-manager/contracts';
 import { LocationSelect } from '@/components/location/LocationSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/date-input';
-import { CpfInput } from '@/components/ui/masked-inputs';
-import { isValidCPF } from '@/lib/br-documents';
+import { CpfInput, PhoneInput } from '@/components/ui/masked-inputs';
+import { isValidCPF, isValidPhone } from '@/lib/br-documents';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { PhoneVerification } from './PhoneVerification';
 import { type ProfileFormValues, type ProfileUser } from './types';
 
 interface ProfileDetailsFormProps {
@@ -28,6 +29,7 @@ const emptyErrors: FieldErrors = {};
 /** Nomes de campo que a API usa no `context.field` de um problema, por campo do formulário. */
 const apiFieldNames: Record<string, FieldName> = {
 	document: 'document',
+	phone: 'phone',
 	current_password: 'currentPassword',
 	birth_date: 'birthDate',
 	first_name: 'firstName',
@@ -83,6 +85,7 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 					last_name: values.lastName.trim(),
 					birth_date: values.birthDate,
 					document: values.document || null,
+					phone: values.phone || null,
 					city_id: values.cityId,
 					description: nullable(values.description),
 					...(isDocumentChanging ? { current_password: currentPassword } : {}),
@@ -219,6 +222,29 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 								className={isDocumentLocked ? 'h-11 rounded-lg bg-slate-50 dark:bg-slate-950' : 'h-11 rounded-lg'}
 							/>
 						</FormField>
+						<FormField
+							id="profile-phone"
+							label="Telefone"
+							icon={Phone}
+							error={errors.phone}
+							description="Com DDD. Usado para contato sobre seus ingressos."
+						>
+							<div className="flex flex-wrap items-start gap-2 [&>div:first-child]:min-w-[12rem] [&>div:first-child]:flex-1">
+								<PhoneInput
+									id="profile-phone"
+									value={values.phone}
+									onChange={(digits) => updateValue('phone', digits)}
+									showError={false}
+									aria-invalid={Boolean(errors.phone)}
+									className="h-11 rounded-lg"
+								/>
+								<PhoneVerification
+									phone={values.phone}
+									verified={Boolean(user.phone_verified_at) && values.phone === (user.phone || '')}
+									onVerified={onSaved}
+								/>
+							</div>
+						</FormField>
 						{isDocumentChanging && (
 							<div className="sm:col-span-2">
 								<FormField
@@ -349,6 +375,7 @@ function valuesFromUser(user: ProfileUser): ProfileFormValues {
 		email: user.email,
 		birthDate: user.birth_date || '',
 		document: user.document || '',
+		phone: user.phone || '',
 		cityId: user.city_id ?? null,
 		description: user.description || '',
 	};
@@ -359,6 +386,7 @@ function validate(values: ProfileFormValues) {
 	if (values.firstName.trim().length < 2) errors.firstName = 'Informe pelo menos 2 caracteres.';
 	if (values.lastName.trim().length < 2) errors.lastName = 'Informe pelo menos 2 caracteres.';
 	if (values.document && !isValidCPF(values.document)) errors.document = 'Informe um CPF válido.';
+	if (values.phone && !isValidPhone(values.phone)) errors.phone = 'Informe um telefone válido com DDD.';
 	if (!values.birthDate) errors.birthDate = 'Informe sua data de nascimento.';
 	else {
 		const birthDate = birthDateSchema.safeParse(values.birthDate);

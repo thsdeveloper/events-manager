@@ -60,5 +60,20 @@ content_path = "./supabase/templates/confirmation.html"
 subject = "Redefina sua senha"
 content_path = "./supabase/templates/recovery.html"
 
+# Confirmação de telefone pelo fluxo phone_change do Supabase Auth: a pessoa
+# logada informa o número, recebe um código por SMS e confirma. Cadastro e login
+# por telefone continuam desligados; o telefone é dado de contato, não credencial.
+# Em produção o provedor de SMS (Twilio, Vonage, MessageBird ou Textlocal) é
+# configurado no painel do projeto hospedado.
+[auth.sms]
+enable_signup = false
+enable_confirmations = true
+template = "Seu código de confirmação é {{ .Code }}. Ele expira em 15 minutos."
+max_frequency = "1m"
+
+# Números de desenvolvimento: o Supabase aceita o código fixo e não envia SMS.
+[auth.sms.test_otp]
+5511999990000 = "123456"
+
 [analytics]
 enabled = false

@@ -34,11 +34,18 @@ function hrefOf(name: RegExp) {
 }
 
 describe('UserMenu', () => {
-	it('shows an attendee only the account and activity sections', async () => {
+	it('groups everything about the account under a single "Minha conta" section', async () => {
 		await openMenu();
 
+		expect(screen.getByText('Minha conta')).toBeInTheDocument();
+		expect(screen.queryByText(/sua atividade/i)).not.toBeInTheDocument();
+		expect(hrefOf(/visão geral/i)).toBe('/perfil?section=overview');
 		expect(hrefOf(/dados pessoais/i)).toBe('/perfil?section=personal');
+		expect(hrefOf(/segurança/i)).toBe('/perfil?section=security');
+		expect(hrefOf(/preferências/i)).toBe('/perfil?section=preferences');
 		expect(hrefOf(/meus ingressos/i)).toBe('/perfil?section=ingressos');
+		expect(hrefOf(/pagamentos/i)).toBe('/perfil?section=payments');
+		expect(hrefOf(/explorar eventos/i)).toBe('/eventos');
 		expect(screen.queryByText(/organização/i)).not.toBeInTheDocument();
 		expect(screen.queryByText(/administração/i)).not.toBeInTheDocument();
 	});
@@ -69,7 +76,7 @@ describe('UserMenu', () => {
 	it('shows both sections, organization first, to an administrator who also organizes events', async () => {
 		await openMenu({ isOrganizer: true, isSuperAdmin: true, user: { ...user, role: 'super_admin' } });
 
-		const labels = screen.getAllByText(/^(Sua atividade|Organização|Administração)$/).map((node) => node.textContent);
-		expect(labels).toEqual(['Sua atividade', 'Organização', 'Administração']);
+		const labels = screen.getAllByText(/^(Minha conta|Organização|Administração)$/).map((node) => node.textContent);
+		expect(labels).toEqual(['Minha conta', 'Organização', 'Administração']);
 	});
 });

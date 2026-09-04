@@ -4,7 +4,7 @@ import { ArrowRight, CalendarDays, Check, Circle, MapPin, ShieldCheck, Ticket } 
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
-import { getDisplayName, type ProfileSection, type ProfileUser } from './types';
+import { getDisplayName, getProfileChecklist, type ProfileSection, type ProfileUser } from './types';
 
 interface ProfileOverviewProps {
 	user: ProfileUser;
@@ -16,14 +16,8 @@ interface ProfileOverviewProps {
 
 export function ProfileOverview({ user, completion, isOrganizer = false, onNavigate }: ProfileOverviewProps) {
 	const firstName = user.first_name?.trim() || getDisplayName(user).split(' ')[0];
-	const checklist = [
-		{
-			label: 'Nome e contato',
-			complete: Boolean(user.first_name && user.last_name && user.email),
-		},
-		{ label: 'Foto de perfil', complete: Boolean(user.avatar) },
-		{ label: 'Sobre você', complete: Boolean(user.location && user.description) },
-	];
+	// Same list the percentage is computed from (see getProfileChecklist).
+	const checklist = getProfileChecklist(user);
 
 	return (
 		<div className="space-y-6">
@@ -70,28 +64,38 @@ export function ProfileOverview({ user, completion, isOrganizer = false, onNavig
 					<div className="h-full rounded-full bg-violet-600 transition-all" style={{ width: `${completion}%` }} />
 				</div>
 
-				<ul className="space-y-3">
+				<ul aria-label="Itens do perfil" className="grid gap-2 sm:grid-cols-2">
 					{checklist.map((item) => (
-						<li key={item.label} className="flex items-center gap-3 text-sm">
-							<span
-								className={cn(
-									'flex size-5 items-center justify-center rounded-full',
-									item.complete
-										? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-										: 'bg-slate-100 text-slate-400 dark:bg-slate-800',
-								)}
+						<li key={item.id}>
+							{/* Each item opens the section where it is filled in; done items stay
+							    clickable so the person can review what they entered. */}
+							<button
+								type="button"
+								aria-label={`${item.label}, ${item.complete ? 'concluído' : 'pendente'}`}
+								onClick={() => onNavigate(item.section)}
+								className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
 							>
-								{item.complete ? <Check className="size-3" /> : <Circle className="size-2.5" />}
-							</span>
-							<span
-								className={
-									item.complete
-										? 'text-slate-500 line-through dark:text-slate-400'
-										: 'text-slate-700 dark:text-slate-200'
-								}
-							>
-								{item.label}
-							</span>
+								<span
+									aria-hidden="true"
+									className={cn(
+										'flex size-5 shrink-0 items-center justify-center rounded-full',
+										item.complete
+											? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+											: 'bg-slate-100 text-slate-400 dark:bg-slate-800',
+									)}
+								>
+									{item.complete ? <Check className="size-3" /> : <Circle className="size-2.5" />}
+								</span>
+								<span
+									className={
+										item.complete
+											? 'text-slate-500 line-through dark:text-slate-400'
+											: 'text-slate-700 dark:text-slate-200'
+									}
+								>
+									{item.label}
+								</span>
+							</button>
 						</li>
 					))}
 				</ul>

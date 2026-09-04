@@ -1772,6 +1772,8 @@ export type Database = {
           id: string
           last_name: string | null
           location: string | null
+          phone: string | null
+          phone_verified_at: string | null
           role: string
           status: string
         }
@@ -1789,6 +1791,8 @@ export type Database = {
           id: string
           last_name?: string | null
           location?: string | null
+          phone?: string | null
+          phone_verified_at?: string | null
           role?: string
           status?: string
         }
@@ -1806,6 +1810,8 @@ export type Database = {
           id?: string
           last_name?: string | null
           location?: string | null
+          phone?: string | null
+          phone_verified_at?: string | null
           role?: string
           status?: string
         }

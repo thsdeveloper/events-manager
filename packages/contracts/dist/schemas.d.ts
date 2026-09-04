@@ -84,6 +84,33 @@ export declare const resendEmailConfirmationSchema: z.ZodObject<{
 }, {
     email: string;
 }>;
+/**
+ * Phone and taxpayer id are stored as digits, so these normalise first and then
+ * validate the number itself — the same rules the masked inputs apply.
+ */
+export declare const brPhoneSchema: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
+/**
+ * Confirmação de telefone pelo Supabase Auth (phone_change): pedir o código
+ * exige um número válido; confirmar exige o mesmo número e o código de 6 dígitos.
+ */
+export declare const phoneVerificationRequestSchema: z.ZodObject<{
+    phone: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>, string, string>;
+}, "strip", z.ZodTypeAny, {
+    phone: string;
+}, {
+    phone: string;
+}>;
+export declare const phoneVerificationConfirmSchema: z.ZodObject<{
+    phone: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>, string, string>;
+} & {
+    token: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    token: string;
+    phone: string;
+}, {
+    token: string;
+    phone: string;
+}>;
 export declare const updateProfileSchema: z.ZodObject<{
     first_name: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     last_name: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -96,6 +123,8 @@ export declare const updateProfileSchema: z.ZodObject<{
     city_id: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     document: z.ZodOptional<z.ZodNullable<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>>>;
+    /** Telefone brasileiro com DDD, guardado só com dígitos. */
+    phone: z.ZodOptional<z.ZodNullable<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>>>;
     /** Pode ser corrigida no perfil, mas nunca apagada nem abaixo da idade mínima. */
     birth_date: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>, string, string>>;
     /** Exigida pela API quando o CPF muda: reautentica antes de alterar um dado sensível. */
@@ -107,6 +136,7 @@ export declare const updateProfileSchema: z.ZodObject<{
     first_name?: string | null | undefined;
     last_name?: string | null | undefined;
     birth_date?: string | undefined;
+    phone?: string | null | undefined;
     description?: string | null | undefined;
     document?: string | null | undefined;
     current_password?: string | undefined;
@@ -117,6 +147,7 @@ export declare const updateProfileSchema: z.ZodObject<{
     first_name?: string | null | undefined;
     last_name?: string | null | undefined;
     birth_date?: string | undefined;
+    phone?: string | null | undefined;
     description?: string | null | undefined;
     document?: string | null | undefined;
     current_password?: string | undefined;
@@ -924,10 +955,5 @@ export declare const checkoutStatusSchema: z.ZodObject<{
     }[];
 }>;
 export type CheckoutStatus = z.infer<typeof checkoutStatusSchema>;
-/**
- * Phone and taxpayer id are stored as digits, so these normalise first and then
- * validate the number itself — the same rules the masked inputs apply.
- */
-export declare const brPhoneSchema: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
 export declare const brDocumentSchema: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
 //# sourceMappingURL=schemas.d.ts.map

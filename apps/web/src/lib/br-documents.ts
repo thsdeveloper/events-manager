@@ -13,6 +13,8 @@ export function onlyDigits(value: string) {
 /** Landline: (11) 3456-7890 — mobile: (11) 91234-5678 */
 export function maskPhone(value: string) {
 	const digits = onlyDigits(value).slice(0, 11);
+	// Nothing typed yet: keep the field empty so its placeholder shows.
+	if (digits.length === 0) return '';
 	if (digits.length <= 2) return digits.replace(/^(\d{0,2})/, '($1');
 	if (digits.length <= 6) return digits.replace(/^(\d{2})(\d{0,4})/, '($1) $2');
 	if (digits.length <= 10) return digits.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');

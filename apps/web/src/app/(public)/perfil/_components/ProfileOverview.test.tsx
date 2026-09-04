@@ -35,6 +35,26 @@ describe('ProfileOverview', () => {
 		expect(screen.queryByRole('link', { name: /vender ingressos/i })).not.toBeInTheDocument();
 	});
 
+	it('shows every pending item and lets each one open the section where it is filled in', async () => {
+		const onNavigate = vi.fn();
+		const { user: person } = renderWithProviders(
+			<ProfileOverview user={{ ...user, description: 'Já tenho bio.' }} completion={13} onNavigate={onNavigate} />,
+		);
+
+		const list = screen.getByRole('list', { name: /itens do perfil/i });
+		expect(list).toHaveTextContent('Nome e sobrenome');
+		expect(list).toHaveTextContent('Foto de perfil');
+		expect(list).toHaveTextContent('CPF');
+		expect(list).toHaveTextContent('Telefone confirmado');
+		expect(list).toHaveTextContent('Localização');
+		expect(screen.getByRole('button', { name: 'Nome e sobrenome, concluído' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'CPF, pendente' })).toBeInTheDocument();
+
+		await person.click(screen.getByRole('button', { name: 'CPF, pendente' }));
+
+		expect(onNavigate).toHaveBeenCalledWith('personal');
+	});
+
 	it('offers buying or selling tickets once the profile is complete', () => {
 		renderWithProviders(<ProfileOverview user={user} completion={100} onNavigate={vi.fn()} />);
 

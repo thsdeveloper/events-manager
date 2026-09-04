@@ -10,6 +10,8 @@ import {
 	isAtLeastYearsOld,
 	MIN_REGISTRATION_AGE,
 	newPasswordSchema,
+	phoneVerificationConfirmSchema,
+	phoneVerificationRequestSchema,
 	registerSchema,
 	ticketInputSchema,
 	updateProfileSchema,
@@ -189,10 +191,39 @@ describe('updateProfileSchema', () => {
 		);
 	});
 
+	it('accepts a Brazilian phone with punctuation, storing only its digits, and lets it be cleared', () => {
+		expect(updateProfileSchema.safeParse({ phone: '(11) 91234-5678' }).data?.phone).toBe('11912345678');
+		expect(updateProfileSchema.safeParse({ phone: '1134567890' }).success).toBe(true);
+		expect(updateProfileSchema.safeParse({ phone: null }).success).toBe(true);
+		expect(issuePaths(updateProfileSchema.safeParse({ phone: '(00) 1234-5678' }))).toContain('phone');
+		expect(issuePaths(updateProfileSchema.safeParse({ phone: '123' }))).toContain('phone');
+	});
+
 	it('accepts the CPF as an optional document that can be cleared', () => {
 		expect(updateProfileSchema.safeParse({ document: '529.982.247-25' }).data?.document).toBe('52998224725');
 		expect(updateProfileSchema.safeParse({ document: null }).success).toBe(true);
 		expect(updateProfileSchema.safeParse({ first_name: 'Ana' }).success).toBe(true);
 		expect(issuePaths(updateProfileSchema.safeParse({ document: '123' }))).toContain('document');
+	});
+});
+
+describe('phone verification schemas', () => {
+	it('requires a valid Brazilian phone to request a code, stored as digits', () => {
+		expect(phoneVerificationRequestSchema.parse({ phone: '(11) 91234-5678' })).toEqual({ phone: '11912345678' });
+		expect(issuePaths(phoneVerificationRequestSchema.safeParse({ phone: '' }))).toContain('phone');
+		expect(issuePaths(phoneVerificationRequestSchema.safeParse({ phone: '(00) 1234-5678' }))).toContain('phone');
+	});
+
+	it('confirms with the same phone and a six-digit code', () => {
+		expect(phoneVerificationConfirmSchema.parse({ phone: '11912345678', token: ' 123456 ' })).toEqual({
+			phone: '11912345678',
+			token: '123456',
+		});
+		expect(issuePaths(phoneVerificationConfirmSchema.safeParse({ phone: '11912345678', token: '12345' }))).toContain(
+			'token',
+		);
+		expect(issuePaths(phoneVerificationConfirmSchema.safeParse({ phone: '11912345678', token: 'abcdef' }))).toContain(
+			'token',
+		);
 	});
 });

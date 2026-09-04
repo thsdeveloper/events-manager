@@ -52,6 +52,14 @@ Cadastre um usuário pela aplicação. Com `PAYMENTS_MODE=mock`, a solicitação
 automaticamente como organizador e pagamentos e repasses são simulados. Para testar a integração externa, use
 `PAYMENTS_MODE=abacatepay` com uma chave de desenvolvimento e configure o webhook assinado.
 
+## Confirmação de telefone
+
+O telefone do perfil é confirmado por código SMS pelo Supabase Auth (fluxo `phone_change`).
+Localmente nenhum SMS é enviado: o `supabase/config.toml` define códigos de teste por número em
+`[auth.sms.test_otp]` (por exemplo, `(11) 99999-0000` aceita `123456`). No projeto hospedado,
+configure um provedor de SMS (Twilio, Vonage, MessageBird ou Textlocal) em Authentication > Providers >
+Phone; cadastro e login por telefone permanecem desligados, o telefone é apenas dado de contato.
+
 ## Serviços opcionais
 
 `PAYMENTS_MODE=mock` confirma pagamentos localmente sem chamadas externas. O modo `abacatepay` usa checkout hospedado,

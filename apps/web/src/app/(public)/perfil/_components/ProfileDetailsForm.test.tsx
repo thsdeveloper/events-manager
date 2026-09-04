@@ -179,6 +179,85 @@ describe('ProfileDetailsForm', () => {
 		expect(message.closest('div')).toContainElement(screen.getByLabelText(/senha atual/i));
 	});
 
+	it('masks the phone while typing and saves only its digits', async () => {
+		const { user: person, fetchMock } = setup({ phone: '11912345678' });
+
+		const phone = screen.getByLabelText(/telefone/i);
+		await person.type(phone, '11912345678');
+		expect(phone).toHaveValue('(11) 91234-5678');
+
+		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+		await waitFor(() => expect(profileCall(fetchMock)).not.toBeNull());
+		expect(profileCall(fetchMock)).toMatchObject({ phone: '11912345678' });
+	});
+
+	it('shows the saved phone and refuses an invalid one', async () => {
+		mockFetch([['/api/locations/states', () => jsonResponse([])]]);
+		const { user: person } = renderWithProviders(
+			<ProfileDetailsForm user={{ ...user, phone: '11912345678' }} onSaved={vi.fn()} />,
+		);
+		const phone = screen.getByLabelText(/telefone/i);
+		expect(phone).toHaveValue('(11) 91234-5678');
+
+		await person.clear(phone);
+		await person.type(phone, '0012345678');
+		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+		expect(await screen.findByText('Informe um telefone válido com DDD.')).toBeInTheDocument();
+	});
+
+	it('marks a confirmed phone and drops the mark as soon as the number is edited', async () => {
+		mockFetch([['/api/locations/states', () => jsonResponse([])]]);
+		const { user: person } = renderWithProviders(
+			<ProfileDetailsForm
+				user={{ ...user, phone: '11912345678', phone_verified_at: '2026-09-04T19:00:00.000Z' }}
+				onSaved={vi.fn()}
+			/>,
+		);
+
+		expect(screen.getByText(/telefone confirmado/i)).toBeInTheDocument();
+
+		const phone = screen.getByLabelText(/telefone/i);
+		await person.clear(phone);
+		await person.type(phone, '11988887777');
+
+		expect(screen.queryByText(/telefone confirmado/i)).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /confirmar por sms/i })).toBeInTheDocument();
+	});
+
+	it('keeps the SMS confirmation control on the same row as the phone field', async () => {
+		mockFetch([['/api/locations/states', () => jsonResponse([])]]);
+		renderWithProviders(<ProfileDetailsForm user={{ ...user, phone: '11999990000' }} onSaved={vi.fn()} />);
+
+		const phone = screen.getByLabelText(/telefone/i);
+		const button = screen.getByRole('button', { name: /confirmar por sms/i });
+		const row = button.parentElement;
+
+		expect(row).toContainElement(phone);
+		expect(row?.className).toMatch(/\bflex\b/);
+		// Field first, control right after it.
+		expect(phone.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	});
+
+	it('hands the verified user back to the page after the code is confirmed', async () => {
+		const verifiedUser = { ...user, phone: '11999990000', phone_verified_at: '2026-09-04T19:00:00.000Z' };
+		mockFetch([
+			['/api/locations/states', () => jsonResponse([])],
+			['/api/user/phone/request', () => jsonResponse({ success: true })],
+			['/api/user/phone/confirm', () => jsonResponse({ success: true, user: verifiedUser })],
+		]);
+		const onSaved = vi.fn();
+		const { user: person } = renderWithProviders(<ProfileDetailsForm user={user} onSaved={onSaved} />);
+
+		await person.type(screen.getByLabelText(/telefone/i), '11999990000');
+		await person.click(screen.getByRole('button', { name: /confirmar por sms/i }));
+		await person.type(await screen.findByLabelText(/código recebido por sms/i), '123456');
+		await person.click(screen.getByRole('button', { name: /confirmar código/i }));
+
+		await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ phone: '11999990000' })));
+	});
+
 	it('clears the CPF when the field is emptied', async () => {
 		const { user: person, fetchMock } = setup();
 		const cpf = screen.getByLabelText(/cpf/i);

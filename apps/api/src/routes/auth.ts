@@ -5,6 +5,8 @@ import {
 	registerSchema,
 	resendEmailConfirmationSchema,
 	updateProfileSchema,
+	phoneVerificationConfirmSchema,
+	phoneVerificationRequestSchema,
 } from '@events-manager/contracts';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -219,6 +221,24 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 			}
 			throw error;
 		}
+	});
+
+	app.post('/api/user/phone/request', async (request) => {
+		const context = await requireUser(request, auth);
+		const { phone } = phoneVerificationRequestSchema.parse(request.body);
+		const refreshToken = request.cookies.refresh_token;
+		if (!refreshToken) throw new ApiError('Sessão incompleta. Entre novamente.', 401, 'MISSING_REFRESH_TOKEN');
+		await limit('user-phone-request', context.user.id, 5, 900);
+		await auth.requestPhoneVerification(context.user, { accessToken: context.accessToken, refreshToken }, phone);
+		return { success: true, message: 'Enviamos um código por SMS para o telefone informado.' };
+	});
+
+	app.post('/api/user/phone/confirm', async (request) => {
+		const context = await requireUser(request, auth);
+		const { phone, token } = phoneVerificationConfirmSchema.parse(request.body);
+		await limit('user-phone-confirm', context.user.id, 10, 900);
+		const user = await auth.confirmPhoneVerification(context.user, phone, token);
+		return { success: true, user };
 	});
 
 	/**

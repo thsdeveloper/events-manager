@@ -44,17 +44,15 @@ interface MenuLink {
 	icon: React.ComponentType<{ className?: string }>;
 }
 
-// Same entries, order and icons as the profile sidebar (ProfileNavigation), so
-// the dropdown and the page it leads to describe the account the same way.
-// Hrefs carry the `?section=` value that ProfilePageClient reads.
+// One section for everything that is the person's own account: the same
+// entries, order and icons as the profile sidebar (ProfileNavigation), so the
+// dropdown and the page it leads to describe the account the same way. Hrefs
+// carry the `?section=` value that ProfilePageClient reads.
 const accountLinks: MenuLink[] = [
 	{ href: profileSectionHref('overview'), icon: LayoutDashboard, label: 'Visão geral' },
 	{ href: profileSectionHref('personal'), icon: UserRound, label: 'Dados pessoais' },
 	{ href: profileSectionHref('security'), icon: Key, label: 'Segurança' },
 	{ href: profileSectionHref('preferences'), icon: SlidersHorizontal, label: 'Preferências' },
-];
-
-const activityLinks: MenuLink[] = [
 	{ href: profileSectionHref('ingressos'), icon: Ticket, label: 'Meus ingressos' },
 	{ href: profileSectionHref('payments'), icon: CreditCard, label: 'Pagamentos' },
 	{ href: '/eventos', icon: Compass, label: 'Explorar eventos' },
@@ -111,21 +109,7 @@ export function UserMenu({ user, onLogout, isOrganizer = false, isSuperAdmin = f
 					<p className="truncate text-xs text-muted-foreground">{user.email || roleLabel(user.role)}</p>
 				</div>
 
-				<DropdownMenuSeparator />
-
-				{accountLinks.map((link) => (
-					<UserMenuLink key={link.href} link={link} />
-				))}
-
-				<DropdownMenuSeparator />
-				<DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-					Sua atividade
-				</DropdownMenuLabel>
-
-				{activityLinks.map((link) => (
-					<UserMenuLink key={link.href} link={link} />
-				))}
-
+				<UserMenuSection label="Minha conta" links={accountLinks} />
 				{isOrganizer && <UserMenuSection label="Organização" links={organizerLinks} />}
 				{isSuperAdmin && <UserMenuSection label="Administração" links={administrationLinks} />}
 
