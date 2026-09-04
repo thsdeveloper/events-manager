@@ -99,7 +99,7 @@ export default async function EventsPage({
 						<Link
 							key={event.id}
 							href={`/eventos/${event.slug}`}
-							className="group overflow-hidden rounded-2xl border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+							className="group overflow-hidden rounded-lg border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
 						>
 							<div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-primary/80 to-violet-500">
 								{event.cover_image ? (
@@ -150,7 +150,7 @@ export default async function EventsPage({
 					))}
 				</div>
 			) : (
-				<div className="mt-12 rounded-2xl border border-dashed p-12 text-center">
+				<div className="mt-12 rounded-lg border border-dashed p-12 text-center">
 					<CalendarDays className="mx-auto size-10 text-muted-foreground" />
 					<h2 className="mt-4 text-xl font-semibold">Nenhum evento disponível</h2>
 					<p className="mt-2 text-muted-foreground">Tente outra busca ou volte mais tarde.</p>

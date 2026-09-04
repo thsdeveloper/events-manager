@@ -44,10 +44,10 @@ export function ProfilePreferences() {
 
 	return (
 		<div className="space-y-6">
-			<section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+			<section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
 				<header className="border-b border-slate-100 px-6 py-5 dark:border-slate-800 sm:px-8 sm:py-6">
 					<div className="flex items-start gap-3">
-						<div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-200">
+						<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-200">
 							<Palette className="size-5" />
 						</div>
 						<div>
@@ -79,7 +79,7 @@ export function ProfilePreferences() {
 										onClick={() => setTheme(option.value)}
 										aria-pressed={selected}
 										className={cn(
-											'relative flex items-start gap-3 rounded-xl border p-4 text-left transition',
+											'relative flex items-start gap-3 rounded-lg border p-4 text-left transition',
 											selected
 												? 'border-violet-500 bg-violet-50/70 ring-1 ring-violet-500 dark:bg-violet-950/30'
 												: 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/50',
@@ -129,7 +129,7 @@ export function ProfilePreferences() {
 								<select
 									id="profile-language"
 									disabled
-									className="h-11 w-full rounded-xl border border-input bg-slate-50 px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-80 dark:bg-slate-950 dark:text-slate-200"
+									className="h-11 w-full rounded-lg border border-input bg-slate-50 px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-80 dark:bg-slate-950 dark:text-slate-200"
 								>
 									<option>Português (Brasil)</option>
 								</select>
@@ -147,7 +147,7 @@ export function ProfilePreferences() {
 									id="profile-timezone"
 									value={timezone}
 									onChange={(event) => updateTimezone(event.target.value)}
-									className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-slate-700 dark:text-slate-200"
+									className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-slate-700 dark:text-slate-200"
 								>
 									{timezones.map((item) => (
 										<option key={item.value} value={item.value}>

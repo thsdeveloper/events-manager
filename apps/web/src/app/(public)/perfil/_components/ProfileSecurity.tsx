@@ -1,24 +1,26 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
 	Check,
 	Eye,
 	EyeOff,
 	KeyRound,
-	Loader2,
-	LockKeyhole,
 	LogOut,
 	MailCheck,
 	Monitor,
 	ShieldCheck,
 } from 'lucide-react';
 
+import { LockKeyhole } from '@/components/animate-ui/icons/lock-keyhole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { changePasswordSchema, type ChangePasswordValues } from '@/lib/validation/auth';
 import type { ProfileUser } from './types';
 
 interface ProfileSecurityProps {
@@ -28,42 +30,63 @@ interface ProfileSecurityProps {
 
 export function ProfileSecurity({ user, onLogout }: ProfileSecurityProps) {
 	const { toast } = useToast();
-	const [newPassword, setNewPassword] = useState('');
-	const [confirmation, setConfirmation] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
-	const [error, setError] = useState('');
 
-	const passwordLongEnough = newPassword.length >= 8;
-	const passwordsMatch = Boolean(newPassword) && newPassword === confirmation;
+	const {
+		register,
+		handleSubmit,
+		reset,
+		setError,
+		setFocus,
+		watch,
+		formState: { errors, isSubmitting },
+	} = useForm<ChangePasswordValues>({
+		resolver: zodResolver(changePasswordSchema),
+		defaultValues: { currentPassword: '', password: '', confirmPassword: '' },
+		mode: 'onTouched',
+	});
 
-	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		if (!passwordLongEnough) {
-			setError('A nova senha deve ter pelo menos 8 caracteres.');
+	// Drives the live checklist below the fields, which updates on every
+	// keystroke rather than waiting for the field to be left.
+	const currentPassword = watch('currentPassword');
+	const password = watch('password');
+	const confirmPassword = watch('confirmPassword');
+	const passwordLongEnough = password.length >= 8 && password.length <= 64;
+	// Mirrors `newPasswordSchema` in @events-manager/contracts: a special
+	// character is anything that is neither a letter nor a number.
+	const passwordHasLetter = /\p{L}/u.test(password);
+	const passwordHasNumber = /\p{N}/u.test(password);
+	const passwordHasSymbol = /[^\p{L}\p{N}]/u.test(password);
+	const passwordsMatch = Boolean(password) && password === confirmPassword;
+	const passwordIsNew = Boolean(password) && password !== currentPassword;
 
-			return;
-		}
-		if (!passwordsMatch) {
-			setError('As senhas informadas não são iguais.');
-
-			return;
-		}
-
-		setError('');
-		setIsSaving(true);
+	const onSubmit = async (values: ChangePasswordValues) => {
 		try {
 			const response = await fetch('/api/user/password', {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ password: newPassword }),
+				body: JSON.stringify({ currentPassword: values.currentPassword, password: values.password }),
 			});
-			if (!response.ok) throw new Error('Não foi possível alterar sua senha.');
-			setNewPassword('');
-			setConfirmation('');
+			const problem = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				// A wrong current password belongs under its field, not in a toast the
+				// user has to map back to an input.
+				if (problem?.title === 'INVALID_CURRENT_PASSWORD') {
+					setError('currentPassword', { type: 'server', message: problem.detail });
+					setFocus('currentPassword');
+
+					return;
+				}
+				throw new Error(problem?.detail ?? 'Não foi possível alterar sua senha.');
+			}
+
+			reset();
 			toast({
 				title: 'Senha atualizada',
-				description: 'Use a nova senha no seu próximo acesso.',
+				description: problem?.otherSessionsRevoked
+					? 'As sessões abertas em outros dispositivos foram encerradas.'
+					: 'Use a nova senha no seu próximo acesso.',
 				variant: 'success',
 			});
 		} catch (submitError) {
@@ -72,17 +95,15 @@ export function ProfileSecurity({ user, onLogout }: ProfileSecurityProps) {
 				description: submitError instanceof Error ? submitError.message : 'Tente novamente em alguns instantes.',
 				variant: 'destructive',
 			});
-		} finally {
-			setIsSaving(false);
 		}
 	};
 
 	return (
 		<div className="space-y-6">
-			<section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+			<section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
 				<header className="border-b border-slate-100 px-6 py-5 dark:border-slate-800 sm:px-8 sm:py-6">
 					<div className="flex items-start gap-3">
-						<div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-200">
+						<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-200">
 							<ShieldCheck className="size-5" />
 						</div>
 						<div>
@@ -95,7 +116,7 @@ export function ProfileSecurity({ user, onLogout }: ProfileSecurityProps) {
 				</header>
 
 				<div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[1fr_0.85fr]">
-					<form onSubmit={handleSubmit}>
+					<form onSubmit={handleSubmit(onSubmit)} noValidate>
 						<div className="flex items-center gap-2">
 							<KeyRound className="size-4 text-slate-400" />
 							<h2 className="text-sm font-semibold text-slate-900 dark:text-white">Criar nova senha</h2>
@@ -103,18 +124,34 @@ export function ProfileSecurity({ user, onLogout }: ProfileSecurityProps) {
 
 						<div className="mt-5 space-y-5">
 							<div className="space-y-2">
+								<Label htmlFor="current-password">Senha atual</Label>
+								<Input
+									id="current-password"
+									type="password"
+									autoComplete="current-password"
+									aria-invalid={errors.currentPassword ? true : undefined}
+									aria-describedby={errors.currentPassword ? 'current-password-error' : undefined}
+									className="h-11 rounded-lg"
+									{...register('currentPassword')}
+								/>
+								{errors.currentPassword && (
+									<p id="current-password-error" role="alert" className="text-xs font-medium text-destructive">
+										{errors.currentPassword.message}
+									</p>
+								)}
+							</div>
+
+							<div className="space-y-2">
 								<Label htmlFor="new-password">Nova senha</Label>
 								<div className="relative">
 									<Input
 										id="new-password"
 										type={showPassword ? 'text' : 'password'}
-										value={newPassword}
-										onChange={(event) => {
-											setNewPassword(event.target.value);
-											setError('');
-										}}
 										autoComplete="new-password"
-										className="h-11 rounded-xl pr-11"
+										aria-invalid={errors.password ? true : undefined}
+										aria-describedby={errors.password ? 'new-password-error' : undefined}
+										className="h-11 rounded-lg pr-11"
+										{...register('password')}
 									/>
 									<button
 										type="button"
@@ -125,6 +162,11 @@ export function ProfileSecurity({ user, onLogout }: ProfileSecurityProps) {
 										{showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
 									</button>
 								</div>
+								{errors.password && (
+									<p id="new-password-error" role="alert" className="text-xs font-medium text-destructive">
+										{errors.password.message}
+									</p>
+								)}
 							</div>
 
 							<div className="space-y-2">
@@ -132,32 +174,39 @@ export function ProfileSecurity({ user, onLogout }: ProfileSecurityProps) {
 								<Input
 									id="confirm-password"
 									type={showPassword ? 'text' : 'password'}
-									value={confirmation}
-									onChange={(event) => {
-										setConfirmation(event.target.value);
-										setError('');
-									}}
 									autoComplete="new-password"
-									className="h-11 rounded-xl"
+									aria-invalid={errors.confirmPassword ? true : undefined}
+									aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
+									className="h-11 rounded-lg"
+									{...register('confirmPassword')}
 								/>
+								{errors.confirmPassword && (
+									<p id="confirm-password-error" role="alert" className="text-xs font-medium text-destructive">
+										{errors.confirmPassword.message}
+									</p>
+								)}
 							</div>
 
-							<div className="space-y-2 rounded-xl bg-slate-50 p-4 text-xs dark:bg-slate-950/50">
-								<PasswordRequirement complete={passwordLongEnough}>Pelo menos 8 caracteres</PasswordRequirement>
+							<div className="space-y-2 rounded-lg bg-slate-50 p-4 text-xs dark:bg-slate-950/50">
+								<PasswordRequirement complete={passwordLongEnough}>De 8 a 64 caracteres</PasswordRequirement>
+								<PasswordRequirement complete={passwordHasLetter}>Pelo menos uma letra</PasswordRequirement>
+								<PasswordRequirement complete={passwordHasNumber}>Pelo menos um número</PasswordRequirement>
+								<PasswordRequirement complete={passwordHasSymbol}>
+									Pelo menos um caractere especial
+								</PasswordRequirement>
 								<PasswordRequirement complete={passwordsMatch}>As duas senhas são iguais</PasswordRequirement>
+								<PasswordRequirement complete={passwordIsNew}>Diferente da senha atual</PasswordRequirement>
 							</div>
 
-							{error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-							<Button type="submit" className="w-full rounded-xl sm:w-auto" disabled={isSaving}>
-								{isSaving ? <Loader2 className="animate-spin" /> : <LockKeyhole />}
-								{isSaving ? 'Atualizando...' : 'Atualizar senha'}
+							<Button type="submit" className="w-full rounded-lg sm:w-auto" loading={isSubmitting}>
+								<LockKeyhole animateOnHover />
+								Atualizar senha
 							</Button>
 						</div>
 					</form>
 
 					<div className="space-y-4 xl:border-l xl:border-slate-100 xl:pl-8 dark:xl:border-slate-800">
-						<div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+						<div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
 							<div className="flex items-start gap-3">
 								<MailCheck className="mt-0.5 size-5 shrink-0 text-emerald-600" />
 								<div className="min-w-0">
@@ -167,7 +216,7 @@ export function ProfileSecurity({ user, onLogout }: ProfileSecurityProps) {
 							</div>
 						</div>
 
-						<div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+						<div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
 							<div className="flex items-start gap-3">
 								<Monitor className="mt-0.5 size-5 shrink-0 text-slate-500" />
 								<div>
@@ -198,7 +247,7 @@ export function ProfileSecurity({ user, onLogout }: ProfileSecurityProps) {
 				</div>
 			</section>
 
-			<section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+			<section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-8">
 				<div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 					<div>
 						<h2 className="text-sm font-semibold text-slate-950 dark:text-white">Encerrar esta sessão</h2>
@@ -206,7 +255,7 @@ export function ProfileSecurity({ user, onLogout }: ProfileSecurityProps) {
 							Você precisará entrar novamente para acessar sua conta.
 						</p>
 					</div>
-					<Button type="button" variant="outline" className="rounded-xl sm:self-start" onClick={() => void onLogout()}>
+					<Button type="button" variant="outline" className="rounded-lg sm:self-start" onClick={() => void onLogout()}>
 						<LogOut />
 						Sair da conta
 					</Button>

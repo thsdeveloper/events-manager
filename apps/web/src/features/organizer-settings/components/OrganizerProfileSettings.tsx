@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DocumentInput, PhoneInput } from '@/components/ui/masked-inputs';
+import { OrganizerLogoField } from './OrganizerLogoField';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -51,11 +53,12 @@ export function OrganizerProfileSettings({ organizer }: { organizer: Organizer }
       </CardHeader>
       <CardContent>
         <form onSubmit={save} className="space-y-5">
+          <OrganizerLogoField logo={typeof organizer.logo === 'string' ? organizer.logo : (organizer.logo?.id ?? null)} />
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2"><Label htmlFor="organization-name">Nome público</Label><Input id="organization-name" value={values.name} onChange={(event) => update('name', event.target.value)} required /></div>
-            <div className="space-y-2"><Label htmlFor="organization-email">E-mail financeiro</Label><Input id="organization-email" type="email" value={values.email} onChange={(event) => update('email', event.target.value)} required /></div>
-            <div className="space-y-2"><Label htmlFor="organization-phone">Telefone</Label><Input id="organization-phone" value={values.phone} onChange={(event) => update('phone', event.target.value)} /></div>
-            <div className="space-y-2"><Label htmlFor="organization-document">CPF ou CNPJ</Label><Input id="organization-document" value={values.document} onChange={(event) => update('document', event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="organization-email">E-mail corporativo</Label><Input id="organization-email" type="email" value={values.email} onChange={(event) => update('email', event.target.value)} required /></div>
+            <div className="space-y-2"><Label htmlFor="organization-phone">Telefone</Label><PhoneInput id="organization-phone" value={values.phone} onChange={(digits) => update('phone', digits)} /></div>
+            <div className="space-y-2"><Label htmlFor="organization-document">CPF ou CNPJ</Label><DocumentInput id="organization-document" value={values.document} onChange={(digits) => update('document', digits)} /></div>
             <div className="space-y-2 md:col-span-2"><Label htmlFor="organization-website">Site</Label><Input id="organization-website" type="url" value={values.website} onChange={(event) => update('website', event.target.value)} placeholder="https://" /></div>
             <div className="space-y-2 md:col-span-2"><Label htmlFor="organization-description">Descrição</Label><Textarea id="organization-description" rows={5} value={values.description} onChange={(event) => update('description', event.target.value)} /></div>
           </div>

@@ -37,6 +37,12 @@ additional_redirect_urls = ["http://127.0.0.1:3003", "http://localhost:3003/**"]
 jwt_expiry = 3600
 enable_signup = true
 enable_anonymous_sign_ins = false
+# Piso do provedor, alinhado com `newPasswordSchema` em @events-manager/contracts.
+# Sem isso vale o padrão do Supabase (6), que aceitaria senhas que a API recusa.
+# A exigência de letras/números/símbolos fica só no schema: as opções de
+# `password_requirements` do Supabase que incluem símbolos também obrigam
+# maiúscula E minúscula, o que é mais estrito do que a política definida.
+minimum_password_length = 8
 
 [auth.email]
 enable_signup = true

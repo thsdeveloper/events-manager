@@ -24,13 +24,14 @@ export function StepNavigation({
 	const isProcessing = isSubmitting || !!isLoadingOrganizer;
 	const nextDisabled = disableNext || isProcessing;
 
+	// lg:left-72 offsets the bar by the sidebar width so it lines up with the content column.
 	return (
-		<div className="sticky inset-x-0 bottom-0 z-30 mt-10 border-t border-border/60 bg-card/95 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-card/85">
-			<div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-5">
+		<div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/85 lg:left-72">
+			<div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
 				<Button
 					type="button"
 					variant="outline"
-					size="lg"
+					size="sm"
 					onClick={onBack}
 					disabled={isFirstStep || isProcessing}
 				>
@@ -39,7 +40,7 @@ export function StepNavigation({
 				{isLastStep ? (
 					<Button
 						type="submit"
-						size="lg"
+						size="sm"
 						disabled={nextDisabled}
 					>
 						{isSubmitting ? 'Salvando...' : 'Criar evento'}
@@ -47,7 +48,7 @@ export function StepNavigation({
 				) : (
 					<Button
 						type="button"
-						size="lg"
+						size="sm"
 						onClick={onNext}
 						disabled={nextDisabled}
 					>

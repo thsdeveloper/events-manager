@@ -23,3 +23,18 @@ export function clearSessionCookies(reply: FastifyReply, env: ApiEnv) {
 	reply.clearCookie('access_token', options);
 	reply.clearCookie('refresh_token', options);
 }
+
+/**
+ * Remembers the organization the user is working in. Not httpOnly-sensitive in
+ * itself — the API re-checks ownership on every request — but it is scoped and
+ * expires like the session so a shared machine does not leak the choice.
+ */
+export function setActiveOrganizerCookie(reply: FastifyReply, env: ApiEnv, organizerId: string) {
+	reply.setCookie('active_organizer_id', organizerId, {
+		path: '/',
+		httpOnly: true,
+		secure: env.NODE_ENV === 'production',
+		sameSite: 'lax' as const,
+		maxAge: 60 * 60 * 24 * 30,
+	});
+}

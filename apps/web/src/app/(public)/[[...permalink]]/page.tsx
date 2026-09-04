@@ -1,12 +1,16 @@
+import { isNotFound } from '@/lib/backend';
 import { fetchPageData } from '@/lib/content/fetchers';
-import { PageBlock } from '@events-manager/contracts';
+import { Page as PageContent, PageBlock } from '@events-manager/contracts';
 import { notFound } from 'next/navigation';
 import PageClient from './PageClient';
 
+function resolvePermalink(permalink?: string[]) {
+	return `/${(permalink ?? []).join('/')}`.replace(/\/$/, '') || '/';
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ permalink?: string[] }> }) {
 	const { permalink } = await params;
-	const permalinkSegments = permalink || [];
-	const resolvedPermalink = `/${permalinkSegments.join('/')}`.replace(/\/$/, '') || '/';
+	const resolvedPermalink = resolvePermalink(permalink);
 
 	try {
 		const page = await fetchPageData(resolvedPermalink);
@@ -24,7 +28,11 @@ export async function generateMetadata({ params }: { params: Promise<{ permalink
 			},
 		};
 	} catch (error) {
-		console.error('Error loading page metadata:', error);
+		// Uma rota sem página cadastrada no CMS é fluxo normal: o próprio Page
+		// responde com notFound(). Só falha real de API merece log de erro.
+		if (!isNotFound(error)) {
+			console.error('Error loading page metadata:', error);
+		}
 
 		return;
 	}
@@ -32,23 +40,26 @@ export async function generateMetadata({ params }: { params: Promise<{ permalink
 
 export default async function Page({ params }: { params: Promise<{ permalink?: string[] }> }) {
 	const { permalink } = await params;
-	const permalinkSegments = permalink || [];
-	const resolvedPermalink = `/${permalinkSegments.join('/')}`.replace(/\/$/, '') || '/';
+	const resolvedPermalink = resolvePermalink(permalink);
+
+	let page: PageContent | null = null;
 
 	try {
-		const page = await fetchPageData(resolvedPermalink);
-
-		if (!page || !page.blocks) {
-			notFound();
-		}
-
-		const blocks: PageBlock[] = page.blocks.filter(
-			(block: any): block is PageBlock => typeof block === 'object' && block.collection,
-		);
-
-		return <PageClient sections={blocks} />;
+		page = await fetchPageData(resolvedPermalink);
 	} catch (error) {
-		console.error('Error loading page:', error);
+		if (!isNotFound(error)) {
+			console.error('Error loading page:', error);
+		}
+	}
+
+	// notFound() fica fora do try: ele sinaliza via throw e seria engolido pelo catch.
+	if (!page?.blocks) {
 		notFound();
 	}
+
+	const blocks: PageBlock[] = page.blocks.filter(
+		(block: any): block is PageBlock => typeof block === 'object' && block.collection,
+	);
+
+	return <PageClient sections={blocks} />;
 }

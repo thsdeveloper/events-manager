@@ -3,7 +3,11 @@
 import { useState, useRef, useImperativeHandle, forwardRef, useEffect, useId } from 'react';
 import { Upload, X, ImageIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { ImageCropperDialog } from '@/components/ui/image-cropper-dialog';
 import { getMediaAssetUrl } from '@/lib/media';
+
+/** Sentinel value meaning "a file is selected but has not reached storage yet". */
+export const PENDING_UPLOAD_VALUE = 'local-file';
 
 interface ImageUploadProps {
 	value?: string | null;
@@ -12,9 +16,24 @@ interface ImageUploadProps {
 	description?: string;
 	required?: boolean;
 	folder?: string;
+	/**
+	 * When false the file is held locally and only sent to storage once the parent
+	 * calls `uploadFile()`. Use it wherever the owning record does not exist yet,
+	 * so abandoned forms never leave orphan files on the server.
+	 */
+	uploadOnSelect?: boolean;
+	/** Deferred mode only: hands the held file to the parent, which owns the upload. */
+	onFileSelected?: (file: File | null) => void;
+	/** Deferred mode only: restores the preview when this component is remounted. */
+	pendingPreviewUrl?: string | null;
 	onUploadStart?: () => void;
 	onUploadSuccess?: (fileId: string) => void;
 	onUploadError?: (error: string) => void;
+	/**
+	 * Aspect ratio the crop dialog locks the selection to. Defaults to 16/9, the
+	 * shape event covers are displayed in. Pass `null` for a free crop.
+	 */
+	cropAspectRatio?: number | null;
 }
 
 export interface ImageUploadRef {
@@ -30,6 +49,10 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 			description,
 			required = false,
 			folder = 'events',
+			cropAspectRatio = 16 / 9,
+			uploadOnSelect = true,
+			onFileSelected,
+			pendingPreviewUrl,
 			onUploadStart,
 			onUploadSuccess,
 			onUploadError,
@@ -37,11 +60,15 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 		ref,
 	) => {
 		const [selectedFile, setSelectedFile] = useState<File | null>(null);
-		const [preview, setPreview] = useState<string | null>(
-			value && value !== 'local-file' ? getMediaAssetUrl(value) : null,
-		);
+		const [preview, setPreview] = useState<string | null>(() => {
+			if (!value) return null;
+
+			return value === PENDING_UPLOAD_VALUE ? (pendingPreviewUrl ?? null) : getMediaAssetUrl(value);
+		});
 		const [isUploading, setIsUploading] = useState(false);
 		const [errorMessage, setErrorMessage] = useState<string | null>(null);
+		// Holds the picked file while the crop dialog is open.
+		const [fileToCrop, setFileToCrop] = useState<File | null>(null);
 		const fileInputRef = useRef<HTMLInputElement>(null);
 		const inputId = useId();
 
@@ -50,8 +77,8 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 			uploadFile: async () => {
 				// If no file is selected locally, check if we already have a valid UUID
 				if (!selectedFile) {
-					// Only return the value if it's a valid UUID (not 'local-file')
-					if (value && value !== 'local-file') {
+					// Only return the value if it's a valid UUID (not the pending sentinel)
+					if (value && value !== PENDING_UPLOAD_VALUE) {
 						return value;
 					}
 
@@ -96,8 +123,10 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 			},
 		}));
 
-		const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 			const file = e.target.files?.[0];
+			// Reset so re-picking the same file still fires onChange.
+			e.target.value = '';
 			if (!file) {
 				return;
 			}
@@ -125,12 +154,30 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 				return;
 			}
 
+			// The crop dialog takes over; `processFile` resumes once it confirms.
+			setFileToCrop(file);
+		};
+
+		const processFile = async (file: File) => {
+			setFileToCrop(null);
+			setErrorMessage(null);
+
 			// Create local preview immediately
 			const reader = new FileReader();
 			reader.onloadend = () => {
 				setPreview(reader.result as string);
 			};
 			reader.readAsDataURL(file);
+
+			// Deferred mode: hold the file until the parent decides the record is worth
+			// persisting, so nothing is written to storage for a form that is abandoned.
+			if (!uploadOnSelect) {
+				setSelectedFile(file);
+				onChange(PENDING_UPLOAD_VALUE);
+				onFileSelected?.(file);
+
+				return;
+			}
 
 			// Upload immediately
 			setIsUploading(true);
@@ -187,7 +234,7 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 		};
 
 		useEffect(() => {
-			if (value && value !== 'local-file') {
+			if (value && value !== PENDING_UPLOAD_VALUE) {
 				setPreview(getMediaAssetUrl(value));
 				setSelectedFile(null);
 			}
@@ -203,6 +250,7 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 			setSelectedFile(null);
 			setErrorMessage(null);
 			onChange(null);
+			onFileSelected?.(null);
 			if (fileInputRef.current) {
 				fileInputRef.current.value = '';
 			}
@@ -221,7 +269,9 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 				<div className="space-y-2">
 					{preview ? (
 						<div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800">
-							<Image src={preview} alt="Preview" fill className="object-cover" />
+							{/* Unoptimised: the preview is either a data: URL or /api/media/:id, which
+						    redirects to storage — next/image cannot optimise either one. */}
+						<Image src={preview} alt="Preview" fill className="object-cover" unoptimized />
 							{isUploading && (
 								<div className="absolute inset-0 bg-black/50 flex items-center justify-center">
 									<div className="flex flex-col items-center gap-2 text-white">
@@ -285,6 +335,14 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 				)}
 
 				{description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</p>}
+
+				<ImageCropperDialog
+					file={fileToCrop}
+					onCancel={() => setFileToCrop(null)}
+					onCropped={processFile}
+					aspectRatio={cropAspectRatio ?? undefined}
+					outputWidth={1600}
+				/>
 			</div>
 		);
 	},

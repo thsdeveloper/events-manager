@@ -1,34 +1,53 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle, Eye, EyeOff, KeyRound, Lock } from 'lucide-react';
 import { AuthButton } from '@/components/auth/AuthButton';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { LoadingSpinner } from '@/components/design-system/atoms/LoadingSpinner';
-import { AuthField } from '@/components/design-system/molecules/AuthField';
+import { AuthField, registerField } from '@/components/design-system/molecules/AuthField';
 import { InlineAlert } from '@/components/design-system/molecules/InlineAlert';
 import { Button } from '@/components/ui/button';
 import { httpClient } from '@/lib/http-client';
+import { resetPasswordSchema, type ResetPasswordValues } from '@/lib/validation/auth';
 
-type ResetState = 'checking' | 'ready' | 'invalid' | 'success';
+type ResetState = 'checking' | 'ready' | 'invalid' | 'expired' | 'success';
 
 export default function ResetPasswordPage() {
 	const [accessToken, setAccessToken] = useState('');
-	const [password, setPassword] = useState('');
-	const [confirmPassword, setConfirmPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
-	const [error, setError] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
 	const [state, setState] = useState<ResetState>('checking');
+
+	const {
+		register,
+		handleSubmit,
+		formState: { errors, isSubmitting },
+	} = useForm<ResetPasswordValues>({
+		resolver: zodResolver(resetPasswordSchema),
+		defaultValues: { password: '', confirmPassword: '' },
+		mode: 'onTouched',
+	});
 
 	useEffect(() => {
 		const hash = new URLSearchParams(window.location.hash.slice(1));
 		const query = new URLSearchParams(window.location.search);
 		const token = hash.get('access_token') ?? query.get('access_token');
 		const recoveryType = hash.get('type') ?? query.get('type');
+		const errorCode = hash.get('error_code') ?? query.get('error_code');
 
 		window.history.replaceState({}, document.title, window.location.pathname);
+
+		// O token do e-mail é de uso único: abrir o link duas vezes, ou recarregar
+		// esta página depois que o hash foi limpo, devolve otp_expired. Sem separar
+		// esse caso o usuário lê "link incompleto" e tenta o mesmo link de novo.
+		if (errorCode === 'otp_expired' || errorCode === 'access_denied') {
+			setState('expired');
+
+			return;
+		}
 		if (!token || (recoveryType && recoveryType !== 'recovery')) {
 			setState('invalid');
 
@@ -38,28 +57,13 @@ export default function ResetPasswordPage() {
 		setState('ready');
 	}, []);
 
-	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		setError('');
-		if (password !== confirmPassword) {
-			setError('As senhas não coincidem.');
-
-			return;
-		}
-
-		setIsLoading(true);
+	const onSubmit = async ({ password }: ResetPasswordValues) => {
 		try {
-			await httpClient.post(
-				'/api/auth/password/reset',
-				{ access_token: accessToken, password },
-				{ toastOnError: false },
-			);
+			await httpClient.post('/api/auth/password/reset', { access_token: accessToken, password });
 			setAccessToken('');
 			setState('success');
-		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : 'Não foi possível redefinir a senha. Solicite outro link.');
-		} finally {
-			setIsLoading(false);
+		} catch {
+			// Já exibido pelo toast de erro do httpClient.
 		}
 	};
 
@@ -69,6 +73,22 @@ export default function ResetPasswordPage() {
 				<div role="status" className="flex justify-center py-12 text-primary">
 					<LoadingSpinner className="size-8" />
 					<span className="sr-only">Validando link de recuperação</span>
+				</div>
+			</AuthLayout>
+		);
+	}
+
+	if (state === 'expired') {
+		return (
+			<AuthLayout title="Link expirado" subtitle="Esta recuperação já foi utilizada">
+				<div className="space-y-5">
+					<InlineAlert>
+						Este link só pode ser aberto uma vez e vale por 15 minutos. Solicite uma nova recuperação para receber um
+						link novo.
+					</InlineAlert>
+					<Button asChild className="w-full">
+						<Link href="/esqueci-senha">Solicitar novo link</Link>
+					</Button>
 				</div>
 			</AuthLayout>
 		);
@@ -104,20 +124,17 @@ export default function ResetPasswordPage() {
 
 	return (
 		<AuthLayout title="Crie uma nova senha" subtitle="Escolha uma senha que você não usa em outros serviços">
-			<form onSubmit={handleSubmit} className="space-y-6">
-				{error ? <InlineAlert>{error}</InlineAlert> : null}
+			<form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
 				<AuthField
 					id="password"
 					label="Nova senha"
 					icon={<Lock className="size-5" />}
 					type={showPassword ? 'text' : 'password'}
 					autoComplete="new-password"
-					value={password}
-					onChange={(event) => setPassword(event.target.value)}
-					required
-					minLength={8}
 					placeholder="••••••••"
-					hint="Use pelo menos 8 caracteres."
+					hint="Pelo menos 8 caracteres, com letras, números e um caractere especial."
+					error={errors.password?.message}
+					{...registerField(register('password'))}
 					endAction={
 						<Button
 							type="button"
@@ -137,22 +154,12 @@ export default function ResetPasswordPage() {
 					icon={<KeyRound className="size-5" />}
 					type={showPassword ? 'text' : 'password'}
 					autoComplete="new-password"
-					value={confirmPassword}
-					onChange={(event) => setConfirmPassword(event.target.value)}
-					required
-					minLength={8}
 					placeholder="••••••••"
+					error={errors.confirmPassword?.message}
+					{...registerField(register('confirmPassword'))}
 				/>
-				<AuthButton type="submit" isLoading={isLoading}>
-					{isLoading ? (
-						<>
-							<LoadingSpinner /> Atualizando...
-						</>
-					) : (
-						<>
-							<KeyRound className="size-5" /> Atualizar senha
-						</>
-					)}
+				<AuthButton type="submit" isLoading={isSubmitting}>
+					<KeyRound className="size-5" /> Atualizar senha
 				</AuthButton>
 			</form>
 		</AuthLayout>

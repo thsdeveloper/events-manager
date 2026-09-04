@@ -1,4 +1,10 @@
-import { eventInputSchema, type Event, type EventInput } from '@events-manager/contracts';
+import {
+	eventInputSchema,
+	type Event,
+	type EventCreateInput,
+	type EventInput,
+	type TicketInput,
+} from '@events-manager/contracts';
 
 export interface EventRepository {
 	createForUser(userId: string, input: EventInput): Promise<Event | 'organizer_required'>;
@@ -11,11 +17,23 @@ export interface EventRepository {
 	updateForUser(userId: string, id: string, input: Partial<EventInput>): Promise<Event | null>;
 }
 
+/**
+ * Creates the tickets that travel with a new event. Kept as a port so the event
+ * service does not have to know about platform-fee pricing, which lives in the
+ * admin side alongside the rest of the ticket rules.
+ */
+export interface EventTicketCreator {
+	create(organizerId: string, ticket: TicketInput): Promise<unknown>;
+}
+
 export class EventNotFound extends Error {}
 export class OrganizerRequired extends Error {}
 
 export class EventService {
-	constructor(private readonly repository: EventRepository) {}
+	constructor(
+		private readonly repository: EventRepository,
+		private readonly ticketCreator?: EventTicketCreator,
+	) {}
 
 	async getPublicBySlug(slug: string) {
 		const event = await this.repository.findPublicBySlug(slug);
@@ -49,9 +67,24 @@ export class EventService {
 		return this.repository.listCategories();
 	}
 
-	async create(userId: string, input: EventInput) {
-		const event = await this.repository.createForUser(userId, input);
+	async create(userId: string, input: EventCreateInput) {
+		const { tickets, ...eventInput } = input;
+		const event = await this.repository.createForUser(userId, eventInput);
 		if (event === 'organizer_required') throw new OrganizerRequired();
+		if (tickets.length === 0) return event;
+		if (!this.ticketCreator) throw new Error('EventService was built without a ticket creator.');
+
+		const { id, organizer_id: organizerId } = event as { id: string; organizer_id: string };
+		try {
+			for (const ticket of tickets) {
+				await this.ticketCreator.create(organizerId, { ...ticket, event_id: id });
+			}
+		} catch (error) {
+			// A paid event with no tickets is precisely the state the rule forbids,
+			// so the half-built event is rolled back instead of being left behind.
+			await this.repository.deleteForUser(userId, id).catch(() => undefined);
+			throw error;
+		}
 		return event;
 	}
 

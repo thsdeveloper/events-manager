@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { AppUser } from '@events-manager/contracts';
-import { Loader2, Save, Upload } from 'lucide-react';
+import { Save, Upload } from 'lucide-react';
 import { getMediaAssetUrl } from '@/lib/media';
 
 const userProfileSchema = z.object({
@@ -270,18 +270,9 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
 				/>
 
 				<div className="flex justify-end">
-					<Button type="submit" disabled={isSubmitting} className="gap-2">
-						{isSubmitting ? (
-							<>
-								<Loader2 className="size-4 animate-spin" />
-								Salvando...
-							</>
-						) : (
-							<>
-								<Save className="size-4" />
-								Salvar Alterações
-							</>
-						)}
+					<Button type="submit" loading={isSubmitting} className="gap-2">
+						<Save className="size-4" />
+						Salvar Alterações
 					</Button>
 				</div>
 			</form>

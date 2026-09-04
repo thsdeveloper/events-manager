@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download } from '@/components/animate-ui/icons/download';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { downloadCSV } from '../_lib/export';
@@ -75,18 +75,9 @@ export function ExportButton({ filters, disabled }: ExportButtonProps) {
 	};
 
 	return (
-		<Button variant="outline" size="sm" onClick={handleExport} disabled={disabled || isExporting} className="gap-2">
-			{isExporting ? (
-				<>
-					<Loader2 className="size-4 animate-spin" />
-					Exportando...
-				</>
-			) : (
-				<>
-					<Download className="size-4" />
-					Exportar CSV
-				</>
-			)}
+		<Button variant="outline" size="sm" onClick={handleExport} loading={isExporting} disabled={disabled} className="gap-2">
+			<Download className="size-4" animateOnHover />
+			Exportar CSV
 		</Button>
 	);
 }

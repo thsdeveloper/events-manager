@@ -5,6 +5,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { PendingContent, usePendingClick } from "@/components/ui/pending-action"
 
 const AlertDialog = AlertDialogPrimitive.Root
 
@@ -100,14 +101,33 @@ AlertDialogDescription.displayName =
 
 const AlertDialogAction = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Action>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Action
-    ref={ref}
-    className={cn(buttonVariants(), className)}
-    {...props}
-  />
-))
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> & {
+    /** Forces the pending state; async `onClick` handlers set it on their own. */
+    loading?: boolean
+    autoLoading?: boolean
+  }
+>(({ className, loading = false, autoLoading = true, disabled, onClick, children, ...props }, ref) => {
+  // Confirm actions are the destructive ones — the dialog is held open while the
+  // request runs so the user sees it working instead of a dialog that vanishes.
+  const { pending, handleClick } = usePendingClick(onClick, {
+    enabled: autoLoading,
+    keepMounted: true,
+  })
+  const isLoading = loading || pending
+
+  return (
+    <AlertDialogPrimitive.Action
+      ref={ref}
+      className={cn(buttonVariants(), className)}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
+      onClick={handleClick}
+      {...props}
+    >
+      <PendingContent loading={isLoading}>{children}</PendingContent>
+    </AlertDialogPrimitive.Action>
+  )
+})
 AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName
 
 const AlertDialogCancel = React.forwardRef<

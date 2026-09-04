@@ -83,6 +83,9 @@ export default [
     },
   },
   {
-    ignores: [".next/*"],
+    // Vendored copy-in code from the animate-ui registry. Re-running
+    // `shadcn add @animate-ui/...` overwrites these files, so any style fix
+    // applied here would be lost — lint them out instead.
+    ignores: [".next/*", "src/components/animate-ui/**", "src/hooks/use-is-in-view.tsx"],
   },
 ];

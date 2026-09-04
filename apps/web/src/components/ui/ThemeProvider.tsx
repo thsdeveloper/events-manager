@@ -1,38 +1,31 @@
 'use client';
-import * as React from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
 
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
+import type * as React from 'react';
 
-const ThemeContext = createContext({ theme: 'light', setTheme: (theme: string) => {} });
-
+/**
+ * Single source of truth for the color scheme.
+ *
+ * next-themes owns the `light`/`dark` class on <html>, the `system` resolution
+ * and the localStorage persistence — nothing else may touch them. An earlier
+ * version kept a parallel useState/localStorage copy here; because parent
+ * effects run after child effects, it overwrote whatever next-themes had just
+ * applied and, for the `system` preference, put a meaningless `system` class on
+ * <html> instead of the resolved one — which is why "Sistema" always rendered
+ * as light.
+ */
 export function ThemeProvider({ children, ...props }: React.ComponentProps<typeof NextThemesProvider>) {
-	const [theme, setTheme] = useState('light');
-	const [mounted, setMounted] = useState(false);
-
-	useEffect(() => {
-		const storedTheme = localStorage.getItem('theme');
-		const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-		setTheme(storedTheme || systemTheme);
-		setMounted(true);
-	}, []);
-
-	useEffect(() => {
-		if (mounted) {
-			document.documentElement.classList.remove('light', 'dark');
-			document.documentElement.classList.add(theme);
-			localStorage.setItem('theme', theme);
-		}
-	}, [theme, mounted]);
-
-	if (!mounted) {
-		return null;
-	}
-
 	return (
-		<NextThemesProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange {...props}>
+		<NextThemesProvider
+			attribute="class"
+			defaultTheme="system"
+			disableTransitionOnChange
+			enableSystem
+			storageKey="theme"
+			themes={['light', 'dark']}
+			{...props}
+		>
 			{children}
 		</NextThemesProvider>
 	);
 }
-export const useTheme = () => useContext(ThemeContext);

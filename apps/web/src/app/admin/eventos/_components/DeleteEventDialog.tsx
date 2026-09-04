@@ -117,10 +117,10 @@ export function DeleteEventDialog({ eventId, eventTitle, participantsCount, onSu
 								e.preventDefault();
 								handleDelete();
 							}}
-							disabled={isDeleting}
+							loading={isDeleting}
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
-							{isDeleting ? 'Excluindo...' : 'Excluir evento'}
+							Excluir evento
 						</AlertDialogAction>
 					)}
 				</AlertDialogFooter>

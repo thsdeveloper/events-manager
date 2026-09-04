@@ -15,6 +15,7 @@ import { adminRoutes } from './routes/admin.js';
 import { emailRoutes } from './routes/email.js';
 import { externalRoutes } from './routes/external.js';
 import { financeRoutes } from './routes/finance.js';
+import { locationRoutes } from './routes/locations.js';
 import { organizerRoutes } from './routes/organizers.js';
 import { paymentRoutes } from './routes/payments.js';
 import { superAdminRoutes } from './routes/super-admin.js';
@@ -50,6 +51,7 @@ export async function buildApp(env: ApiEnv) {
 	await app.register(organizerRoutes, { env, clients });
 	await app.register(adminRoutes, { clients });
 	await app.register(userRoutes, { clients });
+	await app.register(locationRoutes, { clients });
 	await app.register(financeRoutes, { env, clients, payments });
 	await app.register(paymentRoutes, { env, clients, payments });
 	await app.register(superAdminRoutes, { clients, payments });

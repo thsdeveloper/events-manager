@@ -28,7 +28,7 @@ export function FormSection({
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.3 }}
 			className={cn(
-				'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4 shadow-sm hover:shadow-md transition-shadow duration-200',
+				'bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 space-y-4 shadow-sm hover:shadow-md transition-shadow duration-200',
 				className
 			)}
 		>

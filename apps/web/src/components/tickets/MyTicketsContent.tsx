@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
 	Search,
-	Filter,
 	Calendar,
 	Ticket,
 	TrendingUp,
@@ -14,6 +13,7 @@ import {
 	CheckCircle2,
 	XCircle,
 	LayoutGrid,
+	type LucideIcon,
 } from 'lucide-react';
 import { isPast, isFuture } from 'date-fns';
 import type { EventRegistration } from '@events-manager/contracts';
@@ -26,6 +26,44 @@ interface MyTicketsContentProps {
 
 type TabType = 'upcoming' | 'past' | 'cancelled' | 'all';
 type ViewMode = 'grid' | 'list';
+
+const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const STAT_TONES = {
+	indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300',
+	violet: 'bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-300',
+	emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300',
+	amber: 'bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-300',
+} as const;
+
+/**
+ * Colour is carried by a small icon chip instead of a full-card gradient: the
+ * four cards sit next to the white panels used across the account pages, and the
+ * gradients made them read as the primary content.
+ */
+function StatCard({
+	icon: Icon,
+	tone,
+	label,
+	value,
+}: {
+	icon: LucideIcon;
+	tone: keyof typeof STAT_TONES;
+	label: string;
+	value: string;
+}) {
+	return (
+		<div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900">
+			<span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${STAT_TONES[tone]}`}>
+				<Icon className="size-4" />
+			</span>
+			<div className="min-w-0">
+				<p className="truncate text-xs text-slate-500 dark:text-slate-400">{label}</p>
+				<p className="truncate text-base font-semibold text-slate-950 dark:text-white">{value}</p>
+			</div>
+		</div>
+	);
+}
 
 export function MyTicketsContent({ registrations }: MyTicketsContentProps) {
 	const [selectedTab, setSelectedTab] = useState<TabType>('upcoming');
@@ -128,125 +166,74 @@ return tickets.filter((reg) => {
 		},
 	];
 
-	// Empty state
+	// Empty state — carries the same surface as the other /perfil blocks so it
+	// reads as a panel instead of floating loose on the page background.
 	if (registrations.length === 0) {
 		return (
-			<div className="mx-auto max-w-md py-16 text-center">
-				<div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-purple-100">
-					<Ticket className="size-10 text-indigo-600" />
+			<div className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+				<div className="mx-auto max-w-md px-6 py-16 text-center">
+					<div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-purple-100">
+						<Ticket className="size-10 text-indigo-600" />
+					</div>
+					<h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">Nenhum ingresso encontrado</h3>
+					<p className="mb-8 text-gray-600 dark:text-gray-400">
+						Você ainda não comprou nenhum ingresso. Explore os eventos disponíveis e garanta o seu!
+					</p>
+					<Link
+						href="/eventos"
+						className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 font-medium text-white shadow-lg transition-all hover:shadow-xl hover:from-indigo-700 hover:to-purple-700"
+					>
+						<Calendar className="size-5" />
+						Explorar Eventos
+					</Link>
 				</div>
-				<h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">
-					Nenhum ingresso encontrado
-				</h3>
-				<p className="mb-8 text-gray-600 dark:text-gray-400">
-					Você ainda não comprou nenhum ingresso. Explore os eventos disponíveis e garanta o seu!
-				</p>
-				<Link
-					href="/eventos"
-					className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 font-medium text-white shadow-lg transition-all hover:shadow-xl hover:from-indigo-700 hover:to-purple-700"
-				>
-					<Calendar className="size-5" />
-					Explorar Eventos
-				</Link>
 			</div>
 		);
 	}
 
 	return (
-		<div className="space-y-6">
-			{/* Stats Cards */}
-			<div className="grid gap-4 md:grid-cols-4">
-				<div className="rounded-xl border bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 dark:from-indigo-950 dark:to-indigo-900">
-					<div className="flex items-center justify-between">
-						<div>
-							<p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-								Total de Ingressos
-							</p>
-							<p className="mt-2 text-3xl font-bold text-indigo-900 dark:text-white">
-								{stats.totalTickets}
-							</p>
-						</div>
-						<Ticket className="size-12 text-indigo-600/20" />
-					</div>
-				</div>
-
-				<div className="rounded-xl border bg-gradient-to-br from-purple-50 to-purple-100 p-6 dark:from-purple-950 dark:to-purple-900">
-					<div className="flex items-center justify-between">
-						<div>
-							<p className="text-sm font-medium text-purple-700 dark:text-purple-300">
-								Próximos Eventos
-							</p>
-							<p className="mt-2 text-3xl font-bold text-purple-900 dark:text-white">
-								{stats.upcomingEvents}
-							</p>
-						</div>
-						<Calendar className="size-12 text-purple-600/20" />
-					</div>
-				</div>
-
-				<div className="rounded-xl border bg-gradient-to-br from-green-50 to-green-100 p-6 dark:from-green-950 dark:to-green-900">
-					<div className="flex items-center justify-between">
-						<div>
-							<p className="text-sm font-medium text-green-700 dark:text-green-300">Check-ins</p>
-							<p className="mt-2 text-3xl font-bold text-green-900 dark:text-white">
-								{stats.checkedIn}
-							</p>
-						</div>
-						<CheckCircle2 className="size-12 text-green-600/20" />
-					</div>
-				</div>
-
-				<div className="rounded-xl border bg-gradient-to-br from-amber-50 to-amber-100 p-6 dark:from-amber-950 dark:to-amber-900">
-					<div className="flex items-center justify-between">
-						<div>
-							<p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-								Total Investido
-							</p>
-							<p className="mt-2 text-2xl font-bold text-amber-900 dark:text-white">
-								{new Intl.NumberFormat('pt-BR', {
-									style: 'currency',
-									currency: 'BRL',
-								}).format(stats.totalSpent)}
-							</p>
-						</div>
-						<TrendingUp className="size-12 text-amber-600/20" />
-					</div>
-				</div>
+		<div className="space-y-4">
+			{/* Stats — compact row: these are context, not the subject of the page. */}
+			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+				<StatCard icon={Ticket} tone="indigo" label="Ingressos" value={String(stats.totalTickets)} />
+				<StatCard icon={Calendar} tone="violet" label="Próximos" value={String(stats.upcomingEvents)} />
+				<StatCard icon={CheckCircle2} tone="emerald" label="Check-ins" value={String(stats.checkedIn)} />
+				<StatCard icon={TrendingUp} tone="amber" label="Investido" value={currency.format(stats.totalSpent)} />
 			</div>
 
 			{/* Search and Filters */}
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="relative flex-1 sm:max-w-md">
-					<Search className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-gray-400" />
+					<Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
 					<input
 						type="text"
 						placeholder="Buscar por evento, código ou tipo..."
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
-						className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800"
+						className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-gray-700 dark:bg-gray-800"
 					/>
 				</div>
 
 				<div className="flex items-center gap-2">
 					<button
 						onClick={() => setViewMode('grid')}
-						className={`rounded-lg border p-2.5 transition-colors ${viewMode === 'grid' ? 'border-indigo-600 bg-indigo-50 text-indigo-600 dark:bg-indigo-950' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700'}`}
+						className={`rounded-lg border p-2 transition-colors ${viewMode === 'grid' ? 'border-violet-600 bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-200' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700'}`}
 						title="Visualização em grade"
 					>
-						<Grid3x3 className="size-5" />
+						<Grid3x3 className="size-4" />
 					</button>
 					<button
 						onClick={() => setViewMode('list')}
-						className={`rounded-lg border p-2.5 transition-colors ${viewMode === 'list' ? 'border-indigo-600 bg-indigo-50 text-indigo-600 dark:bg-indigo-950' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700'}`}
+						className={`rounded-lg border p-2 transition-colors ${viewMode === 'list' ? 'border-violet-600 bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-200' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700'}`}
 						title="Visualização em lista"
 					>
-						<List className="size-5" />
+						<List className="size-4" />
 					</button>
 				</div>
 			</div>
 
 			{/* Tabs */}
-			<div className="flex gap-2 overflow-x-auto pb-2">
+			<div className="flex gap-2 overflow-x-auto pb-1">
 				{tabs.map((tab) => {
 					const Icon = tab.icon;
 					
@@ -254,12 +241,12 @@ return (
 						<button
 							key={tab.key}
 							onClick={() => setSelectedTab(tab.key)}
-							className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${selectedTab === tab.key ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+							className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${selectedTab === tab.key ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'}`}
 						>
 							<Icon className="size-4" />
 							{tab.label}
 							<span
-								className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${selectedTab === tab.key ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}
+								className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${selectedTab === tab.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
 							>
 								{tab.count}
 							</span>
@@ -278,13 +265,14 @@ return (
 				</div>
 			) : (
 				<div
-					className={viewMode === 'grid' ? 'grid gap-6 md:grid-cols-2 lg:grid-cols-3' : 'space-y-4'}
+					className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-2'}
 				>
 					{filteredTickets.map((registration) => (
 						<TicketCard
 							key={registration.id}
 							registration={registration}
 							onViewDetails={setSelectedTicket}
+							variant={viewMode}
 						/>
 					))}
 				</div>

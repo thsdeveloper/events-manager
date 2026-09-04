@@ -84,6 +84,8 @@ const locationFields = z.object({
 	}),
 	location_name: z.string().optional().or(z.literal('')),
 	location_address: z.string().optional().or(z.literal('')),
+	latitude: z.number().min(-90).max(90).nullable().optional(),
+	longitude: z.number().min(-180).max(180).nullable().optional(),
 	online_url: z.string().optional().or(z.literal('')),
 });
 
@@ -101,6 +103,18 @@ export const locationSchema = locationFields.superRefine((data, ctx) => {
 				path: ['location_address'],
 				code: z.ZodIssueCode.custom,
 				message: 'Informe o endereço completo',
+			});
+		}
+		if (
+			data.latitude === null ||
+			data.latitude === undefined ||
+			data.longitude === null ||
+			data.longitude === undefined
+		) {
+			ctx.addIssue({
+				path: ['latitude'],
+				code: z.ZodIssueCode.custom,
+				message: 'Marque o local do evento no mapa',
 			});
 		}
 	}
@@ -127,8 +141,15 @@ export const locationSchema = locationFields.superRefine((data, ctx) => {
 	}
 });
 
-export const ticketsSchema = z.object({
+const ticketDraftSchema = z.object({
+	title: z.string().trim().min(1),
+	quantity: z.number().int().positive(),
+	price: z.number().nonnegative(),
+});
+
+const ticketsFields = z.object({
 	is_free: z.boolean(),
+	tickets: z.array(ticketDraftSchema).default([]),
 	max_attendees: z
 		.union([
 			z
@@ -147,12 +168,25 @@ export const ticketsSchema = z.object({
 	publish_after_create: z.boolean(),
 });
 
+/** Mirrors the API rule: a paid event cannot exist without a ticket to sell. */
+function addPaidTicketIssue(data: { is_free: boolean; tickets: unknown[] }, ctx: z.RefinementCtx) {
+	if (!data.is_free && data.tickets.length === 0) {
+		ctx.addIssue({
+			path: ['tickets'],
+			code: z.ZodIssueCode.custom,
+			message: 'Cadastre pelo menos um tipo de ingresso para um evento pago',
+		});
+	}
+}
+
+export const ticketsSchema = ticketsFields.superRefine(addPaidTicketIssue);
+
 export const eventWizardSchema = basicInfoSchema
 	.merge(coverImageSchema)
 	.merge(detailsSchema)
 	.merge(scheduleFields)
 	.merge(locationFields)
-	.merge(ticketsSchema)
+	.merge(ticketsFields)
 	.superRefine((data, ctx) => {
 		const scheduleCheck = scheduleSchema.safeParse({
 			start_date: data.start_date,
@@ -169,10 +203,14 @@ export const eventWizardSchema = basicInfoSchema
 			event_type: data.event_type,
 			location_name: data.location_name,
 			location_address: data.location_address,
+			latitude: data.latitude,
+			longitude: data.longitude,
 			online_url: data.online_url,
 		});
 
 		if (!locationCheck.success) {
 			locationCheck.error.issues.forEach((issue) => ctx.addIssue(issue));
 		}
+
+		addPaidTicketIssue(data, ctx);
 	});

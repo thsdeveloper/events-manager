@@ -4,6 +4,24 @@ import { ApiError } from '../../shared/errors.js';
 
 type Row = Record<string, unknown>;
 
+export interface CategoryInput {
+	color?: string | null;
+	description?: string | null;
+	icon?: string | null;
+	name: string;
+	slug?: string;
+	sort?: number | null;
+}
+
+function slugify(value: string) {
+	return value
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+}
+
 export interface AuditContext {
 	ip: string;
 	userAgent: string | null;
@@ -24,6 +42,8 @@ export interface TransactionPageQuery {
 }
 
 export interface SuperAdminRepository {
+	countEventsByCategory(): Promise<Record<string, number>>;
+	createCategory(input: Record<string, unknown>): Promise<Row>;
 	createPayout(input: {
 		actorId: string;
 		amount: number;
@@ -32,7 +52,9 @@ export interface SuperAdminRepository {
 		provider: string;
 		providerFee: number;
 	}): Promise<Row>;
+	deleteCategory(id: string): Promise<Row | null>;
 	failPayout(id: string, reason: string, processedAt: string): Promise<void>;
+	findCategoryBySlug(slug: string, exceptId?: string): Promise<{ id: string } | null>;
 	finishPayout(id: string, input: Record<string, unknown>): Promise<Row>;
 	getAvailableBalance(organizerId: string): Promise<number>;
 	getConfiguration(): Promise<Row>;
@@ -45,6 +67,10 @@ export interface SuperAdminRepository {
 		registrations: Row[];
 		transactions: Row[];
 	}>;
+	getCategory(id: string): Promise<Row | null>;
+	getSiteSettings(): Promise<Row>;
+	isImageMedia(id: string): Promise<boolean>;
+	listCategories(): Promise<Row[]>;
 	listOrganizerPage(query: OrganizerPageQuery): Promise<{
 		data: Row[];
 		events: Row[];
@@ -62,8 +88,10 @@ export interface SuperAdminRepository {
 		resourceId: string | number | null;
 		resourceType: string;
 	}): Promise<void>;
+	updateCategory(id: string, input: Record<string, unknown>): Promise<{ before: Row; data: Row } | null>;
 	updateConfiguration(input: Record<string, unknown>): Promise<{ before: Row; data: Row }>;
 	updateOrganizer(id: string, input: Record<string, unknown>): Promise<{ before: Row; data: Row } | null>;
+	updateSiteSettings(input: Record<string, unknown>): Promise<{ before: Row; data: Row }>;
 }
 
 export class SuperAdminService {
@@ -294,6 +322,106 @@ export class SuperAdminService {
 			action: 'payment_settings.updated',
 			resourceType: 'event_configuration',
 			resourceId: 1,
+			before: result.before,
+			after: result.data,
+			context,
+		});
+		return { success: true, settings: result.data };
+	}
+
+	async listCategories() {
+		const [categories, eventCounts] = await Promise.all([
+			this.repository.listCategories(),
+			this.repository.countEventsByCategory(),
+		]);
+		return {
+			data: categories.map((category) => ({ ...category, eventCount: eventCounts[String(category.id)] ?? 0 })),
+		};
+	}
+
+	async createCategory(actorId: string, input: CategoryInput, context: AuditContext) {
+		const slug = await this.uniqueSlug(input.name, input.slug);
+		const category = await this.repository.createCategory({ ...input, slug });
+		await this.repository.recordAudit({
+			actorId,
+			action: 'category.created',
+			resourceType: 'event_category',
+			resourceId: String(category.id),
+			before: null,
+			after: category,
+			context,
+		});
+		return { success: true, category };
+	}
+
+	async updateCategory(actorId: string, id: string, input: Partial<CategoryInput>, context: AuditContext) {
+		const patch: Record<string, unknown> = { ...input };
+		if (input.name || input.slug) patch.slug = await this.uniqueSlug(input.name ?? '', input.slug, id);
+		const result = await this.repository.updateCategory(id, patch);
+		if (!result) throw new ApiError('Categoria não encontrada.', 404, 'CATEGORY_NOT_FOUND');
+		await this.repository.recordAudit({
+			actorId,
+			action: 'category.updated',
+			resourceType: 'event_category',
+			resourceId: id,
+			before: result.before,
+			after: result.data,
+			context,
+		});
+		return { success: true, category: result.data };
+	}
+
+	async deleteCategory(actorId: string, id: string, context: AuditContext) {
+		const removed = await this.repository.deleteCategory(id);
+		if (!removed) throw new ApiError('Categoria não encontrada.', 404, 'CATEGORY_NOT_FOUND');
+		await this.repository.recordAudit({
+			actorId,
+			action: 'category.deleted',
+			resourceType: 'event_category',
+			resourceId: id,
+			before: removed,
+			after: null,
+			context,
+		});
+		return { success: true };
+	}
+
+	/**
+	 * The slug is a unique key and is what public URLs are built from, so a
+	 * collision is resolved by suffixing rather than rejecting the whole save.
+	 */
+	private async uniqueSlug(name: string, provided: string | undefined, exceptId?: string) {
+		const base = slugify(provided?.trim() || name);
+		if (!base) throw new ApiError('Informe um nome válido para a categoria.', 422, 'INVALID_CATEGORY_NAME');
+		let candidate = base;
+		for (let suffix = 2; await this.repository.findCategoryBySlug(candidate, exceptId); suffix += 1) {
+			candidate = `${base}-${suffix}`;
+		}
+		return candidate;
+	}
+
+	async getBrandingSettings() {
+		return { settings: await this.repository.getSiteSettings() };
+	}
+
+	async updateBrandingSettings(
+		actorId: string,
+		input: { logo: string | null; logo_dark_mode: string | null },
+		context: AuditContext,
+	) {
+		// The identifiers arrive from the client, so they are only trusted after we
+		// confirm they point at an image this platform actually stores.
+		for (const mediaId of [input.logo, input.logo_dark_mode]) {
+			if (mediaId && !(await this.repository.isImageMedia(mediaId))) {
+				throw new ApiError('A imagem selecionada não existe ou não é um arquivo de imagem.', 422, 'INVALID_LOGO_MEDIA');
+			}
+		}
+		const result = await this.repository.updateSiteSettings(input);
+		await this.repository.recordAudit({
+			actorId,
+			action: 'branding_settings.updated',
+			resourceType: 'site_settings',
+			resourceId: String(result.data.id ?? ''),
 			before: result.before,
 			after: result.data,
 			context,

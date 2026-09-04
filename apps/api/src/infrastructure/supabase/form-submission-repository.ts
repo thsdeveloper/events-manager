@@ -37,7 +37,10 @@ export class SupabaseFormSubmissionRepository implements FormSubmissionRepositor
 	async create(formId: string, userId: string | null, values: SubmittedFormValue[]) {
 		const { data, error } = await this.database.rpc('create_validated_form_submission', {
 			target_form: formId,
-			target_submitted_by: userId,
+			// The generated types mark every argument without a SQL default as
+			// non-nullable, but this one is null for anonymous submissions and the
+			// function handles it.
+			target_submitted_by: userId as string,
 			target_values: values.map((item) => ({ field: item.field, file: item.file, value: item.value })),
 		});
 		if (!error) return data;

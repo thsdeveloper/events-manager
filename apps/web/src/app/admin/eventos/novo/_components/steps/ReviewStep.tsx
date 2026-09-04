@@ -36,7 +36,7 @@ export function ReviewStep({ categories }: ReviewStepProps) {
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-xl border bg-card p-6 shadow-sm">
+			<div className="rounded-lg border bg-card p-6 shadow-sm">
 				<div className="flex flex-col gap-2">
 					<div className="flex items-start justify-between gap-4">
 						<div>

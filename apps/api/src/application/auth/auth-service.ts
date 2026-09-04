@@ -32,10 +32,13 @@ export interface OrganizerAuthorization extends Record<string, unknown> {
 
 export interface UserProfileInput {
 	avatar?: string | null;
+	/** Código IBGE do município. O rótulo em `location` é derivado dele. */
+	city_id?: number | null;
 	description?: string | null;
 	email?: string;
 	first_name?: string | null;
 	last_name?: string | null;
+	/** Escrito só pelo repositório, a partir de `city_id`. */
 	location?: string | null;
 	title?: string | null;
 }
@@ -53,7 +56,10 @@ export class AuthProviderError extends Error {
 export interface AuthRepository {
 	assertOrganizerOwnsEvent(organizerId: string, eventId: string): Promise<boolean>;
 	confirmEmail(email: string, token: string): Promise<AuthResult>;
-	findActiveOrganizer(userId: string): Promise<OrganizerAuthorization | null>;
+	createOrganizer(userId: string, input: { email: string; name: string }): Promise<OrganizerAuthorization>;
+	findActiveOrganizer(userId: string, preferredId?: string): Promise<OrganizerAuthorization | null>;
+	listOrganizers(userId: string): Promise<OrganizerAuthorization[]>;
+	rememberActiveOrganizer(userId: string, organizerId: string): Promise<void>;
 	findOwnedRegistration(organizerId: string, registrationId: string): Promise<unknown | null>;
 	findSuperAdminProfile(userId: string): Promise<Record<string, unknown> | null>;
 	getIdentity(accessToken: string): Promise<AuthIdentity | null>;
@@ -69,10 +75,12 @@ export interface AuthRepository {
 	requestPasswordReset(email: string, redirectTo: string): Promise<void>;
 	resendEmailConfirmation(email: string, redirectTo: string): Promise<void>;
 	resetPassword(accessToken: string, password: string): Promise<void>;
+	revokeOtherSessions(accessToken: string): Promise<void>;
 	serialize(user: AuthIdentity): Promise<SerializedUser>;
 	signOut(accessToken: string): Promise<void>;
 	updatePassword(userId: string, password: string): Promise<void>;
 	updateProfile(user: AuthIdentity, input: UserProfileInput): Promise<unknown>;
+	verifyPassword(email: string, password: string): Promise<boolean>;
 }
 
 export class AuthService {
@@ -156,8 +164,13 @@ export class AuthService {
 		return this.repository.signOut(accessToken);
 	}
 
+	/**
+	 * Propaga a falha em vez de engoli-la. A resposta ao cliente continua genérica
+	 * (quem chama trata o erro sem vazar se o e-mail existe), mas SMTP fora do ar
+	 * ou rate limit do provedor precisam ser distinguíveis de um envio real.
+	 */
 	requestPasswordReset(email: string, redirectTo: string) {
-		return this.repository.requestPasswordReset(email, redirectTo).catch(() => undefined);
+		return this.repository.requestPasswordReset(email, redirectTo);
 	}
 
 	async resetPassword(accessToken: string, password: string) {
@@ -176,12 +189,61 @@ export class AuthService {
 		return this.repository.updatePassword(userId, password);
 	}
 
-	async requireOrganizer(userId: string) {
-		const organizer = await this.repository.findActiveOrganizer(userId);
+	/**
+	 * Reauthenticates before changing the password, so a session cookie alone is
+	 * never enough to take over an account: whoever steals a session can otherwise
+	 * set a new password and lock the real owner out permanently. The current
+	 * password is exactly what a session thief does not have.
+	 *
+	 * Only the verification and the change happen here. Revoking the other
+	 * sessions and warning the account owner run afterwards and must not be able
+	 * to report a change that already succeeded as a failure, so they are the
+	 * caller's responsibility.
+	 */
+	async changePassword(user: AuthIdentity, currentPassword: string, newPassword: string) {
+		if (!user.email) {
+			throw new ApiError('Sua conta não possui um e-mail de acesso.', 400, 'PASSWORD_CHANGE_ERROR');
+		}
+		if (currentPassword === newPassword) {
+			throw new ApiError('A nova senha precisa ser diferente da atual.', 400, 'PASSWORD_UNCHANGED');
+		}
+
+		const valid = await this.repository.verifyPassword(user.email, currentPassword);
+		// Deliberately the same message and status for a wrong password as for an
+		// unusable one: the response must not become an account-state oracle.
+		if (!valid) throw new ApiError('A senha atual está incorreta.', 400, 'INVALID_CURRENT_PASSWORD');
+
+		await this.repository.updatePassword(user.id, newPassword);
+	}
+
+	revokeOtherSessions(accessToken: string) {
+		return this.repository.revokeOtherSessions(accessToken);
+	}
+
+	async requireOrganizer(userId: string, preferredId?: string) {
+		const organizer = await this.repository.findActiveOrganizer(userId, preferredId);
 		if (!organizer) {
 			throw new ApiError('É necessário possuir um perfil de organizador ativo.', 403, 'ORGANIZER_REQUIRED');
 		}
 		return organizer;
+	}
+
+	listOrganizers(userId: string) {
+		return this.repository.listOrganizers(userId);
+	}
+
+	async createOrganizer(userId: string, input: { email: string; name: string }) {
+		const organizer = await this.repository.createOrganizer(userId, input);
+		await this.repository.rememberActiveOrganizer(userId, organizer.id);
+		return organizer;
+	}
+
+	/** Rejects ids the user does not own, so the switcher cannot be forged. */
+	async activateOrganizer(userId: string, organizerId: string) {
+		const owned = (await this.repository.listOrganizers(userId)).find((item) => item.id === organizerId);
+		if (!owned) throw new ApiError('Organização não encontrada.', 404, 'ORGANIZER_NOT_FOUND');
+		await this.repository.rememberActiveOrganizer(userId, organizerId);
+		return owned;
 	}
 
 	async requireSuperAdmin(userId: string) {

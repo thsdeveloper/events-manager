@@ -4,11 +4,11 @@ import type { SupabaseClients } from './clients.js';
 export class SupabaseOrganizerRepository implements OrganizerRepository {
 	constructor(private readonly clients: SupabaseClients) {}
 
-	async findByUser(userId: string) {
+	async findById(organizerId: string) {
 		const { data, error } = await this.clients.admin
 			.from('organizers')
 			.select('*,logo:media_files(*)')
-			.eq('user_id', userId)
+			.eq('id', organizerId)
 			.maybeSingle();
 		if (error) throw error;
 		return data;
@@ -30,11 +30,13 @@ export class SupabaseOrganizerRepository implements OrganizerRepository {
 		return data ? (data as Record<string, unknown>) : ('exists' as const);
 	}
 
-	async updateByUser(userId: string, input: Partial<OrganizerInput>) {
+	// Keyed by organization, not by user: a user may own several, and filtering by
+	// user_id would write the same values into every one of them.
+	async updateById(organizerId: string, input: Partial<OrganizerInput>) {
 		const { data, error } = await this.clients.admin
 			.from('organizers')
 			.update(input)
-			.eq('user_id', userId)
+			.eq('id', organizerId)
 			.select('*')
 			.maybeSingle();
 		if (error) throw error;

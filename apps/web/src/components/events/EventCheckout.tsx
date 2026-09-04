@@ -7,6 +7,7 @@ import InstallmentOptions from './InstallmentOptions';
 import type { EventTicket } from '@events-manager/contracts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DocumentInput, PhoneInput } from '@/components/ui/masked-inputs';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useCheckout } from '@/hooks/useCheckout';
@@ -150,22 +151,20 @@ export default function EventCheckout({
 									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 										<div className="space-y-2">
 											<Label htmlFor="phone">Telefone</Label>
-											<Input
+											<PhoneInput
 												id="phone"
-												type="tel"
 												value={participantInfo.phone}
-												onChange={(e) => setParticipantInfo({ ...participantInfo, phone: e.target.value })}
+												onChange={(digits) => setParticipantInfo({ ...participantInfo, phone: digits })}
 												disabled={isLoading}
 											/>
 										</div>
 
 										<div className="space-y-2">
 											<Label htmlFor="document">CPF</Label>
-											<Input
+											<DocumentInput
 												id="document"
-												type="text"
 												value={participantInfo.document}
-												onChange={(e) => setParticipantInfo({ ...participantInfo, document: e.target.value })}
+												onChange={(digits) => setParticipantInfo({ ...participantInfo, document: digits })}
 												disabled={isLoading}
 											/>
 										</div>

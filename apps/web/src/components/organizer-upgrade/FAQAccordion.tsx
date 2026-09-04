@@ -136,7 +136,7 @@ export function FAQAccordion() {
 						placeholder="Buscar por palavra-chave..."
 						value={searchTerm}
 						onChange={(e) => setSearchTerm(e.target.value)}
-						className="pl-12 h-14 text-base border-2 border-gray-200 dark:border-gray-800 focus:border-purple-500 dark:focus:border-purple-500 rounded-xl"
+						className="pl-12 h-14 text-base border-2 border-gray-200 dark:border-gray-800 focus:border-purple-500 dark:focus:border-purple-500 rounded-lg"
 					/>
 				</div>
 			</motion.div>

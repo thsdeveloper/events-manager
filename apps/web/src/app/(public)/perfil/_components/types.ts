@@ -2,14 +2,21 @@ import type { AppUser, EventRegistration } from '@events-manager/contracts';
 
 export type ProfileUser = AppUser & { email: string };
 
-export type ProfileSection = 'overview' | 'personal' | 'security' | 'preferences' | 'payments';
+/**
+ * Doubles as the `?section=` value. `ingressos` keeps the pt-BR naming the
+ * public routes already use, and replaces the standalone `/meus-ingressos` page.
+ * Defined in `@/lib/profile-sections` so the header avatar menu can link to the
+ * same set without reaching into this route's private folder.
+ */
+export type { ProfileSection } from '@/lib/profile-sections';
 
 export interface ProfileFormValues {
 	firstName: string;
 	lastName: string;
 	email: string;
 	title: string;
-	location: string;
+	/** Código IBGE do município. O rótulo exibido é derivado no servidor. */
+	cityId: number | null;
 	description: string;
 }
 
@@ -27,21 +34,9 @@ export interface TicketSummary {
 	hasError: boolean;
 }
 
-export function getDisplayName(user: ProfileUser) {
-	const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
-
-	return fullName || user.email.split('@')[0] || 'Participante';
-}
-
-export function getInitials(user: ProfileUser) {
-	const source = getDisplayName(user);
-	const parts = source.split(/\s+/).filter(Boolean);
-
-	return parts
-		.slice(0, 2)
-		.map((part) => part[0]?.toUpperCase())
-		.join('');
-}
+// Re-exported so existing profile imports keep their single entry point while
+// the header avatar menu shares the same implementation.
+export { getDisplayName, getInitials } from '@/lib/user-display';
 
 export function getProfileCompletion(user: ProfileUser) {
 	const fields = [

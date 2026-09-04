@@ -109,7 +109,7 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Chec
 
 					<div className="flex flex-col gap-3 sm:flex-row">
 						<Button asChild className="flex-1">
-							<Link href="/meus-ingressos">
+							<Link href="/perfil?section=ingressos">
 								<Tickets className="mr-2 size-4" />
 								Meus ingressos
 							</Link>

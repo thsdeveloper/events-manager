@@ -71,7 +71,7 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 	return (
 		<form
 			onSubmit={handleSubmit}
-			className="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-slate-900 md:grid-cols-2 lg:grid-cols-4"
+			className="grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-slate-900 md:grid-cols-2 lg:grid-cols-4"
 		>
 			<div className="flex flex-col gap-2">
 				<Label htmlFor="range" className="text-xs font-semibold uppercase text-gray-500">

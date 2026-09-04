@@ -18,9 +18,11 @@ const fallbackSiteData: SiteData = {
   footerNavigation: { id: 'footer', title: 'Rodapé', items: [] },
 };
 
+export const SITE_DATA_CACHE_TAG = 'site-settings';
+
 export async function fetchSiteData(): Promise<SiteData> {
   try {
-    return await backendFetch<SiteData>('/api/content/site');
+    return await backendFetch<SiteData>('/api/content/site', { tags: [SITE_DATA_CACHE_TAG] });
   } catch (error) {
     console.warn('A API local ainda não está disponível; usando identidade visual padrão.', error);
     

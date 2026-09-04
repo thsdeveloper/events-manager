@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/ui/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { ToastConfig } from '@/components/ToastConfig';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AppProgressProvider } from '@/contexts/ProgressProvider';
 import { fetchSiteData } from '@/lib/content/fetchers';
 import { getMediaAssetUrl } from '@/lib/media';
 
@@ -39,13 +40,15 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 				<a className="skip-link" href="#main-content">
 					Pular para o conteúdo principal
 				</a>
-				<ThemeProvider>
-					<AuthProvider>
-						<ToastConfig />
-						{children}
-						<Toaster />
-					</AuthProvider>
-				</ThemeProvider>
+				<AppProgressProvider>
+					<ThemeProvider>
+						<AuthProvider>
+							<ToastConfig />
+							{children}
+							<Toaster />
+						</AuthProvider>
+					</ThemeProvider>
+				</AppProgressProvider>
 			</body>
 		</html>
 	);

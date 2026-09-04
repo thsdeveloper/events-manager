@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Info, Lock, Mail, User, UserPlus } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Eye, EyeOff, Lock, Mail, User, UserPlus } from 'lucide-react';
 import { AuthButton } from '@/components/auth/AuthButton';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { AuthLink } from '@/components/auth/AuthLink';
-import { LoadingSpinner } from '@/components/design-system/atoms/LoadingSpinner';
-import { AuthField } from '@/components/design-system/molecules/AuthField';
-import { InlineAlert } from '@/components/design-system/molecules/InlineAlert';
+import { AuthField, registerField } from '@/components/design-system/molecules/AuthField';
 import { Button } from '@/components/ui/button';
 import { httpClient } from '@/lib/http-client';
 import { safeInternalRedirect } from '@/lib/navigation';
+import { registerSchema, type RegisterValues } from '@/lib/validation/auth';
 
 interface RegisterResponse {
 	confirmationRequired: boolean;
@@ -20,42 +21,31 @@ interface RegisterResponse {
 
 export default function RegisterPage() {
 	const router = useRouter();
-	const [firstName, setFirstName] = useState('');
-	const [lastName, setLastName] = useState('');
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
-	const [confirmPassword, setConfirmPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-	const [error, setError] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
 
-	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		setError('');
+	const {
+		register,
+		handleSubmit,
+		formState: { errors, isSubmitting },
+	} = useForm<RegisterValues>({
+		resolver: zodResolver(registerSchema),
+		defaultValues: { firstName: '', lastName: '', email: '', password: '', confirmPassword: '' },
+		// Validate once the field has been left, then live as it is corrected —
+		// no errors are shown while the user is still filling a field in.
+		mode: 'onTouched',
+	});
 
-		if (password !== confirmPassword) {
-			setError('As senhas não coincidem.');
-
-			return;
-		}
-
-		setIsLoading(true);
+	const onSubmit = async ({ confirmPassword: _confirmPassword, ...values }: RegisterValues) => {
 		try {
-			const data = await httpClient.post<RegisterResponse>(
-				'/api/auth/register',
-				{ email, password, firstName, lastName },
-				{ toastOnError: false },
-			);
+			const data = await httpClient.post<RegisterResponse>('/api/auth/register', values);
 			const destination = data.confirmationRequired
-				? `/confirmar-email?email=${encodeURIComponent(email)}`
+				? `/confirmar-email?email=${encodeURIComponent(values.email)}`
 				: safeInternalRedirect(data.redirect, '/perfil');
 			router.replace(destination);
 			router.refresh();
-		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : 'Não foi possível criar sua conta. Tente novamente.');
-		} finally {
-			setIsLoading(false);
+		} catch {
+			// Já exibido pelo toast de erro do httpClient.
 		}
 	};
 
@@ -67,39 +57,25 @@ export default function RegisterPage() {
 
 	return (
 		<AuthLayout title="Criar conta" subtitle="Preencha seus dados para começar">
-			<form onSubmit={handleSubmit} className="space-y-5">
-				{error ? <InlineAlert>{error}</InlineAlert> : null}
-
-				<InlineAlert tone="info">
-					<div className="flex gap-2">
-						<Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-						<span>
-							Sua conta começa como <strong>comprador</strong>. Para publicar eventos, solicite o perfil de organizador
-							na sua conta.
-						</span>
-					</div>
-				</InlineAlert>
-
+			<form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
 				<div className="grid gap-4 sm:grid-cols-2">
 					<AuthField
 						id="firstName"
 						label="Nome"
 						icon={<User className="size-5" />}
 						autoComplete="given-name"
-						value={firstName}
-						onChange={(event) => setFirstName(event.target.value)}
-						required
 						placeholder="João"
+						error={errors.firstName?.message}
+						{...registerField(register('firstName'))}
 					/>
 					<AuthField
 						id="lastName"
 						label="Sobrenome"
 						icon={<User className="size-5" />}
 						autoComplete="family-name"
-						value={lastName}
-						onChange={(event) => setLastName(event.target.value)}
-						required
 						placeholder="Silva"
+						error={errors.lastName?.message}
+						{...registerField(register('lastName'))}
 					/>
 				</div>
 
@@ -109,10 +85,9 @@ export default function RegisterPage() {
 					icon={<Mail className="size-5" />}
 					type="email"
 					autoComplete="email"
-					value={email}
-					onChange={(event) => setEmail(event.target.value)}
-					required
 					placeholder="seu@email.com"
+					error={errors.email?.message}
+					{...registerField(register('email'))}
 				/>
 
 				<AuthField
@@ -121,12 +96,10 @@ export default function RegisterPage() {
 					icon={<Lock className="size-5" />}
 					type={showPassword ? 'text' : 'password'}
 					autoComplete="new-password"
-					value={password}
-					onChange={(event) => setPassword(event.target.value)}
-					required
-					minLength={8}
 					placeholder="••••••••"
-					hint="Use pelo menos 8 caracteres."
+					hint="Pelo menos 8 caracteres, com letras, números e um caractere especial."
+					error={errors.password?.message}
+					{...registerField(register('password'))}
 					endAction={passwordAction(
 						showPassword,
 						() => setShowPassword((visible) => !visible),
@@ -140,11 +113,9 @@ export default function RegisterPage() {
 					icon={<Lock className="size-5" />}
 					type={showConfirmPassword ? 'text' : 'password'}
 					autoComplete="new-password"
-					value={confirmPassword}
-					onChange={(event) => setConfirmPassword(event.target.value)}
-					required
-					minLength={8}
 					placeholder="••••••••"
+					error={errors.confirmPassword?.message}
+					{...registerField(register('confirmPassword'))}
 					endAction={passwordAction(
 						showConfirmPassword,
 						() => setShowConfirmPassword((visible) => !visible),
@@ -152,16 +123,8 @@ export default function RegisterPage() {
 					)}
 				/>
 
-				<AuthButton type="submit" isLoading={isLoading}>
-					{isLoading ? (
-						<>
-							<LoadingSpinner /> Criando conta...
-						</>
-					) : (
-						<>
-							<UserPlus className="size-5" /> Criar conta
-						</>
-					)}
+				<AuthButton type="submit" isLoading={isSubmitting}>
+					<UserPlus className="size-5" /> Criar conta
 				</AuthButton>
 
 				<p className="text-center text-sm text-muted-foreground">

@@ -1,6 +1,18 @@
+import type { MediaFile } from '@events-manager/contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ContentRepository } from '../../application/content/content-service.js';
 import { ApiError } from '../../shared/errors.js';
+
+/**
+ * PostgREST returns a single object for a to-one embed, but the untyped client
+ * cannot express that, so the value is narrowed here instead of cast blindly.
+ */
+function toMediaFile(value: unknown): MediaFile | null {
+	const record = Array.isArray(value) ? value[0] : value;
+	if (!record || typeof record !== 'object') return null;
+	const { id, bucket, path } = record as { bucket?: string | null; id?: string; path?: string | null };
+	return id ? { id, bucket: bucket ?? undefined, path: path ?? undefined } : null;
+}
 
 const blockTables = {
 	block_hero: 'block_hero',
@@ -19,8 +31,11 @@ export class SupabaseContentRepository implements ContentRepository {
 		const [settingsResult, mainResult, footerResult] = await Promise.all([
 			this.database
 				.from('site_settings')
+				// The media columns are expanded instead of returned as bare ids: the web
+				// app turns `{bucket, path}` into a direct storage URL, and next/image
+				// cannot optimise an image that sits behind the /api/media redirect.
 				.select(
-					'id,title,description,tagline,url,favicon,logo,logo_dark_mode,social_links,accent_color,date_created,date_updated',
+					'id,title,description,tagline,url,social_links,accent_color,date_created,date_updated,favicon:media_files!site_settings_favicon_fkey(id,bucket,path),logo:media_files!site_settings_logo_fkey(id,bucket,path),logo_dark_mode:media_files!site_settings_logo_dark_mode_fkey(id,bucket,path)',
 				)
 				.limit(1)
 				.maybeSingle(),
@@ -30,13 +45,22 @@ export class SupabaseContentRepository implements ContentRepository {
 
 		if (settingsResult.error) throw settingsResult.error;
 
+		const settings = settingsResult.data;
+
 		return {
-			globals: settingsResult.data ?? {
-				id: 'local-defaults',
-				title: 'Events Manager',
-				description: 'Plataforma de gestão de eventos.',
-				accent_color: '#6644ff',
-			},
+			globals: settings
+				? {
+						...settings,
+						favicon: toMediaFile(settings.favicon),
+						logo: toMediaFile(settings.logo),
+						logo_dark_mode: toMediaFile(settings.logo_dark_mode),
+					}
+				: {
+						id: 'local-defaults',
+						title: 'Events Manager',
+						description: 'Plataforma de gestão de eventos.',
+						accent_color: '#6644ff',
+					},
 			headerNavigation: mainResult,
 			footerNavigation: footerResult,
 		};

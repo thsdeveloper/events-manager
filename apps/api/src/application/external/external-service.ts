@@ -2,12 +2,19 @@ import type { MediaService } from '../media/media-service.js';
 
 export interface PlacePrediction {
 	description: string;
+	latitude: number;
+	longitude: number;
 	mainText: string;
 	placeId: string;
 	secondaryText: string | null;
 }
 
-export interface PlacesGateway {
+/**
+ * Resolves an address to coordinates and back. The map picker needs both
+ * directions: typing an address, and dropping a pin that should name itself.
+ */
+export interface GeocodingGateway {
+	reverse(latitude: number, longitude: number): Promise<PlacePrediction | null>;
 	search(input: string): Promise<PlacePrediction[]>;
 }
 
@@ -25,10 +32,14 @@ export interface CoverImageGenerator {
 }
 
 export class PlacesService {
-	constructor(private readonly gateway: PlacesGateway | null) {}
+	constructor(private readonly gateway: GeocodingGateway) {}
 
 	async search(input: string) {
-		return { predictions: input && this.gateway ? await this.gateway.search(input) : [] };
+		return { predictions: input.trim().length >= 3 ? await this.gateway.search(input) : [] };
+	}
+
+	async reverse(latitude: number, longitude: number) {
+		return { place: await this.gateway.reverse(latitude, longitude) };
 	}
 }
 

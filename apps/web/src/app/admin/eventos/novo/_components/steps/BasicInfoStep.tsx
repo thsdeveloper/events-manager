@@ -40,7 +40,7 @@ export function BasicInfoStep({ categories }: BasicInfoStepProps) {
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-xl border bg-card p-6 shadow-sm">
+			<div className="rounded-lg border bg-card p-6 shadow-sm">
 				<div className="flex flex-col gap-2">
 					{/* Header padrão */}
 					<div className="flex items-start justify-between gap-4">

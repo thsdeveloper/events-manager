@@ -96,7 +96,7 @@ return date.toLocaleTimeString('pt-BR', {
 			<div className="absolute inset-0 bg-gradient-to-b from-white via-purple-50/30 to-white dark:from-slate-900 dark:via-purple-900/10 dark:to-slate-900 -z-10" />
 			<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
 
-			<div className="max-w-7xl mx-auto px-4 sm:px-6">
+			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				{/* Header */}
 				<div className="text-center mb-16">
 					{headline && (
@@ -162,7 +162,7 @@ return date.toLocaleTimeString('pt-BR', {
 									}}
 								>
 									<Link href={`/eventos/${event.slug}`} className="block group h-full">
-										<div className="relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 h-full border border-gray-100 dark:border-gray-700 group-hover:border-purple-500/50 group-hover:-translate-y-2">
+										<div className="relative bg-white dark:bg-slate-800 rounded-lg overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 h-full border border-gray-100 dark:border-gray-700 group-hover:border-purple-500/50 group-hover:-translate-y-2">
 											{/* Event Image */}
 											<div className="relative h-64 overflow-hidden">
 												{event.cover_image ? (
@@ -251,7 +251,7 @@ return date.toLocaleTimeString('pt-BR', {
 														</div>
 													)}
 
-													<button className="w-full mt-4 py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group-hover:scale-105">
+													<button className="w-full mt-4 py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group-hover:scale-105">
 														<Ticket className="size-5" />
 														Ver Detalhes
 													</button>

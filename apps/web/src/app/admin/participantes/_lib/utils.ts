@@ -1,3 +1,4 @@
+import { isValidPhone, maskPhone } from '@/lib/br-documents';
 import type { ParticipantRow } from './types';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -126,28 +127,14 @@ export function isValidEmail(email: string): boolean {
 export function isValidBrazilianPhone(phone: string): boolean {
 	if (!phone) return true; // Telefone é opcional
 
-	// Remove caracteres não numéricos
-	const cleaned = phone.replace(/\D/g, '');
-
-	// Valida formato brasileiro: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
-	return /^(\d{2})(\d{4,5})(\d{4})$/.test(cleaned);
+	// Delegates to the shared implementation, which also checks the area code and
+	// the mobile/landline prefix rather than only the digit count.
+	return isValidPhone(phone);
 }
 
 /**
  * Formata telefone brasileiro
  */
 export function formatBrazilianPhone(phone: string): string {
-	if (!phone) return '';
-
-	const cleaned = phone.replace(/\D/g, '');
-
-	if (cleaned.length === 11) {
-		// Celular: (XX) XXXXX-XXXX
-		return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
-	} else if (cleaned.length === 10) {
-		// Fixo: (XX) XXXX-XXXX
-		return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
-	}
-
-	return phone;
+	return phone ? maskPhone(phone) : '';
 }

@@ -16,7 +16,7 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 			initial={{ opacity: 0, y: 20 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.6 }}
-			className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 p-8 md:p-12 text-white"
+			className="relative overflow-hidden rounded-lg bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 p-8 md:p-12 text-white"
 		>
 			<div className="absolute inset-0 opacity-10">
 				<div
@@ -38,7 +38,7 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 					repeat: Infinity,
 					ease: 'easeInOut',
 				}}
-				className="absolute top-8 right-8 size-20 rounded-2xl bg-white/10 backdrop-blur-sm"
+				className="absolute top-8 right-8 size-20 rounded-lg bg-white/10 backdrop-blur-sm"
 			/>
 			<motion.div
 				animate={{

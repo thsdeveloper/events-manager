@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-const protectedRoutes = ['/perfil', '/meus-ingressos', '/admin', '/my-registrations'];
+const protectedRoutes = ['/perfil', '/admin', '/my-registrations'];
 
 export function middleware(request: NextRequest) {
   const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();

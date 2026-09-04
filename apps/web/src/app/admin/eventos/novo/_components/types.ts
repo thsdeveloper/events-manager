@@ -1,5 +1,7 @@
 'use client';
 
+import type { TicketDraft } from '@/features/tickets/types';
+
 export type EventWizardStepId =
 	| 'basic'
 	| 'visual'
@@ -30,8 +32,12 @@ export interface EventWizardFormValues {
 	event_type: 'in_person' | 'online' | 'hybrid';
 	location_name?: string;
 	location_address?: string;
+	latitude?: number | null;
+	longitude?: number | null;
 	online_url?: string;
 	is_free: boolean;
+	/** Held in the form until the event is created; sent with it in one call. */
+	tickets: TicketDraft[];
 	max_attendees?: number | null;
 	status: 'draft' | 'published' | 'cancelled' | 'archived';
 	featured: boolean;

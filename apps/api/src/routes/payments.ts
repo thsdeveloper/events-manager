@@ -1,3 +1,4 @@
+import { brDocumentSchema, brPhoneSchema } from '@events-manager/contracts';
 import { httpUrlSchema } from '@events-manager/contracts';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -27,8 +28,8 @@ const checkoutSchema = z.object({
 	participantInfo: z.object({
 		name: z.string().trim().min(1),
 		email: z.string().email(),
-		phone: z.string().optional(),
-		document: z.string().optional(),
+		phone: brPhoneSchema.optional(),
+		document: brDocumentSchema.optional(),
 	}),
 });
 
@@ -38,8 +39,8 @@ const installmentCheckoutSchema = z.object({
 	installments: z.number().int().min(2).max(12),
 	participant_name: z.string().trim().min(1),
 	participant_email: z.string().email(),
-	participant_phone: z.string().optional(),
-	participant_document: z.string().optional(),
+	participant_phone: brPhoneSchema.optional(),
+	participant_document: brDocumentSchema.optional(),
 });
 
 const providerAmountSchema = z.union([

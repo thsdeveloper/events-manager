@@ -2,16 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Lock, LogIn, Mail } from 'lucide-react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { AuthButton } from '@/components/auth/AuthButton';
 import { AuthLink } from '@/components/auth/AuthLink';
 import { httpClient } from '@/lib/http-client';
-import { AuthField } from '@/components/design-system/molecules/AuthField';
-import { InlineAlert } from '@/components/design-system/molecules/InlineAlert';
-import { LoadingSpinner } from '@/components/design-system/atoms/LoadingSpinner';
+import { AuthField, registerField } from '@/components/design-system/molecules/AuthField';
 import { Button } from '@/components/ui/button';
 import { safeInternalRedirect } from '@/lib/navigation';
+import { loginSchema, type LoginValues } from '@/lib/validation/auth';
 
 interface LoginResponse {
 	success: boolean;
@@ -29,48 +30,44 @@ interface LoginResponse {
 export default function LoginPage() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState('');
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setError('');
-		setIsLoading(true);
+	const {
+		register,
+		handleSubmit,
+		formState: { errors, isSubmitting },
+	} = useForm<LoginValues>({
+		resolver: zodResolver(loginSchema),
+		defaultValues: { email: '', password: '' },
+		// Validate once the field has been left, then live as it is corrected —
+		// no errors are shown while the user is still filling a field in.
+		mode: 'onTouched',
+	});
 
+	const onSubmit = async (values: LoginValues) => {
 		try {
 			// httpClient mostra toast automaticamente em caso de erro
-			const data = await httpClient.post<LoginResponse>(
-				'/api/auth/login',
-				{ email, password },
-				{ toastOnError: false },
-			);
+			const data = await httpClient.post<LoginResponse>('/api/auth/login', values);
 			const redirectUrl = safeInternalRedirect(searchParams.get('redirect'), data.redirect || '/perfil');
 			router.replace(redirectUrl);
 			router.refresh();
-		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : 'Não foi possível entrar. Tente novamente.');
-		} finally {
-			setIsLoading(false);
+		} catch {
+			// Já exibido pelo toast de erro do httpClient.
 		}
 	};
 
 	return (
 		<AuthLayout title="Bem-vindo de volta" subtitle="Entre com suas credenciais para acessar sua conta">
-			<form onSubmit={handleSubmit} className="space-y-6">
-				{error ? <InlineAlert>{error}</InlineAlert> : null}
+			<form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
 				<AuthField
 					id="email"
 					label="E-mail"
 					icon={<Mail className="size-5" />}
 					type="email"
 					autoComplete="email"
-					value={email}
-					onChange={(event) => setEmail(event.target.value)}
-					required
 					placeholder="seu@email.com"
+					error={errors.email?.message}
+					{...registerField(register('email'))}
 				/>
 
 				<div className="space-y-2">
@@ -87,11 +84,9 @@ export default function LoginPage() {
 						icon={<Lock className="size-5" />}
 						type={showPassword ? 'text' : 'password'}
 						autoComplete="current-password"
-						value={password}
-						onChange={(event) => setPassword(event.target.value)}
-						required
 						placeholder="••••••••"
-						minLength={8}
+						error={errors.password?.message}
+						{...registerField(register('password'))}
 						endAction={
 							<Button
 								type="button"
@@ -107,17 +102,9 @@ export default function LoginPage() {
 					/>
 				</div>
 
-				<AuthButton type="submit" isLoading={isLoading}>
-					{isLoading ? (
-						<>
-							<LoadingSpinner /> Entrando...
-						</>
-					) : (
-						<>
-							<LogIn className="size-5" />
-							Entrar
-						</>
-					)}
+				<AuthButton type="submit" isLoading={isSubmitting}>
+					<LogIn className="size-5" />
+					Entrar
 				</AuthButton>
 
 				<div className="relative">
@@ -138,10 +125,6 @@ export default function LoginPage() {
 					</p>
 				</div>
 			</form>
-
-			<p className="mt-8 border-t pt-6 text-center text-xs text-muted-foreground">
-				Sua sessão é mantida em um cookie HTTP-only e não fica disponível para scripts do navegador.
-			</p>
 		</AuthLayout>
 	);
 }

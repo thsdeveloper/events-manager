@@ -1,3 +1,4 @@
+import { brDocumentSchema, brPhoneSchema } from '@events-manager/contracts';
 import { ticketInputSchema, ticketPatchSchema } from '@events-manager/contracts';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -30,8 +31,8 @@ const participantQuery = z.object({
 const participantInput = z.object({
 	participant_name: z.string().trim().min(1),
 	participant_email: z.string().email(),
-	participant_phone: z.string().nullable().optional(),
-	participant_document: z.string().nullable().optional(),
+	participant_phone: brPhoneSchema.nullable().optional(),
+	participant_document: brDocumentSchema.nullable().optional(),
 	notes: z.string().nullable().optional(),
 });
 

@@ -4,7 +4,7 @@ import type { SupabaseClients } from './clients.js';
 
 export const publicEventSelection = `
   id,status,sort,date_created,date_updated,title,slug,description,short_description,event_type,start_date,end_date,
-  location_name,location_address,max_attendees,registration_start,registration_end,is_free,tags,featured,
+  location_name,location_address,latitude,longitude,max_attendees,registration_start,registration_end,is_free,tags,featured,
   cover_image:media_files(id,bucket,path,filename,title,type,filesize,width,height,description,metadata,date_created),
   organizer_id:organizers(id,name,email,phone,description,logo,website),
   category_id:event_categories(id,sort,name,slug,description,icon,color),

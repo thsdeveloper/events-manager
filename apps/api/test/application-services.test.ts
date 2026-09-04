@@ -12,6 +12,7 @@ import {
 	type EventCategoryReader,
 } from '../src/application/external/external-service.js';
 import { FinanceService, type FinanceRepository } from '../src/application/finance/finance-service.js';
+import { LocationService, type LocationRepository } from '../src/application/locations/location-service.js';
 import { CheckHealth } from '../src/application/health/check-health.js';
 import type { MediaService } from '../src/application/media/media-service.js';
 import { PaymentService, type PaymentRepository } from '../src/application/payments/payment-service.js';
@@ -60,6 +61,51 @@ describe('AdminService', () => {
 	});
 });
 
+describe('LocationService', () => {
+	const states = [{ id: 31, uf: 'MG', name: 'Minas Gerais' }];
+
+	it('reads each reference list once and serves the rest from memory', async () => {
+		const repository = partialMock<LocationRepository>({
+			listStates: vi.fn().mockResolvedValue(states),
+			listCitiesByState: vi.fn().mockResolvedValue([{ id: 3170206, state_id: 31, name: 'Uberlândia' }]),
+		});
+		const service = new LocationService(repository);
+
+		// Concurrent first calls must share one query, not race into two.
+		await Promise.all([service.listStates(), service.listStates()]);
+		await service.listCitiesByState(31);
+		await service.listCitiesByState(31);
+
+		expect(repository.listStates).toHaveBeenCalledTimes(1);
+		expect(repository.listCitiesByState).toHaveBeenCalledTimes(1);
+	});
+
+	it('rejects a state code that does not exist instead of returning an empty list', async () => {
+		const repository = partialMock<LocationRepository>({
+			listStates: vi.fn().mockResolvedValue(states),
+			listCitiesByState: vi.fn(),
+		});
+
+		await expect(new LocationService(repository).listCitiesByState(99)).rejects.toMatchObject({
+			statusCode: 404,
+			code: 'STATE_NOT_FOUND',
+		});
+		expect(repository.listCitiesByState).not.toHaveBeenCalled();
+	});
+
+	it('retries after a failure instead of caching the error forever', async () => {
+		const listStates = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('provider down'))
+			.mockResolvedValue(states);
+		const service = new LocationService(partialMock<LocationRepository>({ listStates }));
+
+		await expect(service.listStates()).rejects.toThrow('provider down');
+		await expect(service.listStates()).resolves.toEqual(states);
+		expect(listStates).toHaveBeenCalledTimes(2);
+	});
+});
+
 describe('AuthService', () => {
 	it('rejects missing and expired sessions with stable domain errors', async () => {
 		const repository = partialMock<AuthRepository>({ getIdentity: vi.fn().mockResolvedValue(null) });
@@ -79,6 +125,18 @@ describe('AuthService', () => {
 });
 
 describe('EmailService', () => {
+	// The template needs branding; the values are irrelevant to these assertions.
+	const stubBranding = {
+		load: async () => ({
+			accentColor: '#6644ff',
+			logoUrl: null,
+			siteName: 'Events Manager',
+			siteUrl: 'https://events.example.com',
+			supportEmail: null,
+			tagline: null,
+		}),
+	};
+
 	const registration = {
 		id: 'registration',
 		participant_email: 'ana@example.com',
@@ -93,7 +151,7 @@ describe('EmailService', () => {
 		});
 		const gateway = partialMock<EmailGateway>({ send: vi.fn() });
 
-		await new EmailService(deliveries, gateway, 'events@example.com').sendRegistrationConfirmation(registration, 'key');
+		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendRegistrationConfirmation(registration, 'key');
 		expect(gateway.send).not.toHaveBeenCalled();
 	});
 
@@ -105,7 +163,7 @@ describe('EmailService', () => {
 		});
 		const gateway = partialMock<EmailGateway>({ send: vi.fn().mockResolvedValue({ messageId: 'provider-message' }) });
 
-		await new EmailService(deliveries, gateway, 'events@example.com').sendRegistrationConfirmation(registration, 'key');
+		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendRegistrationConfirmation(registration, 'key');
 		const html = vi.mocked(gateway.send).mock.calls[0][0].html;
 		expect(html).toContain('&lt;Ana &amp; Silva&gt;');
 		expect(html).not.toContain('<Ana & Silva>');

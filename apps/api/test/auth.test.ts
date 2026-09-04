@@ -1,31 +1,12 @@
 import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiEnv } from '../src/config/env.js';
+import { createTestEnv } from './support/index.js';
 import type { SupabaseClients } from '../src/infrastructure/supabase/clients.js';
 import { authRoutes } from '../src/routes/auth.js';
 import { installErrorHandler } from '../src/shared/errors.js';
 
-const env: ApiEnv = {
-	NODE_ENV: 'test',
-	API_HOST: '127.0.0.1',
-	API_PORT: 3333,
-	TRUST_PROXY_HOPS: 0,
-	WEB_URL: 'http://localhost:3003',
-	SUPABASE_URL: 'http://127.0.0.1:55321',
-	SUPABASE_ANON_KEY: 'test-anon-key',
-	SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
-	COOKIE_SECRET: 'test-cookie-secret-value',
-	ABACATEPAY_BASE_URL: 'https://api.abacatepay.com/v2',
-	PAYMENTS_MODE: 'mock',
-	PAYMENT_RECONCILIATION_INTERVAL_SECONDS: 60,
-	PAYMENT_RECONCILIATION_MIN_AGE_MINUTES: 20,
-	PAYMENT_RECONCILIATION_BATCH_SIZE: 25,
-	SMTP_HOST: '127.0.0.1',
-	SMTP_PORT: 55325,
-	SMTP_SECURE: false,
-	EMAIL_FROM: 'Events Manager <test@events.local>',
-};
+const env = createTestEnv();
 
 const authUser = {
 	id: '00000000-0000-4000-8000-000000000001',
@@ -88,7 +69,14 @@ function createClients() {
 		forAccessToken,
 	};
 
-	return { clients: clients as unknown as SupabaseClients, forAccessToken, publicAuth, rateLimitRpc, recoveryAuth };
+	return {
+		clients: clients as unknown as SupabaseClients,
+		adminAuth: clients.admin.auth,
+		forAccessToken,
+		publicAuth,
+		rateLimitRpc,
+		recoveryAuth,
+	};
 }
 
 async function buildAuthTestApp(clients: SupabaseClients) {
@@ -112,7 +100,7 @@ describe('email confirmation during registration', () => {
 			url: '/api/auth/register',
 			payload: {
 				email: authUser.email,
-				password: 'senha-segura',
+				password: 'Qsesbs2006#@!',
 				firstName: 'Ana',
 				lastName: 'Silva',
 			},
@@ -128,7 +116,7 @@ describe('email confirmation during registration', () => {
 		expect(response.headers['set-cookie']).toBeUndefined();
 		expect(publicAuth.signUp).toHaveBeenCalledWith({
 			email: authUser.email,
-			password: 'senha-segura',
+			password: 'Qsesbs2006#@!',
 			options: {
 				data: { first_name: 'Ana', last_name: 'Silva' },
 				emailRedirectTo: 'http://localhost:3003/confirmar-email',
@@ -286,20 +274,223 @@ describe('email confirmation during registration', () => {
 		});
 	});
 
-	it('updates a password only through the recovery-scoped access token', async () => {
-		const { clients, forAccessToken, recoveryAuth } = createClients();
-		recoveryAuth.updateUser.mockResolvedValue({ data: { user: authUser }, error: null });
+	// auth.updateUser() depende da sessão interna do cliente, que no servidor está
+	// vazia, então a troca passa a validar o token e aplicar a senha pelo admin.
+	it('updates a password only after validating the recovery access token', async () => {
+		const { clients, adminAuth } = createClients();
+		adminAuth.getUser.mockResolvedValue({ data: { user: authUser }, error: null });
+		adminAuth.admin.updateUserById.mockResolvedValue({ data: { user: authUser }, error: null });
 		const app = await buildAuthTestApp(clients);
 
 		const response = await app.inject({
 			method: 'POST',
 			url: '/api/auth/password/reset',
-			payload: { access_token: 'recovery-access-token', password: 'nova-senha-segura' },
+			payload: { access_token: 'recovery-access-token', password: 'Qsesbs2006#@!' },
 		});
 		await app.close();
 
 		expect(response.statusCode).toBe(200);
-		expect(forAccessToken).toHaveBeenCalledWith('recovery-access-token');
-		expect(recoveryAuth.updateUser).toHaveBeenCalledWith({ password: 'nova-senha-segura' });
+		expect(adminAuth.getUser).toHaveBeenCalledWith('recovery-access-token');
+		expect(adminAuth.admin.updateUserById).toHaveBeenCalledWith(authUser.id, { password: 'Qsesbs2006#@!' });
+	});
+
+	it('rejects a recovery token the provider does not recognise', async () => {
+		const { clients, adminAuth } = createClients();
+		adminAuth.getUser.mockResolvedValue({ data: { user: null }, error: { message: 'invalid token', status: 401 } });
+		const app = await buildAuthTestApp(clients);
+
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/password/reset',
+			payload: { access_token: 'expirado', password: 'Qsesbs2006#@!' },
+		});
+		await app.close();
+
+		expect(response.statusCode).toBe(400);
+		expect(response.json()).toMatchObject({ title: 'PASSWORD_RESET_ERROR' });
+		expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
+	});
+});
+
+describe('password change', () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	/** Signs the request as `authUser`, the way the browser's session cookie does. */
+	async function changePassword(
+		clients: SupabaseClients,
+		adminAuth: { getUser: ReturnType<typeof vi.fn> },
+		payload: Record<string, unknown>,
+	) {
+		adminAuth.getUser.mockResolvedValue({ data: { user: authUser }, error: null });
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'PATCH',
+			url: '/api/user/password',
+			cookies: { access_token: session.access_token },
+			payload,
+		});
+		await app.close();
+
+		return response;
+	}
+
+	it('refuses to change the password when the current one does not match', async () => {
+		const { clients, adminAuth, publicAuth } = createClients();
+		publicAuth.signInWithPassword.mockResolvedValue({
+			data: { user: null, session: null },
+			error: { code: 'invalid_credentials' },
+		});
+
+		const response = await changePassword(clients, adminAuth, {
+			currentPassword: 'senha-errada',
+			password: 'Qsesbs2006#@!',
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.json()).toMatchObject({
+			title: 'INVALID_CURRENT_PASSWORD',
+			detail: 'A senha atual está incorreta.',
+		});
+		// The whole point: a stolen session must not be enough to take the account.
+		expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
+		expect(adminAuth.admin.signOut).not.toHaveBeenCalled();
+	});
+
+	it('requires the current password to be sent at all', async () => {
+		const { clients, adminAuth, publicAuth } = createClients();
+
+		const response = await changePassword(clients, adminAuth, { password: 'Qsesbs2006#@!' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.json()).toMatchObject({ title: 'VALIDATION_ERROR' });
+		expect(publicAuth.signInWithPassword).not.toHaveBeenCalled();
+		expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
+	});
+
+	it('rejects a new password that does not satisfy the policy', async () => {
+		const { clients, adminAuth, publicAuth } = createClients();
+
+		// Long enough, but no special character.
+		const response = await changePassword(clients, adminAuth, {
+			currentPassword: 'senha-atual-1',
+			password: 'senhanova123',
+		});
+
+		expect(response.statusCode).toBe(422);
+		expect(response.json()).toMatchObject({ title: 'VALIDATION_ERROR' });
+		expect(publicAuth.signInWithPassword).not.toHaveBeenCalled();
+		expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
+	});
+
+	it('rejects reusing the password that is already in place', async () => {
+		const { clients, adminAuth, publicAuth } = createClients();
+
+		const response = await changePassword(clients, adminAuth, {
+			currentPassword: 'senha-atual-1',
+			password: 'senha-atual-1',
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.json()).toMatchObject({ title: 'PASSWORD_UNCHANGED' });
+		expect(publicAuth.signInWithPassword).not.toHaveBeenCalled();
+	});
+
+	it('changes the password and signs every other device out, keeping the current session', async () => {
+		const { clients, adminAuth, publicAuth } = createClients();
+		publicAuth.signInWithPassword.mockResolvedValue({
+			data: { user: authUser, session: { ...session, access_token: 'probe-token' } },
+			error: null,
+		});
+		adminAuth.admin.signOut.mockResolvedValue({ data: null, error: null });
+		adminAuth.admin.updateUserById.mockResolvedValue({ data: { user: authUser }, error: null });
+
+		const response = await changePassword(clients, adminAuth, {
+			currentPassword: 'senha-atual-1',
+			password: 'Qsesbs2006#@!',
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject({ success: true, otherSessionsRevoked: true });
+		expect(adminAuth.admin.updateUserById).toHaveBeenCalledWith(authUser.id, { password: 'Qsesbs2006#@!' });
+		// `others` and not the default `global`: the browser doing the change stays
+		// signed in while every other device is dropped.
+		expect(adminAuth.admin.signOut).toHaveBeenCalledWith(session.access_token, 'others');
+		// The reauthentication mints a throwaway session; it must not survive.
+		expect(adminAuth.admin.signOut).toHaveBeenCalledWith('probe-token', 'local');
+	});
+
+	it('still reports success when the other sessions cannot be revoked', async () => {
+		const { clients, adminAuth, publicAuth } = createClients();
+		publicAuth.signInWithPassword.mockResolvedValue({ data: { user: authUser, session: null }, error: null });
+		adminAuth.admin.updateUserById.mockResolvedValue({ data: { user: authUser }, error: null });
+		adminAuth.admin.signOut.mockResolvedValue({ data: null, error: { message: 'provider down' } });
+
+		const response = await changePassword(clients, adminAuth, {
+			currentPassword: 'senha-atual-1',
+			password: 'Qsesbs2006#@!',
+		});
+
+		// The password did change; reporting a failure would leave the user typing
+		// the old one forever.
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject({ success: true, otherSessionsRevoked: false });
+	});
+});
+
+describe('password policy scope', () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it('does not apply the policy to login, so older passwords still get in', async () => {
+		const { clients, publicAuth } = createClients();
+		publicAuth.signInWithPassword.mockResolvedValue({ data: { user: authUser, session }, error: null });
+		const app = await buildAuthTestApp(clients);
+
+		// No digit and no special character: it would never be accepted as a *new*
+		// password. Enforcing the policy here would lock out every account created
+		// before it — including from the screen used to fix the password.
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/login',
+			payload: { email: authUser.email, password: 'senhaantiga' },
+		});
+		await app.close();
+
+		expect(response.statusCode).toBe(200);
+		expect(publicAuth.signInWithPassword).toHaveBeenCalledWith({
+			email: authUser.email,
+			password: 'senhaantiga',
+		});
+	});
+
+	it('applies the policy when a password is created at registration', async () => {
+		const { clients, publicAuth } = createClients();
+		const app = await buildAuthTestApp(clients);
+
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/register',
+			payload: { email: authUser.email, password: 'senhaantiga', firstName: 'Ana', lastName: 'Silva' },
+		});
+		await app.close();
+
+		expect(response.statusCode).toBe(422);
+		expect(response.json()).toMatchObject({ title: 'VALIDATION_ERROR' });
+		expect(publicAuth.signUp).not.toHaveBeenCalled();
+	});
+
+	it('applies the policy when a password is created through the recovery flow', async () => {
+		const { clients, adminAuth } = createClients();
+		const app = await buildAuthTestApp(clients);
+
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/password/reset',
+			payload: { access_token: 'recovery-access-token', password: 'senhaantiga' },
+		});
+		await app.close();
+
+		expect(response.statusCode).toBe(422);
+		expect(response.json()).toMatchObject({ title: 'VALIDATION_ERROR' });
+		expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
 	});
 });

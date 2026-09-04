@@ -80,13 +80,13 @@ function PayoutHistory({ summary, isLoading, currencyFormatter }: PayoutHistoryP
 				</div>
 				{balance && (
 					<div className="flex flex-wrap items-center gap-4 text-sm">
-						<div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300">
+						<div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300">
 							<Wallet className="size-4" />
 							<span className="font-semibold">
 								Disponível: {currencyFormatter.format(balance.available)}
 							</span>
 						</div>
-						<div className="rounded-xl bg-amber-50 px-3 py-2 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300">
+						<div className="rounded-lg bg-amber-50 px-3 py-2 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300">
 							Pendente: {currencyFormatter.format(balance.pending)}
 						</div>
 					</div>

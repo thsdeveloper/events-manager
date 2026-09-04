@@ -12,9 +12,14 @@ export function requireUser(request: FastifyRequest, auth: AuthService) {
 	return auth.authenticate(readAccessToken(request));
 }
 
+export const ACTIVE_ORGANIZER_COOKIE = 'active_organizer_id';
+
 export async function requireOrganizer(request: FastifyRequest, auth: AuthService) {
 	const context = await requireUser(request, auth);
-	return { ...context, organizer: await auth.requireOrganizer(context.user.id) };
+	// The cookie only expresses a preference; ownership is verified before it is
+	// honoured, so a forged value cannot reach another user's organization.
+	const preferred = request.cookies?.[ACTIVE_ORGANIZER_COOKIE];
+	return { ...context, organizer: await auth.requireOrganizer(context.user.id, preferred) };
 }
 
 export async function requireSuperAdmin(request: FastifyRequest, auth: AuthService) {

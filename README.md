@@ -58,14 +58,28 @@ automaticamente como organizador e pagamentos e repasses são simulados. Para te
 PIX e webhooks HMAC do AbacatePay. O SMTP local aponta para o Inbucket; OpenAI e Google Places ficam desativados enquanto
 suas chaves estiverem vazias.
 
-## Qualidade
+## Qualidade e TDD
+
+O projeto é desenvolvido com TDD em todos os pacotes: cada comportamento nasce
+de um teste que falha, recebe a implementação mínima e é refatorado com a
+suíte verde. O protocolo obrigatório está em [AGENTS.md](AGENTS.md) e o guia
+completo, com receitas por camada e helpers, em [docs/TDD.md](docs/TDD.md).
 
 ```bash
 pnpm lint
-pnpm test
+pnpm test              # contracts, api e web
+pnpm test:coverage     # cobertura com limiares (catraca: só sobem)
 pnpm build
 pnpm format
+
+# dentro de apps/api, apps/web ou packages/contracts
+pnpm test:watch        # ciclo Red → Green → Refactor com watch
 ```
+
+Na API, os testes ficam em `apps/api/test` (casos de uso com dublês de porta,
+rotas com `app.inject`, regras de arquitetura). No front, `*.test.ts` roda em
+Node e `*.test.tsx` roda em jsdom com Testing Library. Os contratos Zod têm
+testes em `packages/contracts/src`.
 
 As rotas da API retornam erros no formato RFC 7807. Alterações de banco devem ser feitas por uma nova migration em `supabase/migrations`, acompanhadas da atualização do seed e dos contratos quando aplicável.
 

@@ -18,7 +18,13 @@ export interface AppUser {
     first_name?: string | null;
     last_name?: string | null;
     avatar?: MediaFile | string | null;
+    /**
+     * Rótulo legível ("Uberlândia - MG"). É derivado de `city_id` no servidor,
+     * nunca enviado pelo cliente, para que o texto não possa divergir da relação.
+     */
     location?: string | null;
+    city_id?: number | null;
+    city?: CityWithState | null;
     title?: string | null;
     description?: string | null;
     role?: 'attendee' | 'organizer' | 'admin' | 'super_admin' | null;
@@ -398,6 +404,10 @@ export interface Event {
     location_name?: string | null;
     /** @description Endereço completo do evento */
     location_address?: string | null;
+    /** @description Latitude do local, definida pelo seletor de mapa */
+    latitude?: number | null;
+    /** @description Longitude do local, definida pelo seletor de mapa */
+    longitude?: number | null;
     /** @description Link para evento online */
     online_url?: string | null;
     /** @description Capacidade máxima de participantes (deixe vazio para ilimitado) */
@@ -773,5 +783,27 @@ export interface Redirect {
     user_created?: AppUser | string | null;
     date_updated?: string | null;
     user_updated?: AppUser | string | null;
+}
+/**
+ * Estados e municípios brasileiros, com os códigos do IBGE como chave primária.
+ * São dados de referência imutáveis: a API os serve em listas completas e o
+ * cliente filtra localmente, sem uma requisição por tecla digitada.
+ */
+export interface State {
+    /** Código do IBGE (11 a 53). @primaryKey */
+    id: number;
+    /** Sigla de duas letras, o que a interface exibe: "MG", "SP". */
+    uf: string;
+    name: string;
+}
+export interface City {
+    /** Código do IBGE de 7 dígitos. @primaryKey */
+    id: number;
+    state_id: number;
+    name: string;
+}
+/** Cidade com o estado resolvido, como devolvida ao carregar um perfil. */
+export interface CityWithState extends City {
+    state: State;
 }
 //# sourceMappingURL=domain.d.ts.map

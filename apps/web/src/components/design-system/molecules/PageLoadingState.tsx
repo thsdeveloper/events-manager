@@ -11,10 +11,10 @@ export function PageLoadingState({ label = 'Carregando conteúdo' }: { label?: s
 			</div>
 			<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 				{Array.from({ length: 4 }, (_, index) => (
-					<Skeleton className="h-32 rounded-2xl" key={index} />
+					<Skeleton className="h-32 rounded-lg" key={index} />
 				))}
 			</div>
-			<Skeleton className="h-72 rounded-2xl" />
+			<Skeleton className="h-72 rounded-lg" />
 		</div>
 	);
 }

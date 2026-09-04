@@ -188,7 +188,7 @@ export function TicketDetailsModal({ registration, onClose }: TicketDetailsModal
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
 			<DialogContent
 				hideCloseButton
-				className="block max-h-[95vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border-0 bg-white p-0 shadow-2xl dark:bg-gray-900"
+				className="block max-h-[95vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-lg border-0 bg-white p-0 shadow-2xl dark:bg-gray-900"
 			>
 				<DialogDescription className="sr-only">
 					Código, dados do participante e informações do evento deste ingresso.
@@ -214,14 +214,14 @@ export function TicketDetailsModal({ registration, onClose }: TicketDetailsModal
 					{/* QR Code - Center */}
 					{qrCodeUrl && (
 						<div className="mb-8 flex justify-center">
-							<div className="rounded-2xl border-4 border-indigo-600 bg-white p-4 shadow-lg">
+							<div className="rounded-lg border-4 border-indigo-600 bg-white p-4 shadow-lg">
 								<Image src={qrCodeUrl} alt="QR Code do Ingresso" width={250} height={250} className="size-[250px]" />
 							</div>
 						</div>
 					)}
 
 					{/* Ticket Code */}
-					<div className="mb-8 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 p-6 text-center dark:from-indigo-950 dark:to-purple-950">
+					<div className="mb-8 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 p-6 text-center dark:from-indigo-950 dark:to-purple-950">
 						<p className="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">Código do Ingresso</p>
 						<div className="flex items-center justify-center gap-3">
 							<p className="font-mono text-2xl font-bold tracking-widest text-indigo-900 dark:text-indigo-100">

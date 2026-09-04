@@ -1,13 +1,46 @@
 import { z } from 'zod';
+import { isValidDocument, isValidPhone, onlyDigits } from './br-documents.js';
 
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 64;
+
+/**
+ * Política de senha da plataforma, aplicada a toda senha NOVA: cadastro,
+ * redefinição por e-mail e troca dentro do perfil. Pelo menos 8 caracteres, com
+ * letras, números e ao menos um caractere especial — ex.: `Qsesbs2006#@!`.
+ *
+ * O que conta como especial é definido por exclusão (nem letra, nem número) em
+ * vez de uma lista fixa de símbolos: uma lista rejeitaria caracteres válidos que
+ * a pessoa escolheu só porque não foram previstos. Letras e números usam
+ * categorias Unicode, então `senhÃ` conta como letra igual a `senha`.
+ *
+ * O teto de 64 existe porque o bcrypt — usado pelo Supabase para o hash —
+ * trunca em 72 bytes: sem ele, uma frase longa daria falsa sensação de força, e
+ * acentuação em UTF-8 gasta 2 bytes por caractere.
+ */
+export const newPasswordSchema = z
+	.string()
+	.min(PASSWORD_MIN_LENGTH, `A senha deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`)
+	.max(PASSWORD_MAX_LENGTH, `A senha deve ter no máximo ${PASSWORD_MAX_LENGTH} caracteres.`)
+	.regex(/\p{L}/u, 'A senha deve conter pelo menos uma letra.')
+	.regex(/\p{N}/u, 'A senha deve conter pelo menos um número.')
+	.regex(/[^\p{L}\p{N}]/u, 'A senha deve conter pelo menos um caractere especial.');
+
+/**
+ * O login valida apenas que algo foi enviado. A política acima vale para senhas
+ * novas: exigi-la aqui trancaria fora quem se cadastrou antes dela — inclusive
+ * impedindo a pessoa de entrar justamente para trocar a senha. Quem decide se a
+ * senha confere é o provedor.
+ */
 export const credentialsSchema = z.object({
 	email: z.string().email(),
-	password: z.string().min(8),
+	password: z.string().min(1),
 });
 
 export const registerSchema = credentialsSchema.extend({
 	first_name: z.string().trim().min(1),
 	last_name: z.string().trim().min(1),
+	password: newPasswordSchema,
 });
 
 export const emailConfirmationSchema = z.object({
@@ -27,7 +60,11 @@ export const updateProfileSchema = z.object({
 	last_name: z.string().trim().min(1).nullable().optional(),
 	email: z.string().email().optional(),
 	avatar: z.string().uuid().nullable().optional(),
-	location: z.string().nullable().optional(),
+	/**
+	 * A localização entra pelo código IBGE do município, não por texto livre: o
+	 * rótulo em `profiles.location` é escrito pelo servidor a partir daqui.
+	 */
+	city_id: z.number().int().positive().nullable().optional(),
 	title: z.string().nullable().optional(),
 	description: z.string().nullable().optional(),
 });
@@ -60,6 +97,8 @@ const eventFieldsSchema = z.object({
 	end_date: isoDateTimeSchema,
 	location_name: z.string().nullable().optional(),
 	location_address: z.string().nullable().optional(),
+	latitude: z.coerce.number().min(-90).max(90).nullable().optional(),
+	longitude: z.coerce.number().min(-180).max(180).nullable().optional(),
 	online_url: httpUrlSchema.nullable().optional(),
 	max_attendees: z.number().int().positive().nullable().optional(),
 	registration_start: isoDateTimeSchema.nullable().optional(),
@@ -81,12 +120,35 @@ function addDateOrderIssue(
 	}
 }
 
+// The database stores a venue pin as an all-or-nothing pair, so a half-filled
+// pair is rejected here instead of surfacing as an opaque constraint violation.
+function addCoordinatePairIssue(
+	context: z.RefinementCtx,
+	latitude: number | null | undefined,
+	longitude: number | null | undefined,
+) {
+	const hasLatitude = latitude !== null && latitude !== undefined;
+	const hasLongitude = longitude !== null && longitude !== undefined;
+	if (hasLatitude !== hasLongitude) {
+		context.addIssue({
+			code: 'custom',
+			message: 'Latitude e longitude devem ser informadas juntas.',
+			path: [hasLatitude ? 'longitude' : 'latitude'],
+		});
+	}
+}
+
 export const eventInputSchema = eventFieldsSchema.superRefine((event, context) => {
 	addDateOrderIssue(context, event.start_date, event.end_date, 'end_date');
 	addDateOrderIssue(context, event.registration_start, event.registration_end, 'registration_end');
+	addCoordinatePairIssue(context, event.latitude, event.longitude);
 });
 
-export const eventPatchSchema = eventFieldsSchema.partial();
+export const eventPatchSchema = eventFieldsSchema.partial().superRefine((event, context) => {
+	if ('latitude' in event || 'longitude' in event) {
+		addCoordinatePairIssue(context, event.latitude, event.longitude);
+	}
+});
 
 const ticketFieldsSchema = z.object({
 	event_id: z.string().uuid(),
@@ -129,6 +191,32 @@ export const ticketInputSchema = ticketFieldsSchema.superRefine((ticket, context
 });
 
 export const ticketPatchSchema = ticketFieldsSchema.partial();
+
+/** A ticket described before its event exists, so it carries no event_id yet. */
+export const eventTicketDraftSchema = ticketFieldsSchema.omit({ event_id: true });
+
+/**
+ * Creation payload. Tickets travel with the event because a paid event without
+ * one is an invalid state — sending them together lets the API reject the pair
+ * up front instead of leaving a half-built event behind.
+ */
+export const eventCreateSchema = eventFieldsSchema
+	.extend({ tickets: z.array(eventTicketDraftSchema).default([]) })
+	.superRefine((event, context) => {
+		addDateOrderIssue(context, event.start_date, event.end_date, 'end_date');
+		addDateOrderIssue(context, event.registration_start, event.registration_end, 'registration_end');
+		addCoordinatePairIssue(context, event.latitude, event.longitude);
+		if (event.is_free === false && event.tickets.length === 0) {
+			context.addIssue({
+				code: 'custom',
+				message: 'Um evento pago precisa de pelo menos um tipo de ingresso.',
+				path: ['tickets'],
+			});
+		}
+	});
+
+export type EventTicketDraft = z.infer<typeof eventTicketDraftSchema>;
+export type EventCreateInput = z.infer<typeof eventCreateSchema>;
 
 export const organizerDashboardSchema = z.object({
 	metrics: z.object({
@@ -180,3 +268,17 @@ export const checkoutStatusSchema = z.object({
 });
 
 export type CheckoutStatus = z.infer<typeof checkoutStatusSchema>;
+
+/**
+ * Phone and taxpayer id are stored as digits, so these normalise first and then
+ * validate the number itself — the same rules the masked inputs apply.
+ */
+export const brPhoneSchema = z
+	.string()
+	.transform(onlyDigits)
+	.refine((value) => value.length === 0 || isValidPhone(value), 'Informe um telefone válido com DDD.');
+
+export const brDocumentSchema = z
+	.string()
+	.transform(onlyDigits)
+	.refine((value) => value.length === 0 || isValidDocument(value), 'Informe um CPF ou CNPJ válido.');

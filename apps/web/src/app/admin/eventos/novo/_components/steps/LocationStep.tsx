@@ -1,19 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import { MapPin, MonitorSmartphone, Users } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { EventLocationPicker, type PickedLocation } from '@/components/map/EventLocationPicker';
 import { cn } from '@/lib/utils';
 import type { EventWizardFormValues } from '../types';
-
-interface PlaceSuggestion {
-	placeId: string;
-	description: string;
-	mainText: string;
-	secondaryText?: string;
-}
 
 const EVENT_TYPE_OPTIONS = [
 	{
@@ -39,93 +33,37 @@ const EVENT_TYPE_OPTIONS = [
 export function LocationStep() {
 	const form = useFormContext<EventWizardFormValues>();
 	const eventType = form.watch('event_type');
-	const [addressQuery, setAddressQuery] = useState(form.getValues('location_address') ?? '');
-	const [addressSuggestions, setAddressSuggestions] = useState<PlaceSuggestion[]>([]);
-	const [isSearchingAddress, setIsSearchingAddress] = useState(false);
-	const [autocompleteError, setAutocompleteError] = useState<string | null>(null);
-	const autocompleteController = useRef<AbortController | null>(null);
+	const latitude = form.watch('latitude');
+	const longitude = form.watch('longitude');
+	const position =
+		typeof latitude === 'number' && typeof longitude === 'number' ? { latitude, longitude } : null;
 
-	const fetchAddressSuggestions = useCallback(
-		async (input: string) => {
-			if (!input || input.length < 3) {
-				setAddressSuggestions([]);
-				setAutocompleteError(null);
-
-				return;
+	const handlePick = useCallback(
+		(location: PickedLocation) => {
+			const options = { shouldDirty: true, shouldValidate: true } as const;
+			form.setValue('latitude', location.latitude, options);
+			form.setValue('longitude', location.longitude, options);
+			if (location.address) {
+				form.setValue('location_address', location.address, options);
 			}
-
-			if (autocompleteController.current) {
-				autocompleteController.current.abort();
-			}
-
-			const controller = new AbortController();
-			autocompleteController.current = controller;
-			setIsSearchingAddress(true);
-			setAutocompleteError(null);
-
-			try {
-				const response = await fetch(`/api/places/search?input=${encodeURIComponent(input)}`, {
-					signal: controller.signal,
-				});
-
-				if (!response.ok) {
-					let message = 'Não foi possível buscar sugestões.';
-					try {
-						const data = await response.json();
-						message = data?.error ?? message;
-					} catch {
-						// ignore
-					}
-
-					setAutocompleteError(message);
-					setAddressSuggestions([]);
-
-					return;
-				}
-
-				const data = await response.json();
-				setAddressSuggestions(Array.isArray(data?.predictions) ? data.predictions : []);
-			} catch (error) {
-				if ((error as Error).name !== 'AbortError') {
-					setAutocompleteError('Não foi possível buscar sugestões.');
-				}
-			} finally {
-				setIsSearchingAddress(false);
+			// The venue name is a suggestion, never an overwrite: the organiser may
+			// have typed something more meaningful than what the geocoder returns.
+			if (location.name && !form.getValues('location_name')) {
+				form.setValue('location_name', location.name, options);
 			}
 		},
-		[],
+		[form],
 	);
 
-	useEffect(() => {
-		if (eventType !== 'in_person' && eventType !== 'hybrid') {
-			setAddressSuggestions([]);
-			setIsSearchingAddress(false);
-
-			return;
-		}
-
-		const timeoutId = window.setTimeout(() => {
-			fetchAddressSuggestions(addressQuery.trim());
-		}, 350);
-
-		return () => {
-			window.clearTimeout(timeoutId);
-		};
-	}, [addressQuery, eventType, fetchAddressSuggestions]);
-
-	const handleAddressSelect = (suggestion: PlaceSuggestion) => {
-		setAddressSuggestions([]);
-		setAddressQuery(suggestion.description);
-		form.setValue('location_address', suggestion.description, { shouldDirty: true, shouldValidate: true });
-
-		if (!form.getValues('location_name')) {
-			form.setValue('location_name', suggestion.mainText, { shouldDirty: true, shouldValidate: true });
-		}
-	};
+	const handleClear = useCallback(() => {
+		const options = { shouldDirty: true, shouldValidate: true } as const;
+		form.setValue('latitude', null, options);
+		form.setValue('longitude', null, options);
+	}, [form]);
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-xl border bg-card p-6 shadow-sm">
+			<div className="rounded-lg border bg-card p-6 shadow-sm">
 				<div className="flex flex-col gap-2">
 					<div className="flex items-start justify-between gap-4">
 						<div>
@@ -205,60 +143,29 @@ export function LocationStep() {
 										<FormItem>
 											<FormLabel>Endereço completo</FormLabel>
 											<FormControl>
-												<div className="relative">
-													<Input
-														{...field}
-														placeholder="Rua, número, bairro, cidade e estado"
-														autoComplete="off"
-														onChange={event => {
-															field.onChange(event.target.value);
-															setAddressQuery(event.target.value);
-														}}
-														onFocus={event => {
-															setAddressQuery(event.target.value);
-														}}
-													/>
-													{(isSearchingAddress || addressSuggestions.length > 0 || autocompleteError) && (
-									<div className="absolute inset-x-0 top-full z-30 mt-1 rounded-md border bg-background shadow-lg">
-															{isSearchingAddress && (
-																<div className="px-3 py-2 text-xs text-muted-foreground">Buscando sugestões...</div>
-															)}
-
-															{autocompleteError && !isSearchingAddress && (
-																<div className="px-3 py-2 text-xs text-destructive">{autocompleteError}</div>
-															)}
-
-															{!isSearchingAddress && !autocompleteError && addressSuggestions.length === 0 && addressQuery && (
-																<div className="px-3 py-2 text-xs text-muted-foreground">Nenhum resultado encontrado.</div>
-															)}
-
-															{addressSuggestions.length > 0 && (
-																<ul className="max-h-56 overflow-y-auto text-sm">
-																	{addressSuggestions.map(suggestion => (
-																		<li
-																			key={suggestion.placeId}
-																			className="cursor-pointer border-b border-border/60 px-3 py-2 last:border-none hover:bg-muted"
-																			onMouseDown={event => {
-																				event.preventDefault();
-																				handleAddressSelect(suggestion);
-																			}}
-																		>
-																			<p className="font-medium text-foreground">{suggestion.mainText}</p>
-																			{suggestion.secondaryText && (
-																				<p className="text-xs text-muted-foreground">{suggestion.secondaryText}</p>
-																			)}
-																		</li>
-																	))}
-																</ul>
-															)}
-														</div>
-													)}
-												</div>
+												<Input
+													{...field}
+													placeholder="Rua, número, bairro, cidade e estado"
+													autoComplete="off"
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>
 									)}
 								/>
+							</div>
+
+							<div className="mt-6">
+								<h4 className="text-sm font-medium">Ponto exato no mapa</h4>
+								<p className="mb-3 text-xs text-muted-foreground">
+									Busque o endereço ou clique no mapa para posicionar o pino. Arraste-o para ajustar com precisão.
+								</p>
+								<EventLocationPicker position={position} onPick={handlePick} onClear={handleClear} />
+								{form.formState.errors.latitude?.message && (
+									<p className="mt-2 text-sm font-medium text-destructive">
+										{form.formState.errors.latitude.message}
+									</p>
+								)}
 							</div>
 
 							<p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">

@@ -1,35 +1,39 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, CheckCircle, Mail } from 'lucide-react';
 import { AuthButton } from '@/components/auth/AuthButton';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { AuthLink } from '@/components/auth/AuthLink';
-import { LoadingSpinner } from '@/components/design-system/atoms/LoadingSpinner';
-import { AuthField } from '@/components/design-system/molecules/AuthField';
+import { AuthField, registerField } from '@/components/design-system/molecules/AuthField';
 import { InlineAlert } from '@/components/design-system/molecules/InlineAlert';
 import { Button } from '@/components/ui/button';
 import { httpClient } from '@/lib/http-client';
+import { forgotPasswordSchema, type ForgotPasswordValues } from '@/lib/validation/auth';
 
 export default function ForgotPasswordPage() {
-	const [email, setEmail] = useState('');
 	const [submittedEmail, setSubmittedEmail] = useState('');
-	const [error, setError] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
 
-	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		setError('');
-		setIsLoading(true);
+	const {
+		register,
+		handleSubmit,
+		reset,
+		formState: { errors, isSubmitting },
+	} = useForm<ForgotPasswordValues>({
+		resolver: zodResolver(forgotPasswordSchema),
+		defaultValues: { email: '' },
+		mode: 'onTouched',
+	});
 
+	const onSubmit = async ({ email }: ForgotPasswordValues) => {
 		try {
-			await httpClient.post('/api/auth/forgot-password', { email }, { toastOnError: false });
+			await httpClient.post('/api/auth/forgot-password', { email });
 			setSubmittedEmail(email);
-		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : 'Não foi possível enviar as instruções. Tente novamente.');
-		} finally {
-			setIsLoading(false);
+		} catch {
+			// Já exibido pelo toast de erro do httpClient.
 		}
 	};
 
@@ -52,7 +56,15 @@ export default function ForgotPasswordPage() {
 							<ArrowLeft className="size-4" /> Voltar para o login
 						</Link>
 					</Button>
-					<Button type="button" variant="ghost" className="w-full" onClick={() => setSubmittedEmail('')}>
+					<Button
+						type="button"
+						variant="ghost"
+						className="w-full"
+						onClick={() => {
+							reset();
+							setSubmittedEmail('');
+						}}
+					>
 						Enviar para outro e-mail
 					</Button>
 				</div>
@@ -62,30 +74,20 @@ export default function ForgotPasswordPage() {
 
 	return (
 		<AuthLayout title="Esqueceu sua senha?" subtitle="Enviaremos instruções para redefini-la">
-			<form onSubmit={handleSubmit} className="space-y-6">
-				{error ? <InlineAlert>{error}</InlineAlert> : null}
+			<form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
 				<AuthField
 					id="email"
 					label="E-mail"
 					icon={<Mail className="size-5" />}
 					type="email"
 					autoComplete="email"
-					value={email}
-					onChange={(event) => setEmail(event.target.value)}
-					required
 					placeholder="seu@email.com"
 					hint="Digite o e-mail cadastrado na sua conta."
+					error={errors.email?.message}
+					{...registerField(register('email'))}
 				/>
-				<AuthButton type="submit" isLoading={isLoading}>
-					{isLoading ? (
-						<>
-							<LoadingSpinner /> Enviando...
-						</>
-					) : (
-						<>
-							<Mail className="size-5" /> Enviar instruções
-						</>
-					)}
+				<AuthButton type="submit" isLoading={isSubmitting}>
+					<Mail className="size-5" /> Enviar instruções
 				</AuthButton>
 				<div className="text-center">
 					<AuthLink href="/login" className="inline-flex items-center gap-2 text-sm">

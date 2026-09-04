@@ -7,6 +7,8 @@ import {
 	ChevronRight,
 	Gauge,
 	LogOut,
+	Palette,
+	Tags,
 	ReceiptText,
 	Settings2,
 	ShieldCheck,
@@ -21,6 +23,8 @@ const navigation = [
 	{ label: 'Organizadores', href: '/super-admin/organizadores', icon: Building2 },
 	{ label: 'Financeiro', href: '/super-admin/financeiro', icon: BarChart3 },
 	{ label: 'Taxas e gateway', href: '/super-admin/taxas', icon: Settings2 },
+	{ label: 'Identidade visual', href: '/super-admin/identidade-visual', icon: Palette },
+	{ label: 'Categorias', href: '/super-admin/categorias', icon: Tags },
 ];
 
 export function SuperAdminShell({
@@ -46,7 +50,7 @@ export function SuperAdminShell({
 			<aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-slate-200 bg-slate-950 text-white lg:flex">
 				<div className="border-b border-white/10 p-6">
 					<Link href="/super-admin" className="flex items-center gap-3">
-						<div className="flex size-11 items-center justify-center rounded-2xl bg-violet-500">
+						<div className="flex size-11 items-center justify-center rounded-lg bg-violet-500">
 							<ShieldCheck className="size-6" />
 						</div>
 						<div>
@@ -64,7 +68,7 @@ export function SuperAdminShell({
 								key={item.href}
 								href={item.href}
 								className={cn(
-									'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition',
+									'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition',
 									active(item.href)
 										? 'bg-white text-slate-950 shadow-sm'
 										: 'text-slate-300 hover:bg-white/10 hover:text-white',
@@ -81,7 +85,7 @@ export function SuperAdminShell({
 					{canOpenOrganizer && (
 						<Link
 							href="/admin"
-							className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300 hover:bg-white/10 hover:text-white"
+							className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-300 hover:bg-white/10 hover:text-white"
 						>
 							<CalendarDays className="size-5" />
 							Painel do organizador
@@ -89,7 +93,7 @@ export function SuperAdminShell({
 					)}
 					<button
 						onClick={logout}
-						className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-300"
+						className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-300"
 					>
 						<LogOut className="size-5" />
 						Sair

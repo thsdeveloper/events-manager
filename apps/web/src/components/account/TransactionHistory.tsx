@@ -63,7 +63,7 @@ export function TransactionHistory({ userId }: TransactionHistoryProps) {
 
 	if (loading) {
 		return (
-			<div className="flex min-h-56 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+			<div className="flex min-h-56 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
 				<div className="text-center">
 					<Loader2 className="mx-auto size-6 animate-spin text-violet-600" />
 					<p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Consultando pagamentos...</p>
@@ -74,14 +74,14 @@ export function TransactionHistory({ userId }: TransactionHistoryProps) {
 
 	if (error) {
 		return (
-			<div className="rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm dark:border-red-900 dark:bg-slate-900">
+			<div className="rounded-lg border border-red-200 bg-white p-8 text-center shadow-sm dark:border-red-900 dark:bg-slate-900">
 				<ReceiptText className="mx-auto size-8 text-red-400" />
 				<h2 className="mt-4 font-semibold text-slate-950 dark:text-white">Não foi possível carregar os pagamentos</h2>
 				<p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Tente consultar o histórico novamente.</p>
 				<Button
 					type="button"
 					variant="outline"
-					className="mt-5 rounded-xl"
+					className="mt-5 rounded-lg"
 					onClick={() => setReloadKey((key) => key + 1)}
 				>
 					<RefreshCw />
@@ -93,8 +93,8 @@ export function TransactionHistory({ userId }: TransactionHistoryProps) {
 
 	if (transactions.length === 0) {
 		return (
-			<div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-14">
-				<div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
+			<div className="rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-14">
+				<div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
 					<WalletCards className="size-6 text-slate-500" />
 				</div>
 				<h2 className="mt-4 font-semibold text-slate-950 dark:text-white">Nenhum pagamento por aqui</h2>
@@ -106,7 +106,7 @@ export function TransactionHistory({ userId }: TransactionHistoryProps) {
 	}
 
 	return (
-		<div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+		<div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
 			<div className="divide-y divide-slate-100 dark:divide-slate-800">
 				{transactions.map((transaction) => (
 					<TransactionRow key={transaction.id} transaction={transaction} />
@@ -129,7 +129,7 @@ function TransactionRow({ transaction }: { transaction: PaymentTransaction }) {
 	return (
 		<article className="p-5 transition hover:bg-slate-50/70 dark:hover:bg-slate-800/30 sm:p-6">
 			<div className="flex items-start gap-4">
-				<div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+				<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
 					<CreditCard className="size-5" />
 				</div>
 				<div className="min-w-0 flex-1">

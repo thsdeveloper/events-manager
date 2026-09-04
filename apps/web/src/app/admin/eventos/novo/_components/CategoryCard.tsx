@@ -1,18 +1,8 @@
 'use client';
 
 import { memo } from 'react';
-import {
-	Check,
-	Palette,
-	GraduationCap,
-	Dumbbell,
-	Church,
-	Music,
-	Briefcase,
-	Laptop,
-	Sparkles,
-	type LucideIcon
-} from 'lucide-react';
+import { Check } from 'lucide-react';
+import { resolveCategoryIcon } from '@/features/categories/icons';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -27,27 +17,14 @@ interface CategoryCardProps {
 }
 
 /**
- * Map of icon names to their Lucide React components.
- */
-const iconMap: Record<string, LucideIcon> = {
-	'palette': Palette,
-	'graduation-cap': GraduationCap,
-	'dumbbell': Dumbbell,
-	'church': Church,
-	'music': Music,
-	'briefcase': Briefcase,
-	'laptop': Laptop,
-};
-
-/**
- * Dynamically renders a Lucide icon based on the icon name string.
- * Falls back to a default icon if the icon is not found.
+ * Renders whichever icon the category carries. The catalog is shared with the
+ * super admin picker, so an unknown name means the category predates a change
+ * to that list and falls back rather than breaking the card.
  */
 function DynamicLucideIcon({ iconName, className, color }: { iconName?: string | null; className?: string; color?: string | null }) {
-	const IconComponent = iconName ? iconMap[iconName.toLowerCase()] : null;
-	const FallbackIcon = IconComponent || Sparkles;
+	const IconComponent = resolveCategoryIcon(iconName);
 
-	return <FallbackIcon className={className} style={{ color: color || undefined }} />;
+	return <IconComponent className={className} style={{ color: color || undefined }} />;
 }
 
 /**

@@ -2,28 +2,39 @@
 
 import { forwardRef } from 'react';
 import { Wand2 } from 'lucide-react';
-import ImageUpload, { type ImageUploadRef } from '@/components/admin/ImageUpload';
+import ImageUpload from '@/components/admin/ImageUpload';
 import type { EventWizardFormValues } from '../types';
 import { useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
 interface CoverImageStepProps {
-	imageUploadRef: React.RefObject<ImageUploadRef | null>;
 	onChangeCoverImage: (value: string | null) => void;
+	onCoverFileSelected: (file: File | null) => void;
+	pendingPreviewUrl: string | null;
 	onGenerateCoverImage: () => void;
 	isGeneratingImage: boolean;
 	aiError?: string | null;
 }
 
 export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
-	({ imageUploadRef, onChangeCoverImage, onGenerateCoverImage, isGeneratingImage, aiError }, ref) => {
+	(
+		{
+			onChangeCoverImage,
+			onCoverFileSelected,
+			pendingPreviewUrl,
+			onGenerateCoverImage,
+			isGeneratingImage,
+			aiError,
+		},
+		ref,
+	) => {
 		const form = useFormContext<EventWizardFormValues>();
 		const { toast } = useToast();
 
 		return (
 			<div ref={ref} className="space-y-8">
-				<div className="rounded-xl border bg-card p-6 shadow-sm">
+				<div className="rounded-lg border bg-card p-6 shadow-sm">
 					<div className="flex flex-col gap-2">
 						<div className="flex items-start justify-between gap-4">
 							<div>
@@ -36,7 +47,9 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 
 						<div className="mt-6 space-y-6">
 							<ImageUpload
-								ref={imageUploadRef}
+								uploadOnSelect={false}
+								onFileSelected={onCoverFileSelected}
+								pendingPreviewUrl={pendingPreviewUrl}
 								value={form.watch('cover_image')}
 								onChange={value => {
 									onChangeCoverImage(value);
@@ -46,19 +59,6 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 										form.setValue('cover_image', '', { shouldValidate: true });
 									}
 								}}
-								onUploadStart={() => {
-									toast({
-										title: 'Enviando imagem...',
-										description: 'Aguarde enquanto fazemos o upload da sua imagem.',
-									});
-								}}
-								onUploadSuccess={(fileId) => {
-									toast({
-										title: 'Imagem enviada com sucesso!',
-										description: 'A imagem de capa foi salva e já está disponível.',
-										variant: 'success',
-									});
-								}}
 								onUploadError={(error) => {
 									toast({
 										title: 'Erro ao enviar imagem',
@@ -67,7 +67,7 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 									});
 								}}
 								label="Imagem de capa (opcional)"
-								description="Recomendado 1200x630px. Aceita JPG, PNG ou GIF até 5MB. O upload é feito automaticamente."
+								description="Recomendado 1200x630px. Aceita JPG, PNG ou GIF até 5MB. A imagem só é enviada ao servidor quando você finalizar o cadastro do evento."
 							/>
 
 							{form.formState.errors.cover_image?.message && (

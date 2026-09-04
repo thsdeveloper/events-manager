@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Sparkles, Ticket, DollarSign, Users, Info, ChevronDown, FileEdit, Globe, Ban, Archive, Rocket, Check, BadgeDollarSign } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -9,6 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { TicketFormSheet } from '@/features/tickets/components/TicketFormSheet';
+import { TicketList } from '@/features/tickets/components/TicketList';
+import { ticketKey, type TicketDraft } from '@/features/tickets/types';
 import type { EventWizardFormValues } from '../types';
 
 const MAIN_STATUS_OPTIONS = [
@@ -51,6 +54,41 @@ export function TicketsStep() {
 		status === 'cancelled' || status === 'archived',
 	);
 
+	// Tickets live in the wizard form because the event has no id yet — they are
+	// sent together with it and persisted by the API in one atomic call.
+	const tickets = form.watch('tickets') ?? [];
+	const [sheetOpen, setSheetOpen] = useState(false);
+	const [editingTicket, setEditingTicket] = useState<TicketDraft | null>(null);
+
+	const writeTickets = useCallback(
+		(next: TicketDraft[]) => form.setValue('tickets', next, { shouldDirty: true, shouldValidate: true }),
+		[form],
+	);
+
+	const handleAddTicket = useCallback(() => {
+		setEditingTicket(null);
+		setSheetOpen(true);
+	}, []);
+
+	const handleEditTicket = useCallback((ticket: TicketDraft) => {
+		setEditingTicket(ticket);
+		setSheetOpen(true);
+	}, []);
+
+	const handleRemoveTicket = useCallback(
+		(ticket: TicketDraft) => writeTickets(tickets.filter(item => ticketKey(item) !== ticketKey(ticket))),
+		[tickets, writeTickets],
+	);
+
+	const handleTicketSaved = useCallback(
+		(saved: TicketDraft) => {
+			const exists = tickets.some(item => ticketKey(item) === ticketKey(saved));
+			writeTickets(exists ? tickets.map(item => (ticketKey(item) === ticketKey(saved) ? saved : item)) : [...tickets, saved]);
+			setEditingTicket(null);
+		},
+		[tickets, writeTickets],
+	);
+
 	const handleCapacityToggle = (unlimited: boolean) => {
 		setHasUnlimitedCapacity(unlimited);
 		if (unlimited) {
@@ -62,7 +100,7 @@ export function TicketsStep() {
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-xl border bg-card p-6 shadow-sm">
+			<div className="rounded-lg border bg-card p-6 shadow-sm">
 				<div className="flex flex-col gap-2">
 					<div className="flex items-start justify-between gap-4">
 						<div>
@@ -179,10 +217,45 @@ export function TicketsStep() {
 										)}
 									</div>
 									<p className="text-xs text-muted-foreground">
-										Defina lotes de ingressos e preços após salvar. Mostraremos uma calculadora de receita estimada.
+										Defina os tipos de ingresso abaixo. Mostramos quanto o comprador paga e quanto você recebe.
 									</p>
 								</button>
 							</div>
+						</div>
+
+						{/* Bloco: tipos de ingresso */}
+						<div className="rounded-lg border bg-card p-4">
+							<div className="mb-4 flex items-start justify-between gap-4">
+								<div>
+									<h3 className="flex items-center gap-2 text-sm font-semibold">
+										<Ticket className="size-4 text-primary" />
+										Tipos de ingresso
+										{!isFree && <span className="text-destructive">*</span>}
+									</h3>
+									<p className="mt-1 text-xs text-muted-foreground">
+										{isFree
+											? 'Opcional em eventos gratuitos. Use para separar categorias de inscrição.'
+											: 'Um evento pago precisa de pelo menos um tipo de ingresso.'}
+									</p>
+								</div>
+							</div>
+
+							<TicketList
+								tickets={tickets}
+								isFree={isFree}
+								onAdd={handleAddTicket}
+								onEdit={handleEditTicket}
+								onRemove={handleRemoveTicket}
+								emptyHint={
+									isFree
+										? 'Sem ingressos, a inscrição gratuita é liberada direto na página do evento.'
+										: undefined
+								}
+							/>
+
+							{form.formState.errors.tickets?.message && (
+								<p className="mt-2 text-sm font-medium text-destructive">{form.formState.errors.tickets.message}</p>
+							)}
 						</div>
 
 						{/* Bloco 2: Capacidade */}
@@ -416,6 +489,17 @@ export function TicketsStep() {
 					</div>
 				</div>
 			</div>
+
+			{/* eventId is null: the event does not exist yet, so the sheet hands the
+			    ticket back to the form instead of posting it. */}
+			<TicketFormSheet
+				open={sheetOpen}
+				onOpenChange={setSheetOpen}
+				pricing={isFree ? 'free' : 'paid'}
+				eventId={null}
+				ticket={editingTicket}
+				onSaved={handleTicketSaved}
+			/>
 		</div>
 	);
 }

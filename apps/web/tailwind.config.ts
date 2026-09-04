@@ -257,9 +257,17 @@ const config: Config = {
     			}
     		},
     		borderRadius: {
+    			// max() guards the subtraction: with --radius at 0 the plain calc would
+    			// produce a negative length, which makes the declaration invalid.
     			lg: 'var(--radius)',
-    			md: 'calc(var(--radius) - 2px)',
-    			sm: 'calc(var(--radius) - 4px)'
+    			md: 'max(0px, calc(var(--radius) - 2px))',
+    			sm: 'max(0px, calc(var(--radius) - 4px))',
+    			// Tailwind's xl/2xl/3xl ship as fixed lengths and would stay rounded
+    			// while the rest of the system went square. Deriving them keeps the
+    			// whole scale under one switch.
+    			xl: 'calc(var(--radius) * 1.33)',
+    			'2xl': 'calc(var(--radius) * 1.67)',
+    			'3xl': 'calc(var(--radius) * 2)'
     		},
     		animation: {
     			'spin-slow': 'spin 3s linear infinite',

@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { fetchEventBySlug } from '@/lib/content/fetchers';
+import { EventLocationView } from '@/components/map/EventLocationView';
 import MediaImage from '@/components/shared/MediaImage';
 import Text from '@/components/ui/Text';
 import Link from 'next/link';
@@ -196,14 +197,14 @@ export default async function EventPage({ params }: EventPageProps) {
 
 						{/* Date & Time */}
 						<div className="flex flex-wrap gap-4 md:gap-6">
-							<div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20">
+							<div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-lg border border-white/20">
 								<Calendar className="size-5 md:size-6 text-white flex-shrink-0" />
 								<div>
 									<p className="text-xs text-white/70 font-medium">Data</p>
 									<p className="text-sm md:text-base font-bold text-white">{formatDateRange()}</p>
 								</div>
 							</div>
-							<div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20">
+							<div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-lg border border-white/20">
 								<Clock className="size-5 md:size-6 text-white flex-shrink-0" />
 								<div>
 									<p className="text-xs text-white/70 font-medium">Horário</p>
@@ -221,7 +222,7 @@ export default async function EventPage({ params }: EventPageProps) {
 					{/* Left Column - Event Details */}
 					<div className="lg:col-span-2 space-y-8">
 						{/* Description */}
-						<div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl p-8 md:p-10 border border-gray-100 dark:border-gray-700">
+						<div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-8 md:p-10 border border-gray-100 dark:border-gray-700">
 							<h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-6">
 								Sobre o evento
 							</h2>
@@ -250,9 +251,9 @@ export default async function EventPage({ params }: EventPageProps) {
 
 						{/* Tickets Section - Only for paid events */}
 						{!event.is_free && (
-							<div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl p-8 md:p-10 border border-gray-100 dark:border-gray-700">
+							<div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-8 md:p-10 border border-gray-100 dark:border-gray-700">
 								<h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
-									<div className="p-2 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl">
+									<div className="p-2 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg">
 										<Ticket className="size-6 text-white" />
 									</div>
 									<span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
@@ -269,7 +270,7 @@ export default async function EventPage({ params }: EventPageProps) {
 											return (
 												<div
 													key={ticket.id}
-													className="border border-gray-200 rounded-xl p-6 hover:border-purple-300 transition-colors"
+													className="border border-gray-200 rounded-lg p-6 hover:border-purple-300 transition-colors"
 												>
 													<div className="flex items-start justify-between mb-3">
 														<div className="flex-1">
@@ -366,7 +367,7 @@ export default async function EventPage({ params }: EventPageProps) {
 										})}
 									</div>
 								) : (
-									<div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
+									<div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
 										<div className="flex flex-col items-center gap-4">
 											<div className="bg-gray-100 rounded-full p-4">
 												<Ticket className="size-8 text-gray-400" />
@@ -395,7 +396,7 @@ export default async function EventPage({ params }: EventPageProps) {
 
 						{/* Location */}
 						{(event.location_name || event.location_address) && (
-							<div className="bg-white rounded-2xl shadow-sm p-8">
+							<div className="bg-white rounded-lg shadow-sm p-8">
 								<h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
 									<MapPin className="size-6 text-purple-600" />
 									Local
@@ -404,12 +405,18 @@ export default async function EventPage({ params }: EventPageProps) {
 									<p className="text-lg font-semibold text-gray-900 mb-2">{event.location_name}</p>
 								)}
 								{event.location_address && <p className="text-gray-600">{event.location_address}</p>}
+								{typeof event.latitude === 'number' && typeof event.longitude === 'number' && (
+									<EventLocationView
+										position={{ latitude: event.latitude, longitude: event.longitude }}
+										locationName={event.location_name}
+									/>
+								)}
 							</div>
 						)}
 
 						{/* Online access */}
 						{event.event_type === 'online' || event.event_type === 'hybrid' ? (
-							<div className="bg-white rounded-2xl shadow-sm p-8">
+							<div className="bg-white rounded-lg shadow-sm p-8">
 								<h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
 									<Globe className="size-6 text-purple-600" />
 									Acesso online
@@ -422,7 +429,7 @@ export default async function EventPage({ params }: EventPageProps) {
 
 						{/* Organizer Info */}
 						{eventOrganizer && (
-							<div className="bg-white rounded-2xl shadow-sm p-8">
+							<div className="bg-white rounded-lg shadow-sm p-8">
 								<h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
 									<Building2 className="size-6 text-purple-600" />
 									Organizador
@@ -485,7 +492,7 @@ export default async function EventPage({ params }: EventPageProps) {
 					<div className="lg:col-span-1">
 						<div className="sticky top-8 space-y-6">
 							{/* Pricing Card */}
-							<div className="bg-white rounded-2xl shadow-lg p-8">
+							<div className="bg-white rounded-lg shadow-lg p-8">
 								<div className="text-center mb-6">
 									{event.is_free ? (
 										<div>
@@ -514,14 +521,14 @@ export default async function EventPage({ params }: EventPageProps) {
 								</div>
 
 								{event.is_free ? (
-									<button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl transition-colors duration-200 text-lg">
+									<button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg transition-colors duration-200 text-lg">
 										Inscrever-se gratuitamente
 									</button>
 								) : hasTickets ? (
 									<>
 										<Link
 											href={`/eventos/${slug}/checkout`}
-											className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-colors duration-200 text-lg inline-block text-center"
+											className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-lg transition-colors duration-200 text-lg inline-block text-center"
 										>
 											Comprar ingressos
 										</Link>
@@ -530,7 +537,7 @@ export default async function EventPage({ params }: EventPageProps) {
 								) : (
 									<button
 										disabled
-										className="w-full bg-gray-300 text-gray-500 font-bold py-4 px-6 rounded-xl cursor-not-allowed text-lg"
+										className="w-full bg-gray-300 text-gray-500 font-bold py-4 px-6 rounded-lg cursor-not-allowed text-lg"
 									>
 										Compra indisponível
 									</button>
@@ -538,7 +545,7 @@ export default async function EventPage({ params }: EventPageProps) {
 							</div>
 
 							{/* Event Info */}
-							<div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+							<div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
 								<div className="flex items-start gap-3">
 									<Calendar className="size-5 text-purple-600 mt-0.5 flex-shrink-0" />
 									<div>
@@ -594,7 +601,7 @@ export default async function EventPage({ params }: EventPageProps) {
 							</div>
 
 							{/* Share Button */}
-							<button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2">
+							<button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
 								<Share2 className="size-5" />
 								Compartilhar
 							</button>

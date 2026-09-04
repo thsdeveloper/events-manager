@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Form } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { type ImageUploadRef } from '@/components/admin/ImageUpload';
+import { PENDING_UPLOAD_VALUE } from '@/components/admin/ImageUpload';
 import type { EventCategory } from '@events-manager/contracts';
 import { useOrganizer } from '@/hooks/useOrganizer';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
@@ -93,8 +93,8 @@ const stepFieldGroups: Array<(keyof EventWizardFormValues)[]> = [
 	['cover_image'],
 	['description', 'tags'],
 	['start_date', 'end_date', 'registration_start', 'registration_end'],
-	['event_type', 'location_name', 'location_address', 'online_url'],
-	['is_free', 'max_attendees', 'status', 'featured', 'publish_after_create'],
+	['event_type', 'location_name', 'location_address', 'latitude', 'longitude', 'online_url'],
+	['is_free', 'tickets', 'max_attendees', 'status', 'featured', 'publish_after_create'],
 	[
 		'title',
 		'category_id',
@@ -105,6 +105,7 @@ const stepFieldGroups: Array<(keyof EventWizardFormValues)[]> = [
 		'end_date',
 		'event_type',
 		'is_free',
+		'tickets',
 		'status',
 	],
 ];
@@ -132,7 +133,6 @@ export function EventCreationWizard() {
 	const router = useRouter();
 	const { toast } = useToast();
 	const { organizer, loading: organizerLoading } = useOrganizer();
-	const imageUploadRef = useRef<ImageUploadRef>(null);
 	const autoSaveTimeoutRef = useRef<number | undefined>(undefined);
 	const initializedRef = useRef(false);
 	const celebrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -147,6 +147,10 @@ export function EventCreationWizard() {
 	const [coverAiError, setCoverAiError] = useState<string | null>(null);
 	const [showCelebration, setShowCelebration] = useState(false);
 	const [confettiSize, setConfettiSize] = useState({ width: 0, height: 0 });
+	// The cover is held here, not inside the step, because the step unmounts as soon
+	// as the user moves on and the file must survive until the event is submitted.
+	const [coverFile, setCoverFile] = useState<File | null>(null);
+	const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
 
 	const form = useForm<EventWizardFormValues>({
 		mode: 'onBlur',
@@ -166,8 +170,11 @@ export function EventCreationWizard() {
 			event_type: 'in_person',
 			location_name: '',
 			location_address: '',
+			latitude: null,
+			longitude: null,
 			online_url: '',
 			is_free: true,
+			tickets: [],
 			max_attendees: null,
 			status: 'draft',
 			featured: false,
@@ -225,6 +232,9 @@ export function EventCreationWizard() {
 				form.reset({
 					...form.getValues(),
 					...formData,
+					// A pending cover only lives in memory, so a reloaded draft must not
+					// claim to still have one.
+					cover_image: formData.cover_image === PENDING_UPLOAD_VALUE ? '' : (formData.cover_image ?? ''),
 				});
 			}
 
@@ -236,6 +246,22 @@ export function EventCreationWizard() {
 			console.error('Erro ao carregar rascunho do evento', error);
 		}
 	}, [form]);
+
+	const handleCoverFileSelected = useCallback((file: File | null) => {
+		setCoverFile(file);
+		setCoverPreviewUrl(current => {
+			if (current) URL.revokeObjectURL(current);
+
+			return file ? URL.createObjectURL(file) : null;
+		});
+	}, []);
+
+	useEffect(
+		() => () => {
+			if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
+		},
+		[coverPreviewUrl],
+	);
 
 	const persistDraft = useCallback(
 		(formValues: Partial<EventWizardFormValues>, stepOverride?: number) => {
@@ -319,6 +345,13 @@ export function EventCreationWizard() {
 				return updated;
 			});
 			persistDraft(form.getValues(), stepIndex);
+
+			// Without this the scroll position carries over from the previous step and
+			// the new step's heading renders underneath the sticky progress bar.
+			if (typeof window !== 'undefined') {
+				const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+				window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+			}
 		},
 		[form, persistDraft],
 	);
@@ -366,6 +399,9 @@ export function EventCreationWizard() {
 				throw new Error('Serviço de IA não retornou uma imagem válida.');
 			}
 
+			// The generator already stored the image, so any file held for a deferred
+			// upload is now stale and must not overwrite it on submit.
+			handleCoverFileSelected(null);
 			form.setValue('cover_image', data.fileId, { shouldDirty: true, shouldValidate: true });
 			toast({
 				title: 'Imagem gerada com sucesso!',
@@ -382,7 +418,7 @@ export function EventCreationWizard() {
 		} finally {
 			setIsGeneratingCover(false);
 		}
-	}, [form, toast]);
+	}, [form, handleCoverFileSelected, toast]);
 
 	const handleNext = useCallback(async () => {
 		if (currentStep === steps.length - 1) {
@@ -463,9 +499,22 @@ return;
 					throw new Error('Crie um perfil de organizador antes de publicar eventos.');
 				}
 
-				// Cover image was already uploaded immediately when selected
-				// Just use the value from the form (which is now a fileId or null)
-				const coverImageId: string | null = values.cover_image || null;
+				// The cover reaches storage only now, at the very end: uploading on
+				// selection would leave an orphan file behind for every abandoned draft.
+				let coverImageId: string | null = null;
+				if (coverFile) {
+					const formData = new FormData();
+					formData.append('file', coverFile);
+					const uploadResponse = await fetch('/api/upload?folder=events', { method: 'POST', body: formData });
+					const uploaded = await uploadResponse.json().catch(() => null);
+					if (!uploadResponse.ok) {
+						throw new Error(uploaded?.detail ?? 'Não foi possível enviar a imagem de capa.');
+					}
+					coverImageId = uploaded.fileId;
+				} else if (values.cover_image && values.cover_image !== PENDING_UPLOAD_VALUE) {
+					// Covers produced by the AI generator are already stored server-side.
+					coverImageId = values.cover_image;
+				}
 
 				const eventData: Record<string, unknown> = {
 					title: values.title,
@@ -476,12 +525,17 @@ return;
 					event_type: values.event_type,
 					location_name: values.location_name || null,
 					location_address: values.location_address || null,
+					latitude: values.latitude ?? null,
+					longitude: values.longitude ?? null,
 					online_url: values.online_url || null,
 					max_attendees: values.max_attendees ?? null,
 					registration_start: values.registration_start || null,
 					registration_end: values.registration_end || null,
 					status: values.status,
 					is_free: values.is_free,
+					// Tickets ride along with the event so the API can reject a paid event
+					// without one and create both in a single atomic call.
+					tickets: values.tickets.map(({ clientId, id, ...ticket }) => ticket),
 					category_id: values.category_id || null,
 					tags: values.tags?.length ? values.tags : null,
 					featured: values.featured,
@@ -538,7 +592,7 @@ return;
 				setIsSubmitting(false);
 			}
 		},
-		[currentStep, form, organizer?.id, router, toast],
+		[coverFile, currentStep, form, organizer?.id, router, toast],
 	);
 
 	const isFirstStep = currentStep === 0;
@@ -551,8 +605,9 @@ return;
 			case 'visual':
 				return (
 					<CoverImageStep
-						imageUploadRef={imageUploadRef}
 						onChangeCoverImage={value => form.setValue('cover_image', value ?? '', { shouldDirty: true, shouldValidate: true })}
+						onCoverFileSelected={handleCoverFileSelected}
+						pendingPreviewUrl={coverPreviewUrl}
 						onGenerateCoverImage={handleGenerateCover}
 						isGeneratingImage={isGeneratingCover}
 						aiError={coverAiError}
@@ -571,7 +626,16 @@ return;
 			default:
 				return null;
 		}
-	}, [categories, coverAiError, currentStep, form, handleGenerateCover, isGeneratingCover]);
+	}, [
+		categories,
+		coverAiError,
+		coverPreviewUrl,
+		currentStep,
+		form,
+		handleCoverFileSelected,
+		handleGenerateCover,
+		isGeneratingCover,
+	]);
 
 	const handleFormSubmit = useCallback(
 		(e: React.FormEvent<HTMLFormElement>) => {
@@ -590,19 +654,21 @@ return;
 
 	return (
 		<Form {...form}>
-			<form className="space-y-8" onSubmit={handleFormSubmit}>
-				<div className="flex flex-col gap-6">
-					<WizardProgressBar
-						steps={steps}
-						currentStep={currentStep}
-						visitedSteps={visitedSteps}
-						onStepSelect={handleSelectStep}
-					/>
-					<AutoSaveIndicator isSaving={isSavingDraft} lastSaved={lastSaved} />
-				</div>
+			{/* The progress bar sticks, so its parent has to be the element that spans
+			    the whole scrollable form — a short wrapper would end the stick early. */}
+			<form className="space-y-6" onSubmit={handleFormSubmit}>
+				<WizardProgressBar
+					steps={steps}
+					currentStep={currentStep}
+					visitedSteps={visitedSteps}
+					onStepSelect={handleSelectStep}
+				/>
+				<AutoSaveIndicator isSaving={isSavingDraft} lastSaved={lastSaved} />
 
 				<div className="relative">
-					<div className="rounded-2xl border border-primary/20 bg-primary/5 p-1 transition-colors dark:border-primary/30 dark:bg-primary/10">
+					{/* scroll-mt keeps anything scrolled into view (a focused field, a
+					    validation error) clear of the header plus the sticky progress bar. */}
+					<div className="scroll-mt-36 rounded-lg border border-primary/20 bg-primary/5 p-1 transition-colors dark:border-primary/30 dark:bg-primary/10">
 						{stepContent}
 					</div>
 					<StepNavigation

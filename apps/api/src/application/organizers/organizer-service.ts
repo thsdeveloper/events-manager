@@ -18,10 +18,10 @@ export interface OrganizerStats {
 
 export interface OrganizerRepository {
 	create(userId: string, input: OrganizerInput, status: 'active' | 'pending'): Promise<unknown | 'exists'>;
-	findByUser(userId: string): Promise<unknown | null>;
+	findById(organizerId: string): Promise<unknown | null>;
 	setLogo(organizerId: string, mediaId: string): Promise<unknown>;
 	stats(organizerId: string): Promise<OrganizerStats>;
-	updateByUser(userId: string, input: Partial<OrganizerInput>): Promise<unknown | null>;
+	updateById(organizerId: string, input: Partial<OrganizerInput>): Promise<unknown | null>;
 	updatePayout(
 		organizerId: string,
 		input: { payout_pix_key: string; payout_pix_key_type: 'CPF' | 'CNPJ' | 'PHONE' | 'EMAIL' | 'RANDOM' },
@@ -31,8 +31,8 @@ export interface OrganizerRepository {
 export class OrganizerService {
 	constructor(private readonly repository: OrganizerRepository) {}
 
-	getProfile(userId: string) {
-		return this.repository.findByUser(userId);
+	getProfile(organizerId: string) {
+		return this.repository.findById(organizerId);
 	}
 
 	async create(userId: string, input: OrganizerInput, initialStatus: 'active' | 'pending') {
@@ -43,8 +43,8 @@ export class OrganizerService {
 		return organizer;
 	}
 
-	async update(userId: string, input: Partial<OrganizerInput>) {
-		const organizer = await this.repository.updateByUser(userId, normalizeWebsite(input));
+	async update(organizerId: string, input: Partial<OrganizerInput>) {
+		const organizer = await this.repository.updateById(organizerId, normalizeWebsite(input));
 		if (!organizer) throw new ApiError('Perfil de organizador não encontrado.', 404, 'ORGANIZER_NOT_FOUND');
 		return organizer;
 	}

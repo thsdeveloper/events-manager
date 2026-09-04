@@ -10,6 +10,13 @@ import { sanitizePostgrestOrTerm } from './search.js';
 
 type Row = Record<string, unknown>;
 
+// Media is expanded so the admin screen can preview it straight from storage;
+// next/image cannot optimise an image served through the /api/media redirect.
+const siteSettingsColumns =
+	'id,title,date_updated,' +
+	'logo:media_files!site_settings_logo_fkey(id,bucket,path),' +
+	'logo_dark_mode:media_files!site_settings_logo_dark_mode_fkey(id,bucket,path)';
+
 export class SupabaseSuperAdminRepository implements SuperAdminRepository {
 	constructor(private readonly clients: SupabaseClients) {}
 
@@ -187,6 +194,111 @@ export class SupabaseSuperAdminRepository implements SuperAdminRepository {
 			.single();
 		if (error) throw error;
 		return { before, data: data as unknown as Row };
+	}
+
+	async getSiteSettings() {
+		const { data, error } = await this.clients.admin
+			.from('site_settings')
+			.select(siteSettingsColumns)
+			.order('date_created', { ascending: true })
+			.limit(1)
+			.maybeSingle();
+		if (error) throw error;
+		if (data) return data as unknown as Row;
+
+		// A fresh install has no row yet; create one so branding is always editable.
+		const { data: created, error: createError } = await this.clients.admin
+			.from('site_settings')
+			.insert({ title: 'Events Manager' })
+			.select(siteSettingsColumns)
+			.single();
+		if (createError) throw createError;
+		return created as unknown as Row;
+	}
+
+	async updateSiteSettings(input: Record<string, unknown>) {
+		const before = await this.getSiteSettings();
+		const { data, error } = await this.clients.admin
+			.from('site_settings')
+			.update({ ...input, date_updated: new Date().toISOString() })
+			.eq('id', before.id as string)
+			.select(siteSettingsColumns)
+			.single();
+		if (error) throw error;
+		return { before, data: data as unknown as Row };
+	}
+
+	async isImageMedia(id: string) {
+		const { data, error } = await this.clients.admin.from('media_files').select('type').eq('id', id).maybeSingle();
+		if (error) throw error;
+		return typeof data?.type === 'string' && data.type.startsWith('image/');
+	}
+
+	async listCategories() {
+		const { data, error } = await this.clients.admin
+			.from('event_categories')
+			.select('id,name,slug,description,icon,color,sort')
+			.order('sort', { ascending: true, nullsFirst: false })
+			.order('name');
+		if (error) throw error;
+		return (data ?? []) as unknown as Row[];
+	}
+
+	/** Events per category, so the UI can warn before a delete unassigns them. */
+	async countEventsByCategory() {
+		const { data, error } = await this.clients.admin.from('events').select('category_id');
+		if (error) throw error;
+		const counts: Record<string, number> = {};
+		for (const row of data ?? []) {
+			const id = (row as { category_id: string | null }).category_id;
+			if (id) counts[id] = (counts[id] ?? 0) + 1;
+		}
+		return counts;
+	}
+
+	async findCategoryBySlug(slug: string, exceptId?: string) {
+		let query = this.clients.admin.from('event_categories').select('id').eq('slug', slug);
+		if (exceptId) query = query.neq('id', exceptId);
+		const { data, error } = await query.maybeSingle();
+		if (error) throw error;
+		return data;
+	}
+
+	async createCategory(input: Record<string, unknown>) {
+		const { data, error } = await this.clients.admin.from('event_categories').insert(input).select('*').single();
+		if (error) throw error;
+		return data as unknown as Row;
+	}
+
+	async getCategory(id: string) {
+		const { data, error } = await this.clients.admin
+			.from('event_categories')
+			.select('*')
+			.eq('id', id)
+			.maybeSingle();
+		if (error) throw error;
+		return (data ?? null) as Row | null;
+	}
+
+	async updateCategory(id: string, input: Record<string, unknown>) {
+		const before = await this.getCategory(id);
+		if (!before) return null;
+		const { data, error } = await this.clients.admin
+			.from('event_categories')
+			.update(input)
+			.eq('id', id)
+			.select('*')
+			.single();
+		if (error) throw error;
+		return { before, data: data as unknown as Row };
+	}
+
+	async deleteCategory(id: string) {
+		const before = await this.getCategory(id);
+		if (!before) return null;
+		const { error } = await this.clients.admin.from('event_categories').delete().eq('id', id);
+		if (error) throw error;
+		return before;
 	}
 
 	async recordAudit(input: {

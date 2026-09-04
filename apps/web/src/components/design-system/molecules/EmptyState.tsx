@@ -14,7 +14,7 @@ export function EmptyState({
 	title: string;
 }) {
 	return (
-		<div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 px-6 py-12 text-center">
+		<div className="flex min-h-64 flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 px-6 py-12 text-center">
 			<IconSurface className="mb-4 size-12" tone="neutral">
 				{icon}
 			</IconSurface>

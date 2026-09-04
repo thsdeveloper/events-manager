@@ -49,7 +49,7 @@ export default function Hero({ data }: HeroProps) {
 
 			<div
 				className={cn(
-					'relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24 lg:py-32 flex flex-col gap-8 md:gap-16',
+					'relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 lg:py-32 flex flex-col gap-8 md:gap-16',
 					layout === 'image_center'
 						? 'items-center text-center'
 						: layout === 'image_left'
@@ -115,10 +115,10 @@ export default function Hero({ data }: HeroProps) {
 						)}
 					>
 						{/* Image Glow Effect */}
-						<div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 rounded-3xl blur-3xl group-hover:blur-2xl transition-all duration-500" />
+						<div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 rounded-lg blur-3xl group-hover:blur-2xl transition-all duration-500" />
 
 						{/* Image Container */}
-						<div className="relative h-full rounded-3xl overflow-hidden shadow-2xl transform group-hover:scale-[1.02] transition-transform duration-500">
+						<div className="relative h-full rounded-lg overflow-hidden shadow-2xl transform group-hover:scale-[1.02] transition-transform duration-500">
 							<MediaImage
 								uuid={image}
 								alt={tagline || headline || 'Imagem Hero'}

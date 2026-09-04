@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, X, AlertTriangle, Loader2 } from 'lucide-react';
+import { CheckCircle, X, AlertTriangle } from 'lucide-react';
 import {
 	Dialog,
 	DialogContent,
@@ -178,36 +178,19 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 						Cancelar
 					</Button>
 					{hasCheckedIn ? (
-						<Button variant="destructive" onClick={handleUndoCheckIn} disabled={isLoading} className="gap-2">
-							{isLoading ? (
-								<>
-									<Loader2 className="size-4 animate-spin" />
-									Processando...
-								</>
-							) : (
-								<>
-									<X className="size-4" />
-									Desfazer Check-in
-								</>
-							)}
+						<Button variant="destructive" onClick={handleUndoCheckIn} loading={isLoading} className="gap-2">
+							<X className="size-4" />
+							Desfazer Check-in
 						</Button>
 					) : (
 						<Button
 							onClick={handleCheckIn}
-							disabled={isLoading || isCancelled}
+							loading={isLoading}
+							disabled={isCancelled}
 							className="gap-2 bg-emerald-600 hover:bg-emerald-700"
 						>
-							{isLoading ? (
-								<>
-									<Loader2 className="size-4 animate-spin" />
-									Processando...
-								</>
-							) : (
-								<>
-									<CheckCircle className="size-4" />
-									Confirmar Check-in
-								</>
-							)}
+							<CheckCircle className="size-4" />
+							Confirmar Check-in
 						</Button>
 					)}
 				</DialogFooter>

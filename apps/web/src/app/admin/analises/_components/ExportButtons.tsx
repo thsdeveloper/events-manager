@@ -10,7 +10,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Download, FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type {
@@ -322,18 +322,9 @@ export function ExportButtons({
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button disabled={isExporting}>
-					{isExporting ? (
-						<>
-							<Loader2 className="mr-2 size-4 animate-spin" />
-							Exportando...
-						</>
-					) : (
-						<>
-							<Download className="mr-2 size-4" />
-							Exportar Relatórios
-						</>
-					)}
+				<Button loading={isExporting}>
+					<Download className="mr-2 size-4" />
+					Exportar Relatórios
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-56">

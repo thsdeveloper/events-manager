@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, CalendarCheck2, ChartNoAxesCombined, Sparkles, TicketCheck } from 'lucide-react';
+import { ArrowLeft, BadgePercent, CalendarCheck2, ChartNoAxesCombined, Sparkles, TicketCheck } from 'lucide-react';
 import { ReactNode } from 'react';
 import { useGlobals } from '@/hooks/useGlobals';
 import Image from 'next/image';
@@ -18,8 +18,6 @@ export function AuthLayout({ children, title, subtitle, showBackButton = true }:
 	const globals = useGlobals();
 	const logoUrl = globals?.logo ? getMediaAssetUrl(globals.logo) : null;
 	const siteName = globals?.title || 'Events Manager';
-	const siteTagline =
-		globals?.tagline || 'A plataforma completa para gerenciar seus eventos de forma simples e eficiente.';
 	const accentColor = globals?.accent_color || '#6644ff';
 
 	return (
@@ -41,7 +39,7 @@ export function AuthLayout({ children, title, subtitle, showBackButton = true }:
 				<div className="absolute right-0 top-0 size-96 rounded-full bg-white/10 blur-3xl" />
 				<div className="absolute bottom-0 left-0 size-96 rounded-full bg-white/10 blur-3xl" />
 
-				<div className="relative z-10 flex w-full flex-col justify-between p-12 text-white">
+				<div className="relative z-10 flex w-full flex-col p-12 text-white">
 					<div>
 						<Link href="/" className="inline-flex items-center gap-3 text-white hover:text-white/90 transition-colors">
 							{logoUrl ? (
@@ -54,7 +52,7 @@ export function AuthLayout({ children, title, subtitle, showBackButton = true }:
 								/>
 							) : (
 								<>
-									<div className="flex items-center justify-center size-12 rounded-xl bg-white/20 backdrop-blur-sm">
+									<div className="flex items-center justify-center size-12 rounded-lg bg-white/20 backdrop-blur-sm">
 										<Sparkles className="size-7" />
 									</div>
 									<span className="text-2xl font-bold">{siteName}</span>
@@ -63,22 +61,28 @@ export function AuthLayout({ children, title, subtitle, showBackButton = true }:
 						</Link>
 					</div>
 
-					<div className="max-w-lg space-y-8">
+					<div className="my-auto max-w-lg space-y-8">
 						<div className="space-y-4">
-							<p className="text-4xl font-bold leading-tight">{siteTagline}</p>
+							<span className="inline-flex items-center gap-2.5 border-l-4 border-white bg-white/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] backdrop-blur-sm">
+								<BadgePercent aria-hidden="true" className="size-4 shrink-0" />
+								A menor taxa do mercado
+							</span>
+							<p className="text-4xl font-bold leading-tight">Venda mais ingressos e fique com mais do seu dinheiro</p>
 							<p className="text-base leading-7 text-white/80">
-								{globals?.description || 'Uma operação organizada para quem publica eventos e para quem participa.'}
+								Publique seu evento em minutos e pague a menor taxa por ingresso vendido do mercado. Sem mensalidade,
+								sem fidelidade e sem surpresa no repasse.
 							</p>
 						</div>
 						<ul className="space-y-3" aria-label="Recursos da plataforma">
 							{[
+								{ icon: BadgePercent, label: 'A menor taxa do mercado em cada ingresso vendido' },
 								{ icon: CalendarCheck2, label: 'Crie e publique eventos em um fluxo guiado' },
 								{ icon: TicketCheck, label: 'Gerencie ingressos, participantes e check-in' },
-								{ icon: ChartNoAxesCombined, label: 'Acompanhe vendas e operação em painéis claros' },
+								{ icon: ChartNoAxesCombined, label: 'Acompanhe vendas e repasses em painéis claros' },
 							].map(({ icon: Icon, label }) => (
 								<li
 									key={label}
-									className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm"
+									className="flex items-center gap-3 border-l-2 border-white/40 bg-white/10 p-4 backdrop-blur-sm"
 								>
 									<Icon aria-hidden="true" className="size-5 shrink-0" />
 									<span className="text-sm font-medium text-white/95">{label}</span>
@@ -87,9 +91,6 @@ export function AuthLayout({ children, title, subtitle, showBackButton = true }:
 						</ul>
 					</div>
 
-					<p className="text-sm text-white/70">
-						Acesse sua conta com uma sessão segura e protegida por cookie HTTP-only.
-					</p>
 				</div>
 			</div>
 

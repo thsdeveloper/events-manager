@@ -21,6 +21,24 @@ const paymentSettingsSchema = z.object({
 	convenience_fee_calculation_method: z.enum(['buyer_pays', 'organizer_absorbs']),
 });
 
+const brandingSettingsSchema = z.object({
+	logo: z.string().uuid().nullable(),
+	logo_dark_mode: z.string().uuid().nullable(),
+});
+
+const categorySchema = z.object({
+	name: z.string().trim().min(2, 'Informe ao menos 2 caracteres').max(60),
+	description: z.string().trim().max(200).nullable().optional(),
+	icon: z.string().trim().max(40).nullable().optional(),
+	color: z
+		.string()
+		.trim()
+		.regex(/^#[0-9a-fA-F]{6}$/, 'Use uma cor no formato #rrggbb')
+		.nullable()
+		.optional(),
+	sort: z.coerce.number().int().min(0).nullable().optional(),
+});
+
 const organizerQuery = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -100,6 +118,44 @@ export async function superAdminRoutes(
 		return service.updatePaymentSettings(
 			admin.user.id,
 			paymentSettingsSchema.parse(request.body),
+			auditContext(request),
+		);
+	});
+
+	app.get('/api/super-admin/categories', async (request) => {
+		await requireSuperAdmin(request, auth);
+		return service.listCategories();
+	});
+
+	app.post('/api/super-admin/categories', async (request, reply) => {
+		const admin = await requireSuperAdmin(request, auth);
+		const input = categorySchema.parse(request.body);
+		return reply.code(201).send(await service.createCategory(admin.user.id, input, auditContext(request)));
+	});
+
+	app.patch('/api/super-admin/categories/:id', async (request) => {
+		const admin = await requireSuperAdmin(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		const input = categorySchema.partial().parse(request.body);
+		return service.updateCategory(admin.user.id, id, input, auditContext(request));
+	});
+
+	app.delete('/api/super-admin/categories/:id', async (request) => {
+		const admin = await requireSuperAdmin(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		return service.deleteCategory(admin.user.id, id, auditContext(request));
+	});
+
+	app.get('/api/super-admin/settings/branding', async (request) => {
+		await requireSuperAdmin(request, auth);
+		return service.getBrandingSettings();
+	});
+
+	app.patch('/api/super-admin/settings/branding', async (request) => {
+		const admin = await requireSuperAdmin(request, auth);
+		return service.updateBrandingSettings(
+			admin.user.id,
+			brandingSettingsSchema.parse(request.body),
 			auditContext(request),
 		);
 	});

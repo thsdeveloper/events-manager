@@ -10,7 +10,7 @@ export function StatusTimeline({ submittedAt = new Date(), onEdit }: { submitted
 			<Card className="overflow-hidden border-blue-200 shadow-sm">
 				<div className="h-1.5 bg-gradient-to-r from-blue-500 to-violet-500" />
 				<CardHeader>
-					<div className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+					<div className="mb-2 flex size-12 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
 						<Clock3 className="size-6" />
 					</div>
 					<CardTitle className="text-2xl">Cadastro em análise</CardTitle>
@@ -20,7 +20,7 @@ export function StatusTimeline({ submittedAt = new Date(), onEdit }: { submitted
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-5">
-					<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+					<div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
 						<div className="flex gap-3">
 							<CheckCircle2 className="mt-0.5 size-5 shrink-0" />
 							<div>

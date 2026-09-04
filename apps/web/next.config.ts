@@ -6,6 +6,9 @@ config({ path: new URL('../../.env', import.meta.url).pathname });
 const apiInternalUrl = process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:3333';
 const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:55321');
 const developmentScriptPolicy = process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'";
+// Leaflet fetches map tiles as plain <img> elements straight from OpenStreetMap.
+// Geocoding is not listed here: it is proxied by our API, so connect-src stays 'self'.
+const tileHosts = 'https://tile.openstreetmap.org https://*.tile.openstreetmap.org';
 
 const contentSecurityPolicy = `
   default-src 'self';
@@ -15,7 +18,7 @@ const contentSecurityPolicy = `
   script-src 'self' 'unsafe-inline'${developmentScriptPolicy};
   frame-src 'self' https://app.abacatepay.com;
   style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data: ${supabaseUrl.origin};
+  img-src 'self' blob: data: ${supabaseUrl.origin} ${tileHosts};
   media-src 'self' ${supabaseUrl.origin};
   connect-src 'self';
   font-src 'self' data:;

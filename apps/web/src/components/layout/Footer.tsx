@@ -32,6 +32,11 @@ function navigationHref(item: NavigationItem) {
 	return null;
 }
 
+/**
+ * Every surface here is painted with design-system tokens rather than fixed
+ * slate values, so the footer follows the Sistema/Claro/Escuro preference like
+ * the rest of the app instead of staying dark in the light theme.
+ */
 const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, ref) => {
 	const title = globals.title || 'Events Manager';
 	const lightLogoUrl = globals.logo ? getMediaAssetUrl(globals.logo) : '/images/logo.svg';
@@ -42,11 +47,11 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 	);
 
 	return (
-		<footer className="border-t bg-slate-950 text-slate-100" ref={ref}>
+		<footer className="border-t border-border bg-muted/40 text-foreground" ref={ref}>
 			<Container className="py-12 sm:py-16">
 				<div className="grid gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
 					<div className="max-w-xl space-y-5">
-						<Link className="inline-flex rounded-xl focus-visible:ring-offset-slate-950" href="/">
+						<Link className="inline-flex rounded-lg" href="/">
 							<Image
 								alt={`${title} — início`}
 								className={darkLogoUrl ? 'h-auto w-36 dark:hidden' : 'h-auto w-36'}
@@ -65,15 +70,17 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 							) : null}
 						</Link>
 						{globals.tagline ? (
-							<p className="font-heading text-lg font-semibold text-white">{globals.tagline}</p>
+							<p className="font-heading text-lg font-semibold text-foreground">{globals.tagline}</p>
 						) : null}
-						{globals.description ? <p className="text-sm leading-6 text-slate-300">{globals.description}</p> : null}
+						{globals.description ? (
+							<p className="text-sm leading-6 text-muted-foreground">{globals.description}</p>
+						) : null}
 						{socialLinks.length ? (
 							<div aria-label="Redes sociais" className="flex flex-wrap gap-2">
 								{socialLinks.map((social) => (
 									<a
 										aria-label={`Abrir ${social.service}`}
-										className="inline-flex size-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition-colors hover:bg-white/10 focus-visible:ring-offset-slate-950"
+										className="inline-flex size-10 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
 										href={social.url}
 										key={`${social.service}:${social.url}`}
 										rel="noreferrer"
@@ -83,7 +90,9 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 											<Image
 												alt=""
 												aria-hidden="true"
-												className="size-4 invert"
+												/* The brand marks ship as solid black paths, so they only need
+												   inverting once the surface behind them turns dark. */
+												className="size-4 opacity-80 dark:invert"
 												height={18}
 												src={socialIconMap[social.service]}
 												width={18}
@@ -98,7 +107,7 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 					</div>
 
 					<div>
-						<h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Navegação</h2>
+						<h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Navegação</h2>
 						{navigationItems.length ? (
 							<ul className="mt-4 space-y-3 text-sm">
 								{navigationItems.map((item) => {
@@ -109,7 +118,7 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 										<li key={item.id}>
 											{external ? (
 												<a
-													className="text-slate-300 hover:text-white"
+													className="text-muted-foreground transition-colors hover:text-foreground"
 													href={href}
 													rel={href.startsWith('http') ? 'noreferrer' : undefined}
 													target={href.startsWith('http') ? '_blank' : undefined}
@@ -117,7 +126,10 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 													{item.title}
 												</a>
 											) : (
-												<Link className="text-slate-300 hover:text-white" href={href}>
+												<Link
+													className="text-muted-foreground transition-colors hover:text-foreground"
+													href={href}
+												>
 													{item.title}
 												</Link>
 											)}
@@ -126,23 +138,29 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 								})}
 							</ul>
 						) : (
-							<p className="mt-4 text-sm leading-6 text-slate-400">
+							<p className="mt-4 text-sm leading-6 text-muted-foreground">
 								Os links institucionais aparecerão aqui quando forem publicados.
 							</p>
 						)}
 					</div>
 
 					<div>
-						<h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Sua conta</h2>
+						<h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Sua conta</h2>
 						<div className="mt-4 space-y-3 text-sm">
-							<Link className="flex items-center gap-2 text-slate-300 hover:text-white" href="/meus-ingressos">
+							<Link
+								className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+								href="/perfil?section=ingressos"
+							>
 								Meus ingressos
 							</Link>
-							<Link className="flex items-center gap-2 text-slate-300 hover:text-white" href="/perfil">
+							<Link
+								className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+								href="/perfil"
+							>
 								Meu perfil
 							</Link>
 							<Link
-								className="inline-flex items-center gap-2 font-semibold text-white hover:text-primary"
+								className="inline-flex items-center gap-2 font-semibold text-primary transition-colors hover:text-primary/80"
 								href="/perfil/organizador/novo"
 							>
 								Quero organizar eventos
@@ -152,7 +170,7 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 					</div>
 				</div>
 
-				<div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+				<div className="mt-12 flex flex-col gap-4 border-t border-border pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
 					<p>
 						© {new Date().getFullYear()} {title}. Todos os direitos reservados.
 					</p>

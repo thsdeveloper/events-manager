@@ -75,7 +75,7 @@ export function PayoutSettingsCard({ organizer }: { organizer: Organizer }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className={`flex items-start gap-3 rounded-xl border p-4 ${current.tone}`}>
+        <div className={`flex items-start gap-3 rounded-lg border p-4 ${current.tone}`}>
           <StatusIcon className="mt-0.5 size-5 shrink-0" />
           <div>
             <p className="font-semibold">{current.label}</p>

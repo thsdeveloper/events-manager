@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
 	Form,
@@ -16,16 +16,18 @@ import {
 	FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/masked-inputs';
+import { isValidPhone } from '@/lib/br-documents';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 
 const organizerRequestSchema = z.object({
 	organizationName: z.string().min(3, 'Informe o nome da organização'),
 	contactEmail: z.string().email('Email inválido'),
+	// Stored as digits, so the rule checks the number itself rather than a length.
 	phone: z
 		.string()
-		.min(10, 'Informe telefone com DDD')
-		.max(20, 'Telefone muito longo')
+		.refine((value) => !value || isValidPhone(value), 'Informe um telefone válido com DDD')
 		.optional()
 		.or(z.literal('')),
 	description: z
@@ -144,7 +146,7 @@ export function OrganizerRequestForm({ user, onSuccess }: OrganizerRequestFormPr
 						<FormItem>
 							<FormLabel>Telefone com DDD</FormLabel>
 							<FormControl>
-								<Input placeholder="(11) 99999-0000" {...field} />
+								<PhoneInput value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} showError={false} />
 							</FormControl>
 							<FormDescription>
 								Usaremos esse contato apenas se precisarmos falar sobre a sua solicitação
@@ -190,18 +192,9 @@ export function OrganizerRequestForm({ user, onSuccess }: OrganizerRequestFormPr
 				/>
 
 				<div className="flex justify-end">
-					<Button type="submit" className="gap-2" disabled={isSubmitting}>
-						{isSubmitting ? (
-							<>
-								<Loader2 className="size-4 animate-spin" />
-								Enviando...
-							</>
-						) : (
-							<>
-								<Send className="size-4" />
-								Enviar solicitação
-							</>
-						)}
+					<Button type="submit" className="gap-2" loading={isSubmitting}>
+						<Send className="size-4" />
+						Enviar solicitação
 					</Button>
 				</div>
 			</form>

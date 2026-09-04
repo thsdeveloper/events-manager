@@ -22,7 +22,7 @@ export function IconSurface({
 }) {
 	return (
 		<span
-			className={cn('inline-flex size-11 shrink-0 items-center justify-center rounded-xl', toneStyles[tone], className)}
+			className={cn('inline-flex size-11 shrink-0 items-center justify-center rounded-lg', toneStyles[tone], className)}
 		>
 			{children}
 		</span>

@@ -15,10 +15,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { ChevronDown, Menu, X, Ticket, Calendar, CalendarCheck, Building2, Clock } from 'lucide-react';
+import { Ticket, Calendar, CalendarCheck, Building2, Clock } from 'lucide-react';
+import { ChevronDown } from '@/components/animate-ui/icons/chevron-down';
+import { AnimateIcon } from '@/components/animate-ui/icons/icon';
+import { Menu } from '@/components/animate-ui/icons/menu';
+import { X } from '@/components/animate-ui/icons/x';
 import SearchModal from '@/components/ui/SearchModal';
+import { UserMenu } from '@/components/layout/UserMenu';
 import Container from '@/components/ui/container';
-import { UserMenuDropdown } from '@/components/ui/user-menu-dropdown';
 import { useServerAuth } from '@/hooks/useServerAuth';
 import { getMediaAssetUrl } from '@/lib/media';
 
@@ -30,7 +34,7 @@ interface NavigationBarProps {
 const NavigationBar = forwardRef<HTMLElement, NavigationBarProps>(({ navigation, globals }, ref) => {
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [scrolled, setScrolled] = useState(false);
-	const { isOrganizer, isAuthenticated, hasPendingOrganizerRequest } = useServerAuth();
+	const { isOrganizer, isAuthenticated, hasPendingOrganizerRequest, user, logout } = useServerAuth();
 
 	const lightLogoUrl = globals?.logo ? getMediaAssetUrl(globals.logo) : '/images/logo.svg';
 	const darkLogoUrl = globals?.logo_dark_mode ? getMediaAssetUrl(globals.logo_dark_mode) : '';
@@ -57,7 +61,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 					: 'bg-transparent'
 			}`}
 		>
-			<Container className="flex items-center justify-between p-4">
+			<Container className="flex items-center justify-between py-4">
 				<Link href="/" className="flex-shrink-0 group">
 					<div className="relative">
 						<Image
@@ -91,7 +95,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 											<NavigationMenuTrigger className="px-4 py-2 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300 focus:outline-none group">
 												<span className="font-semibold text-sm tracking-wide">{section.title}</span>
 											</NavigationMenuTrigger>
-											<NavigationMenuContent className="mt-2 min-w-[200px] rounded-xl bg-white dark:bg-slate-900 p-3 shadow-2xl border border-gray-100 dark:border-gray-800">
+											<NavigationMenuContent className="mt-2 min-w-[200px] rounded-lg bg-white dark:bg-slate-900 p-3 shadow-2xl border border-gray-100 dark:border-gray-800">
 												<ul className="flex flex-col gap-1">
 													{section.children.map((child: any) => (
 														<li key={child.id}>
@@ -140,7 +144,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 									</>
 								)}
 								<Button variant="ghost" size="sm" asChild className="gap-2">
-									<Link href="/meus-ingressos">
+									<Link href="/perfil?section=ingressos">
 										<Ticket className="size-4" />
 										<span className="hidden xl:inline">Meus ingressos</span>
 									</Link>
@@ -165,9 +169,9 @@ return () => window.removeEventListener('scroll', handleScroll);
 										</Link>
 									</Button>
 								)}
+								{user ? <UserMenu user={user} onLogout={logout} /> : null}
 							</>
 						)}
-						<UserMenuDropdown />
 					</div>
 
 					<div className="flex lg:hidden items-center gap-2">
@@ -189,7 +193,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 									</>
 								)}
 								<Button variant="ghost" size="icon" asChild>
-									<Link href="/meus-ingressos" aria-label="Meus ingressos">
+									<Link href="/perfil?section=ingressos" aria-label="Meus ingressos">
 										<Ticket className="size-4" />
 									</Link>
 								</Button>
@@ -212,9 +216,9 @@ return () => window.removeEventListener('scroll', handleScroll);
 										</Link>
 									</Button>
 								)}
+								{user ? <UserMenu user={user} onLogout={logout} /> : null}
 							</>
 						)}
-						<UserMenuDropdown />
 						<DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
 							<DropdownMenuTrigger asChild>
 								<Button
@@ -223,22 +227,24 @@ return () => window.removeEventListener('scroll', handleScroll);
 									aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
 									className="relative size-10 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300"
 								>
-									{menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+									{menuOpen ? <X className="size-5" animateOnHover /> : <Menu className="size-5" animateOnHover />}
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent
 								align="end"
-								className="w-screen max-w-sm mt-2 rounded-xl bg-white dark:bg-slate-900 p-4 shadow-2xl border border-gray-100 dark:border-gray-800"
+								className="w-screen max-w-sm mt-2 rounded-lg bg-white dark:bg-slate-900 p-4 shadow-2xl border border-gray-100 dark:border-gray-800"
 							>
 								<div className="flex flex-col gap-2">
 									{navigation?.items?.map((section: any) => (
 										<div key={section.id}>
 											{section.children && section.children.length > 0 ? (
 												<Collapsible>
-													<CollapsibleTrigger className="w-full px-4 py-2.5 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300 text-left flex items-center justify-between focus:outline-none font-semibold text-sm">
-														<span>{section.title}</span>
-														<ChevronDown className="size-4 transition-transform duration-200" />
-													</CollapsibleTrigger>
+													<AnimateIcon animateOnHover>
+														<CollapsibleTrigger className="w-full px-4 py-2.5 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300 text-left flex items-center justify-between focus:outline-none font-semibold text-sm">
+															<span>{section.title}</span>
+															<ChevronDown className="size-4" />
+														</CollapsibleTrigger>
+													</AnimateIcon>
 													<CollapsibleContent className="ml-4 mt-2 flex flex-col gap-1">
 														{section.children.map((child: any) => (
 															<Link

@@ -74,7 +74,7 @@ function FinanceOverview({ metrics, isLoading, currencyFormatter }: FinanceOverv
 						<CardTitle className="text-sm font-semibold text-gray-600 dark:text-gray-300">
 							{card.title}
 						</CardTitle>
-						<div className={`rounded-xl p-2 ${card.highlight}`}>
+						<div className={`rounded-lg p-2 ${card.highlight}`}>
 							<card.icon className="size-4" />
 						</div>
 					</CardHeader>

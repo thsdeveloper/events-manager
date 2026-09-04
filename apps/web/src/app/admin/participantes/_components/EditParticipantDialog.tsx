@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Pencil, Loader2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import {
 	Dialog,
 	DialogContent,
@@ -18,7 +18,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { isValidEmail, isValidBrazilianPhone, formatBrazilianPhone } from '../_lib/utils';
+import { isValidEmail, isValidBrazilianPhone } from '../_lib/utils';
+import { DocumentInput, PhoneInput } from '@/components/ui/masked-inputs';
+import { isValidDocument } from '@/lib/br-documents';
 import type { ParticipantRow, EditParticipantData } from '../_lib/types';
 
 // Schema de validação com Zod
@@ -29,7 +31,10 @@ const editParticipantSchema = z.object({
 		.string()
 		.optional()
 		.refine((val) => !val || isValidBrazilianPhone(val), 'Telefone deve estar no formato (XX) XXXXX-XXXX'),
-	participant_document: z.string().optional(),
+	participant_document: z
+		.string()
+		.optional()
+		.refine((value) => !value || isValidDocument(value), 'Informe um CPF ou CNPJ válido'),
 	notes: z.string().optional(),
 });
 
@@ -48,6 +53,7 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 
 	const {
 		register,
+		control,
 		handleSubmit,
 		formState: { errors },
 		reset,
@@ -70,16 +76,7 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 		}
 	}, [participant, open, reset]);
 
-	// Formatar telefone ao digitar
-	const phoneValue = watch('participant_phone');
-	useEffect(() => {
-		if (phoneValue) {
-			const formatted = formatBrazilianPhone(phoneValue);
-			if (formatted !== phoneValue) {
-				setValue('participant_phone', formatted);
-			}
-		}
-	}, [phoneValue, setValue]);
+	// Masking now lives in PhoneInput, which keeps the stored value as digits.
 
 	const onSubmit = async (data: EditParticipantFormData) => {
 		if (!participant) return;
@@ -166,25 +163,40 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 					{/* Telefone */}
 					<div className="space-y-2">
 						<Label htmlFor="participant_phone">Telefone</Label>
-						<Input
-							id="participant_phone"
-							type="tel"
-							{...register('participant_phone')}
-							disabled={isLoading}
-							placeholder="(11) 98765-4321"
+						<Controller
+							control={control}
+							name="participant_phone"
+							render={({ field }) => (
+								<PhoneInput
+									id="participant_phone"
+									value={field.value ?? ''}
+									onChange={field.onChange}
+									onBlur={field.onBlur}
+									disabled={isLoading}
+									showError={false}
+								/>
+							)}
 						/>
 						{errors.participant_phone && <p className="text-sm text-rose-600">{errors.participant_phone.message}</p>}
-						<p className="text-xs text-gray-500">Formato: (XX) XXXXX-XXXX</p>
+						
 					</div>
 
 					{/* Documento */}
 					<div className="space-y-2">
 						<Label htmlFor="participant_document">Documento</Label>
-						<Input
-							id="participant_document"
-							{...register('participant_document')}
-							disabled={isLoading}
-							placeholder="CPF ou RG"
+						<Controller
+							control={control}
+							name="participant_document"
+							render={({ field }) => (
+								<DocumentInput
+									id="participant_document"
+									value={field.value ?? ''}
+									onChange={field.onChange}
+									onBlur={field.onBlur}
+									disabled={isLoading}
+									showError={false}
+								/>
+							)}
 						/>
 						{errors.participant_document && (
 							<p className="text-sm text-rose-600">{errors.participant_document.message}</p>
@@ -211,18 +223,9 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 						<Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
 							Cancelar
 						</Button>
-						<Button type="submit" disabled={isLoading} className="gap-2">
-							{isLoading ? (
-								<>
-									<Loader2 className="size-4 animate-spin" />
-									Salvando...
-								</>
-							) : (
-								<>
-									<Pencil className="size-4" />
-									Salvar Alterações
-								</>
-							)}
+						<Button type="submit" loading={isLoading} className="gap-2">
+							<Pencil className="size-4" />
+							Salvar Alterações
 						</Button>
 					</DialogFooter>
 				</form>

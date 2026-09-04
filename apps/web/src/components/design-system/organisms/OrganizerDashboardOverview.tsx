@@ -77,7 +77,7 @@ export function OrganizerDashboardOverview({ dashboard }: { dashboard: Organizer
 								{recentEvents.map((event: OrganizerDashboard['recentEvents'][number]) => (
 									<li key={event.id}>
 										<Link
-											className="group grid gap-4 rounded-xl px-2 py-4 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+											className="group grid gap-4 rounded-lg px-2 py-4 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
 											href={`/admin/eventos/${event.id}`}
 										>
 											<div className="min-w-0">

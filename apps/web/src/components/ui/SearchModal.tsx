@@ -10,7 +10,7 @@ import {
 	CommandList,
 } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+import { Search } from '@/components/animate-ui/icons/search';
 import { Badge } from '@/components/ui/badge';
 import { DialogDescription, DialogTitle } from './dialog';
 import { useRouter } from 'next/navigation';
@@ -89,7 +89,7 @@ export default function SearchModal() {
 	return (
 		<div className="sm:max-w-[540px] max-w-full">
 			<Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Buscar">
-				<Search className="size-5" />
+				<Search className="size-5" animateOnHover />
 			</Button>
 
 			<CommandDialog open={open} onOpenChange={setOpen}>
