@@ -1,22 +1,22 @@
 <!doctype html>
 <!--
 	Supabase renders this file itself and only interpolates its own variables
-	({{ .Token }}, {{ .SiteURL }}, ...) — it cannot read `site_settings`, so the
-	logo is pulled from the API endpoint below, which always redirects to the one
-	the super admin uploaded.
+	({{ .ConfirmationURL }}, {{ .SiteURL }}, ...) — it cannot read
+	`site_settings`, so the logo is pulled from the API endpoint below, which
+	always redirects to the one the super admin uploaded.
 
-	Keep the visual structure in sync with recovery.html and
+	Keep the visual structure in sync with confirmation.html and
 	apps/api/src/application/email/email-template.ts.
 -->
 <html lang="pt-BR">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Confirme seu e-mail</title>
+		<title>Redefina sua senha</title>
 	</head>
 	<body style="margin: 0; background: #f4f3ff; color: #111827; font-family: Arial, Helvetica, sans-serif">
 		<div style="display: none; max-height: 0; overflow: hidden; opacity: 0">
-			Seu código de confirmação é {{ .Token }}.
+			Recebemos um pedido para redefinir a senha da sua conta. O link vale por 15 minutos.
 		</div>
 		<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding: 32px 16px">
 			<tr>
@@ -49,36 +49,17 @@
 						<tr>
 							<td style="padding: 32px">
 								<h1 style="margin: 0 0 16px; color: #111827; font-size: 24px; line-height: 1.3; font-weight: 700">
-									Confirme seu e-mail
+									Redefina sua senha
 								</h1>
 								<p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6">
-									Use o código abaixo para concluir seu cadastro. Ele expira em 15 minutos.
-								</p>
-								<div style="margin: 0 0 20px; border-radius: 12px; background: #f5f3ff; padding: 20px; text-align: center">
-									<p style="margin: 0 0 8px; color: #6b7280; font-size: 12px; letter-spacing: 1px; text-transform: uppercase">
-										Código de confirmação
-									</p>
-									<p
-										style="
-											margin: 0;
-											color: #6644ff;
-											font-family: 'Courier New', monospace;
-											font-size: 32px;
-											font-weight: 700;
-											letter-spacing: 8px;
-										"
-									>
-										{{ .Token }}
-									</p>
-								</div>
-								<p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6">
-									Se você fechou a tela de confirmação, volte ao site para informar seu e-mail e o código.
+									Recebemos um pedido para redefinir a senha da sua conta. Clique no botão abaixo para escolher uma
+									nova senha. O link vale por 15 minutos e só pode ser usado uma vez.
 								</p>
 								<table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px">
 									<tr>
 										<td style="border-radius: 10px; background: #6644ff">
 											<a
-												href="{{ .SiteURL }}/confirmar-email"
+												href="{{ .ConfirmationURL }}"
 												style="
 													display: inline-block;
 													padding: 13px 24px;
@@ -88,17 +69,26 @@
 													text-decoration: none;
 												"
 											>
-												Confirmar cadastro
+												Redefinir senha
 											</a>
 										</td>
 									</tr>
 								</table>
+								<p style="margin: 0 0 8px; color: #6b7280; font-size: 13px; line-height: 1.6">
+									Se o botão não funcionar, copie e cole este endereço no navegador:
+								</p>
+								<p style="margin: 0; font-size: 13px; line-height: 1.6; word-break: break-all">
+									<a href="{{ .ConfirmationURL }}" style="color: #6644ff; text-decoration: underline">
+										{{ .ConfirmationURL }}
+									</a>
+								</p>
 							</td>
 						</tr>
 						<tr>
 							<td style="border-top: 1px solid #e5e7eb; background: #fafafa; padding: 20px 32px">
 								<p style="margin: 0 0 12px; color: #9ca3af; font-size: 12px; line-height: 1.5">
-									Se você não solicitou este cadastro, ignore esta mensagem.
+									Se você não pediu para redefinir a senha, ignore esta mensagem. Sua senha atual continua
+									valendo.
 								</p>
 								<p style="margin: 0 0 8px; font-size: 12px">
 									<a href="{{ .SiteURL }}" style="margin-right: 12px; color: #6644ff; text-decoration: none">
@@ -109,7 +99,8 @@
 									</a>
 								</p>
 								<p style="margin: 0; color: #9ca3af; font-size: 12px; line-height: 1.5">
-									Você recebeu este e-mail porque alguém usou este endereço para criar uma conta.
+									Você recebeu este e-mail porque alguém pediu a redefinição de senha da conta associada a este
+									endereço.
 								</p>
 							</td>
 						</tr>

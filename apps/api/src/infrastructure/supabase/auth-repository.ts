@@ -81,17 +81,26 @@ export class SupabaseAuthRepository implements AuthRepository {
 		return error || !data.user ? null : toIdentity(data.user);
 	}
 
+	/**
+	 * Um usuário pode ter várias organizações, então a resposta carrega a que
+	 * está em uso: a lembrada em `active_organizer_id` se continuar ativa, senão
+	 * a primeira ativa. Sem nenhuma ativa, vai a primeira existente, para que um
+	 * pedido pendente continue visível no perfil. Uma consulta `maybeSingle` aqui
+	 * derrubava o login de quem tinha mais de uma organização.
+	 */
 	async serialize(user: AuthIdentity): Promise<SerializedUser> {
-		const [{ data: profile, error: profileError }, { data: organizer, error: organizerError }] = await Promise.all([
+		const [{ data: profile, error: profileError }, organizers] = await Promise.all([
 			this.clients.admin
 				.from('profiles')
 				.select('*,city:cities(id,state_id,name,state:states(id,uf,name))')
 				.eq('id', user.id)
 				.maybeSingle(),
-			this.clients.admin.from('organizers').select('*').eq('user_id', user.id).maybeSingle(),
+			this.listOrganizers(user.id),
 		]);
 		if (profileError) throw profileError;
-		if (organizerError) throw organizerError;
+		const active = organizers.filter((organizer) => organizer.status === 'active');
+		const organizer =
+			active.find((candidate) => candidate.id === profile?.active_organizer_id) ?? active[0] ?? organizers[0] ?? null;
 		return {
 			id: user.id,
 			email: user.email ?? profile?.email ?? null,
@@ -134,10 +143,7 @@ export class SupabaseAuthRepository implements AuthRepository {
 		if (updateError) throw providerError(updateError);
 	}
 
-	async updateProfile(
-		user: AuthIdentity,
-		input: UserProfileInput,
-	) {
+	async updateProfile(user: AuthIdentity, input: UserProfileInput) {
 		const metadata: Record<string, string> = {};
 		if (input.first_name) metadata.first_name = input.first_name;
 		if (input.last_name) metadata.last_name = input.last_name;
@@ -153,8 +159,7 @@ export class SupabaseAuthRepository implements AuthRepository {
 		// reescrito aqui a partir do município escolhido para que o texto não possa
 		// discordar da relação — e um `city_id` inexistente é recusado pela chave
 		// estrangeira em vez de ser gravado silenciosamente.
-		const derivedLocation =
-			input.city_id === undefined ? {} : { location: await this.describeCity(input.city_id) };
+		const derivedLocation = input.city_id === undefined ? {} : { location: await this.describeCity(input.city_id) };
 
 		const { data, error } = await this.clients.admin
 			.from('profiles')

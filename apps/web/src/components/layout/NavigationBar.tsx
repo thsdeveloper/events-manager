@@ -15,7 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { Ticket, Calendar, CalendarCheck, Building2, Clock } from 'lucide-react';
+import { Ticket, Calendar, CalendarCheck, Building2, Clock, LogIn } from 'lucide-react';
 import { ChevronDown } from '@/components/animate-ui/icons/chevron-down';
 import { AnimateIcon } from '@/components/animate-ui/icons/icon';
 import { Menu } from '@/components/animate-ui/icons/menu';
@@ -34,7 +34,10 @@ interface NavigationBarProps {
 const NavigationBar = forwardRef<HTMLElement, NavigationBarProps>(({ navigation, globals }, ref) => {
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [scrolled, setScrolled] = useState(false);
-	const { isOrganizer, isAuthenticated, hasPendingOrganizerRequest, user, logout } = useServerAuth();
+	const { isOrganizer, isAuthenticated, isLoading, hasPendingOrganizerRequest, user, logout } = useServerAuth();
+	// Só depois de a sessão ser checada: enquanto carrega, nem "Entrar" nem o menu
+	// aparecem, para o header não piscar de um estado para o outro.
+	const showSignIn = !isLoading && !isAuthenticated;
 
 	const lightLogoUrl = globals?.logo ? getMediaAssetUrl(globals.logo) : '/images/logo.svg';
 	const darkLogoUrl = globals?.logo_dark_mode ? getMediaAssetUrl(globals.logo_dark_mode) : '';
@@ -125,6 +128,14 @@ return () => window.removeEventListener('scroll', handleScroll);
 
 					<div className="hidden lg:flex items-center gap-2 border-l border-gray-300 dark:border-gray-700 pl-3 ml-2">
 						<SearchModal />
+						{showSignIn && (
+							<Button size="sm" asChild className="gap-2">
+								<Link href="/login">
+									<LogIn className="size-4" />
+									<span>Entrar</span>
+								</Link>
+							</Button>
+						)}
 						{isAuthenticated && (
 							<>
 								{isOrganizer && (
@@ -176,6 +187,13 @@ return () => window.removeEventListener('scroll', handleScroll);
 
 					<div className="flex lg:hidden items-center gap-2">
 						<SearchModal />
+						{showSignIn && (
+							<Button size="icon" asChild>
+								<Link href="/login" aria-label="Entrar">
+									<LogIn className="size-4" />
+								</Link>
+							</Button>
+						)}
 						{isAuthenticated && (
 							<>
 								{isOrganizer && (

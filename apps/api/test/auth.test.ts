@@ -48,6 +48,8 @@ function createClients() {
 			from: vi.fn((table: string) => ({
 				select: vi.fn(() => ({
 					eq: vi.fn(() => ({
+						// Listagens (organizações do usuário) terminam em `order`; nenhuma aqui.
+						order: vi.fn(async () => ({ data: [], error: null })),
 						maybeSingle: vi.fn(async () => ({
 							data:
 								table === 'profiles'

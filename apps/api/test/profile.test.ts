@@ -47,6 +47,47 @@ describe('SupabaseAuthRepository.serialize', () => {
 	});
 });
 
+describe('SupabaseAuthRepository.serialize with several organizations', () => {
+	const activeA = { id: '00000000-0000-4000-8000-0000000000a1', name: 'Maya Eventos', status: 'active' };
+	const activeB = { id: '00000000-0000-4000-8000-0000000000a2', name: 'Outra Produtora', status: 'active' };
+	const pending = { id: '00000000-0000-4000-8000-0000000000a3', name: 'Produtora Aviviva', status: 'pending' };
+
+	function serialize(organizers: unknown[], activeOrganizerId: string | null = null) {
+		const { clients } = createSupabaseClientsStub({
+			tables: {
+				profiles: { data: { ...profile, active_organizer_id: activeOrganizerId } },
+				organizers: { data: organizers },
+			},
+		});
+
+		return new SupabaseAuthRepository(clients).serialize({ id: TEST_USER_ID, email: profile.email });
+	}
+
+	it('signs in a user who owns an active and a pending organization, exposing the active one', async () => {
+		const user = await serialize([activeA, pending]);
+
+		expect(user.organizer).toMatchObject({ id: activeA.id, status: 'active' });
+	});
+
+	it('prefers the organization the user was last working in among several active ones', async () => {
+		const user = await serialize([activeA, activeB], activeB.id);
+
+		expect(user.organizer).toMatchObject({ id: activeB.id });
+	});
+
+	it('keeps a pending request visible while no organization is active yet', async () => {
+		const user = await serialize([pending]);
+
+		expect(user.organizer).toMatchObject({ id: pending.id, status: 'pending' });
+	});
+
+	it('has no organization for a plain attendee', async () => {
+		const user = await serialize([]);
+
+		expect(user.organizer).toBeNull();
+	});
+});
+
 describe('AuthService.updateProfile', () => {
 	const identity = { id: TEST_USER_ID, email: 'ana@example.com' };
 	const previousAvatar = '00000000-0000-4000-8000-000000000050';

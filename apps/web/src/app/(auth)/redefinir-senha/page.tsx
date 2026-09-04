@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/design-system/atoms/LoadingSpinner'
 import { AuthField, registerField } from '@/components/design-system/molecules/AuthField';
 import { InlineAlert } from '@/components/design-system/molecules/InlineAlert';
 import { Button } from '@/components/ui/button';
+import { HttpError } from '@/lib/http';
 import { httpClient } from '@/lib/http-client';
 import { resetPasswordSchema, type ResetPasswordValues } from '@/lib/validation/auth';
 
@@ -20,6 +21,11 @@ export default function ResetPasswordPage() {
 	const [accessToken, setAccessToken] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
 	const [state, setState] = useState<ResetState>('checking');
+	// O token é lido da URL uma única vez. O Strict Mode do React (ligado no Next
+	// em desenvolvimento) executa o efeito duas vezes na montagem; sem esta
+	// trava, a segunda execução encontra o hash já limpo e derruba um link
+	// válido para "Link inválido".
+	const linkConsumed = useRef(false);
 
 	const {
 		register,
@@ -32,6 +38,9 @@ export default function ResetPasswordPage() {
 	});
 
 	useEffect(() => {
+		if (linkConsumed.current) return;
+		linkConsumed.current = true;
+
 		const hash = new URLSearchParams(window.location.hash.slice(1));
 		const query = new URLSearchParams(window.location.search);
 		const token = hash.get('access_token') ?? query.get('access_token');
@@ -59,11 +68,22 @@ export default function ResetPasswordPage() {
 
 	const onSubmit = async ({ password }: ResetPasswordValues) => {
 		try {
-			await httpClient.post('/api/auth/password/reset', { access_token: accessToken, password });
+			await httpClient.post(
+				'/api/auth/password/reset',
+				{ access_token: accessToken, password },
+				{ toastOptions: { suppressCodes: ['PASSWORD_RESET_ERROR'] } },
+			);
 			setAccessToken('');
 			setState('success');
-		} catch {
-			// Já exibido pelo toast de erro do httpClient.
+		} catch (error) {
+			// O token vale por tempo limitado: quem demora a enviar o formulário recebe
+			// esta recusa da API. A tela de link expirado, com o caminho para pedir um
+			// novo, orienta melhor do que um toast sobre um formulário que não vai
+			// mais funcionar. Os demais erros continuam no toast do httpClient.
+			if (error instanceof HttpError && error.code === 'PASSWORD_RESET_ERROR') {
+				setAccessToken('');
+				setState('expired');
+			}
 		}
 	};
 

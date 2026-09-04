@@ -107,13 +107,13 @@ export default function LoginPage() {
 					Entrar
 				</AuthButton>
 
-				<div className="relative">
-					<div className="absolute inset-0 flex items-center">
-						<div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
-					</div>
-					<div className="relative flex justify-center text-sm">
-						<span className="px-4 bg-white dark:bg-[#0e1a2b] text-gray-500 dark:text-gray-400">Ou</span>
-					</div>
+				{/* Duas linhas em volta da palavra: sem uma linha contínua por trás, o
+				    texto não precisa de fundo para mascará-la, e fica correto em qualquer
+				    cor de superfície. */}
+				<div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+					<span aria-hidden="true" className="h-px flex-1 bg-gray-300 dark:bg-gray-700" />
+					<span>Ou</span>
+					<span aria-hidden="true" className="h-px flex-1 bg-gray-300 dark:bg-gray-700" />
 				</div>
 
 				<div className="text-center">

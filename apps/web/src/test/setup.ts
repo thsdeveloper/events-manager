@@ -7,8 +7,16 @@
  *   componentes Radix/Tailwind consultam durante a montagem.
  */
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
+
+// O Next roda o App Router em Strict Mode durante o desenvolvimento: efeitos
+// são executados duas vezes na montagem. Os testes reproduzem essa condição
+// para que um efeito que só funciona na primeira execução (ler e limpar um
+// token da URL, por exemplo) falhe aqui e não só no navegador de quem
+// desenvolve. Precisa ser a opção do Testing Library: um <StrictMode> dentro
+// do elemento renderizado com `wrapper` não duplica os efeitos.
+configure({ reactStrictMode: true });
 
 afterEach(() => {
 	cleanup();

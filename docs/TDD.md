@@ -213,6 +213,15 @@ it('shows what the buyer pays and what the organizer receives', () => {
 ```
 
 Regras:
+- **Strict Mode está ligado** no projeto `dom` (`configure({ reactStrictMode: true })`
+  em `src/test/setup.ts`), como no Next em desenvolvimento: todo efeito roda
+  duas vezes na montagem. Um efeito que só funciona na primeira execução (ler e
+  limpar um token da URL, por exemplo) falha aqui, e é isso que se quer. Não
+  envolva o elemento em `<StrictMode>` por conta própria: dentro de um `wrapper`
+  isso não duplica os efeitos.
+- Nunca retorne o valor de `mockFetch` (ou qualquer função) de um `beforeEach`:
+  o Vitest trata uma função retornada como hook de limpeza e a chama sem
+  argumentos. Use chaves: `beforeEach(() => { mockFetch([...]); })`.
 - Localize elementos como a pessoa usuária: `getByRole`, `getByLabelText`,
   `getByText`. Evite `container.querySelector` e classes CSS.
 - Interações via `user` (`await user.type(...)`, `await user.click(...)`), não
