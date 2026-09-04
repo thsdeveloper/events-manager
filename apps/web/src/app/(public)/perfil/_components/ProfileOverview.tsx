@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowRight, Check, Circle, MapPin, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, Circle, MapPin, ShieldCheck, Ticket } from 'lucide-react';
+import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 import { getDisplayName, type ProfileSection, type ProfileUser } from './types';
@@ -8,10 +9,12 @@ import { getDisplayName, type ProfileSection, type ProfileUser } from './types';
 interface ProfileOverviewProps {
 	user: ProfileUser;
 	completion: number;
+	/** Already organizes events: the "sell" option leads to their panel, not to the sign-up. */
+	isOrganizer?: boolean;
 	onNavigate: (section: ProfileSection) => void;
 }
 
-export function ProfileOverview({ user, completion, onNavigate }: ProfileOverviewProps) {
+export function ProfileOverview({ user, completion, isOrganizer = false, onNavigate }: ProfileOverviewProps) {
 	const firstName = user.first_name?.trim() || getDisplayName(user).split(' ')[0];
 	const checklist = [
 		{
@@ -45,9 +48,11 @@ export function ProfileOverview({ user, completion, onNavigate }: ProfileOvervie
 				</div>
 			</section>
 
-			{/* Full width rather than a column of the old two-up grid: the "Seu próximo
-			    evento" card that used to sit beside it is gone, and a narrow card alone
-			    on one side would read as a layout bug. */}
+			{/* Once there is nothing left to fill in, the checklist would only tell the
+			    person "well done"; the space is better spent on what they came for. */}
+			{completion >= 100 ? (
+				<NextSteps isOrganizer={isOrganizer} />
+			) : (
 			<section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
 				<div className="flex items-start justify-between gap-4">
 					<div>
@@ -100,7 +105,78 @@ export function ProfileOverview({ user, completion, onNavigate }: ProfileOvervie
 					<ArrowRight className="size-4" />
 				</button>
 			</section>
+			)}
 		</div>
+	);
+}
+
+function NextSteps({ isOrganizer }: { isOrganizer: boolean }) {
+	return (
+		<section
+			aria-labelledby="next-steps-heading"
+			className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+		>
+			<p id="next-steps-heading" className="text-sm font-semibold text-slate-950 dark:text-white">
+				Perfil completo. E agora?
+			</p>
+			<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+				Sua conta está pronta. Escolha por onde começar.
+			</p>
+
+			<div className="mt-5 grid gap-3 sm:grid-cols-2">
+				<NextStepCard
+					href="/eventos"
+					icon={Ticket}
+					title="Comprar ingressos"
+					description="Explore os eventos publicados e garanta seu lugar com inscrição rápida."
+				/>
+				{isOrganizer ? (
+					<NextStepCard
+						href="/admin/dashboard"
+						icon={CalendarDays}
+						title="Gerenciar seus eventos"
+						description="Acompanhe vendas, participantes e repasses no painel do organizador."
+					/>
+				) : (
+					<NextStepCard
+						href="/perfil/organizador"
+						icon={CalendarDays}
+						title="Vender ingressos"
+						description="Publique seu evento e venda com a menor taxa do mercado."
+					/>
+				)}
+			</div>
+		</section>
+	);
+}
+
+function NextStepCard({
+	href,
+	icon: Icon,
+	title,
+	description,
+}: {
+	href: string;
+	icon: typeof Ticket;
+	title: string;
+	description: string;
+}) {
+	return (
+		<Link
+			href={href}
+			className="group flex items-start gap-4 rounded-lg border border-slate-200 p-4 transition-colors hover:border-violet-300 hover:bg-violet-50/60 dark:border-slate-800 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
+		>
+			<span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+				<Icon className="size-5" aria-hidden="true" />
+			</span>
+			<span className="min-w-0">
+				<span className="flex items-center gap-1 text-sm font-semibold text-slate-950 dark:text-white">
+					{title}
+					<ArrowRight className="size-4 text-violet-600 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+				</span>
+				<span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</span>
+			</span>
+		</Link>
 	);
 }
 

@@ -95,6 +95,9 @@ export function ProfilePageClient({ initialUser }: ProfilePageClientProps) {
 
 	const handleProfileSaved = (updatedUser: ProfileUser) => {
 		setUser(updatedUser);
+		// Shared session first, so the header avatar changes with this screen;
+		// the refresh then re-syncs roles and anything derived on the server.
+		auth.updateUser(updatedUser);
 		void auth.refresh();
 		router.refresh();
 	};
@@ -141,7 +144,7 @@ export function ProfilePageClient({ initialUser }: ProfilePageClientProps) {
 						</div>
 
 						{activeSection === 'overview' && (
-							<ProfileOverview user={user} completion={completion} onNavigate={navigateTo} />
+							<ProfileOverview isOrganizer={auth.isOrganizer} user={user} completion={completion} onNavigate={navigateTo} />
 						)}
 						{activeSection === 'personal' && <ProfileDetailsForm user={user} onSaved={handleProfileSaved} />}
 						{activeSection === 'security' && <ProfileSecurity user={user} onLogout={auth.logout} />}
