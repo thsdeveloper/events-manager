@@ -25,8 +25,13 @@ export interface AppUser {
     location?: string | null;
     city_id?: number | null;
     city?: CityWithState | null;
-    title?: string | null;
     description?: string | null;
+    /** AAAA-MM-DD, informada no cadastro; a idade mínima é validada por `birthDateSchema`. */
+    birth_date?: string | null;
+    /** CPF só com dígitos, opcional, preenchido no perfil. */
+    document?: string | null;
+    /** CPF já ligado a atividade paga: só o suporte altera. Calculado pela API. */
+    document_locked?: boolean;
     role?: 'attendee' | 'organizer' | 'admin' | 'super_admin' | null;
     status?: 'active' | 'suspended' | 'archived';
     created_at?: string | null;

@@ -29,6 +29,14 @@ describe('loginSchema', () => {
 	});
 });
 
+function yearsAgo(years: number, offsetDays = 0) {
+	const date = new Date();
+	date.setUTCFullYear(date.getUTCFullYear() - years);
+	date.setUTCDate(date.getUTCDate() + offsetDays);
+
+	return date.toISOString().slice(0, 10);
+}
+
 describe('registerSchema', () => {
 	const valid = {
 		firstName: 'Ana',
@@ -36,7 +44,18 @@ describe('registerSchema', () => {
 		email: 'ana@example.com',
 		password: 'Qsesbs2006#@!',
 		confirmPassword: 'Qsesbs2006#@!',
+		birthDate: yearsAgo(20),
 	};
+
+	it('requires a birth date and refuses anyone under 13', () => {
+		expect(errorFor(registerSchema.safeParse({ ...valid, birthDate: '' }), 'birthDate')).toBe(
+			'Informe sua data de nascimento.',
+		);
+		expect(errorFor(registerSchema.safeParse({ ...valid, birthDate: yearsAgo(13, 1) }), 'birthDate')).toBe(
+			'É preciso ter pelo menos 13 anos para criar uma conta.',
+		);
+		expect(registerSchema.safeParse({ ...valid, birthDate: yearsAgo(13) }).success).toBe(true);
+	});
 
 	it('accepts a complete form', () => {
 		expect(registerSchema.safeParse(valid).success).toBe(true);

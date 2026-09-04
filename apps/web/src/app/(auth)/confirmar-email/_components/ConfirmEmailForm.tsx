@@ -23,6 +23,10 @@ export function ConfirmEmailForm({ initialEmail }: ConfirmEmailFormProps) {
 	const [isConfirming, setIsConfirming] = useState(false);
 	const [isResending, setIsResending] = useState(false);
 	const [resendCooldown, setResendCooldown] = useState(initialEmail ? 60 : 0);
+	// O código foi enviado para o e-mail do cadastro; deixar editá-lo aqui só
+	// produz uma confirmação recusada. Quem errou o e-mail volta ao cadastro pelo
+	// link no rodapé. Sem e-mail na URL (página aberta à mão), o campo fica livre.
+	const isEmailLocked = Boolean(initialEmail);
 
 	useEffect(() => {
 		if (resendCooldown <= 0) return;
@@ -88,11 +92,22 @@ export function ConfirmEmailForm({ initialEmail }: ConfirmEmailFormProps) {
 								value={email}
 								onChange={(event) => setEmail(event.target.value)}
 								required
+								readOnly={isEmailLocked}
+								aria-describedby={isEmailLocked ? 'confirmation-email-help' : undefined}
 								autoComplete="email"
-								className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-11 pr-4 text-gray-900 transition-all focus:border-transparent focus:ring-2 focus:ring-[#6644ff] dark:border-gray-600 dark:bg-gray-800/50 dark:text-white"
+								className={`w-full rounded-lg border border-gray-300 py-3 pl-11 pr-4 text-gray-900 transition-all focus:border-transparent focus:ring-2 focus:ring-[#6644ff] dark:border-gray-600 dark:text-white ${
+									isEmailLocked
+										? 'cursor-not-allowed bg-gray-50 text-gray-600 dark:bg-gray-800/30 dark:text-gray-300'
+										: 'bg-white dark:bg-gray-800/50'
+								}`}
 								placeholder="seu@email.com"
 							/>
 						</div>
+						{isEmailLocked && (
+							<p id="confirmation-email-help" className="text-xs text-gray-500 dark:text-gray-400">
+								O código foi enviado para este e-mail. Para usar outro, volte ao cadastro.
+							</p>
+						)}
 					</div>
 
 					<div className="space-y-2">
@@ -137,8 +152,8 @@ export function ConfirmEmailForm({ initialEmail }: ConfirmEmailFormProps) {
 					</button>
 				</form>
 
-				<div className="text-center text-sm text-gray-600 dark:text-gray-400">
-					Não recebeu o código?{' '}
+				<div className="flex flex-col items-center gap-1 text-center text-sm text-gray-600 dark:text-gray-400">
+					<p>Não recebeu o código?</p>
 					<button
 						type="button"
 						onClick={handleResend}

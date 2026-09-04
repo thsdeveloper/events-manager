@@ -2,12 +2,14 @@
 
 import type { AppUser } from '@events-manager/contracts';
 import Link from 'next/link';
+import { Building2, CalendarDays, Gauge, Settings2, Users, Wallet } from 'lucide-react';
 import { Compass } from '@/components/animate-ui/icons/compass';
 import { CreditCard } from '@/components/animate-ui/icons/credit-card';
 import { AnimateIcon } from '@/components/animate-ui/icons/icon';
 import { Key } from '@/components/animate-ui/icons/key';
 import { LayoutDashboard } from '@/components/animate-ui/icons/layout-dashboard';
 import { LogOut } from '@/components/animate-ui/icons/log-out';
+import { Plus } from '@/components/animate-ui/icons/plus';
 import { SlidersHorizontal } from '@/components/animate-ui/icons/sliders-horizontal';
 import { Ticket } from '@/components/animate-ui/icons/ticket';
 import { UserRound } from '@/components/animate-ui/icons/user-round';
@@ -30,6 +32,9 @@ type UserMenuUser = DisplayableUser & Pick<AppUser, 'avatar' | 'role'>;
 interface UserMenuProps {
 	user: UserMenuUser;
 	onLogout: () => Promise<void>;
+	/** Resolved by the API for the session; the menu never infers them from `role`. */
+	isOrganizer?: boolean;
+	isSuperAdmin?: boolean;
 	className?: string;
 }
 
@@ -55,6 +60,26 @@ const activityLinks: MenuLink[] = [
 	{ href: '/eventos', icon: Compass, label: 'Explorar eventos' },
 ];
 
+// The most used entries of the organizer sidebar (AdminSidebar), plus the
+// shortcut to create an event. The full set stays in the sidebar itself.
+const organizerLinks: MenuLink[] = [
+	{ href: '/admin/dashboard', icon: LayoutDashboard, label: 'Painel do organizador' },
+	{ href: '/admin/eventos', icon: CalendarDays, label: 'Eventos' },
+	{ href: '/admin/eventos/novo', icon: Plus, label: 'Criar evento' },
+	{ href: '/admin/participantes', icon: Users, label: 'Participantes' },
+	{ href: '/admin/financeiro', icon: Wallet, label: 'Financeiro' },
+	{ href: '/admin/configuracoes', icon: Settings2, label: 'Configurações' },
+];
+
+// Mirrors SuperAdminShell; "Configurações da plataforma" opens on fees, the
+// setting changed most often, with the other tabs one click away.
+const administrationLinks: MenuLink[] = [
+	{ href: '/super-admin', icon: Gauge, label: 'Painel administrativo' },
+	{ href: '/super-admin/organizadores', icon: Building2, label: 'Organizadores' },
+	{ href: '/super-admin/financeiro', icon: Wallet, label: 'Financeiro da plataforma' },
+	{ href: '/super-admin/taxas', icon: Settings2, label: 'Configurações da plataforma' },
+];
+
 function roleLabel(role: UserMenuUser['role']) {
 	if (role === 'admin' || role === 'super_admin') return 'Administrador';
 	if (role === 'organizer') return 'Organizador';
@@ -62,7 +87,7 @@ function roleLabel(role: UserMenuUser['role']) {
 	return 'Participante';
 }
 
-export function UserMenu({ user, onLogout, className }: UserMenuProps) {
+export function UserMenu({ user, onLogout, isOrganizer = false, isSuperAdmin = false, className }: UserMenuProps) {
 	const displayName = getDisplayName(user);
 	const avatarUrl = getMediaAssetUrl(user.avatar);
 
@@ -101,6 +126,9 @@ export function UserMenu({ user, onLogout, className }: UserMenuProps) {
 					<UserMenuLink key={link.href} link={link} />
 				))}
 
+				{isOrganizer && <UserMenuSection label="Organização" links={organizerLinks} />}
+				{isSuperAdmin && <UserMenuSection label="Administração" links={administrationLinks} />}
+
 				<DropdownMenuSeparator />
 
 				<AnimateIcon animateOnHover asChild>
@@ -114,6 +142,20 @@ export function UserMenu({ user, onLogout, className }: UserMenuProps) {
 				</AnimateIcon>
 			</DropdownMenuContent>
 		</DropdownMenu>
+	);
+}
+
+function UserMenuSection({ label, links }: { label: string; links: MenuLink[] }) {
+	return (
+		<>
+			<DropdownMenuSeparator />
+			<DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+				{label}
+			</DropdownMenuLabel>
+			{links.map((link) => (
+				<UserMenuLink key={link.href} link={link} />
+			))}
+		</>
 	);
 }
 

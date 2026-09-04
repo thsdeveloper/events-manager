@@ -94,10 +94,7 @@ describe('LocationService', () => {
 	});
 
 	it('retries after a failure instead of caching the error forever', async () => {
-		const listStates = vi
-			.fn()
-			.mockRejectedValueOnce(new Error('provider down'))
-			.mockResolvedValue(states);
+		const listStates = vi.fn().mockRejectedValueOnce(new Error('provider down')).mockResolvedValue(states);
 		const service = new LocationService(partialMock<LocationRepository>({ listStates }));
 
 		await expect(service.listStates()).rejects.toThrow('provider down');
@@ -151,8 +148,32 @@ describe('EmailService', () => {
 		});
 		const gateway = partialMock<EmailGateway>({ send: vi.fn() });
 
-		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendRegistrationConfirmation(registration, 'key');
+		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendRegistrationConfirmation(
+			registration,
+			'key',
+		);
 		expect(gateway.send).not.toHaveBeenCalled();
+	});
+
+	it('warns the account owner when the CPF changes, without printing the document', async () => {
+		const deliveries = partialMock<EmailDeliveryRepository>({
+			claim: vi.fn().mockResolvedValue({ id: 'delivery', attempts: 0, status: 'sending', shouldSend: true }),
+			markSent: vi.fn().mockResolvedValue({ id: 'delivery', attempts: 1, status: 'sent', shouldSend: false }),
+			markFailed: vi.fn(),
+		});
+		const gateway = partialMock<EmailGateway>({ send: vi.fn().mockResolvedValue({ messageId: 'provider-message' }) });
+
+		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendDocumentChangedNotice(
+			{ email: 'ana@example.com', name: 'Ana', changedAt: new Date('2026-09-04T15:00:00.000Z') },
+			'document-changed-key',
+		);
+
+		expect(deliveries.claim).toHaveBeenCalledWith(expect.objectContaining({ template: 'document-changed' }));
+		const message = vi.mocked(gateway.send).mock.calls[0][0];
+		expect(message.subject).toBe('Seu CPF foi alterado');
+		expect(message.html).toContain('Se não reconhece esta alteração');
+		expect(message.html).toContain('/esqueci-senha');
+		expect(message.html).not.toMatch(/\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11}/);
 	});
 
 	it('escapes user-controlled HTML and marks the claimed delivery as sent', async () => {
@@ -163,7 +184,10 @@ describe('EmailService', () => {
 		});
 		const gateway = partialMock<EmailGateway>({ send: vi.fn().mockResolvedValue({ messageId: 'provider-message' }) });
 
-		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendRegistrationConfirmation(registration, 'key');
+		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendRegistrationConfirmation(
+			registration,
+			'key',
+		);
 		const html = vi.mocked(gateway.send).mock.calls[0][0].html;
 		expect(html).toContain('&lt;Ana &amp; Silva&gt;');
 		expect(html).not.toContain('<Ana & Silva>');

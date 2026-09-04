@@ -18,11 +18,11 @@ export function jsonResponse(body: unknown, { status = 200, headers = {} }: Json
 	});
 }
 
-export function problemResponse(status: number, title: string, detail?: string) {
-	return new Response(JSON.stringify({ type: `https://api.errors/${title.toLowerCase()}`, title, status, detail }), {
-		status,
-		headers: { 'Content-Type': 'application/problem+json' },
-	});
+export function problemResponse(status: number, title: string, detail?: string, context?: Record<string, unknown>) {
+	return new Response(
+		JSON.stringify({ type: `https://api.errors/${title.toLowerCase()}`, title, status, detail, context }),
+		{ status, headers: { 'Content-Type': 'application/problem+json' } },
+	);
 }
 
 /**

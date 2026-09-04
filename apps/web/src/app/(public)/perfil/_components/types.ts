@@ -14,7 +14,10 @@ export interface ProfileFormValues {
 	firstName: string;
 	lastName: string;
 	email: string;
-	title: string;
+	/** AAAA-MM-DD; a idade mínima é validada pelo contrato compartilhado. */
+	birthDate: string;
+	/** CPF só com dígitos; a máscara é apresentação. */
+	document: string;
 	/** Código IBGE do município. O rótulo exibido é derivado no servidor. */
 	cityId: number | null;
 	description: string;
@@ -44,7 +47,7 @@ export function getProfileCompletion(user: ProfileUser) {
 		user.last_name,
 		user.email,
 		user.avatar,
-		user.title,
+		user.document,
 		user.location,
 		user.description,
 	];

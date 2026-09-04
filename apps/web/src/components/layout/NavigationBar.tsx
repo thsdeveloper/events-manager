@@ -34,7 +34,8 @@ interface NavigationBarProps {
 const NavigationBar = forwardRef<HTMLElement, NavigationBarProps>(({ navigation, globals }, ref) => {
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [scrolled, setScrolled] = useState(false);
-	const { isOrganizer, isAuthenticated, isLoading, hasPendingOrganizerRequest, user, logout } = useServerAuth();
+	const { isOrganizer, isSuperAdmin, isAuthenticated, isLoading, hasPendingOrganizerRequest, user, logout } =
+		useServerAuth();
 	// Só depois de a sessão ser checada: enquanto carrega, nem "Entrar" nem o menu
 	// aparecem, para o header não piscar de um estado para o outro.
 	const showSignIn = !isLoading && !isAuthenticated;
@@ -180,7 +181,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 										</Link>
 									</Button>
 								)}
-								{user ? <UserMenu user={user} onLogout={logout} /> : null}
+								{user ? <UserMenu user={user} onLogout={logout} isOrganizer={isOrganizer} isSuperAdmin={isSuperAdmin} /> : null}
 							</>
 						)}
 					</div>
@@ -234,7 +235,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 										</Link>
 									</Button>
 								)}
-								{user ? <UserMenu user={user} onLogout={logout} /> : null}
+								{user ? <UserMenu user={user} onLogout={logout} isOrganizer={isOrganizer} isSuperAdmin={isSuperAdmin} /> : null}
 							</>
 						)}
 						<DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>

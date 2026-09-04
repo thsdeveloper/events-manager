@@ -11,7 +11,7 @@ const env = createTestEnv();
 const authUser = {
 	id: '00000000-0000-4000-8000-000000000001',
 	email: 'ana@example.com',
-	user_metadata: { first_name: 'Ana', last_name: 'Silva' },
+	user_metadata: { first_name: 'Ana', last_name: 'Silva', birth_date: '1990-05-20' },
 };
 
 const session = {
@@ -50,6 +50,8 @@ function createClients() {
 					eq: vi.fn(() => ({
 						// Listagens (organizações do usuário) terminam em `order`; nenhuma aqui.
 						order: vi.fn(async () => ({ data: [], error: null })),
+						// Atividade paga (`in(...).limit(1)`): nenhuma para este usuário.
+						in: vi.fn(() => ({ limit: vi.fn(async () => ({ data: [], error: null })) })),
 						maybeSingle: vi.fn(async () => ({
 							data:
 								table === 'profiles'
@@ -105,6 +107,7 @@ describe('email confirmation during registration', () => {
 				password: 'Qsesbs2006#@!',
 				firstName: 'Ana',
 				lastName: 'Silva',
+				birth_date: '1990-05-20',
 			},
 		});
 		await app.close();
@@ -120,7 +123,7 @@ describe('email confirmation during registration', () => {
 			email: authUser.email,
 			password: 'Qsesbs2006#@!',
 			options: {
-				data: { first_name: 'Ana', last_name: 'Silva' },
+				data: { first_name: 'Ana', last_name: 'Silva', birth_date: '1990-05-20' },
 				emailRedirectTo: 'http://localhost:3003/confirmar-email',
 			},
 		});
@@ -471,7 +474,13 @@ describe('password policy scope', () => {
 		const response = await app.inject({
 			method: 'POST',
 			url: '/api/auth/register',
-			payload: { email: authUser.email, password: 'senhaantiga', firstName: 'Ana', lastName: 'Silva' },
+			payload: {
+				email: authUser.email,
+				password: 'senhaantiga',
+				firstName: 'Ana',
+				lastName: 'Silva',
+				birth_date: '1990-05-20',
+			},
 		});
 		await app.close();
 
@@ -494,5 +503,65 @@ describe('password policy scope', () => {
 		expect(response.statusCode).toBe(422);
 		expect(response.json()).toMatchObject({ title: 'VALIDATION_ERROR' });
 		expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
+	});
+});
+
+describe('birth date at registration', () => {
+	const payload = { email: authUser.email, password: 'Qsesbs2006#@!', firstName: 'Ana', lastName: 'Silva' };
+
+	function yearsAgo(years: number, offsetDays = 0) {
+		const date = new Date();
+		date.setUTCFullYear(date.getUTCFullYear() - years);
+		date.setUTCDate(date.getUTCDate() + offsetDays);
+		return date.toISOString().slice(0, 10);
+	}
+
+	it('requires a birth date', async () => {
+		const { clients, publicAuth } = createClients();
+		const app = await buildAuthTestApp(clients);
+
+		const response = await app.inject({ method: 'POST', url: '/api/auth/register', payload });
+		await app.close();
+
+		expect(response.statusCode).toBe(422);
+		expect(response.json()).toMatchObject({ title: 'VALIDATION_ERROR' });
+		expect(publicAuth.signUp).not.toHaveBeenCalled();
+	});
+
+	it('refuses to create an account for someone under 13', async () => {
+		const { clients, publicAuth } = createClients();
+		const app = await buildAuthTestApp(clients);
+
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/register',
+			payload: { ...payload, birth_date: yearsAgo(13, 1) },
+		});
+		await app.close();
+
+		expect(response.statusCode).toBe(422);
+		expect(publicAuth.signUp).not.toHaveBeenCalled();
+	});
+
+	it('stores the birth date with the new account', async () => {
+		const { clients, publicAuth } = createClients();
+		publicAuth.signUp.mockResolvedValue({ data: { user: authUser, session: null }, error: null });
+		const app = await buildAuthTestApp(clients);
+
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/register',
+			payload: { ...payload, birth_date: yearsAgo(13) },
+		});
+		await app.close();
+
+		expect(response.statusCode).toBe(201);
+		expect(publicAuth.signUp).toHaveBeenCalledWith(
+			expect.objectContaining({
+				options: expect.objectContaining({
+					data: { first_name: 'Ana', last_name: 'Silva', birth_date: yearsAgo(13) },
+				}),
+			}),
+		);
 	});
 });

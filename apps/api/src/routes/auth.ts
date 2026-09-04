@@ -8,7 +8,7 @@ import {
 } from '@events-manager/contracts';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import type { AuthIdentity, AuthService } from '../application/auth/auth-service.js';
+import { DocumentAlreadyInUse, type AuthIdentity, type AuthService } from '../application/auth/auth-service.js';
 import type { ApiEnv } from '../config/env.js';
 import { createEmailService } from '../infrastructure/email/create-email-service.js';
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
@@ -58,8 +58,17 @@ async function sessionPayload(auth: AuthService, user: AuthIdentity) {
 
 export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; clients: SupabaseClients }) {
 	const { env, clients } = options;
-	const auth = createSupabaseAuthService(clients);
 	const { email } = createEmailService(env, clients);
+	const auth = createSupabaseAuthService(clients, {
+		// Aviso fora de banda, como na troca de senha: quem perdeu a conta precisa
+		// saber que o CPF mudou. Falha aqui é registrada, nunca devolvida.
+		documentChanged: (notice) =>
+			email
+				.sendDocumentChangedNotice(notice, `document-changed-${notice.email}-${notice.changedAt.getTime()}`)
+				.catch((error: unknown) => {
+					app.log.error({ err: error, email: notice.email }, 'Falha ao enviar o aviso de CPF alterado.');
+				}),
+	});
 	const rateLimit = new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin));
 	const limit = async (scope: string, subject: string, attempts: number, windowSeconds: number) => {
 		try {
@@ -83,6 +92,7 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 			password: input.password,
 			firstName: input.first_name ?? input.firstName!,
 			lastName: input.last_name ?? input.lastName!,
+			birthDate: input.birth_date,
 			redirectTo: `${env.WEB_URL}/confirmar-email`,
 		});
 		if (result.session) {
@@ -191,8 +201,24 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 
 	app.patch('/api/user/profile', async (request) => {
 		const context = await requireUser(request, auth);
-		const user = await auth.updateProfile(context.user, updateProfileSchema.parse(request.body));
-		return { success: true, user };
+		const input = updateProfileSchema.parse(request.body);
+		// A troca de CPF checa a senha atual; o orçamento evita que uma sessão
+		// roubada use o campo para adivinhá-la.
+		if (input.document !== undefined) await limit('user-document-change', context.user.id, 5, 900);
+		try {
+			const user = await auth.updateProfile(context.user, input, {
+				ip: request.ip,
+				userAgent: request.headers['user-agent'],
+			});
+			return { success: true, user };
+		} catch (error) {
+			if (error instanceof DocumentAlreadyInUse) {
+				throw new ApiError('Este CPF já está cadastrado em outra conta.', 409, 'DOCUMENT_ALREADY_IN_USE', {
+					field: 'document',
+				});
+			}
+			throw error;
+		}
 	});
 
 	/**

@@ -158,7 +158,7 @@ Helpers em `apps/web/src/test/` (importe de `@/test`):
 | `createTestQueryClient()` | React Query sem retry, sem cache e sem atraso entre tentativas |
 | `mockFetch([[padrão, handler]])` | Substitui `fetch`; URL sem correspondência falha o teste |
 | `jsonResponse(body, { status })` | `Response` JSON |
-| `problemResponse(status, title, detail)` | `Response` RFC 7807 como a API devolve |
+| `problemResponse(status, title, detail, context)` | `Response` RFC 7807 como a API devolve; `context` carrega, por exemplo, `{ field }` |
 
 ### 5.1 Função pura (`*.test.ts`)
 

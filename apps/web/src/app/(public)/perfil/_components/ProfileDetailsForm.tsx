@@ -1,11 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Check, Mail, MapPin, Save, UserRound } from 'lucide-react';
+import { CalendarDays, Check, IdCard, KeyRound, Mail, MapPin, Save, UserRound } from 'lucide-react';
 
+import { birthDateSchema, MIN_REGISTRATION_AGE } from '@events-manager/contracts';
 import { LocationSelect } from '@/components/location/LocationSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
+import { CpfInput } from '@/components/ui/masked-inputs';
+import { isValidCPF } from '@/lib/br-documents';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -16,11 +20,25 @@ interface ProfileDetailsFormProps {
 	onSaved: (user: ProfileUser) => void;
 }
 
-const emptyErrors: Partial<Record<keyof ProfileFormValues, string>> = {};
+type FieldName = keyof ProfileFormValues | 'currentPassword';
+type FieldErrors = Partial<Record<FieldName, string>>;
+
+const emptyErrors: FieldErrors = {};
+
+/** Nomes de campo que a API usa no `context.field` de um problema, por campo do formulário. */
+const apiFieldNames: Record<string, FieldName> = {
+	document: 'document',
+	current_password: 'currentPassword',
+	birth_date: 'birthDate',
+	first_name: 'firstName',
+	last_name: 'lastName',
+};
 
 export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 	const { toast } = useToast();
 	const [values, setValues] = useState(() => valuesFromUser(user));
+	// Fora de `values`: é credencial, não dado do perfil, e não conta como alteração.
+	const [currentPassword, setCurrentPassword] = useState('');
 	const [errors, setErrors] = useState(emptyErrors);
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -30,6 +48,10 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 
 	const initialValues = useMemo(() => valuesFromUser(user), [user]);
 	const isDirty = JSON.stringify(values) !== JSON.stringify(initialValues);
+	// Política do CPF: trocá-lo exige a senha atual, e depois de atividade paga só
+	// o suporte altera (a API decide; `document_locked` espelha a regra).
+	const isDocumentLocked = Boolean(user.document_locked);
+	const isDocumentChanging = !isDocumentLocked && values.document !== initialValues.document;
 
 	const updateValue = <Field extends keyof ProfileFormValues>(field: Field, value: ProfileFormValues[Field]) => {
 		setValues((current) => ({ ...current, [field]: value }));
@@ -38,12 +60,16 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 
 	const handleReset = () => {
 		setValues(initialValues);
+		setCurrentPassword('');
 		setErrors(emptyErrors);
 	};
 
 	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		const nextErrors = validate(values);
+		if (isDocumentChanging && !currentPassword) {
+			nextErrors.currentPassword = 'Confirme sua senha atual para alterar o CPF.';
+		}
 		setErrors(nextErrors);
 		if (Object.keys(nextErrors).length > 0) return;
 
@@ -55,14 +81,31 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 				body: JSON.stringify({
 					first_name: values.firstName.trim(),
 					last_name: values.lastName.trim(),
-					title: nullable(values.title),
+					birth_date: values.birthDate,
+					document: values.document || null,
 					city_id: values.cityId,
 					description: nullable(values.description),
+					...(isDocumentChanging ? { current_password: currentPassword } : {}),
 				}),
 			});
-			if (!response.ok) throw new Error('Não foi possível salvar suas informações.');
+			if (!response.ok) {
+				const problem = (await response.json().catch(() => null)) as {
+					title?: string;
+					detail?: string;
+					context?: { field?: string };
+				} | null;
+				// A problem on a specific field (CPF já usado, senha incorreta) is shown
+				// on the field itself: a toast alone vanishes before the person finds
+				// what to fix.
+				const field = problem?.context?.field ? apiFieldNames[problem.context.field] : undefined;
+				if (field && problem?.detail) {
+					setErrors((current) => ({ ...current, [field]: problem.detail }));
+				}
+				throw new Error(problem?.detail || 'Não foi possível salvar suas informações.');
+			}
 			const result = (await response.json()) as { user: ProfileUser };
 
+			setCurrentPassword('');
 			onSaved({ ...user, ...result.user, email: result.user.email || user.email });
 			toast({
 				title: 'Perfil atualizado',
@@ -139,20 +182,67 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 							</FormField>
 						</div>
 						<FormField
-							id="profile-title"
-							label="Como você se apresenta"
-							icon={UserRound}
-							description="Ex.: Produtora cultural, Designer, Estudante"
+							id="profile-birth-date"
+							label="Data de nascimento *"
+							icon={CalendarDays}
+							error={errors.birthDate}
+							description="É preciso ter pelo menos 13 anos."
 						>
-							<Input
-								id="profile-title"
-								value={values.title}
-								onChange={(event) => updateValue('title', event.target.value)}
-								placeholder="Sua ocupação ou interesse"
+							<DateInput
+								id="profile-birth-date"
+								value={values.birthDate}
+								onChange={(birthDate) => updateValue('birthDate', birthDate)}
+								max={latestAllowedBirthDate()}
+								aria-invalid={Boolean(errors.birthDate)}
 								className="h-11 rounded-lg"
-								maxLength={80}
 							/>
 						</FormField>
+						<FormField
+							id="profile-document"
+							label="CPF"
+							icon={IdCard}
+							error={errors.document}
+							description={
+								isDocumentLocked
+									? 'Este CPF já consta em ingressos ou pagamentos. Para alterar o CPF, fale com o suporte.'
+									: 'Usado para identificar você em ingressos e comprovantes.'
+							}
+						>
+							<CpfInput
+								id="profile-document"
+								value={values.document}
+								onChange={(digits) => updateValue('document', digits)}
+								showError={false}
+								autoComplete="off"
+								disabled={isDocumentLocked}
+								aria-invalid={Boolean(errors.document)}
+								className={isDocumentLocked ? 'h-11 rounded-lg bg-slate-50 dark:bg-slate-950' : 'h-11 rounded-lg'}
+							/>
+						</FormField>
+						{isDocumentChanging && (
+							<div className="sm:col-span-2">
+								<FormField
+									id="profile-current-password"
+									label="Senha atual"
+									icon={KeyRound}
+									error={errors.currentPassword}
+									description="Confirme sua senha para alterar o CPF. Você receberá um e-mail avisando da alteração."
+								>
+									<Input
+										id="profile-current-password"
+										type="password"
+										value={currentPassword}
+										onChange={(event) => {
+											setCurrentPassword(event.target.value);
+											if (errors.currentPassword) setErrors((current) => ({ ...current, currentPassword: undefined }));
+										}}
+										autoComplete="current-password"
+										aria-invalid={Boolean(errors.currentPassword)}
+										className="h-11 rounded-lg"
+									/>
+								</FormField>
+							</div>
+						)}
 						<div className="sm:col-span-2">
 							<FormField
 								id="profile-location-state"
@@ -244,21 +334,36 @@ function FormField({
 	);
 }
 
+/** Última data que ainda satisfaz a idade mínima; o calendário abre nela. */
+function latestAllowedBirthDate() {
+	const date = new Date();
+	date.setFullYear(date.getFullYear() - MIN_REGISTRATION_AGE);
+
+	return date.toISOString().slice(0, 10);
+}
+
 function valuesFromUser(user: ProfileUser): ProfileFormValues {
 	return {
 		firstName: user.first_name || '',
 		lastName: user.last_name || '',
 		email: user.email,
-		title: user.title || '',
+		birthDate: user.birth_date || '',
+		document: user.document || '',
 		cityId: user.city_id ?? null,
 		description: user.description || '',
 	};
 }
 
 function validate(values: ProfileFormValues) {
-	const errors: Partial<Record<keyof ProfileFormValues, string>> = {};
+	const errors: FieldErrors = {};
 	if (values.firstName.trim().length < 2) errors.firstName = 'Informe pelo menos 2 caracteres.';
 	if (values.lastName.trim().length < 2) errors.lastName = 'Informe pelo menos 2 caracteres.';
+	if (values.document && !isValidCPF(values.document)) errors.document = 'Informe um CPF válido.';
+	if (!values.birthDate) errors.birthDate = 'Informe sua data de nascimento.';
+	else {
+		const birthDate = birthDateSchema.safeParse(values.birthDate);
+		if (!birthDate.success) errors.birthDate = birthDate.error.issues[0]?.message;
+	}
 
 	return errors;
 }

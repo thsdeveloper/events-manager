@@ -15,6 +15,7 @@ interface ServerAuthState {
 	isLoading: boolean;
 	isAuthenticated: boolean;
 	isOrganizer: boolean;
+	isSuperAdmin: boolean;
 	organizerStatus: string | null;
 	hasPendingOrganizerRequest: boolean;
 }
@@ -39,6 +40,7 @@ export function useServerAuth(): ServerAuthState & {
 	const [user, setUser] = useState<User | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isOrganizer, setIsOrganizer] = useState(false);
+	const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 	const [organizerStatus, setOrganizerStatus] = useState<string | null>(null);
 	const [hasPendingOrganizerRequest, setHasPendingOrganizerRequest] = useState(false);
 	const router = useRouter();
@@ -51,6 +53,8 @@ export function useServerAuth(): ServerAuthState & {
 			if (!response.ok) {
 				if (response.status === 401) {
 					setUser(null);
+					setIsOrganizer(false);
+					setIsSuperAdmin(false);
 
 					return;
 				}
@@ -60,11 +64,13 @@ export function useServerAuth(): ServerAuthState & {
 			const data = await response.json();
 			setUser(data.user);
 			setIsOrganizer(Boolean(data.isOrganizer));
+			setIsSuperAdmin(Boolean(data.isSuperAdmin));
 			setOrganizerStatus(data.organizerStatus ?? null);
 			setHasPendingOrganizerRequest(Boolean(data.hasPendingOrganizerRequest));
 		} catch {
 			setUser(null);
 			setIsOrganizer(false);
+			setIsSuperAdmin(false);
 			setOrganizerStatus(null);
 			setHasPendingOrganizerRequest(false);
 		} finally {
@@ -96,6 +102,7 @@ export function useServerAuth(): ServerAuthState & {
 		isLoading,
 		isAuthenticated: !!user,
 		isOrganizer,
+		isSuperAdmin,
 		organizerStatus,
 		hasPendingOrganizerRequest,
 		logout,

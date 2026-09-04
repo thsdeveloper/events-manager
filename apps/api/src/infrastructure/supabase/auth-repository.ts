@@ -3,11 +3,13 @@ import type {
 	AuthRepository,
 	AuthResult,
 	AuthSession,
+	DocumentChange,
 	OrganizerAuthorization,
+	ProfileNotifications,
 	SerializedUser,
 	UserProfileInput,
 } from '../../application/auth/auth-service.js';
-import { AuthProviderError, AuthService } from '../../application/auth/auth-service.js';
+import { AuthProviderError, AuthService, DocumentAlreadyInUse } from '../../application/auth/auth-service.js';
 import type { SupabaseClients } from './clients.js';
 import { SupabaseMediaRepository } from './media-repository.js';
 
@@ -31,17 +33,19 @@ export class SupabaseAuthRepository implements AuthRepository {
 	constructor(private readonly clients: SupabaseClients) {}
 
 	async register(input: {
+		birthDate: string;
 		email: string;
 		firstName: string;
 		lastName: string;
 		password: string;
 		redirectTo: string;
 	}): Promise<AuthResult> {
+		// Os metadados são copiados para `profiles` pelo trigger handle_new_user.
 		const { data, error } = await this.clients.public.auth.signUp({
 			email: input.email,
 			password: input.password,
 			options: {
-				data: { first_name: input.firstName, last_name: input.lastName },
+				data: { first_name: input.firstName, last_name: input.lastName, birth_date: input.birthDate },
 				emailRedirectTo: input.redirectTo,
 			},
 		});
@@ -89,13 +93,14 @@ export class SupabaseAuthRepository implements AuthRepository {
 	 * derrubava o login de quem tinha mais de uma organização.
 	 */
 	async serialize(user: AuthIdentity): Promise<SerializedUser> {
-		const [{ data: profile, error: profileError }, organizers] = await Promise.all([
+		const [{ data: profile, error: profileError }, organizers, billingActivity] = await Promise.all([
 			this.clients.admin
 				.from('profiles')
 				.select('*,city:cities(id,state_id,name,state:states(id,uf,name))')
 				.eq('id', user.id)
 				.maybeSingle(),
 			this.listOrganizers(user.id),
+			this.hasBillingActivity(user.id),
 		]);
 		if (profileError) throw profileError;
 		const active = organizers.filter((organizer) => organizer.status === 'active');
@@ -110,8 +115,11 @@ export class SupabaseAuthRepository implements AuthRepository {
 			location: profile?.location ?? null,
 			city_id: profile?.city_id ?? null,
 			city: profile?.city ?? null,
-			title: profile?.title ?? null,
 			description: profile?.description ?? null,
+			birth_date: profile?.birth_date ?? null,
+			document: profile?.document ?? null,
+			// Espelha a regra do caso de uso: CPF já informado e atividade paga.
+			document_locked: Boolean(profile?.document) && billingActivity,
 			role: profile?.role ?? 'attendee',
 			status: profile?.status ?? 'active',
 			organizer: (organizer as SerializedUser['organizer']) ?? null,
@@ -167,7 +175,12 @@ export class SupabaseAuthRepository implements AuthRepository {
 			.eq('id', user.id)
 			.select('*,city:cities(id,state_id,name,state:states(id,uf,name))')
 			.single();
-		if (error) throw error;
+		if (error) {
+			// O índice único de CPF é a única regra de unicidade do perfil que a
+			// pessoa consegue violar sozinha; ela precisa saber qual campo corrigir.
+			if (error.code === '23505' && error.message.includes('profiles_document_key')) throw new DocumentAlreadyInUse();
+			throw error;
+		}
 		return data;
 	}
 
@@ -277,6 +290,35 @@ export class SupabaseAuthRepository implements AuthRepository {
 		return data as unknown as OrganizerAuthorization;
 	}
 
+	async findDocument(userId: string) {
+		const { data, error } = await this.clients.admin.from('profiles').select('document').eq('id', userId).maybeSingle();
+		if (error) throw error;
+		return (data?.document as string | null | undefined) ?? null;
+	}
+
+	async hasBillingActivity(userId: string) {
+		const { data, error } = await this.clients.admin
+			.from('event_registrations')
+			.select('id')
+			.eq('user_id', userId)
+			.in('payment_status', ['paid', 'refunded'])
+			.limit(1);
+		if (error) throw error;
+		return (data ?? []).length > 0;
+	}
+
+	async recordDocumentChange(change: DocumentChange) {
+		const { error } = await this.clients.admin.from('profile_document_changes').insert({
+			user_id: change.userId,
+			previous_document: change.previousDocument,
+			new_document: change.newDocument,
+			changed_by: change.changedBy,
+			ip: change.ip ?? null,
+			user_agent: change.userAgent ?? null,
+		});
+		if (error) throw error;
+	}
+
 	async findAvatarId(userId: string) {
 		const { data, error } = await this.clients.admin.from('profiles').select('avatar').eq('id', userId).maybeSingle();
 		if (error) throw error;
@@ -312,6 +354,6 @@ export class SupabaseAuthRepository implements AuthRepository {
 	}
 }
 
-export function createSupabaseAuthService(clients: SupabaseClients) {
-	return new AuthService(new SupabaseAuthRepository(clients), new SupabaseMediaRepository(clients));
+export function createSupabaseAuthService(clients: SupabaseClients, notifications?: ProfileNotifications) {
+	return new AuthService(new SupabaseAuthRepository(clients), new SupabaseMediaRepository(clients), notifications);
 }

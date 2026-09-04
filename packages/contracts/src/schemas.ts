@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isValidDocument, isValidPhone, onlyDigits } from './br-documents.js';
+import { isValidCPF, isValidDocument, isValidPhone, onlyDigits } from './br-documents.js';
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 64;
@@ -37,11 +37,50 @@ export const credentialsSchema = z.object({
 	password: z.string().min(1),
 });
 
+export const MIN_REGISTRATION_AGE = 13;
+
+/**
+ * Idade completa em anos-calendário: o aniversário de hoje conta, o de amanhã
+ * não. Um aniversário em 29 de fevereiro completa o ano em 1º de março nos
+ * anos sem esse dia. As datas são comparadas em UTC para não depender do fuso
+ * do servidor.
+ */
+export function isAtLeastYearsOld(birthDate: string, years: number, today = new Date()) {
+	const [year, month, day] = birthDate.split('-').map(Number);
+	const threshold = new Date(Date.UTC(year + years, month - 1, day));
+	const reference = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+	return threshold.getTime() <= reference.getTime();
+}
+
+function isCalendarDate(value: string) {
+	const [year, month, day] = value.split('-').map(Number);
+	const date = new Date(Date.UTC(year, month - 1, day));
+	return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+/**
+ * Data de nascimento no formato do `<input type="date">` (AAAA-MM-DD). A idade
+ * mínima é regra de cadastro: menores de 13 anos não podem criar conta.
+ */
+export const birthDateSchema = z
+	.string()
+	.regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data no formato AAAA-MM-DD.')
+	.refine(isCalendarDate, 'Data de nascimento inválida.')
+	.refine((value) => isAtLeastYearsOld(value, 0), 'A data de nascimento não pode estar no futuro.')
+	.refine(
+		(value) => isAtLeastYearsOld(value, MIN_REGISTRATION_AGE),
+		`É preciso ter pelo menos ${MIN_REGISTRATION_AGE} anos para criar uma conta.`,
+	);
+
 export const registerSchema = credentialsSchema.extend({
 	first_name: z.string().trim().min(1),
 	last_name: z.string().trim().min(1),
 	password: newPasswordSchema,
+	birth_date: birthDateSchema,
 });
+
+/** CPF da pessoa (não aceita CNPJ); guardado só com dígitos. */
+export const cpfSchema = z.string().transform(onlyDigits).refine(isValidCPF, 'Informe um CPF válido.');
 
 export const emailConfirmationSchema = z.object({
 	email: z.string().trim().email(),
@@ -65,8 +104,12 @@ export const updateProfileSchema = z.object({
 	 * rótulo em `profiles.location` é escrito pelo servidor a partir daqui.
 	 */
 	city_id: z.number().int().positive().nullable().optional(),
-	title: z.string().nullable().optional(),
 	description: z.string().nullable().optional(),
+	document: cpfSchema.nullable().optional(),
+	/** Pode ser corrigida no perfil, mas nunca apagada nem abaixo da idade mínima. */
+	birth_date: birthDateSchema.optional(),
+	/** Exigida pela API quando o CPF muda: reautentica antes de alterar um dado sensível. */
+	current_password: z.string().min(1).optional(),
 });
 
 export const eventStatusSchema = z.enum(['published', 'draft', 'cancelled', 'archived']);

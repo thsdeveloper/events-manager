@@ -2,21 +2,33 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, Lock, Mail, User, UserPlus } from 'lucide-react';
+import { CalendarDays, Eye, EyeOff, Lock, Mail, User, UserPlus } from 'lucide-react';
 import { AuthButton } from '@/components/auth/AuthButton';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { AuthLink } from '@/components/auth/AuthLink';
 import { AuthField, registerField } from '@/components/design-system/molecules/AuthField';
 import { Button } from '@/components/ui/button';
+import { DateInput } from '@/components/ui/date-input';
+import { Label } from '@/components/ui/label';
+import { MIN_REGISTRATION_AGE } from '@events-manager/contracts';
 import { httpClient } from '@/lib/http-client';
 import { safeInternalRedirect } from '@/lib/navigation';
+import { cn } from '@/lib/utils';
 import { registerSchema, type RegisterValues } from '@/lib/validation/auth';
 
 interface RegisterResponse {
 	confirmationRequired: boolean;
 	redirect?: string;
+}
+
+/** Última data de nascimento que ainda satisfaz a idade mínima, para o seletor de data. */
+function latestAllowedBirthDate() {
+	const date = new Date();
+	date.setFullYear(date.getFullYear() - MIN_REGISTRATION_AGE);
+
+	return date.toISOString().slice(0, 10);
 }
 
 export default function RegisterPage() {
@@ -26,19 +38,23 @@ export default function RegisterPage() {
 
 	const {
 		register,
+		control,
 		handleSubmit,
 		formState: { errors, isSubmitting },
 	} = useForm<RegisterValues>({
 		resolver: zodResolver(registerSchema),
-		defaultValues: { firstName: '', lastName: '', email: '', password: '', confirmPassword: '' },
+		defaultValues: { firstName: '', lastName: '', email: '', birthDate: '', password: '', confirmPassword: '' },
 		// Validate once the field has been left, then live as it is corrected —
 		// no errors are shown while the user is still filling a field in.
 		mode: 'onTouched',
 	});
 
-	const onSubmit = async ({ confirmPassword: _confirmPassword, ...values }: RegisterValues) => {
+	const onSubmit = async ({ confirmPassword: _confirmPassword, birthDate, ...values }: RegisterValues) => {
 		try {
-			const data = await httpClient.post<RegisterResponse>('/api/auth/register', values);
+			const data = await httpClient.post<RegisterResponse>('/api/auth/register', {
+				...values,
+				birth_date: birthDate,
+			});
 			const destination = data.confirmationRequired
 				? `/confirmar-email?email=${encodeURIComponent(values.email)}`
 				: safeInternalRedirect(data.redirect, '/perfil');
@@ -89,6 +105,46 @@ export default function RegisterPage() {
 					error={errors.email?.message}
 					{...registerField(register('email'))}
 				/>
+
+				<div className="space-y-2">
+					<Label htmlFor="birthDate">Data de nascimento</Label>
+					<div className="relative">
+						<span
+							aria-hidden="true"
+							className={cn(
+								'pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-4',
+								errors.birthDate ? 'text-destructive' : 'text-muted-foreground',
+							)}
+						>
+							<CalendarDays className="size-5" />
+						</span>
+						<Controller
+							control={control}
+							name="birthDate"
+							render={({ field }) => (
+								<DateInput
+									id="birthDate"
+									value={field.value}
+									onChange={field.onChange}
+									onBlur={field.onBlur}
+									max={latestAllowedBirthDate()}
+									aria-invalid={errors.birthDate ? true : undefined}
+									aria-describedby={errors.birthDate ? 'birthDate-error' : 'birthDate-hint'}
+									className={cn('h-12 rounded-lg pl-11', errors.birthDate && 'border-destructive focus-visible:ring-destructive')}
+								/>
+							)}
+						/>
+					</div>
+					{errors.birthDate ? (
+						<p id="birthDate-error" role="alert" className="text-xs font-medium text-destructive">
+							{errors.birthDate.message}
+						</p>
+					) : (
+						<p id="birthDate-hint" className="text-xs text-muted-foreground">
+							Você precisa ter pelo menos {MIN_REGISTRATION_AGE} anos para criar uma conta.
+						</p>
+					)}
+				</div>
 
 				<AuthField
 					id="password"

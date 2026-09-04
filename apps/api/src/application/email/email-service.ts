@@ -7,6 +7,12 @@ export interface PasswordChangedNotice {
 	name?: string | null;
 }
 
+export interface DocumentChangedNotice {
+	changedAt: Date;
+	email: string;
+	name?: string | null;
+}
+
 export interface RegistrationForEmail {
 	event_id?: { title?: string | null } | null;
 	id: string;
@@ -147,6 +153,63 @@ export class EmailService {
 				from: this.from,
 				to: notice.email,
 				subject: 'Sua senha foi alterada',
+				text,
+				html,
+			});
+			return this.deliveries.markSent(delivery.id, delivery.attempts + 1, result.messageId);
+		} catch (error) {
+			await this.deliveries.markFailed(
+				delivery.id,
+				delivery.attempts + 1,
+				error instanceof Error ? error.message : String(error),
+			);
+			throw error;
+		}
+	}
+
+	/**
+	 * Aviso de CPF alterado. Como no aviso de senha, é o único sinal que chega a
+	 * quem perdeu a conta. Não imprime nem o CPF antigo nem o novo: o e-mail pode
+	 * ser lido por terceiros, e o dado em si não ajuda a vítima a reagir.
+	 */
+	async sendDocumentChangedNotice(notice: DocumentChangedNotice, idempotencyKey: string) {
+		const delivery = await this.deliveries.claim({
+			idempotencyKey,
+			template: 'document-changed',
+			recipient: notice.email,
+			payload: { changedAt: notice.changedAt.toISOString() },
+		});
+		if (!delivery.shouldSend) return delivery;
+
+		const branding = await this.branding.load();
+		const changedAt = new Intl.DateTimeFormat('pt-BR', {
+			dateStyle: 'short',
+			timeStyle: 'short',
+			timeZone: 'America/Sao_Paulo',
+		}).format(notice.changedAt);
+
+		const { html, text } = renderEmail({
+			branding,
+			preheader: 'O CPF da sua conta foi alterado.',
+			blocks: [
+				{ type: 'heading', text: 'Seu CPF foi alterado' },
+				{ type: 'paragraph', text: `Olá${notice.name ? `, ${notice.name}` : ''}.` },
+				{ type: 'paragraph', text: 'O CPF cadastrado na sua conta foi alterado a partir da área de dados pessoais.' },
+				{ type: 'details', rows: [{ label: 'Data da alteração', value: `${changedAt} (horário de Brasília)` }] },
+				{
+					type: 'paragraph',
+					text: 'Se foi você, nenhuma ação é necessária. Se não reconhece esta alteração, redefina sua senha agora mesmo e fale com o suporte.',
+				},
+				{ type: 'button', label: 'Redefinir minha senha', url: `${branding.siteUrl}/esqueci-senha` },
+			],
+			footerNote: 'Nunca pedimos seu CPF ou sua senha por e-mail.',
+		});
+
+		try {
+			const result = await this.gateway.send({
+				from: this.from,
+				to: notice.email,
+				subject: 'Seu CPF foi alterado',
 				text,
 				html,
 			});

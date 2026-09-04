@@ -30,12 +30,18 @@ export function fakeQueryBuilder(result: QueryResult) {
 }
 
 export interface SupabaseStubOptions {
-	/** Resultado devolvido para cada tabela consultada via `from(table)`. */
-	tables?: Record<string, QueryResult>;
+	/**
+	 * Resultado devolvido para cada tabela consultada via `from(table)`. Um array
+	 * é consumido em ordem, uma entrada por chamada a `from(table)` (a última se
+	 * repete), para cenários em que a mesma tabela é lida e depois escrita.
+	 */
+	tables?: Record<string, QueryResult | QueryResult[]>;
 	/** Resultado de `auth.getUser(token)`; padrão: sem sessão. */
 	user?: { id: string; email: string } | null;
 	/** Resultado de chamadas `rpc(name)`; padrão: `{ data: true }`. */
 	rpc?: QueryResult;
+	/** Resposta de `public.auth.signInWithPassword` (reautenticação); padrão: senha válida. */
+	passwordValid?: boolean;
 }
 
 /**
@@ -43,8 +49,20 @@ export interface SupabaseStubOptions {
  * suas dependências concretas, substituindo apenas a borda de rede.
  */
 export function createSupabaseClientsStub(options: SupabaseStubOptions = {}) {
-	const { tables = {}, user = null, rpc = { data: true } } = options;
-	const from = vi.fn((table: string) => fakeQueryBuilder(tables[table] ?? { data: null }));
+	const { tables = {}, user = null, rpc = { data: true }, passwordValid = true } = options;
+	const calls: Record<string, number> = {};
+	const from = vi.fn((table: string) => {
+		const configured = tables[table] ?? { data: null };
+		if (!Array.isArray(configured)) return fakeQueryBuilder(configured);
+		const index = Math.min(calls[table] ?? 0, configured.length - 1);
+		calls[table] = (calls[table] ?? 0) + 1;
+		return fakeQueryBuilder(configured[index]);
+	});
+	const signInWithPassword = vi.fn(async () =>
+		passwordValid
+			? { data: { session: null, user }, error: null }
+			: { data: { session: null, user: null }, error: { message: 'Invalid login credentials' } },
+	);
 	const getUser = vi.fn(async () =>
 		user ? { data: { user }, error: null } : { data: { user: null }, error: { message: 'invalid token' } },
 	);
@@ -62,13 +80,14 @@ export function createSupabaseClientsStub(options: SupabaseStubOptions = {}) {
 		auth: { getUser, admin: { signOut: vi.fn(), updateUserById: vi.fn() } },
 		storage,
 	};
-	const publicClient = { from, auth: {}, storage };
+	const publicClient = { from, auth: { signInWithPassword }, storage };
 	const forAccessToken = vi.fn(() => ({ from, auth: { getUser } }));
 
 	return {
 		clients: { admin, public: publicClient, forAccessToken } as unknown as SupabaseClients,
 		from,
 		getUser,
+		signInWithPassword,
 		storage,
 		storageBucket,
 	};

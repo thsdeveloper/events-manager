@@ -16,7 +16,21 @@ vi.mock('next/image', () => ({
 }));
 vi.mock('@/components/ui/SearchModal', () => ({ default: () => <button type="button">Buscar</button> }));
 vi.mock('@/components/layout/UserMenu', () => ({
-	UserMenu: ({ user }: { user: { first_name: string | null } }) => <div>Menu de {user.first_name}</div>,
+	UserMenu: ({
+		user,
+		isOrganizer,
+		isSuperAdmin,
+	}: {
+		user: { first_name: string | null };
+		isOrganizer?: boolean;
+		isSuperAdmin?: boolean;
+	}) => (
+		<div>
+			Menu de {user.first_name}
+			{isOrganizer ? ' (organizador)' : ''}
+			{isSuperAdmin ? ' (administrador)' : ''}
+		</div>
+	),
 }));
 vi.mock('@/components/animate-ui/icons/menu', () => ({ Menu: () => <svg /> }));
 vi.mock('@/components/animate-ui/icons/x', () => ({ X: () => <svg /> }));
@@ -33,6 +47,7 @@ const baseAuth = {
 	isLoading: false,
 	isAuthenticated: false,
 	isOrganizer: false,
+	isSuperAdmin: false,
 	organizerStatus: null,
 	hasPendingOrganizerRequest: false,
 	logout: vi.fn(),
@@ -60,6 +75,20 @@ describe('NavigationBar', () => {
 		renderHeader();
 
 		expect(screen.queryByRole('link', { name: /entrar/i })).not.toBeInTheDocument();
+	});
+
+	it('hands the resolved roles to the user menu so it can show the right sections', () => {
+		useServerAuth.mockReturnValue({
+			...baseAuth,
+			isAuthenticated: true,
+			isOrganizer: true,
+			isSuperAdmin: true,
+			user: { id: 'u1', email: 'ana@example.com', first_name: 'Ana', last_name: 'Silva' },
+		});
+
+		renderHeader();
+
+		expect(screen.getAllByText('Menu de Ana (organizador) (administrador)').length).toBeGreaterThan(0);
 	});
 
 	it('replaces the sign-in link with the user menu once authenticated', () => {

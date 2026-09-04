@@ -1,4 +1,4 @@
-import { newPasswordSchema } from '@events-manager/contracts';
+import { birthDateSchema, newPasswordSchema } from '@events-manager/contracts';
 import { z } from 'zod';
 
 /**
@@ -27,6 +27,8 @@ export const registerSchema = z
 		firstName: z.string().trim().min(1, 'Informe seu nome.').max(100, 'Máximo de 100 caracteres.'),
 		lastName: z.string().trim().min(1, 'Informe seu sobrenome.').max(100, 'Máximo de 100 caracteres.'),
 		email: emailSchema,
+		// A idade mínima (13 anos) e o formato vêm do contrato compartilhado com a API.
+		birthDate: z.string().min(1, 'Informe sua data de nascimento.').pipe(birthDateSchema),
 		password: newPasswordSchema,
 		confirmPassword: z.string().min(1, 'Confirme sua senha.'),
 	})

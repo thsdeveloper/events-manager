@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CreditCard, Loader2, ReceiptText, RefreshCw, WalletCards } from 'lucide-react';
+import { CreditCard, Loader2, ReceiptText, RefreshCw } from 'lucide-react';
 import type { EventRegistration, PaymentTransaction } from '@events-manager/contracts';
 
+import { CreditCard as AnimatedCreditCard } from '@/components/animate-ui/icons/credit-card';
+import { AccountEmptyState } from '@/components/account/AccountEmptyState';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -93,15 +95,11 @@ export function TransactionHistory({ userId }: TransactionHistoryProps) {
 
 	if (transactions.length === 0) {
 		return (
-			<div className="rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-14">
-				<div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-					<WalletCards className="size-6 text-slate-500" />
-				</div>
-				<h2 className="mt-4 font-semibold text-slate-950 dark:text-white">Nenhum pagamento por aqui</h2>
-				<p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
-					Quando você comprar um ingresso, os dados da transação e do recibo aparecerão nesta área.
-				</p>
-			</div>
+			<AccountEmptyState
+				icon={<AnimatedCreditCard />}
+				title="Nenhum pagamento por aqui"
+				description="Quando você comprar um ingresso, os dados da transação e do recibo aparecerão nesta área."
+			/>
 		);
 	}
 

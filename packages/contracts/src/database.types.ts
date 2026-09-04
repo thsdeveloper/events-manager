@@ -503,6 +503,35 @@ export type Database = {
         }
         Relationships: []
       }
+      cities: {
+        Row: {
+          id: number
+          name: string
+          search_name: string
+          state_id: number
+        }
+        Insert: {
+          id: number
+          name: string
+          search_name: string
+          state_id: number
+        }
+        Update: {
+          id?: number
+          name?: string
+          search_name?: string
+          state_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cities_state_id_fkey"
+            columns: ["state_id"]
+            isOneToOne: false
+            referencedRelation: "states"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_deliveries: {
         Row: {
           attempts: number
@@ -1695,13 +1724,49 @@ export type Database = {
           },
         ]
       }
+      profile_document_changes: {
+        Row: {
+          changed_by: string
+          created_at: string
+          id: string
+          ip: string | null
+          new_document: string | null
+          previous_document: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          new_document?: string | null
+          previous_document?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          new_document?: string | null
+          previous_document?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active_organizer_id: string | null
           avatar: string | null
+          birth_date: string | null
+          city_id: number | null
           date_created: string
           date_updated: string
           description: string | null
+          document: string | null
           email: string | null
           first_name: string | null
           id: string
@@ -1709,14 +1774,16 @@ export type Database = {
           location: string | null
           role: string
           status: string
-          title: string | null
         }
         Insert: {
           active_organizer_id?: string | null
           avatar?: string | null
+          birth_date?: string | null
+          city_id?: number | null
           date_created?: string
           date_updated?: string
           description?: string | null
+          document?: string | null
           email?: string | null
           first_name?: string | null
           id: string
@@ -1724,14 +1791,16 @@ export type Database = {
           location?: string | null
           role?: string
           status?: string
-          title?: string | null
         }
         Update: {
           active_organizer_id?: string | null
           avatar?: string | null
+          birth_date?: string | null
+          city_id?: number | null
           date_created?: string
           date_updated?: string
           description?: string | null
+          document?: string | null
           email?: string | null
           first_name?: string | null
           id?: string
@@ -1739,7 +1808,6 @@ export type Database = {
           location?: string | null
           role?: string
           status?: string
-          title?: string | null
         }
         Relationships: [
           {
@@ -1754,6 +1822,13 @@ export type Database = {
             columns: ["avatar"]
             isOneToOne: false
             referencedRelation: "media_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
         ]
@@ -1854,6 +1929,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      states: {
+        Row: {
+          id: number
+          name: string
+          search_name: string
+          uf: string
+        }
+        Insert: {
+          id: number
+          name: string
+          search_name: string
+          uf: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          search_name?: string
+          uf?: string
+        }
+        Relationships: []
       }
     }
     Views: {

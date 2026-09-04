@@ -19,7 +19,7 @@ export function ProfileOverview({ user, completion, onNavigate }: ProfileOvervie
 			complete: Boolean(user.first_name && user.last_name && user.email),
 		},
 		{ label: 'Foto de perfil', complete: Boolean(user.avatar) },
-		{ label: 'Sobre você', complete: Boolean(user.title && user.location && user.description) },
+		{ label: 'Sobre você', complete: Boolean(user.location && user.description) },
 	];
 
 	return (

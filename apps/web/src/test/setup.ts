@@ -48,6 +48,24 @@ if (typeof window !== 'undefined') {
 		Object.defineProperty(window, 'ResizeObserver', { writable: true, value: ResizeObserverStub });
 	}
 
+	// motion/react `useInView` (ícones animados ao entrar na tela) precisa de
+	// IntersectionObserver, que o jsdom não implementa. O stub nunca dispara:
+	// nos testes, os ícones ficam no estado inicial.
+	if (!('IntersectionObserver' in window)) {
+		class IntersectionObserverStub {
+			readonly root = null;
+			readonly rootMargin = '0px';
+			readonly thresholds = [0];
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+			takeRecords() {
+				return [];
+			}
+		}
+		Object.defineProperty(window, 'IntersectionObserver', { writable: true, value: IntersectionObserverStub });
+	}
+
 	if (!Element.prototype.scrollIntoView) {
 		Element.prototype.scrollIntoView = vi.fn();
 	}

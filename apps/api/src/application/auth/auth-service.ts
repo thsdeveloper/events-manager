@@ -32,15 +32,42 @@ export interface OrganizerAuthorization extends Record<string, unknown> {
 
 export interface UserProfileInput {
 	avatar?: string | null;
+	/** AAAA-MM-DD, já validada pelo contrato (idade mínima). */
+	birth_date?: string;
 	/** Código IBGE do município. O rótulo em `location` é derivado dele. */
 	city_id?: number | null;
 	description?: string | null;
+	/** CPF só com dígitos, já validado pelo contrato. */
+	document?: string | null;
+	/** Reautenticação exigida para trocar o CPF; nunca chega ao repositório. */
+	current_password?: string;
 	email?: string;
 	first_name?: string | null;
 	last_name?: string | null;
 	/** Escrito só pelo repositório, a partir de `city_id`. */
 	location?: string | null;
-	title?: string | null;
+}
+
+/** O CPF informado já pertence a outra conta. */
+export class DocumentAlreadyInUse extends Error {}
+
+export interface DocumentChange {
+	userId: string;
+	previousDocument: string | null;
+	newDocument: string | null;
+	changedBy: 'user' | 'support';
+	ip?: string;
+	userAgent?: string;
+}
+
+/** Avisos fora de banda sobre dados sensíveis do perfil. */
+export interface ProfileNotifications {
+	documentChanged(notice: { email: string; name?: string | null; changedAt: Date }): Promise<unknown>;
+}
+
+export interface ProfileUpdateContext {
+	ip?: string;
+	userAgent?: string;
 }
 
 export class AuthProviderError extends Error {
@@ -64,6 +91,10 @@ export interface AvatarStorage {
 export interface AuthRepository {
 	assertOrganizerOwnsEvent(organizerId: string, eventId: string): Promise<boolean>;
 	findAvatarId(userId: string): Promise<string | null>;
+	findDocument(userId: string): Promise<string | null>;
+	/** Há ingresso pago ou movimentação financeira ligada à conta. */
+	hasBillingActivity(userId: string): Promise<boolean>;
+	recordDocumentChange(change: DocumentChange): Promise<void>;
 	confirmEmail(email: string, token: string): Promise<AuthResult>;
 	createOrganizer(userId: string, input: { email: string; name: string }): Promise<OrganizerAuthorization>;
 	findActiveOrganizer(userId: string, preferredId?: string): Promise<OrganizerAuthorization | null>;
@@ -75,6 +106,7 @@ export interface AuthRepository {
 	login(email: string, password: string): Promise<AuthResult>;
 	refresh(refreshToken: string): Promise<AuthResult>;
 	register(input: {
+		birthDate: string;
 		email: string;
 		firstName: string;
 		lastName: string;
@@ -96,6 +128,7 @@ export class AuthService {
 	constructor(
 		private readonly repository: AuthRepository,
 		private readonly avatarStorage?: AvatarStorage,
+		private readonly notifications?: ProfileNotifications,
 	) {}
 
 	async authenticate(accessToken: string | null) {
@@ -105,7 +138,14 @@ export class AuthService {
 		return { accessToken, user };
 	}
 
-	async register(input: { email: string; firstName: string; lastName: string; password: string; redirectTo: string }) {
+	async register(input: {
+		birthDate: string;
+		email: string;
+		firstName: string;
+		lastName: string;
+		password: string;
+		redirectTo: string;
+	}) {
 		try {
 			const result = await this.repository.register(input);
 			if (!result.user) throw new ApiError('Não foi possível criar o usuário.', 500, 'REGISTRATION_ERROR');
@@ -200,15 +240,78 @@ export class AuthService {
 	 * uma falha ao apagar deixa um arquivo sobrando, que é preferível a
 	 * devolver erro para uma foto que já foi atualizada.
 	 */
-	async updateProfile(user: AuthIdentity, input: UserProfileInput) {
+	async updateProfile(user: AuthIdentity, input: UserProfileInput, context: ProfileUpdateContext = {}) {
+		const { current_password: currentPassword, ...profileInput } = input;
+		const documentChange = await this.authorizeDocumentChange(user, profileInput.document, currentPassword);
 		const previousAvatar = input.avatar === undefined ? null : await this.repository.findAvatarId(user.id);
-		const profile = await this.repository.updateProfile(user, input);
+		const profile = await this.repository.updateProfile(user, profileInput);
 
 		if (previousAvatar && previousAvatar !== input.avatar) {
 			await this.avatarStorage?.removeOwnedFile(previousAvatar, user.id).catch(() => undefined);
 		}
+		if (documentChange) await this.recordDocumentChange(user, documentChange, context);
 
 		return profile;
+	}
+
+	/**
+	 * Política do CPF: ele identifica a pessoa em ingressos nominais e comprovantes,
+	 * então trocá-lo é raro e sensível. A troca exige a senha atual (uma sessão
+	 * roubada não basta) e é recusada depois que houver atividade paga ligada à
+	 * conta; nesse ponto só o suporte altera. Informar o primeiro CPF continua
+	 * livre, mesmo depois de compras feitas sem ele.
+	 */
+	private async authorizeDocumentChange(
+		user: AuthIdentity,
+		nextDocument: string | null | undefined,
+		currentPassword: string | undefined,
+	): Promise<{ previousDocument: string | null; newDocument: string | null } | null> {
+		if (nextDocument === undefined) return null;
+		const previousDocument = await this.repository.findDocument(user.id);
+		if (previousDocument === nextDocument) return null;
+
+		if (previousDocument && (await this.repository.hasBillingActivity(user.id))) {
+			throw new ApiError('Para alterar o CPF, fale com o suporte.', 409, 'DOCUMENT_LOCKED', { field: 'document' });
+		}
+		if (!currentPassword) {
+			throw new ApiError('Confirme sua senha atual para alterar o CPF.', 403, 'REAUTHENTICATION_REQUIRED', {
+				field: 'current_password',
+			});
+		}
+		if (!user.email || !(await this.repository.verifyPassword(user.email, currentPassword))) {
+			throw new ApiError('A senha atual está incorreta.', 400, 'INVALID_CURRENT_PASSWORD', {
+				field: 'current_password',
+			});
+		}
+
+		return { previousDocument, newDocument: nextDocument };
+	}
+
+	/**
+	 * Registro e aviso acontecem depois de o perfil estar salvo. O registro é
+	 * obrigatório: sem ele o suporte não investiga uma disputa. Só o e-mail é
+	 * tolerante a falha, porque depende de um serviço externo e a troca já
+	 * aconteceu; devolver erro aqui só confundiria a pessoa.
+	 */
+	private async recordDocumentChange(
+		user: AuthIdentity,
+		change: { previousDocument: string | null; newDocument: string | null },
+		context: ProfileUpdateContext,
+	) {
+		await this.repository.recordDocumentChange({
+			userId: user.id,
+			previousDocument: change.previousDocument,
+			newDocument: change.newDocument,
+			changedBy: 'user',
+			ip: context.ip,
+			userAgent: context.userAgent,
+		});
+		if (user.email) {
+			const firstName = (user.userMetadata?.first_name as string | undefined) ?? null;
+			await this.notifications
+				?.documentChanged({ email: user.email, name: firstName, changedAt: new Date() })
+				.catch(() => undefined);
+		}
 	}
 
 	updatePassword(userId: string, password: string) {

@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import { isPast, isFuture } from 'date-fns';
 import type { EventRegistration } from '@events-manager/contracts';
+import { AccountEmptyState } from '@/components/account/AccountEmptyState';
+import { Ticket as AnimatedTicket } from '@/components/animate-ui/icons/ticket';
+import { Button } from '@/components/ui/button';
 import { TicketCard } from './TicketCard';
 import { TicketDetailsModal } from './TicketDetailsModal';
 
@@ -166,28 +169,22 @@ return tickets.filter((reg) => {
 		},
 	];
 
-	// Empty state — carries the same surface as the other /perfil blocks so it
-	// reads as a panel instead of floating loose on the page background.
+	// Same empty state as the other account sections (see AccountEmptyState).
 	if (registrations.length === 0) {
 		return (
-			<div className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-				<div className="mx-auto max-w-md px-6 py-16 text-center">
-					<div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-purple-100">
-						<Ticket className="size-10 text-indigo-600" />
-					</div>
-					<h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">Nenhum ingresso encontrado</h3>
-					<p className="mb-8 text-gray-600 dark:text-gray-400">
-						Você ainda não comprou nenhum ingresso. Explore os eventos disponíveis e garanta o seu!
-					</p>
-					<Link
-						href="/eventos"
-						className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 font-medium text-white shadow-lg transition-all hover:shadow-xl hover:from-indigo-700 hover:to-purple-700"
-					>
-						<Calendar className="size-5" />
-						Explorar Eventos
-					</Link>
-				</div>
-			</div>
+			<AccountEmptyState
+				icon={<AnimatedTicket />}
+				title="Nenhum ingresso por aqui"
+				description="Quando você comprar um ingresso, ele aparecerá nesta área com o código, a data e o local do evento."
+				action={
+					<Button asChild className="rounded-lg">
+						<Link href="/eventos">
+							<Calendar className="size-4" />
+							Explorar eventos
+						</Link>
+					</Button>
+				}
+			/>
 		);
 	}
 

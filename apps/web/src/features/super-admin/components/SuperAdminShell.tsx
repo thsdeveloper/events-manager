@@ -16,6 +16,8 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { UserMenu } from '@/components/layout/UserMenu';
+import type { AuthUser } from '@/lib/auth/server-auth';
 import { cn } from '@/lib/utils';
 
 const navigation = [
@@ -29,13 +31,15 @@ const navigation = [
 
 export function SuperAdminShell({
 	children,
-	userName,
-	canOpenOrganizer,
+	user,
+	isOrganizer,
 }: {
 	children: ReactNode;
-	userName: string;
-	canOpenOrganizer: boolean;
+	user: AuthUser;
+	isOrganizer: boolean;
 }) {
+	const userName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email;
+	const canOpenOrganizer = isOrganizer;
 	const pathname = usePathname();
 	const router = useRouter();
 	const active = (href: string) => (href === '/super-admin' ? pathname === href : pathname.startsWith(href));
@@ -107,9 +111,13 @@ export function SuperAdminShell({
 							<p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-700">Super admin</p>
 							<p className="text-sm font-medium text-slate-700">{userName}</p>
 						</div>
-						<div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-							<ShieldCheck className="size-4" />
-							Acesso global
+						<div className="flex items-center gap-3">
+							<div className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:flex">
+								<ShieldCheck className="size-4" />
+								Acesso global
+							</div>
+							{/* Same avatar and menu as every other header of the product. */}
+							<UserMenu user={user} onLogout={logout} isOrganizer={isOrganizer} isSuperAdmin />
 						</div>
 					</div>
 				</header>

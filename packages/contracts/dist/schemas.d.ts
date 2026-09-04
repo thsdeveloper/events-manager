@@ -32,23 +32,41 @@ export declare const credentialsSchema: z.ZodObject<{
     email: string;
     password: string;
 }>;
+export declare const MIN_REGISTRATION_AGE = 13;
+/**
+ * Idade completa em anos-calendário: o aniversário de hoje conta, o de amanhã
+ * não. Um aniversário em 29 de fevereiro completa o ano em 1º de março nos
+ * anos sem esse dia. As datas são comparadas em UTC para não depender do fuso
+ * do servidor.
+ */
+export declare function isAtLeastYearsOld(birthDate: string, years: number, today?: Date): boolean;
+/**
+ * Data de nascimento no formato do `<input type="date">` (AAAA-MM-DD). A idade
+ * mínima é regra de cadastro: menores de 13 anos não podem criar conta.
+ */
+export declare const birthDateSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>, string, string>;
 export declare const registerSchema: z.ZodObject<{
     email: z.ZodString;
 } & {
     first_name: z.ZodString;
     last_name: z.ZodString;
     password: z.ZodString;
+    birth_date: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>, string, string>;
 }, "strip", z.ZodTypeAny, {
     email: string;
     password: string;
     first_name: string;
     last_name: string;
+    birth_date: string;
 }, {
     email: string;
     password: string;
     first_name: string;
     last_name: string;
+    birth_date: string;
 }>;
+/** CPF da pessoa (não aceita CNPJ); guardado só com dígitos. */
+export declare const cpfSchema: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
 export declare const emailConfirmationSchema: z.ZodObject<{
     email: z.ZodString;
     token: z.ZodString;
@@ -76,24 +94,32 @@ export declare const updateProfileSchema: z.ZodObject<{
      * rótulo em `profiles.location` é escrito pelo servidor a partir daqui.
      */
     city_id: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
-    title: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    document: z.ZodOptional<z.ZodNullable<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>>>;
+    /** Pode ser corrigida no perfil, mas nunca apagada nem abaixo da idade mínima. */
+    birth_date: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>, string, string>>;
+    /** Exigida pela API quando o CPF muda: reautentica antes de alterar um dado sensível. */
+    current_password: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     avatar?: string | null | undefined;
+    city_id?: number | null | undefined;
     email?: string | undefined;
     first_name?: string | null | undefined;
     last_name?: string | null | undefined;
-    city_id?: number | null | undefined;
-    title?: string | null | undefined;
+    birth_date?: string | undefined;
     description?: string | null | undefined;
+    document?: string | null | undefined;
+    current_password?: string | undefined;
 }, {
     avatar?: string | null | undefined;
+    city_id?: number | null | undefined;
     email?: string | undefined;
     first_name?: string | null | undefined;
     last_name?: string | null | undefined;
-    city_id?: number | null | undefined;
-    title?: string | null | undefined;
+    birth_date?: string | undefined;
     description?: string | null | undefined;
+    document?: string | null | undefined;
+    current_password?: string | undefined;
 }>;
 export declare const eventStatusSchema: z.ZodEnum<["published", "draft", "cancelled", "archived"]>;
 export declare const httpUrlSchema: z.ZodEffects<z.ZodString, string, string>;
@@ -234,8 +260,8 @@ export declare const eventPatchSchema: z.ZodEffects<z.ZodObject<{
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
     status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    title?: string | undefined;
     description?: string | null | undefined;
+    title?: string | undefined;
     slug?: string | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
@@ -256,8 +282,8 @@ export declare const eventPatchSchema: z.ZodEffects<z.ZodObject<{
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
     status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    title?: string | undefined;
     description?: string | null | undefined;
+    title?: string | undefined;
     slug?: string | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
@@ -278,8 +304,8 @@ export declare const eventPatchSchema: z.ZodEffects<z.ZodObject<{
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
     status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    title?: string | undefined;
     description?: string | null | undefined;
+    title?: string | undefined;
     slug?: string | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
@@ -300,8 +326,8 @@ export declare const eventPatchSchema: z.ZodEffects<z.ZodObject<{
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
     status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    title?: string | undefined;
     description?: string | null | undefined;
+    title?: string | undefined;
     slug?: string | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
@@ -419,8 +445,8 @@ export declare const ticketPatchSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     event_id?: string | undefined;
     status?: "active" | "sold_out" | "inactive" | undefined;
-    title?: string | undefined;
     description?: string | null | undefined;
+    title?: string | undefined;
     quantity?: number | undefined;
     price?: number | undefined;
     service_fee_type?: "absorbed" | "passed_to_buyer" | undefined;
@@ -435,8 +461,8 @@ export declare const ticketPatchSchema: z.ZodObject<{
 }, {
     event_id?: string | undefined;
     status?: "active" | "sold_out" | "inactive" | undefined;
-    title?: string | undefined;
     description?: string | null | undefined;
+    title?: string | undefined;
     quantity?: number | undefined;
     price?: number | undefined;
     service_fee_type?: "absorbed" | "passed_to_buyer" | undefined;
