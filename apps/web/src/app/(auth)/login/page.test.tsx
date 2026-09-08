@@ -33,4 +33,13 @@ describe('LoginPage', () => {
 
 		expect(screen.getByRole('link', { name: /criar conta gratuita/i })).toHaveAttribute('href', '/register');
 	});
+
+	it('decorates the brand panel with the mood-board illustration, hidden from assistive technology', () => {
+		const { container } = renderWithProviders(<LoginPage />);
+
+		const illustration = container.querySelector('img[src*="mood-board"]');
+		expect(illustration).not.toBeNull();
+		expect(illustration).toHaveAttribute('alt', '');
+		expect(illustration).toHaveAttribute('aria-hidden', 'true');
+	});
 });

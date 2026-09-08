@@ -21,7 +21,18 @@ export function AuthLayout({ children, title, subtitle, showBackButton = true }:
 	const accentColor = globals?.accent_color || '#6644ff';
 
 	return (
-		<div className="flex min-h-screen">
+		<div className="relative flex min-h-screen">
+			{/* Decorativa: a organizadora montando o mural fica na costura dos dois painéis,
+			    vazando do painel colorido para o formulário, como um pôster colado na parede. */}
+			<img
+				src="/images/auth/mood-board.webp"
+				alt=""
+				aria-hidden="true"
+				width={900}
+				height={1558}
+				decoding="async"
+				className="pointer-events-none absolute bottom-0 left-1/2 z-20 hidden h-auto w-[min(26vw,460px)] translate-x-[-62%] xl:block"
+			/>
 			<div
 				className="relative hidden overflow-hidden lg:flex lg:w-1/2"
 				style={{
@@ -64,8 +75,7 @@ export function AuthLayout({ children, title, subtitle, showBackButton = true }:
 					<div className="my-auto max-w-lg space-y-8">
 						<div className="space-y-4">
 							<span className="inline-flex items-center gap-2.5 border-l-4 border-white bg-white/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] backdrop-blur-sm">
-								<BadgePercent aria-hidden="true" className="size-4 shrink-0" />
-								A menor taxa do mercado
+								<BadgePercent aria-hidden="true" className="size-4 shrink-0" />A menor taxa do mercado
 							</span>
 							<p className="text-4xl font-bold leading-tight">Venda mais ingressos e fique com mais do seu dinheiro</p>
 							<p className="text-base leading-7 text-white/80">
@@ -90,7 +100,6 @@ export function AuthLayout({ children, title, subtitle, showBackButton = true }:
 							))}
 						</ul>
 					</div>
-
 				</div>
 			</div>
 
