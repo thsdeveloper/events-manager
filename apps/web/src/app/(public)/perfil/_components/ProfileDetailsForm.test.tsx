@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
 import { ProfileDetailsForm } from './ProfileDetailsForm';
@@ -30,6 +30,15 @@ function setup(profileResponse: Record<string, unknown> = {}) {
 	const rendered = renderWithProviders(<ProfileDetailsForm user={user} onSaved={vi.fn()} />);
 
 	return { fetchMock, ...rendered };
+}
+
+type Person = ReturnType<typeof renderWithProviders>['user'];
+
+/** Preenche a senha no modal aberto por "Salvar alterações" e confirma. */
+async function confirmPassword(person: Person, password: string) {
+	const dialog = await screen.findByRole('dialog', { name: /confirme sua senha/i });
+	await person.type(within(dialog).getByLabelText(/senha atual/i), password);
+	await person.click(within(dialog).getByRole('button', { name: /confirmar e salvar/i }));
 }
 
 function profileCall(fetchMock: ReturnType<typeof mockFetch>) {
@@ -79,9 +88,9 @@ describe('ProfileDetailsForm', () => {
 		const cpf = screen.getByLabelText(/cpf/i);
 		await person.type(cpf, '52998224725');
 		expect(cpf).toHaveValue('529.982.247-25');
-		await person.type(await screen.findByLabelText(/senha atual/i), 'Qsesbs2006#@!');
 
 		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
+		await confirmPassword(person, 'Qsesbs2006#@!');
 
 		await waitFor(() => expect(profileCall(fetchMock)).not.toBeNull());
 		expect(profileCall(fetchMock)).toMatchObject({ document: '52998224725' });
@@ -95,6 +104,7 @@ describe('ProfileDetailsForm', () => {
 		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
 
 		expect(await screen.findByText('Informe um CPF válido.')).toBeInTheDocument();
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 		expect(profileCall(fetchMock)).toBeNull();
 	});
 
@@ -112,14 +122,16 @@ describe('ProfileDetailsForm', () => {
 		const { user: person } = renderWithProviders(<ProfileDetailsForm user={user} onSaved={vi.fn()} />);
 
 		await person.type(screen.getByLabelText(/cpf/i), '52998224725');
-		await person.type(await screen.findByLabelText(/senha atual/i), 'Qsesbs2006#@!');
 		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
+		await confirmPassword(person, 'Qsesbs2006#@!');
 
 		await waitFor(() => expect(profileCall(fetchMock)).not.toBeNull());
 		const message = await screen.findByText('Este CPF já está cadastrado em outra conta.');
 		expect(message).toBeInTheDocument();
-		// Shown next to the field, not only as a toast that disappears.
+		// Shown next to the field, not only as a toast that disappears; the modal
+		// is closed so the person can fix the CPF.
 		expect(message.closest('div')).toContainElement(screen.getByLabelText(/cpf/i));
+		await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 	});
 
 	it('locks the CPF once it is tied to paid activity and says how to change it', () => {
@@ -133,18 +145,37 @@ describe('ProfileDetailsForm', () => {
 		expect(screen.queryByLabelText(/senha atual/i)).not.toBeInTheDocument();
 	});
 
-	it('asks for the current password when the CPF changes and sends it along', async () => {
+	it('only asks for the current password, in a modal, when the person saves a CPF change', async () => {
 		const { user: person, fetchMock } = setup({ document: '52998224725' });
-		expect(screen.queryByLabelText(/senha atual/i)).not.toBeInTheDocument();
 
 		await person.type(screen.getByLabelText(/cpf/i), '52998224725');
-		const password = await screen.findByLabelText(/senha atual/i);
-		expect(password).toHaveAttribute('type', 'password');
-		await person.type(password, 'Qsesbs2006#@!');
+		expect(screen.queryByLabelText(/senha atual/i)).not.toBeInTheDocument();
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
 		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+		const dialog = await screen.findByRole('dialog', { name: /confirme sua senha/i });
+		const password = within(dialog).getByLabelText(/senha atual/i);
+		expect(password).toHaveAttribute('type', 'password');
+		expect(profileCall(fetchMock)).toBeNull();
+
+		await person.type(password, 'Qsesbs2006#@!');
+		await person.click(within(dialog).getByRole('button', { name: /confirmar e salvar/i }));
 
 		await waitFor(() => expect(profileCall(fetchMock)).not.toBeNull());
 		expect(profileCall(fetchMock)).toMatchObject({ document: '52998224725', current_password: 'Qsesbs2006#@!' });
+		await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+	});
+
+	it('saves other changes without asking for the password', async () => {
+		const { user: person, fetchMock } = setup();
+
+		await person.type(screen.getByLabelText(/sobre você/i), 'Gosto de festivais.');
+		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+		await waitFor(() => expect(profileCall(fetchMock)).not.toBeNull());
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+		expect(profileCall(fetchMock)).not.toHaveProperty('current_password');
 	});
 
 	it('does not submit a CPF change without the current password', async () => {
@@ -152,12 +183,27 @@ describe('ProfileDetailsForm', () => {
 
 		await person.type(screen.getByLabelText(/cpf/i), '52998224725');
 		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
+		const dialog = await screen.findByRole('dialog', { name: /confirme sua senha/i });
+		await person.click(within(dialog).getByRole('button', { name: /confirmar e salvar/i }));
 
-		expect(await screen.findByText('Confirme sua senha atual para alterar o CPF.')).toBeInTheDocument();
+		expect(await within(dialog).findByText('Confirme sua senha atual para alterar o CPF.')).toBeInTheDocument();
 		expect(profileCall(fetchMock)).toBeNull();
 	});
 
-	it('shows a wrong current password on its own field', async () => {
+	it('keeps the CPF change pending when the password modal is cancelled', async () => {
+		const { user: person, fetchMock } = setup();
+
+		await person.type(screen.getByLabelText(/cpf/i), '52998224725');
+		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
+		const dialog = await screen.findByRole('dialog', { name: /confirme sua senha/i });
+		await person.click(within(dialog).getByRole('button', { name: /cancelar/i }));
+
+		await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+		expect(profileCall(fetchMock)).toBeNull();
+		expect(screen.getByLabelText(/cpf/i)).toHaveValue('529.982.247-25');
+	});
+
+	it('shows a wrong current password inside the modal', async () => {
 		const fetchMock = mockFetch([
 			['/api/locations/states', () => jsonResponse([])],
 			[
@@ -171,12 +217,13 @@ describe('ProfileDetailsForm', () => {
 		const { user: person } = renderWithProviders(<ProfileDetailsForm user={user} onSaved={vi.fn()} />);
 
 		await person.type(screen.getByLabelText(/cpf/i), '52998224725');
-		await person.type(await screen.findByLabelText(/senha atual/i), 'errada');
 		await person.click(screen.getByRole('button', { name: /salvar alterações/i }));
+		await confirmPassword(person, 'errada');
 
 		await waitFor(() => expect(profileCall(fetchMock)).not.toBeNull());
-		const message = await screen.findByText('A senha atual está incorreta.');
-		expect(message.closest('div')).toContainElement(screen.getByLabelText(/senha atual/i));
+		const dialog = screen.getByRole('dialog', { name: /confirme sua senha/i });
+		const message = await within(dialog).findByText('A senha atual está incorreta.');
+		expect(message.closest('div')).toContainElement(within(dialog).getByLabelText(/senha atual/i));
 	});
 
 	it('masks the phone while typing and saves only its digits', async () => {

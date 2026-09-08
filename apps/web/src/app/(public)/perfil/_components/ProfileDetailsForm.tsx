@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { CalendarDays, Check, IdCard, KeyRound, Mail, MapPin, Phone, Save, UserRound } from 'lucide-react';
+import { CalendarDays, Check, IdCard, Mail, MapPin, Phone, Save, UserRound } from 'lucide-react';
 
 import { birthDateSchema, MIN_REGISTRATION_AGE } from '@events-manager/contracts';
 import { LocationSelect } from '@/components/location/LocationSelect';
@@ -13,6 +13,7 @@ import { isValidCPF, isValidPhone } from '@/lib/br-documents';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { ConfirmPasswordDialog } from './ConfirmPasswordDialog';
 import { PhoneVerification } from './PhoneVerification';
 import { type ProfileFormValues, type ProfileUser } from './types';
 
@@ -41,6 +42,7 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 	const [values, setValues] = useState(() => valuesFromUser(user));
 	// Fora de `values`: é credencial, não dado do perfil, e não conta como alteração.
 	const [currentPassword, setCurrentPassword] = useState('');
+	const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 	const [errors, setErrors] = useState(emptyErrors);
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -60,21 +62,46 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 		if (errors[field]) setErrors((current) => ({ ...current, [field]: undefined }));
 	};
 
+	const closePasswordDialog = () => {
+		setIsPasswordDialogOpen(false);
+		setCurrentPassword('');
+		setErrors((current) => ({ ...current, currentPassword: undefined }));
+	};
+
 	const handleReset = () => {
 		setValues(initialValues);
-		setCurrentPassword('');
+		closePasswordDialog();
 		setErrors(emptyErrors);
 	};
 
 	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		const nextErrors = validate(values);
-		if (isDocumentChanging && !currentPassword) {
-			nextErrors.currentPassword = 'Confirme sua senha atual para alterar o CPF.';
-		}
 		setErrors(nextErrors);
 		if (Object.keys(nextErrors).length > 0) return;
 
+		// Trocar o CPF exige a senha atual: pedimos num modal só neste momento,
+		// em vez de expor um campo de credencial no formulário.
+		if (isDocumentChanging) {
+			setIsPasswordDialogOpen(true);
+
+			return;
+		}
+
+		await save();
+	};
+
+	const handleConfirmPassword = async () => {
+		if (!currentPassword) {
+			setErrors((current) => ({ ...current, currentPassword: 'Confirme sua senha atual para alterar o CPF.' }));
+
+			return;
+		}
+
+		await save();
+	};
+
+	const save = async () => {
 		setIsSaving(true);
 		try {
 			const response = await fetch('/api/user/profile', {
@@ -101,6 +128,9 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 				// on the field itself: a toast alone vanishes before the person finds
 				// what to fix.
 				const field = problem?.context?.field ? apiFieldNames[problem.context.field] : undefined;
+				// A wrong password is fixed in the modal, so it stays open; any other
+				// problem lives on the form, so the modal gets out of the way.
+				if (field !== 'currentPassword') setIsPasswordDialogOpen(false);
 				if (field && problem?.detail) {
 					setErrors((current) => ({ ...current, [field]: problem.detail }));
 				}
@@ -108,7 +138,7 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 			}
 			const result = (await response.json()) as { user: ProfileUser };
 
-			setCurrentPassword('');
+			closePasswordDialog();
 			onSaved({ ...user, ...result.user, email: result.user.email || user.email });
 			toast({
 				title: 'Perfil atualizado',
@@ -245,30 +275,6 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 								/>
 							</div>
 						</FormField>
-						{isDocumentChanging && (
-							<div className="sm:col-span-2">
-								<FormField
-									id="profile-current-password"
-									label="Senha atual"
-									icon={KeyRound}
-									error={errors.currentPassword}
-									description="Confirme sua senha para alterar o CPF. Você receberá um e-mail avisando da alteração."
-								>
-									<Input
-										id="profile-current-password"
-										type="password"
-										value={currentPassword}
-										onChange={(event) => {
-											setCurrentPassword(event.target.value);
-											if (errors.currentPassword) setErrors((current) => ({ ...current, currentPassword: undefined }));
-										}}
-										autoComplete="current-password"
-										aria-invalid={Boolean(errors.currentPassword)}
-										className="h-11 rounded-lg"
-									/>
-								</FormField>
-							</div>
-						)}
 						<div className="sm:col-span-2">
 							<FormField
 								id="profile-location-state"
@@ -325,6 +331,19 @@ export function ProfileDetailsForm({ user, onSaved }: ProfileDetailsFormProps) {
 					</Button>
 				</div>
 			</footer>
+
+			<ConfirmPasswordDialog
+				open={isPasswordDialogOpen}
+				password={currentPassword}
+				error={errors.currentPassword}
+				isSaving={isSaving}
+				onPasswordChange={(password) => {
+					setCurrentPassword(password);
+					if (errors.currentPassword) setErrors((current) => ({ ...current, currentPassword: undefined }));
+				}}
+				onCancel={closePasswordDialog}
+				onConfirm={handleConfirmPassword}
+			/>
 		</form>
 	);
 }
