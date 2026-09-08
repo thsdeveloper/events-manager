@@ -23,13 +23,13 @@ export default defineConfig({
 			reportsDirectory: './coverage',
 			include: ['src/application/**/*.ts', 'src/routes/**/*.ts', 'src/shared/**/*.ts'],
 			exclude: ['src/**/*.test.ts', 'src/index.ts'],
-			// Catraca: os valores refletem a cobertura medida em 2026-09-04 e só
+			// Catraca: os valores refletem a cobertura medida em 2026-09-05 e só
 			// podem subir. Ao cobrir um módulo, eleve o limiar correspondente.
 			thresholds: {
-				lines: 50,
-				functions: 57,
-				branches: 75,
-				statements: 50,
+				lines: 55,
+				functions: 61,
+				branches: 80,
+				statements: 55,
 			},
 		},
 	},
