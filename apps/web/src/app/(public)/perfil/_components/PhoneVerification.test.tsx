@@ -49,6 +49,18 @@ describe('PhoneVerification', () => {
 		expect(onVerified).toHaveBeenCalledWith(verifiedUser);
 	});
 
+	it('finishes at once when the API already confirmed the phone (development shortcut)', async () => {
+		const verifiedUser = { id: 'u1', phone: PHONE, phone_verified_at: '2026-09-04T20:00:00.000Z' };
+		mockFetch([['/api/user/phone/request', () => jsonResponse({ success: true, verified: true, user: verifiedUser })]]);
+		const onVerified = vi.fn();
+		const { user } = renderWithProviders(<PhoneVerification phone={PHONE} verified={false} onVerified={onVerified} />);
+
+		await user.click(screen.getByRole('button', { name: /confirmar por sms/i }));
+
+		await waitFor(() => expect(onVerified).toHaveBeenCalledWith(verifiedUser));
+		expect(screen.queryByLabelText(/código recebido por sms/i)).not.toBeInTheDocument();
+	});
+
 	it('shows a wrong code on the code field and keeps the form open', async () => {
 		mockFetch([
 			['/api/user/phone/request', () => jsonResponse({ success: true })],

@@ -77,6 +77,14 @@ export function PhoneVerification({ phone, verified, onVerified }: PhoneVerifica
 
 				return;
 			}
+			// In development the API confirms on the spot (no SMS provider); the
+			// response then carries the already verified user and no code is needed.
+			const result = (await response.json().catch(() => null)) as { verified?: boolean; user?: ProfileUser } | null;
+			if (result?.verified && result.user) {
+				onVerified(result.user);
+
+				return;
+			}
 			setStep('code');
 			setCooldown(60);
 		} finally {

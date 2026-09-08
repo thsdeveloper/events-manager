@@ -224,3 +224,47 @@ describe('phone verification routes', () => {
 		expect(response.json()).toMatchObject({ success: true, user: { phone: PHONE } });
 	});
 });
+
+describe('development shortcut for phone confirmation', () => {
+	const profile = { id: TEST_USER_ID, phone: PHONE, phone_verified_at: '2026-09-04T20:00:00.000Z' };
+
+	it('confirms the phone at once in development, without asking the provider for a code', async () => {
+		const { clients, sessionAuth } = createSupabaseClientsStub({
+			user: identity,
+			tables: { profiles: { data: profile } },
+		});
+		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv({ NODE_ENV: 'development' }), clients });
+
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/user/phone/request',
+			headers: sessionCookie('access-token', 'refresh-token'),
+			payload: { phone: PHONE },
+		});
+		await app.close();
+
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject({ success: true, verified: true, user: { phone: PHONE } });
+		expect(sessionAuth.updateUser).not.toHaveBeenCalled();
+	});
+
+	it('never takes the shortcut outside development', async () => {
+		const { clients, sessionAuth } = createSupabaseClientsStub({
+			user: identity,
+			tables: { profiles: { data: profile } },
+		});
+		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv({ NODE_ENV: 'production' }), clients });
+
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/user/phone/request',
+			headers: sessionCookie('access-token', 'refresh-token'),
+			payload: { phone: PHONE },
+		});
+		await app.close();
+
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).not.toHaveProperty('verified');
+		expect(sessionAuth.updateUser).toHaveBeenCalledWith({ phone: E164 });
+	});
+});
