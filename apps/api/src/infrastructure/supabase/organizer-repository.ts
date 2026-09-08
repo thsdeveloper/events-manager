@@ -30,6 +30,26 @@ export class SupabaseOrganizerRepository implements OrganizerRepository {
 		return data ? (data as Record<string, unknown>) : ('exists' as const);
 	}
 
+	async existsForUser(userId: string) {
+		const { count, error } = await this.clients.admin
+			.from('organizers')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', userId);
+		if (error) throw error;
+		return (count ?? 0) > 0;
+	}
+
+	async findByDocument(document: string) {
+		const { data, error } = await this.clients.admin
+			.from('organizers')
+			.select('id,user_id')
+			.eq('document', document)
+			.limit(1)
+			.maybeSingle();
+		if (error) throw error;
+		return data as { id: string; user_id: string } | null;
+	}
+
 	// Keyed by organization, not by user: a user may own several, and filtering by
 	// user_id would write the same values into every one of them.
 	async updateById(organizerId: string, input: Partial<OrganizerInput>) {

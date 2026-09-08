@@ -1,61 +1,59 @@
 'use client';
 
-import { motion, AnimatePresence, useInView } from 'framer-motion';
-import { useRef, useState } from 'react';
-import { Search, ChevronDown, HelpCircle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { ChevronDown, HelpCircle, Search } from 'lucide-react';
+import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 const faqs = [
 	{
 		id: 1,
-		category: 'Aprovação',
-		question: 'Quanto tempo leva para minha conta ser aprovada?',
+		category: 'Conta',
+		question: 'Quando minha conta de organizador é liberada?',
 		answer:
-			'O prazo depende da revisão da plataforma. O status da solicitação fica visível no seu perfil; quando o acesso for ativado, o painel de organizador será liberado.',
+			'Ao criar a conta ela entra em análise rápida da plataforma. O status fica visível no seu perfil e, assim que for ativada, o painel de organizador é liberado.',
 	},
 	{
 		id: 2,
-		category: 'Aprovação',
-		question: 'Quais documentos preciso fornecer?',
+		category: 'Conta',
+		question: 'Posso vender como pessoa física ou preciso de CNPJ?',
 		answer:
-			'Informe o nome da organização, um e-mail válido e uma descrição da atividade. Telefone, site e documento podem ser solicitados conforme a operação e a configuração de pagamentos.',
+			'Os dois funcionam. Pessoa física vende com o CPF já validado no perfil; empresa, produtora ou coletivo informa o CNPJ. Taxas, checkout e repasses são iguais.',
 	},
 	{
 		id: 3,
-		category: 'Custos',
-		question: 'Como consulto as taxas aplicadas aos ingressos?',
+		category: 'Conta',
+		question: 'Preciso configurar um gateway de pagamento?',
 		answer:
-			'As taxas são definidas na configuração atual da plataforma e entram no cálculo do preço ao comprador. O resumo do checkout e o painel financeiro mostram os valores aplicados à operação.',
+			'Não. A plataforma administra o processamento com o gateway integrado. Você só cadastra uma chave PIX para receber os repasses.',
 	},
 	{
 		id: 4,
-		category: 'Custos',
-		question: 'Posso absorver ou repassar a taxa de serviço?',
+		category: 'Pagamentos',
+		question: 'Quais formas de pagamento os participantes podem usar?',
 		answer:
-			'Sim. Cada tipo de ingresso permite escolher se a taxa da plataforma será absorvida pelo organizador ou incorporada ao preço pago pelo comprador.',
+			'PIX e cartão de crédito no checkout hospedado, com parcelamento em ingressos elegíveis. O estoque é reservado no ato da compra.',
 	},
 	{
 		id: 5,
 		category: 'Pagamentos',
-		question: 'Como e quando recebo meus pagamentos?',
+		question: 'Como e quando recebo o valor das vendas?',
 		answer:
-			'Depois que sua chave PIX for cadastrada e aprovada, os repasses podem ser processados pela administração da plataforma. Saldo, status e comprovante ficam disponíveis no painel financeiro.',
+			'O saldo líquido de cada evento fica disponível no painel financeiro. Os repasses são feitos para a chave PIX cadastrada e cada um tem status e histórico.',
 	},
 	{
 		id: 6,
 		category: 'Pagamentos',
-		question: 'Quais meios de pagamento estão disponíveis?',
+		question: 'Quais taxas são cobradas?',
 		answer:
-			'O checkout usa os meios liberados pelo gateway configurado na plataforma. Na integração atual, o checkout padrão oferece PIX e cartão; planos parcelados geram cobranças PIX individuais.',
+			'Uma taxa de serviço por ingresso vendido, sem mensalidade nem fidelidade. Você escolhe se a taxa é repassada ao comprador ou absorvida no preço; o simulador desta página mostra o valor líquido.',
 	},
 	{
 		id: 7,
 		category: 'Eventos',
 		question: 'Posso criar eventos gratuitos?',
-		answer:
-			'Sim, quando eventos gratuitos estão habilitados na configuração da plataforma. Ingressos com valor zero são confirmados sem iniciar uma cobrança no gateway.',
+		answer: 'Sim. Eventos gratuitos têm inscrição e check-in normais, sem cobrança de taxa de serviço.',
 	},
 	{
 		id: 8,
@@ -82,153 +80,145 @@ const faqs = [
 
 const categories = Array.from(new Set(faqs.map((faq) => faq.category)));
 
+function normalize(value: string) {
+	return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+/**
+ * Perguntas frequentes da área do organizador. Segue o mesmo ritmo das outras
+ * seções da landing (título à esquerda, largura do container) para que a
+ * borda esquerda continue alinhada com o header em vez de recuar para uma
+ * coluna centralizada.
+ */
 export function FAQAccordion() {
-	const containerRef = useRef(null);
-	const isInView = useInView(containerRef, { once: true, amount: 0.2 });
+	const id = useId();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 	const [openItems, setOpenItems] = useState<number[]>([]);
 
-	const toggleItem = (id: number) => {
-		setOpenItems((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+	const toggleItem = (itemId: number) => {
+		setOpenItems((previous) =>
+			previous.includes(itemId) ? previous.filter((item) => item !== itemId) : [...previous, itemId],
+		);
 	};
 
-	// Filter FAQs based on search and category
+	const term = normalize(searchTerm.trim());
 	const filteredFaqs = faqs.filter((faq) => {
 		const matchesSearch =
-			searchTerm === '' ||
-			faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			faq.answer.toLowerCase().includes(searchTerm.toLowerCase());
+			term.length === 0 || normalize(faq.question).includes(term) || normalize(faq.answer).includes(term);
 		const matchesCategory = selectedCategory === null || faq.category === selectedCategory;
 
 		return matchesSearch && matchesCategory;
 	});
 
 	return (
-		<section ref={containerRef} className="py-16">
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={isInView ? { opacity: 1, y: 0 } : {}}
-				transition={{ duration: 0.6 }}
-				className="text-center mb-12"
-			>
-				<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-sm font-semibold mb-6">
-					<HelpCircle className="size-4" />
-					Dúvidas frequentes
-				</div>
-				<h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Perguntas e respostas</h2>
-				<p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-					Tudo que você precisa saber para começar como organizador
-				</p>
-			</motion.div>
-
-			{/* Search Bar */}
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={isInView ? { opacity: 1, y: 0 } : {}}
-				transition={{ delay: 0.2, duration: 0.6 }}
-				className="max-w-2xl mx-auto mb-8"
-			>
-				<div className="relative">
-					<Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
-					<Input
-						type="text"
-						placeholder="Buscar por palavra-chave..."
-						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
-						className="pl-12 h-14 text-base border-2 border-gray-200 dark:border-gray-800 focus:border-purple-500 dark:focus:border-purple-500 rounded-lg"
-					/>
-				</div>
-			</motion.div>
-
-			{/* Category Filters */}
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={isInView ? { opacity: 1, y: 0 } : {}}
-				transition={{ delay: 0.3, duration: 0.6 }}
-				className="flex flex-wrap gap-2 justify-center mb-8"
-			>
-				<Button
-					variant={selectedCategory === null ? 'default' : 'outline'}
-					size="sm"
-					onClick={() => setSelectedCategory(null)}
-					className="rounded-full"
-				>
-					Todas
-				</Button>
-				{categories.map((category) => (
-					<Button
-						key={category}
-						variant={selectedCategory === category ? 'default' : 'outline'}
-						size="sm"
-						onClick={() => setSelectedCategory(category)}
-						className="rounded-full"
+		<div aria-labelledby={`${id}-title`}>
+			<div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
+				<div>
+					<p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
+						Dúvidas frequentes
+					</p>
+					<h2
+						id={`${id}-title`}
+						className="mt-2 font-heading text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-4xl"
 					>
-						{category}
-					</Button>
-				))}
-			</motion.div>
-
-			{/* FAQ Items */}
-			<div className="max-w-3xl mx-auto space-y-4">
-				{filteredFaqs.length === 0 ? (
-					<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
-						<HelpCircle className="size-16 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-						<p className="text-gray-600 dark:text-gray-400">Nenhuma pergunta encontrada para "{searchTerm}"</p>
-					</motion.div>
-				) : (
-					filteredFaqs.map((faq, index) => (
-						<motion.div
-							key={faq.id}
-							initial={{ opacity: 0, y: 20 }}
-							animate={isInView ? { opacity: 1, y: 0 } : {}}
-							transition={{ delay: 0.4 + index * 0.05, duration: 0.5 }}
+						Perguntas e respostas
+					</h2>
+					<p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
+						O que você precisa saber antes de publicar o primeiro evento.
+					</p>
+				</div>
+				<div className="space-y-3">
+					<label htmlFor={`${id}-search`} className="sr-only">
+						Buscar pergunta
+					</label>
+					<div className="relative">
+						<Search
+							className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+							aria-hidden="true"
+						/>
+						<Input
+							id={`${id}-search`}
+							type="search"
+							placeholder="Buscar por palavra-chave"
+							value={searchTerm}
+							onChange={(event) => setSearchTerm(event.target.value)}
+							className="h-11 pl-10"
+						/>
+					</div>
+					<div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por categoria">
+						<Button
+							variant={selectedCategory === null ? 'default' : 'outline'}
+							size="sm"
+							onClick={() => setSelectedCategory(null)}
 						>
-							<Card className="border-2 border-transparent hover:border-purple-200 dark:hover:border-purple-800 transition-all duration-300">
-								<button
-									onClick={() => toggleItem(faq.id)}
-									className="w-full text-left p-6 flex items-start justify-between gap-4 group"
-									aria-expanded={openItems.includes(faq.id)}
-								>
-									<div className="flex-1">
-										<div className="flex items-center gap-3 mb-2">
-											<span className="text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded">
-												{faq.category}
-											</span>
-										</div>
-										<h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-											{faq.question}
-										</h3>
-									</div>
-									<motion.div
-										animate={{ rotate: openItems.includes(faq.id) ? 180 : 0 }}
-										transition={{ duration: 0.3 }}
-										className="flex-shrink-0"
-									>
-										<ChevronDown className="size-5 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors" />
-									</motion.div>
-								</button>
-
-								<AnimatePresence>
-									{openItems.includes(faq.id) && (
-										<motion.div
-											initial={{ height: 0, opacity: 0 }}
-											animate={{ height: 'auto', opacity: 1 }}
-											exit={{ height: 0, opacity: 0 }}
-											transition={{ duration: 0.3 }}
-											className="overflow-hidden"
-										>
-											<CardContent className="px-6 pb-6 pt-0">
-												<p className="text-gray-600 dark:text-gray-400 leading-relaxed">{faq.answer}</p>
-											</CardContent>
-										</motion.div>
-									)}
-								</AnimatePresence>
-							</Card>
-						</motion.div>
-					))
-				)}
+							Todas
+						</Button>
+						{categories.map((category) => (
+							<Button
+								key={category}
+								variant={selectedCategory === category ? 'default' : 'outline'}
+								size="sm"
+								onClick={() => setSelectedCategory(category)}
+							>
+								{category}
+							</Button>
+						))}
+					</div>
+				</div>
 			</div>
-		</section>
+
+			{filteredFaqs.length === 0 ? (
+				<div className="mt-8 flex items-center gap-3 rounded-lg border border-dashed border-slate-300 p-6 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+					<HelpCircle className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
+					Nenhuma pergunta encontrada para &ldquo;{searchTerm}&rdquo;.
+				</div>
+			) : (
+				<ul className="mt-8 grid gap-3 lg:grid-cols-2" aria-label="Perguntas frequentes">
+					{filteredFaqs.map((faq) => {
+						const open = openItems.includes(faq.id);
+
+						return (
+							<li
+								key={faq.id}
+								className={cn(
+									'rounded-lg border bg-white shadow-sm transition-colors dark:bg-slate-900',
+									open
+										? 'border-violet-300 dark:border-violet-700'
+										: 'border-slate-200 hover:border-violet-300 dark:border-slate-800 dark:hover:border-violet-700',
+								)}
+							>
+								<button
+									type="button"
+									onClick={() => toggleItem(faq.id)}
+									aria-expanded={open}
+									aria-controls={`${id}-answer-${faq.id}`}
+									className="flex w-full items-start justify-between gap-4 p-5 text-left"
+								>
+									<span className="min-w-0">
+										<span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
+											{faq.category}
+										</span>
+										<span className="mt-1 block font-semibold text-slate-950 dark:text-white">{faq.question}</span>
+									</span>
+									<ChevronDown
+										className={cn('mt-1 size-5 shrink-0 text-slate-400 transition-transform', open && 'rotate-180')}
+										aria-hidden="true"
+									/>
+								</button>
+								{open && (
+									<p
+										id={`${id}-answer-${faq.id}`}
+										className="border-t border-slate-100 px-5 pb-5 pt-4 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:text-slate-300"
+									>
+										{faq.answer}
+									</p>
+								)}
+							</li>
+						);
+					})}
+				</ul>
+			)}
+		</div>
 	);
 }

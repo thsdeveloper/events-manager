@@ -1,3 +1,4 @@
+import { getProfileChecklist, type AppUser } from '@events-manager/contracts';
 import { ApiError } from '../../shared/errors.js';
 
 export interface AuthIdentity {
@@ -278,6 +279,25 @@ export class AuthService {
 	}
 
 	/**
+	 * Vender ingressos exige o cadastro completo: os dados do organizador (nome,
+	 * CPF, telefone confirmado, contato) são os que aparecem em comprovantes e
+	 * repasses, e a plataforma precisa saber com quem está lidando antes de
+	 * liberar a venda. A lista do que falta vem do mesmo contrato que o front usa.
+	 */
+	async requireCompleteProfile(user: AuthIdentity) {
+		const profile = await this.repository.serialize(user);
+		const missing = getProfileChecklist(profile as unknown as AppUser)
+			.filter((item) => !item.complete)
+			.map((item) => item.label);
+		if (missing.length > 0) {
+			throw new ApiError('Complete seu cadastro antes de se tornar organizador.', 403, 'PROFILE_INCOMPLETE', {
+				missing,
+			});
+		}
+		return profile;
+	}
+
+	/**
 	 * Confirmação de telefone pelo provedor (Supabase Auth, fluxo phone_change):
 	 * o código vai por SMS para o número informado e só o provedor o valida. O
 	 * intervalo mínimo entre envios é do provedor; aqui ele vira um 429 legível.
@@ -311,6 +331,15 @@ export class AuthService {
 				field: 'phone',
 			});
 		}
+	}
+
+	/**
+	 * Atalho de desenvolvimento: marca o telefone como confirmado sem código.
+	 * Só a rota decide quando usá-lo (NODE_ENV=development); nunca chega a
+	 * produção, onde o único caminho é o código do provedor.
+	 */
+	confirmPhoneWithoutCode(user: AuthIdentity, phoneDigits: string) {
+		return this.repository.markPhoneVerified(user.id, phoneDigits);
 	}
 
 	async confirmPhoneVerification(user: AuthIdentity, phoneDigits: string, token: string) {
@@ -431,6 +460,10 @@ export class AuthService {
 	}
 
 	async createOrganizer(userId: string, input: { email: string; name: string }) {
+		// Regra de negócio: uma conta de organizador por pessoa, em qualquer status.
+		if ((await this.repository.listOrganizers(userId)).length > 0) {
+			throw new ApiError('Você já possui uma conta de organizador.', 409, 'ORGANIZER_EXISTS');
+		}
 		const organizer = await this.repository.createOrganizer(userId, input);
 		await this.repository.rememberActiveOrganizer(userId, organizer.id);
 		return organizer;

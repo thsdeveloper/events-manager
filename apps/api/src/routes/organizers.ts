@@ -1,5 +1,4 @@
-import { brDocumentSchema, brPhoneSchema } from '@events-manager/contracts';
-import { httpUrlSchema } from '@events-manager/contracts';
+import { brDocumentSchema, brPhoneSchema, httpUrlSchema, organizerSignupSchema } from '@events-manager/contracts';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { MediaService } from '../application/media/media-service.js';
@@ -44,17 +43,11 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 
 	app.post('/api/organizer/request', async (request, reply) => {
 		const context = await requireUser(request, auth);
-		const input = organizerInput
-			.extend({ name: z.string().trim().min(2), description: z.string().trim().min(10) })
-			.parse(request.body);
-		const organizer = await service.create(context.user.id, input, initialStatus);
-		return reply.code(201).send({ success: true, organizer });
-	});
-
-	app.post('/api/organizer/profile', async (request, reply) => {
-		const context = await requireUser(request, auth);
-		const input = organizerInput.extend({ name: z.string().trim().min(2) }).parse(request.body);
-		const organizer = await service.create(context.user.id, input, initialStatus);
+		const profile = await auth.requireCompleteProfile(context.user);
+		const input = organizerSignupSchema.parse(request.body);
+		const organizer = await service.create(context.user.id, input, initialStatus, {
+			profileDocument: typeof profile.document === 'string' ? profile.document : null,
+		});
 		return reply.code(201).send({ success: true, organizer });
 	});
 
@@ -79,7 +72,6 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 		return { success: true, file: uploaded, organizer };
 	});
 
-
 	app.get('/api/organizer/organizations', async (request) => {
 		const context = await requireUser(request, auth);
 		const organizations = await auth.listOrganizers(context.user.id);
@@ -90,6 +82,7 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 
 	app.post('/api/organizer/organizations', async (request, reply) => {
 		const context = await requireUser(request, auth);
+		await auth.requireCompleteProfile(context.user);
 		const input = z
 			.object({ name: z.string().trim().min(2, 'Informe o nome da organização').max(120), email: z.string().email() })
 			.parse(request.body);

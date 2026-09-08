@@ -1,4 +1,10 @@
-import type { AppUser, EventRegistration } from '@events-manager/contracts';
+import {
+	getProfileChecklist as getSharedProfileChecklist,
+	getProfileCompletion as getSharedProfileCompletion,
+	type AppUser,
+	type EventRegistration,
+	type ProfileChecklistItem as SharedProfileChecklistItem,
+} from '@events-manager/contracts';
 import type { ProfileSection } from '@/lib/profile-sections';
 
 export type ProfileUser = AppUser & { email: string };
@@ -44,39 +50,31 @@ export interface TicketSummary {
 // the header avatar menu shares the same implementation.
 export { getDisplayName, getInitials } from '@/lib/user-display';
 
-export interface ProfileChecklistItem {
-	id: string;
-	label: string;
-	complete: boolean;
+export interface ProfileChecklistItem extends SharedProfileChecklistItem {
 	/** Where the item is filled in. */
 	section: ProfileSection;
 }
 
+/** The photo is changed from the sidebar avatar (overview); everything else in "Dados pessoais". */
+const sectionByItem: Record<SharedProfileChecklistItem['id'], ProfileSection> = {
+	name: 'personal',
+	avatar: 'overview',
+	birth_date: 'personal',
+	document: 'personal',
+	phone: 'personal',
+	phone_verified: 'personal',
+	location: 'personal',
+	description: 'personal',
+};
+
 /**
- * Single source of truth for "how complete is the profile": the card lists
- * these items and the percentage counts them, so both always agree.
+ * The shared checklist from `@events-manager/contracts` (the same rule the API
+ * enforces before someone becomes an organizer), plus where each item lives.
  */
 export function getProfileChecklist(user: ProfileUser): ProfileChecklistItem[] {
-	return [
-		{ id: 'name', label: 'Nome e sobrenome', complete: Boolean(user.first_name && user.last_name), section: 'personal' },
-		{ id: 'avatar', label: 'Foto de perfil', complete: Boolean(user.avatar), section: 'overview' },
-		{ id: 'birth_date', label: 'Data de nascimento', complete: Boolean(user.birth_date), section: 'personal' },
-		{ id: 'document', label: 'CPF', complete: Boolean(user.document), section: 'personal' },
-		{ id: 'phone', label: 'Telefone', complete: Boolean(user.phone), section: 'personal' },
-		{
-			id: 'phone_verified',
-			label: 'Telefone confirmado',
-			complete: Boolean(user.phone && user.phone_verified_at),
-			section: 'personal',
-		},
-		{ id: 'location', label: 'Localização', complete: Boolean(user.location), section: 'personal' },
-		{ id: 'description', label: 'Sobre você', complete: Boolean(user.description), section: 'personal' },
-	];
+	return getSharedProfileChecklist(user).map((item) => ({ ...item, section: sectionByItem[item.id] }));
 }
 
 export function getProfileCompletion(user: ProfileUser) {
-	const items = getProfileChecklist(user);
-	const completed = items.filter((item) => item.complete).length;
-
-	return Math.round((completed / items.length) * 100);
+	return getSharedProfileCompletion(user);
 }

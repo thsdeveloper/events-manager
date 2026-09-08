@@ -21,7 +21,7 @@ export default function AdminSidebar({ organizer, organizations }: { organizer: 
   const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
 
   return <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-slate-200 bg-white lg:flex">
-    <div className="border-b border-slate-200 p-4"><OrganizationSwitcher organizations={organizations} activeId={organizer.id} defaultEmail={organizer.email} /></div>
+    <div className="border-b border-slate-200 p-4"><OrganizationSwitcher organizations={organizations} activeId={organizer.id} /></div>
     <nav aria-label="Navegação do organizador" className="flex-1 space-y-1 overflow-y-auto p-4">{organizerNavigation.map((item) => { const Icon = item.icon; 
 
 return <Link key={item.href} href={item.href} className={cn('flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors', isActive(item.href) ? 'bg-violet-50 text-violet-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950')}><Icon className={cn('size-5', isActive(item.href) ? 'text-violet-600' : 'text-slate-400')} />{item.name}</Link>; })}</nav>

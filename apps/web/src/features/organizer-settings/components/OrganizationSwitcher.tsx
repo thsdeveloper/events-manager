@@ -1,21 +1,15 @@
 'use client';
 
-import { Building2, Check, ChevronsUpDown, Loader2, Plus } from 'lucide-react';
+import { Building2, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { getMediaAssetUrl } from '@/lib/media';
 import { cn } from '@/lib/utils';
@@ -55,20 +49,14 @@ function OrganizationMark({ organization, className }: { organization: Organizat
 interface OrganizationSwitcherProps {
 	organizations: OrganizationOption[];
 	activeId: string;
-	/** Prefilled on the create form so a new organization has a contact from the start. */
-	defaultEmail: string;
 }
 
-export function OrganizationSwitcher({ organizations, activeId, defaultEmail }: OrganizationSwitcherProps) {
+export function OrganizationSwitcher({ organizations, activeId }: OrganizationSwitcherProps) {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [switching, setSwitching] = useState<string | null>(null);
-	const [createOpen, setCreateOpen] = useState(false);
-	const [name, setName] = useState('');
-	const [email, setEmail] = useState(defaultEmail);
-	const [creating, setCreating] = useState(false);
 
-	const active = organizations.find(item => item.id === activeId) ?? organizations[0];
+	const active = organizations.find((item) => item.id === activeId) ?? organizations[0];
 
 	const activate = useCallback(
 		async (id: string) => {
@@ -96,37 +84,6 @@ export function OrganizationSwitcher({ organizations, activeId, defaultEmail }: 
 		[activeId, router, toast],
 	);
 
-	async function create(event: React.FormEvent) {
-		event.preventDefault();
-		setCreating(true);
-		try {
-			const response = await fetch('/api/organizer/organizations', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({ name: name.trim(), email: email.trim() }),
-			});
-			const body = await response.json().catch(() => null);
-			if (!response.ok) throw new Error(body?.detail ?? 'Não foi possível criar a organização.');
-			toast({
-				title: 'Organização criada',
-				description: 'Ela entra em análise antes de publicar eventos.',
-				variant: 'success',
-			});
-			setCreateOpen(false);
-			setName('');
-			router.refresh();
-		} catch (error) {
-			toast({
-				title: 'Erro ao criar',
-				description: error instanceof Error ? error.message : 'Tente novamente.',
-				variant: 'destructive',
-			});
-		} finally {
-			setCreating(false);
-		}
-	}
-
 	if (!active) return null;
 
 	return (
@@ -144,18 +101,12 @@ export function OrganizationSwitcher({ organizations, activeId, defaultEmail }: 
 				</DropdownMenuTrigger>
 
 				<DropdownMenuContent align="start" className="w-64">
-					{organizations.map(organization => (
-						<DropdownMenuItem
-							key={organization.id}
-							onClick={() => activate(organization.id)}
-							className="gap-2 py-2"
-						>
+					{organizations.map((organization) => (
+						<DropdownMenuItem key={organization.id} onClick={() => activate(organization.id)} className="gap-2 py-2">
 							<OrganizationMark organization={organization} className="size-7 rounded-md" />
 							<span className="min-w-0 flex-1">
 								<span className="block truncate text-sm font-medium">{organization.name}</span>
-								{organization.status !== 'active' && (
-									<span className="block text-xs text-amber-600">Em análise</span>
-								)}
+								{organization.status !== 'active' && <span className="block text-xs text-amber-600">Em análise</span>}
 							</span>
 							{switching === organization.id ? (
 								<Loader2 className="size-4 shrink-0 animate-spin" />
@@ -164,60 +115,8 @@ export function OrganizationSwitcher({ organizations, activeId, defaultEmail }: 
 							)}
 						</DropdownMenuItem>
 					))}
-					<DropdownMenuSeparator />
-					<DropdownMenuItem onClick={() => setCreateOpen(true)} className="gap-2 py-2 font-medium text-violet-700">
-						<Plus className="size-4" />
-						Nova organização
-					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
-
-			<Dialog open={createOpen} onOpenChange={setCreateOpen}>
-				<DialogContent>
-					<form onSubmit={create}>
-						<DialogHeader>
-							<DialogTitle>Nova organização</DialogTitle>
-							<DialogDescription>
-								Cada organização tem seus próprios eventos, ingressos e repasses. Você alterna entre elas por aqui.
-							</DialogDescription>
-						</DialogHeader>
-
-						<div className="space-y-4 py-4">
-							<div className="space-y-2">
-								<Label htmlFor="new-organization-name">Nome</Label>
-								<Input
-									id="new-organization-name"
-									value={name}
-									onChange={event => setName(event.target.value)}
-									placeholder="Ex: Produtora Aurora"
-									maxLength={120}
-									required
-									autoFocus
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor="new-organization-email">E-mail corporativo</Label>
-								<Input
-									id="new-organization-email"
-									type="email"
-									value={email}
-									onChange={event => setEmail(event.target.value)}
-									required
-								/>
-							</div>
-						</div>
-
-						<DialogFooter>
-							<Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-								Cancelar
-							</Button>
-							<Button type="submit" loading={creating} disabled={name.trim().length < 2}>
-								Criar organização
-							</Button>
-						</DialogFooter>
-					</form>
-				</DialogContent>
-			</Dialog>
 		</>
 	);
 }
