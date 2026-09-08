@@ -53,17 +53,17 @@ export declare const registerSchema: z.ZodObject<{
     password: z.ZodString;
     birth_date: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>, string, string>;
 }, "strip", z.ZodTypeAny, {
+    birth_date: string;
     email: string;
     password: string;
     first_name: string;
     last_name: string;
-    birth_date: string;
 }, {
+    birth_date: string;
     email: string;
     password: string;
     first_name: string;
     last_name: string;
-    birth_date: string;
 }>;
 /** CPF da pessoa (não aceita CNPJ); guardado só com dígitos. */
 export declare const cpfSchema: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
@@ -105,11 +105,11 @@ export declare const phoneVerificationConfirmSchema: z.ZodObject<{
 } & {
     token: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    token: string;
     phone: string;
+    token: string;
 }, {
-    token: string;
     phone: string;
+    token: string;
 }>;
 export declare const updateProfileSchema: z.ZodObject<{
     first_name: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -130,26 +130,26 @@ export declare const updateProfileSchema: z.ZodObject<{
     /** Exigida pela API quando o CPF muda: reautentica antes de alterar um dado sensível. */
     current_password: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
+    description?: string | null | undefined;
     avatar?: string | null | undefined;
     city_id?: number | null | undefined;
+    birth_date?: string | undefined;
+    document?: string | null | undefined;
+    phone?: string | null | undefined;
     email?: string | undefined;
     first_name?: string | null | undefined;
     last_name?: string | null | undefined;
-    birth_date?: string | undefined;
-    phone?: string | null | undefined;
-    description?: string | null | undefined;
-    document?: string | null | undefined;
     current_password?: string | undefined;
 }, {
+    description?: string | null | undefined;
     avatar?: string | null | undefined;
     city_id?: number | null | undefined;
+    birth_date?: string | undefined;
+    document?: string | null | undefined;
+    phone?: string | null | undefined;
     email?: string | undefined;
     first_name?: string | null | undefined;
     last_name?: string | null | undefined;
-    birth_date?: string | undefined;
-    phone?: string | null | undefined;
-    description?: string | null | undefined;
-    document?: string | null | undefined;
     current_password?: string | undefined;
 }>;
 export declare const eventStatusSchema: z.ZodEnum<["published", "draft", "cancelled", "archived"]>;
@@ -181,10 +181,10 @@ export declare const eventInputSchema: z.ZodEffects<z.ZodObject<{
     slug: string;
     start_date: string;
     end_date: string;
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    description?: string | null | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     location_name?: string | null | undefined;
@@ -203,10 +203,10 @@ export declare const eventInputSchema: z.ZodEffects<z.ZodObject<{
     slug: string;
     start_date: string;
     end_date: string;
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    description?: string | null | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     location_name?: string | null | undefined;
@@ -225,10 +225,10 @@ export declare const eventInputSchema: z.ZodEffects<z.ZodObject<{
     slug: string;
     start_date: string;
     end_date: string;
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    description?: string | null | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     location_name?: string | null | undefined;
@@ -247,10 +247,10 @@ export declare const eventInputSchema: z.ZodEffects<z.ZodObject<{
     slug: string;
     start_date: string;
     end_date: string;
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    description?: string | null | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     location_name?: string | null | undefined;
@@ -288,12 +288,12 @@ export declare const eventPatchSchema: z.ZodEffects<z.ZodObject<{
     tags: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
     status: z.ZodOptional<z.ZodOptional<z.ZodEnum<["published", "draft", "cancelled", "archived"]>>>;
 }, "strip", z.ZodTypeAny, {
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    title?: string | undefined;
+    description?: string | null | undefined;
+    slug?: string | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
-    title?: string | undefined;
-    slug?: string | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     start_date?: string | undefined;
@@ -310,12 +310,12 @@ export declare const eventPatchSchema: z.ZodEffects<z.ZodObject<{
     featured?: boolean | undefined;
     tags?: string[] | undefined;
 }, {
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    title?: string | undefined;
+    description?: string | null | undefined;
+    slug?: string | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
-    title?: string | undefined;
-    slug?: string | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     start_date?: string | undefined;
@@ -332,12 +332,12 @@ export declare const eventPatchSchema: z.ZodEffects<z.ZodObject<{
     featured?: boolean | undefined;
     tags?: string[] | undefined;
 }>, {
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    title?: string | undefined;
+    description?: string | null | undefined;
+    slug?: string | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
-    title?: string | undefined;
-    slug?: string | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     start_date?: string | undefined;
@@ -354,12 +354,12 @@ export declare const eventPatchSchema: z.ZodEffects<z.ZodObject<{
     featured?: boolean | undefined;
     tags?: string[] | undefined;
 }, {
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    title?: string | undefined;
+    description?: string | null | undefined;
+    slug?: string | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
-    title?: string | undefined;
-    slug?: string | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     start_date?: string | undefined;
@@ -393,10 +393,10 @@ export declare const ticketInputSchema: z.ZodEffects<z.ZodObject<{
     max_installments: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     min_amount_for_installments: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
 }, "strip", z.ZodTypeAny, {
-    event_id: string;
     title: string;
-    quantity: number;
     price: number;
+    event_id: string;
+    quantity: number;
     service_fee_type: "absorbed" | "passed_to_buyer";
     status?: "active" | "sold_out" | "inactive" | undefined;
     description?: string | null | undefined;
@@ -409,10 +409,10 @@ export declare const ticketInputSchema: z.ZodEffects<z.ZodObject<{
     max_installments?: number | null | undefined;
     min_amount_for_installments?: number | null | undefined;
 }, {
-    event_id: string;
     title: string;
-    quantity: number;
     price: number;
+    event_id: string;
+    quantity: number;
     service_fee_type: "absorbed" | "passed_to_buyer";
     status?: "active" | "sold_out" | "inactive" | undefined;
     description?: string | null | undefined;
@@ -425,10 +425,10 @@ export declare const ticketInputSchema: z.ZodEffects<z.ZodObject<{
     max_installments?: number | null | undefined;
     min_amount_for_installments?: number | null | undefined;
 }>, {
-    event_id: string;
     title: string;
-    quantity: number;
     price: number;
+    event_id: string;
+    quantity: number;
     service_fee_type: "absorbed" | "passed_to_buyer";
     status?: "active" | "sold_out" | "inactive" | undefined;
     description?: string | null | undefined;
@@ -441,10 +441,10 @@ export declare const ticketInputSchema: z.ZodEffects<z.ZodObject<{
     max_installments?: number | null | undefined;
     min_amount_for_installments?: number | null | undefined;
 }, {
-    event_id: string;
     title: string;
-    quantity: number;
     price: number;
+    event_id: string;
+    quantity: number;
     service_fee_type: "absorbed" | "passed_to_buyer";
     status?: "active" | "sold_out" | "inactive" | undefined;
     description?: string | null | undefined;
@@ -474,12 +474,12 @@ export declare const ticketPatchSchema: z.ZodObject<{
     max_installments: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodNumber>>>;
     min_amount_for_installments: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodNumber>>>;
 }, "strip", z.ZodTypeAny, {
-    event_id?: string | undefined;
     status?: "active" | "sold_out" | "inactive" | undefined;
-    description?: string | null | undefined;
     title?: string | undefined;
-    quantity?: number | undefined;
+    description?: string | null | undefined;
     price?: number | undefined;
+    event_id?: string | undefined;
+    quantity?: number | undefined;
     service_fee_type?: "absorbed" | "passed_to_buyer" | undefined;
     visibility?: "public" | "invited_only" | "manual" | undefined;
     sale_start_date?: string | null | undefined;
@@ -490,12 +490,12 @@ export declare const ticketPatchSchema: z.ZodObject<{
     max_installments?: number | null | undefined;
     min_amount_for_installments?: number | null | undefined;
 }, {
-    event_id?: string | undefined;
     status?: "active" | "sold_out" | "inactive" | undefined;
-    description?: string | null | undefined;
     title?: string | undefined;
-    quantity?: number | undefined;
+    description?: string | null | undefined;
     price?: number | undefined;
+    event_id?: string | undefined;
+    quantity?: number | undefined;
     service_fee_type?: "absorbed" | "passed_to_buyer" | undefined;
     visibility?: "public" | "invited_only" | "manual" | undefined;
     sale_start_date?: string | null | undefined;
@@ -525,8 +525,8 @@ export declare const eventTicketDraftSchema: z.ZodObject<Omit<{
     min_amount_for_installments: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
 }, "event_id">, "strip", z.ZodTypeAny, {
     title: string;
-    quantity: number;
     price: number;
+    quantity: number;
     service_fee_type: "absorbed" | "passed_to_buyer";
     status?: "active" | "sold_out" | "inactive" | undefined;
     description?: string | null | undefined;
@@ -540,8 +540,8 @@ export declare const eventTicketDraftSchema: z.ZodObject<Omit<{
     min_amount_for_installments?: number | null | undefined;
 }, {
     title: string;
-    quantity: number;
     price: number;
+    quantity: number;
     service_fee_type: "absorbed" | "passed_to_buyer";
     status?: "active" | "sold_out" | "inactive" | undefined;
     description?: string | null | undefined;
@@ -600,8 +600,8 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
         min_amount_for_installments: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     }, "event_id">, "strip", z.ZodTypeAny, {
         title: string;
-        quantity: number;
         price: number;
+        quantity: number;
         service_fee_type: "absorbed" | "passed_to_buyer";
         status?: "active" | "sold_out" | "inactive" | undefined;
         description?: string | null | undefined;
@@ -615,8 +615,8 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
         min_amount_for_installments?: number | null | undefined;
     }, {
         title: string;
-        quantity: number;
         price: number;
+        quantity: number;
         service_fee_type: "absorbed" | "passed_to_buyer";
         status?: "active" | "sold_out" | "inactive" | undefined;
         description?: string | null | undefined;
@@ -636,8 +636,8 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
     end_date: string;
     tickets: {
         title: string;
-        quantity: number;
         price: number;
+        quantity: number;
         service_fee_type: "absorbed" | "passed_to_buyer";
         status?: "active" | "sold_out" | "inactive" | undefined;
         description?: string | null | undefined;
@@ -650,10 +650,10 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
         max_installments?: number | null | undefined;
         min_amount_for_installments?: number | null | undefined;
     }[];
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    description?: string | null | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     location_name?: string | null | undefined;
@@ -672,10 +672,10 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
     slug: string;
     start_date: string;
     end_date: string;
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    description?: string | null | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     location_name?: string | null | undefined;
@@ -691,8 +691,8 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
     tags?: string[] | undefined;
     tickets?: {
         title: string;
-        quantity: number;
         price: number;
+        quantity: number;
         service_fee_type: "absorbed" | "passed_to_buyer";
         status?: "active" | "sold_out" | "inactive" | undefined;
         description?: string | null | undefined;
@@ -712,8 +712,8 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
     end_date: string;
     tickets: {
         title: string;
-        quantity: number;
         price: number;
+        quantity: number;
         service_fee_type: "absorbed" | "passed_to_buyer";
         status?: "active" | "sold_out" | "inactive" | undefined;
         description?: string | null | undefined;
@@ -726,10 +726,10 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
         max_installments?: number | null | undefined;
         min_amount_for_installments?: number | null | undefined;
     }[];
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    description?: string | null | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     location_name?: string | null | undefined;
@@ -748,10 +748,10 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
     slug: string;
     start_date: string;
     end_date: string;
+    status?: "draft" | "published" | "archived" | "cancelled" | undefined;
+    description?: string | null | undefined;
     category_id?: string | null | undefined;
     cover_image?: string | null | undefined;
-    status?: "archived" | "draft" | "published" | "cancelled" | undefined;
-    description?: string | null | undefined;
     short_description?: string | null | undefined;
     event_type?: "in_person" | "online" | "hybrid" | null | undefined;
     location_name?: string | null | undefined;
@@ -767,8 +767,8 @@ export declare const eventCreateSchema: z.ZodEffects<z.ZodObject<{
     tags?: string[] | undefined;
     tickets?: {
         title: string;
-        quantity: number;
         price: number;
+        quantity: number;
         service_fee_type: "absorbed" | "passed_to_buyer";
         status?: "active" | "sold_out" | "inactive" | undefined;
         description?: string | null | undefined;
@@ -817,22 +817,22 @@ export declare const organizerDashboardSchema: z.ZodObject<{
         participantCount: z.ZodNumber;
         ticketsSold: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
-        id: string;
-        status: "archived" | "draft" | "published" | "cancelled";
+        status: "draft" | "published" | "archived" | "cancelled";
         title: string;
+        id: string;
         slug: string;
+        location: string;
         ticketsSold: number;
         startDate: string;
-        location: string;
         participantCount: number;
     }, {
-        id: string;
-        status: "archived" | "draft" | "published" | "cancelled";
+        status: "draft" | "published" | "archived" | "cancelled";
         title: string;
+        id: string;
         slug: string;
+        location: string;
         ticketsSold: number;
         startDate: string;
-        location: string;
         participantCount: number;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
@@ -845,13 +845,13 @@ export declare const organizerDashboardSchema: z.ZodObject<{
         grossRevenue: number;
     };
     recentEvents: {
-        id: string;
-        status: "archived" | "draft" | "published" | "cancelled";
+        status: "draft" | "published" | "archived" | "cancelled";
         title: string;
+        id: string;
         slug: string;
+        location: string;
         ticketsSold: number;
         startDate: string;
-        location: string;
         participantCount: number;
     }[];
 }, {
@@ -864,13 +864,13 @@ export declare const organizerDashboardSchema: z.ZodObject<{
         grossRevenue: number;
     };
     recentEvents: {
-        id: string;
-        status: "archived" | "draft" | "published" | "cancelled";
+        status: "draft" | "published" | "archived" | "cancelled";
         title: string;
+        id: string;
         slug: string;
+        location: string;
         ticketsSold: number;
         startDate: string;
-        location: string;
         participantCount: number;
     }[];
 }>;
@@ -894,66 +894,121 @@ export declare const checkoutStatusSchema: z.ZodObject<{
             title: z.ZodString;
             slug: z.ZodString;
         }, "strip", z.ZodTypeAny, {
-            id: string;
             title: string;
+            id: string;
             slug: string;
         }, {
-            id: string;
             title: string;
+            id: string;
             slug: string;
         }>;
     }, "strip", z.ZodTypeAny, {
-        id: string;
         status: string;
+        id: string;
         paymentStatus: string | null;
         totalAmount: number | null;
         ticketCode: string | null;
         event: {
-            id: string;
             title: string;
+            id: string;
             slug: string;
         };
     }, {
-        id: string;
         status: string;
+        id: string;
         paymentStatus: string | null;
         totalAmount: number | null;
         ticketCode: string | null;
         event: {
-            id: string;
             title: string;
+            id: string;
             slug: string;
         };
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     status: "confirmed" | "pending" | "cancelled" | "attention";
     registrations: {
-        id: string;
         status: string;
+        id: string;
         paymentStatus: string | null;
         totalAmount: number | null;
         ticketCode: string | null;
         event: {
-            id: string;
             title: string;
+            id: string;
             slug: string;
         };
     }[];
 }, {
     status: "confirmed" | "pending" | "cancelled" | "attention";
     registrations: {
-        id: string;
         status: string;
+        id: string;
         paymentStatus: string | null;
         totalAmount: number | null;
         ticketCode: string | null;
         event: {
-            id: string;
             title: string;
+            id: string;
             slug: string;
         };
     }[];
 }>;
 export type CheckoutStatus = z.infer<typeof checkoutStatusSchema>;
 export declare const brDocumentSchema: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
+export declare const cnpjSchema: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
+export declare const organizerSignupSchema: z.ZodDiscriminatedUnion<"account_type", [z.ZodObject<{
+    name: z.ZodString;
+    email: z.ZodString;
+    phone: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>, string, string>;
+    description: z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>;
+    website: z.ZodPipeline<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>>;
+    accept_terms: z.ZodLiteral<true>;
+    account_type: z.ZodLiteral<"individual">;
+}, "strip", z.ZodTypeAny, {
+    description: string | null;
+    name: string;
+    phone: string;
+    email: string;
+    account_type: "individual";
+    website: string | null;
+    accept_terms: true;
+}, {
+    name: string;
+    phone: string;
+    email: string;
+    account_type: "individual";
+    accept_terms: true;
+    description?: string | null | undefined;
+    website?: string | null | undefined;
+}>, z.ZodObject<{
+    document: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
+    name: z.ZodString;
+    email: z.ZodString;
+    phone: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>, string, string>;
+    description: z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>;
+    website: z.ZodPipeline<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>>;
+    accept_terms: z.ZodLiteral<true>;
+    account_type: z.ZodLiteral<"company">;
+}, "strip", z.ZodTypeAny, {
+    description: string | null;
+    name: string;
+    document: string;
+    phone: string;
+    email: string;
+    account_type: "company";
+    website: string | null;
+    accept_terms: true;
+}, {
+    name: string;
+    document: string;
+    phone: string;
+    email: string;
+    account_type: "company";
+    accept_terms: true;
+    description?: string | null | undefined;
+    website?: string | null | undefined;
+}>]>;
+export type OrganizerSignupInput = z.infer<typeof organizerSignupSchema>;
+export type OrganizerAccountType = OrganizerSignupInput['account_type'];
 //# sourceMappingURL=schemas.d.ts.map

@@ -34,42 +34,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ai_prompts: {
-        Row: {
-          date_created: string
-          date_updated: string
-          description: string | null
-          id: string
-          messages: Json | null
-          name: string
-          sort: number | null
-          status: string
-          system_prompt: string | null
-        }
-        Insert: {
-          date_created?: string
-          date_updated?: string
-          description?: string | null
-          id?: string
-          messages?: Json | null
-          name: string
-          sort?: number | null
-          status?: string
-          system_prompt?: string | null
-        }
-        Update: {
-          date_created?: string
-          date_updated?: string
-          description?: string | null
-          id?: string
-          messages?: Json | null
-          name?: string
-          sort?: number | null
-          status?: string
-          system_prompt?: string | null
-        }
-        Relationships: []
-      }
       audit_logs: {
         Row: {
           action: string
@@ -224,6 +188,13 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "block_events_category_fk"
+            columns: ["filter_by_category"]
+            isOneToOne: false
+            referencedRelation: "event_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "block_events_filter_by_category_fkey"
             columns: ["filter_by_category"]
             isOneToOne: false
             referencedRelation: "event_categories"
@@ -1874,6 +1845,7 @@ export type Database = {
           accent_color: string
           date_created: string
           date_updated: string
+          default_og_image: string | null
           description: string | null
           favicon: string | null
           id: string
@@ -1888,6 +1860,7 @@ export type Database = {
           accent_color?: string
           date_created?: string
           date_updated?: string
+          default_og_image?: string | null
           description?: string | null
           favicon?: string | null
           id?: string
@@ -1902,6 +1875,7 @@ export type Database = {
           accent_color?: string
           date_created?: string
           date_updated?: string
+          default_og_image?: string | null
           description?: string | null
           favicon?: string | null
           id?: string
@@ -1913,6 +1887,13 @@ export type Database = {
           url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "site_settings_default_og_image_fkey"
+            columns: ["default_og_image"]
+            isOneToOne: false
+            referencedRelation: "media_files"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "site_settings_favicon_fkey"
             columns: ["favicon"]

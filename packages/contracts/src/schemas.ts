@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isValidCPF, isValidDocument, isValidPhone, onlyDigits } from './br-documents.js';
+import { isValidCNPJ, isValidCPF, isValidDocument, isValidPhone, onlyDigits } from './br-documents.js';
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 64;
@@ -140,10 +140,17 @@ export const updateProfileSchema = z.object({
 
 export const eventStatusSchema = z.enum(['published', 'draft', 'cancelled', 'archived']);
 
-export const httpUrlSchema = z
-	.string()
-	.url()
-	.refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'Use uma URL HTTP ou HTTPS.');
+function hasHttpProtocol(value: string) {
+	try {
+		return ['http:', 'https:'].includes(new URL(value).protocol);
+	} catch {
+		// Um valor que nem é URL já foi apontado por `.url()`; o refinamento
+		// ainda roda e não pode virar uma exceção no lugar do erro de validação.
+		return false;
+	}
+}
+
+export const httpUrlSchema = z.string().url('Informe uma URL válida.').refine(hasHttpProtocol, 'Use uma URL HTTP ou HTTPS.');
 
 const isoDateTimeSchema = z
 	.string()
@@ -342,3 +349,57 @@ export const brDocumentSchema = z
 	.string()
 	.transform(onlyDigits)
 	.refine((value) => value.length === 0 || isValidDocument(value), 'Informe um CPF ou CNPJ válido.');
+
+/**
+ * Cadastro de organizador. Quem vende como pessoa física usa o CPF já
+ * validado no próprio perfil: o cliente nem envia o documento, a API o lê do
+ * cadastro, então ninguém consegue vincular o CPF de outra pessoa. Quem vende
+ * como empresa informa um CNPJ válido. Nos dois casos a organização passa a
+ * vender ingressos do mesmo jeito.
+ */
+const optionalTrimmedText = (max: number, message: string) =>
+	z
+		.string()
+		.trim()
+		.max(max, message)
+		.nullable()
+		.optional()
+		.transform((value) => value || null);
+
+const organizerSignupBase = {
+	name: z
+		.string()
+		.trim()
+		.min(2, 'Informe o nome da organização ou marca (mínimo 2 caracteres).')
+		.max(120, 'O nome deve ter no máximo 120 caracteres.'),
+	email: z.string().trim().email('Informe um e-mail de contato válido.'),
+	phone: z
+		.string()
+		.transform(onlyDigits)
+		.refine((value) => value.length > 0, 'Informe o telefone com DDD.')
+		.refine((value) => value.length === 0 || isValidPhone(value), 'Informe um telefone válido com DDD.'),
+	description: optionalTrimmedText(600, 'Conte sobre seus eventos em até 600 caracteres.'),
+	website: z
+		.string()
+		.trim()
+		.nullable()
+		.optional()
+		.transform((value) => value || null)
+		.pipe(httpUrlSchema.nullable()),
+	accept_terms: z.literal(true, {
+		errorMap: () => ({ message: 'Confirme que as informações são verdadeiras para continuar.' }),
+	}),
+};
+
+export const cnpjSchema = z
+	.string()
+	.transform(onlyDigits)
+	.refine((value) => value.length === 14 && isValidCNPJ(value), 'Informe um CNPJ válido.');
+
+export const organizerSignupSchema = z.discriminatedUnion('account_type', [
+	z.object({ account_type: z.literal('individual'), ...organizerSignupBase }),
+	z.object({ account_type: z.literal('company'), ...organizerSignupBase, document: cnpjSchema }),
+]);
+export type OrganizerSignupInput = z.infer<typeof organizerSignupSchema>;
+export type OrganizerAccountType = OrganizerSignupInput['account_type'];
+

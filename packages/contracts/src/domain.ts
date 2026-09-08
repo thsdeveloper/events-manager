@@ -46,7 +46,8 @@ export interface AppUser {
 export interface ExtensionSeoMetadata {
 	title?: string;
 	meta_description?: string;
-	og_image?: string;
+	og_image?: string | null;
+	canonical_url?: string | null;
 	additional_fields?: Record<string, unknown>;
 	sitemap?: {
 		change_frequency: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
@@ -54,26 +55,6 @@ export interface ExtensionSeoMetadata {
 	};
 	no_index?: boolean;
 	no_follow?: boolean;
-}
-
-export interface AiPrompt {
-	/** @primaryKey */
-	id: string;
-	sort?: number | null;
-	/** @description Unique name for the prompt. Use names like "create-article" or "generate-product-description". @required */
-	name: string;
-	/** @description Is this prompt published and available to use? */
-	status?: 'draft' | 'in_review' | 'published';
-	/** @description Briefly explain what this prompt does in 1-2 sentences. */
-	description?: string | null;
-	/** @description Optional: Define the conversation structure between users and AI. Used to add context and improve outputs. */
-	messages?: Array<{ role: 'user' | 'assistant'; text: string }> | null;
-	/** @description Instructions that shape how the AI responds. */
-	system_prompt?: string | null;
-	date_created?: string | null;
-	user_created?: AppUser | string | null;
-	date_updated?: string | null;
-	user_updated?: AppUser | string | null;
 }
 
 export interface BlockButton {
@@ -193,25 +174,6 @@ export interface BlockHero {
 	user_created?: AppUser | string | null;
 	date_updated?: string | null;
 	user_updated?: AppUser | string | null;
-}
-
-export interface BlockHeroSlide {
-	/** @primaryKey */
-	id: string;
-	sort?: number | null;
-	/** @description Texto pequeno acima do headline (ex: 'Lançamento', 'Novidade') */
-	tagline?: string | null;
-	/** @description Título principal do slide @required */
-	headline: string;
-	/** @description Descrição do slide */
-	description?: string | null;
-	/** @description Imagem de fundo ou destaque do slide */
-	image?: MediaFile | string | null;
-	/** @description Grupo de botões de ação */
-	button_group?: BlockButtonGroup | string | null;
-	date_created?: string | null;
-	user_created?: AppUser | string | null;
-	block_hero_id?: BlockHero | string | null;
 }
 
 export interface BlockPost {
@@ -600,6 +562,8 @@ export interface Globals {
 	logo?: MediaFile | string | null;
 	/** @description Main logo shown on the site (for dark mode). */
 	logo_dark_mode?: MediaFile | string | null;
+	/** Imagem de compartilhamento padrão (Open Graph) para páginas sem imagem própria. */
+	default_og_image?: MediaFile | string | null;
 	/** @description Accent color for the website (used on buttons, links, etc). */
 	accent_color?: string | null;
 	date_created?: string | null;
@@ -795,8 +759,6 @@ export interface Post {
 	user_updated?: AppUser | string | null;
 	/** @required */
 	name: string;
-	system_prompt?: string | null;
-	messages?: Array<{ role: 'user' | 'assistant'; text: string }> | null;
 }
 
 export interface Redirect {
