@@ -1,48 +1,68 @@
-import OpenAI from 'openai';
 import { z } from 'zod';
-import { requireOrganizer } from '../application/auth/organizer-context.js';
+import { EventCoverService, PlacesService } from '../application/external/external-service.js';
+import { MediaService } from '../application/media/media-service.js';
+import { EnforceRateLimit, RateLimitExceeded } from '../application/security/rate-limit.js';
+import { SupabaseRateLimitRepository } from '../infrastructure/supabase/rate-limit-repository.js';
+import { NominatimGeocodingGateway } from '../infrastructure/external/nominatim-geocoding-gateway.js';
+import { OpenAICoverGenerator } from '../infrastructure/external/openai-cover-generator.js';
+import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
+import { SupabaseEventCategoryReader } from '../infrastructure/supabase/event-category-reader.js';
+import { SupabaseMediaRepository } from '../infrastructure/supabase/media-repository.js';
 import { ApiError } from '../shared/errors.js';
+import { requireOrganizer } from './auth-context.js';
 export async function externalRoutes(app, options) {
     const { env, clients } = options;
+    const auth = createSupabaseAuthService(clients);
+    const places = new PlacesService(new NominatimGeocodingGateway(env.WEB_URL));
+    const rateLimit = new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin));
+    // Nominatim starts refusing bursts well before a generous per-caller budget
+    // would trip, so the cap is set to roughly what one person typing an address
+    // needs (the picker debounces at 400ms) and no more.
+    const limitGeocoding = async (scope, ip) => {
+        try {
+            await rateLimit.execute({ scope, subject: ip, limit: 12, windowSeconds: 60 });
+        }
+        catch (error) {
+            if (error instanceof RateLimitExceeded) {
+                throw new ApiError('Muitas buscas de endereço. Aguarde alguns segundos.', 429, 'RATE_LIMITED');
+            }
+            throw error;
+        }
+    };
     app.get('/api/places/search', async (request) => {
         const { input } = z.object({ input: z.string().default('') }).parse(request.query);
-        if (!input)
+        if (input.trim().length < 3)
             return { predictions: [] };
-        if (!env.GOOGLE_PLACES_API_KEY)
-            return { predictions: [] };
-        const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
-        url.searchParams.set('input', input);
-        url.searchParams.set('language', 'pt-BR');
-        url.searchParams.set('types', 'geocode');
-        url.searchParams.set('key', env.GOOGLE_PLACES_API_KEY);
-        const response = await fetch(url);
-        if (!response.ok)
-            throw new ApiError('Falha ao consultar o serviço de endereços.', 502, 'PLACES_ERROR');
-        const data = await response.json();
-        return { predictions: (data.predictions ?? []).map((item) => ({ placeId: item.place_id, description: item.description, mainText: item.structured_formatting?.main_text ?? item.description, secondaryText: item.structured_formatting?.secondary_text ?? null })) };
+        await limitGeocoding('places-search-ip', request.ip);
+        return places.search(input);
+    });
+    app.get('/api/places/reverse', async (request) => {
+        const { lat, lon } = z
+            .object({ lat: z.coerce.number().min(-90).max(90), lon: z.coerce.number().min(-180).max(180) })
+            .parse(request.query);
+        await limitGeocoding('places-reverse-ip', request.ip);
+        return places.reverse(lat, lon);
     });
     app.post('/api/ai/generate-cover', async (request) => {
-        const context = await requireOrganizer(request, clients);
+        const context = await requireOrganizer(request, auth);
         if (!env.OPENAI_API_KEY)
             throw new ApiError('OpenAI não está configurada.', 503, 'OPENAI_NOT_CONFIGURED');
-        const input = z.object({ title: z.string().trim().min(1), short_description: z.string().optional(), description: z.string().optional(), categoryId: z.string().uuid().optional() }).parse(request.body);
-        const { data: category } = input.categoryId ? await clients.admin.from('event_categories').select('name,description').eq('id', input.categoryId).maybeSingle() : { data: null };
-        const prompt = `Create a professional 16:9 landscape event cover for "${input.title}". ${input.short_description ?? input.description ?? ''} ${category ? `Theme: ${category.name}. ${category.description ?? ''}` : ''} Use a clean cinematic composition, leave room for overlay text, and do not render words, letters, logos, or recognizable faces.`;
-        const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
-        const generated = await openai.images.generate({ model: 'gpt-image-1', prompt, n: 1, size: '1536x1024', quality: 'high' });
-        const base64 = generated.data?.[0]?.b64_json;
-        if (!base64)
-            throw new ApiError('A geração não retornou uma imagem.', 502, 'IMAGE_GENERATION_FAILED');
-        const buffer = Buffer.from(base64, 'base64');
-        const path = `${context.user.id}/ai/event-cover-${crypto.randomUUID()}.png`;
-        const { error: uploadError } = await clients.admin.storage.from('media').upload(path, buffer, { contentType: 'image/png' });
-        if (uploadError)
-            throw uploadError;
-        const { data: file, error: fileError } = await clients.admin.from('media_files').insert({ bucket: 'media', path, filename: path.split('/').at(-1), title: input.title, type: 'image/png', filesize: buffer.length, uploaded_by: context.user.id, metadata: { generated: true, prompt } }).select('*').single();
-        if (fileError)
-            throw fileError;
-        const { data: publicUrl } = clients.public.storage.from('media').getPublicUrl(path);
-        return { fileId: file.id, assetUrl: publicUrl.publicUrl, generatedPrompt: prompt, category };
+        const input = z
+            .object({
+            title: z.string().trim().min(1),
+            short_description: z.string().optional(),
+            description: z.string().optional(),
+            categoryId: z.string().uuid().optional(),
+        })
+            .parse(request.body);
+        const covers = new EventCoverService(new SupabaseEventCategoryReader(clients), new OpenAICoverGenerator(env.OPENAI_API_KEY), new MediaService(new SupabaseMediaRepository(clients)));
+        return covers.generate({
+            categoryId: input.categoryId,
+            description: input.description,
+            shortDescription: input.short_description,
+            title: input.title,
+            userId: context.user.id,
+        });
     });
 }
 //# sourceMappingURL=external.js.map

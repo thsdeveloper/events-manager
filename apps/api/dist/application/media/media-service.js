@@ -14,47 +14,27 @@ export function hasValidFileSignature(mimetype, buffer) {
         return buffer.subarray(0, 5).toString('ascii') === '%PDF-';
     return false;
 }
-function safeSegment(value) {
-    return value
-        .normalize('NFKD')
-        .replace(/[^a-zA-Z0-9._-]/g, '-')
-        .replace(/-+/g, '-')
-        .slice(0, 120);
-}
-export async function uploadMedia(clients, userId, file, folder = 'uploads') {
-    if (!allowedTypes.has(file.mimetype))
-        throw new ApiError('Tipo de arquivo não permitido.', 422, 'INVALID_FILE_TYPE');
-    const buffer = await file.toBuffer();
-    if (buffer.length > 20 * 1024 * 1024)
-        throw new ApiError('O arquivo excede o limite de 20 MB.', 413, 'FILE_TOO_LARGE');
-    if (!hasValidFileSignature(file.mimetype, buffer)) {
-        throw new ApiError('O conteúdo do arquivo não corresponde ao formato informado.', 422, 'INVALID_FILE_CONTENT');
+export class MediaService {
+    repository;
+    constructor(repository) {
+        this.repository = repository;
     }
-    const path = `${userId}/${safeSegment(folder)}/${crypto.randomUUID()}-${safeSegment(file.filename)}`;
-    const { error: storageError } = await clients.admin.storage.from('media').upload(path, buffer, {
-        contentType: file.mimetype,
-        upsert: false,
-    });
-    if (storageError)
-        throw storageError;
-    const { data, error } = await clients.admin
-        .from('media_files')
-        .insert({
-        bucket: 'media',
-        path,
-        filename: file.filename,
-        title: file.filename,
-        type: file.mimetype,
-        filesize: buffer.length,
-        uploaded_by: userId,
-    })
-        .select('*')
-        .single();
-    if (error) {
-        await clients.admin.storage.from('media').remove([path]);
-        throw error;
+    async upload(input) {
+        if (!allowedTypes.has(input.mimetype))
+            throw new ApiError('Tipo de arquivo não permitido.', 422, 'INVALID_FILE_TYPE');
+        if (input.buffer.length > 20 * 1024 * 1024) {
+            throw new ApiError('O arquivo excede o limite de 20 MB.', 413, 'FILE_TOO_LARGE');
+        }
+        if (!hasValidFileSignature(input.mimetype, input.buffer)) {
+            throw new ApiError('O conteúdo do arquivo não corresponde ao formato informado.', 422, 'INVALID_FILE_CONTENT');
+        }
+        return this.repository.store(input);
     }
-    const { data: publicUrl } = clients.public.storage.from('media').getPublicUrl(path);
-    return { ...data, url: publicUrl.publicUrl };
+    async getPublicUrl(id) {
+        const url = await this.repository.findPublicUrl(id);
+        if (!url)
+            throw new ApiError('Arquivo não encontrado.', 404, 'MEDIA_NOT_FOUND');
+        return url;
+    }
 }
 //# sourceMappingURL=media-service.js.map

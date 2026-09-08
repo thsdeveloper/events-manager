@@ -1,4 +1,19 @@
 import { ApiError } from '../../shared/errors.js';
+/**
+ * PostgREST returns a single object for a to-one embed, but the untyped client
+ * cannot express that, so the value is narrowed here instead of cast blindly.
+ */
+function toMediaFile(value) {
+    const record = Array.isArray(value) ? value[0] : value;
+    if (!record || typeof record !== 'object')
+        return null;
+    const { id, bucket, path } = record;
+    return id ? { id, bucket: bucket ?? undefined, path: path ?? undefined } : null;
+}
+/** Conteúdo publicado cuja data agendada já chegou (ou sem agendamento). */
+function alreadyPublished() {
+    return `published_at.is.null,published_at.lte.${new Date().toISOString()}`;
+}
 const blockTables = {
     block_hero: 'block_hero',
     block_richtext: 'block_richtext',
@@ -17,7 +32,10 @@ export class SupabaseContentRepository {
         const [settingsResult, mainResult, footerResult] = await Promise.all([
             this.database
                 .from('site_settings')
-                .select('id,title,description,tagline,url,favicon,logo,logo_dark_mode,social_links,accent_color,date_created,date_updated')
+                // The media columns are expanded instead of returned as bare ids: the web
+                // app turns `{bucket, path}` into a direct storage URL, and next/image
+                // cannot optimise an image that sits behind the /api/media redirect.
+                .select('id,title,description,tagline,url,social_links,accent_color,date_created,date_updated,favicon:media_files!site_settings_favicon_fkey(id,bucket,path),logo:media_files!site_settings_logo_fkey(id,bucket,path),logo_dark_mode:media_files!site_settings_logo_dark_mode_fkey(id,bucket,path)')
                 .limit(1)
                 .maybeSingle(),
             this.getNavigation('main'),
@@ -25,24 +43,32 @@ export class SupabaseContentRepository {
         ]);
         if (settingsResult.error)
             throw settingsResult.error;
+        const settings = settingsResult.data;
         return {
-            globals: settingsResult.data ?? {
-                id: 'local-defaults',
-                title: 'Events Manager',
-                description: 'Plataforma de gestão de eventos.',
-                accent_color: '#6644ff',
-            },
+            globals: settings
+                ? {
+                    ...settings,
+                    favicon: toMediaFile(settings.favicon),
+                    logo: toMediaFile(settings.logo),
+                    logo_dark_mode: toMediaFile(settings.logo_dark_mode),
+                }
+                : {
+                    id: 'local-defaults',
+                    title: 'Events Manager',
+                    description: 'Plataforma de gestão de eventos.',
+                    accent_color: '#6644ff',
+                },
             headerNavigation: mainResult,
             footerNavigation: footerResult,
         };
     }
-    async getPage(permalink, postPage = 1) {
-        const { data: page, error } = await this.database
-            .from('pages')
-            .select('*')
-            .eq('permalink', permalink)
-            .eq('status', 'published')
-            .maybeSingle();
+    async getPage(permalink, postPage, options) {
+        let query = this.database.from('pages').select('*').eq('permalink', permalink);
+        if (!options.includeDrafts) {
+            // Publicação agendada: a página só aparece quando a data chega.
+            query = query.eq('status', 'published').or(`published_at.is.null,published_at.lte.${options.now}`);
+        }
+        const { data: page, error } = await query.maybeSingle();
         if (error)
             throw error;
         if (!page)
@@ -68,11 +94,13 @@ export class SupabaseContentRepository {
                 .select('*, author:profiles(id,first_name,last_name,avatar), image:media_files(*)')
                 .eq('slug', slug)
                 .eq('status', 'published')
+                .or(alreadyPublished())
                 .maybeSingle(),
             this.database
                 .from('posts')
                 .select('id,title,slug,image:media_files(*)')
                 .eq('status', 'published')
+                .or(alreadyPublished())
                 .neq('slug', slug)
                 .order('published_at', { ascending: false })
                 .limit(2),
@@ -89,8 +117,21 @@ export class SupabaseContentRepository {
             .from('posts')
             .select('id,title,description,slug,image:media_files(*),name,published_at', { count: 'exact' })
             .eq('status', 'published')
+            .or(alreadyPublished())
             .order('published_at', { ascending: false })
             .range(from, from + limit - 1);
+        if (error && error.code === 'PGRST103') {
+            // Página além do acervo: lista vazia com o total real, para o site
+            // decidir o 404 sem tratar isso como falha da API.
+            const { count: total, error: countError } = await this.database
+                .from('posts')
+                .select('id', { count: 'exact', head: true })
+                .eq('status', 'published')
+                .or(alreadyPublished());
+            if (countError)
+                throw countError;
+            return { data: [], total: total ?? 0, page, limit };
+        }
         if (error)
             throw error;
         return { data: data ?? [], total: count ?? 0, page, limit };
@@ -112,12 +153,14 @@ export class SupabaseContentRepository {
                 .from('pages')
                 .select('id,title,permalink')
                 .eq('status', 'published')
+                .or(alreadyPublished())
                 .ilike('title', pattern)
                 .limit(10),
             this.database
                 .from('posts')
                 .select('id,title,slug,description')
                 .eq('status', 'published')
+                .or(alreadyPublished())
                 .ilike('title', pattern)
                 .limit(10),
             this.database
@@ -126,6 +169,17 @@ export class SupabaseContentRepository {
                 .eq('status', 'published')
                 .ilike('title', pattern)
                 .limit(10),
+        ]);
+        for (const result of [pages, posts, events])
+            if (result.error)
+                throw result.error;
+        return { pages: pages.data ?? [], posts: posts.data ?? [], events: events.data ?? [] };
+    }
+    async getSitemap() {
+        const [pages, posts, events] = await Promise.all([
+            this.database.from('pages').select('permalink,published_at,date_updated,seo').eq('status', 'published'),
+            this.database.from('posts').select('slug,published_at,date_updated,seo').eq('status', 'published'),
+            this.database.from('events').select('slug,start_date,date_updated').eq('status', 'published'),
         ]);
         for (const result of [pages, posts, events])
             if (result.error)

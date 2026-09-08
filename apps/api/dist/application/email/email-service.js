@@ -1,85 +1,164 @@
-import nodemailer from 'nodemailer';
+import { renderEmail } from './email-template.js';
 export class EmailService {
-    env;
-    clients;
-    transport;
-    constructor(env, clients) {
-        this.env = env;
-        this.clients = clients;
-        this.transport = nodemailer.createTransport({
-            host: env.SMTP_HOST,
-            port: env.SMTP_PORT,
-            secure: env.SMTP_SECURE,
-            ...(env.SMTP_USER
-                ? { auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD } }
-                : {}),
-            connectionTimeout: 10_000,
-        });
+    deliveries;
+    gateway;
+    from;
+    branding;
+    constructor(deliveries, gateway, from, branding) {
+        this.deliveries = deliveries;
+        this.gateway = gateway;
+        this.from = from;
+        this.branding = branding;
     }
     async sendRegistrationConfirmation(registration, idempotencyKey) {
-        const { data: existing } = await this.clients.admin
-            .from('email_deliveries')
-            .select('*')
-            .eq('idempotency_key', idempotencyKey)
-            .maybeSingle();
-        if (existing?.status === 'sent')
-            return existing;
-        const payload = {
-            registrationId: registration.id,
-            eventTitle: registration.event_id?.title,
-            ticketCode: registration.ticket_code,
-        };
-        const { data: delivery, error } = await this.clients.admin
-            .from('email_deliveries')
-            .upsert({
-            idempotency_key: idempotencyKey,
+        const eventTitle = registration.event_id?.title ?? 'Events Manager';
+        const delivery = await this.deliveries.claim({
+            idempotencyKey,
             template: 'registration-confirmation',
             recipient: registration.participant_email,
-            payload,
-        }, { onConflict: 'idempotency_key' })
-            .select('*')
-            .single();
-        if (error)
-            throw error;
+            payload: { registrationId: registration.id, eventTitle, ticketCode: registration.ticket_code },
+        });
+        if (!delivery.shouldSend)
+            return delivery;
+        const branding = await this.branding.load();
+        const { html, text } = renderEmail({
+            branding,
+            preheader: `Sua inscrição em ${eventTitle} está confirmada.`,
+            blocks: [
+                { type: 'heading', text: 'Inscrição confirmada' },
+                { type: 'paragraph', text: `Olá, ${registration.participant_name}.` },
+                { type: 'paragraph', text: `Sua inscrição em ${eventTitle} está confirmada.` },
+                ...(registration.ticket_code
+                    ? [{ type: 'code', label: 'Código do ingresso', value: registration.ticket_code }]
+                    : []),
+                { type: 'paragraph', text: 'Apresente este código no credenciamento do evento.' },
+                { type: 'button', label: 'Ver meus ingressos', url: `${branding.siteUrl}/perfil?section=ingressos` },
+            ],
+            footerNote: 'Guarde esta mensagem: ela dá acesso ao seu ingresso.',
+        });
         try {
-            const result = await this.transport.sendMail({
-                from: this.env.EMAIL_FROM,
+            const result = await this.gateway.send({
+                from: this.from,
                 to: registration.participant_email,
-                subject: `Confirmação de inscrição — ${registration.event_id?.title ?? 'Events Manager'}`,
-                text: [
-                    `Olá, ${registration.participant_name}.`,
-                    `Sua inscrição em ${registration.event_id?.title ?? 'nosso evento'} está confirmada.`,
-                    registration.ticket_code ? `Código do ingresso: ${registration.ticket_code}` : '',
-                    'Guarde esta mensagem para apresentar no credenciamento.',
-                ].filter(Boolean).join('\n\n'),
-                html: `<main style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px">
-          <h1 style="font-size:24px">Inscrição confirmada</h1>
-          <p>Olá, ${escapeHtml(registration.participant_name)}.</p>
-          <p>Sua inscrição em <strong>${escapeHtml(registration.event_id?.title ?? 'nosso evento')}</strong> está confirmada.</p>
-          ${registration.ticket_code ? `<p style="font-size:20px"><strong>Código: ${escapeHtml(registration.ticket_code)}</strong></p>` : ''}
-          <p>Guarde esta mensagem para apresentar no credenciamento.</p>
-        </main>`,
+                subject: `Confirmação de inscrição — ${eventTitle}`,
+                text,
+                html,
             });
-            const { data, error: updateError } = await this.clients.admin
-                .from('email_deliveries')
-                .update({ status: 'sent', attempts: delivery.attempts + 1, provider_message_id: result.messageId, last_error: null })
-                .eq('id', delivery.id)
-                .select('*')
-                .single();
-            if (updateError)
-                throw updateError;
-            return data;
+            return this.deliveries.markSent(delivery.id, delivery.attempts + 1, result.messageId);
         }
-        catch (sendError) {
-            await this.clients.admin
-                .from('email_deliveries')
-                .update({ status: 'failed', attempts: delivery.attempts + 1, last_error: sendError instanceof Error ? sendError.message : String(sendError) })
-                .eq('id', delivery.id);
-            throw sendError;
+        catch (error) {
+            await this.deliveries.markFailed(delivery.id, delivery.attempts + 1, error instanceof Error ? error.message : String(error));
+            throw error;
         }
     }
-}
-function escapeHtml(value) {
-    return value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
+    /**
+     * Out-of-band alarm for a password change: it is the only signal that reaches
+     * the account owner when the change was not theirs. Deliberately says nothing
+     * about the new password and offers the recovery flow, so a victim who reads
+     * it has an immediate way to take the account back.
+     *
+     * The idempotency key must be unique per change — reusing one would silently
+     * skip the alert on the next change.
+     */
+    async sendPasswordChangedNotice(notice, idempotencyKey) {
+        const delivery = await this.deliveries.claim({
+            idempotencyKey,
+            template: 'password-changed',
+            recipient: notice.email,
+            payload: { changedAt: notice.changedAt.toISOString() },
+        });
+        if (!delivery.shouldSend)
+            return delivery;
+        const branding = await this.branding.load();
+        const changedAt = new Intl.DateTimeFormat('pt-BR', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+            timeZone: 'America/Sao_Paulo',
+        }).format(notice.changedAt);
+        const { html, text } = renderEmail({
+            branding,
+            preheader: 'A senha da sua conta foi alterada.',
+            blocks: [
+                { type: 'heading', text: 'Sua senha foi alterada' },
+                { type: 'paragraph', text: `Olá${notice.name ? `, ${notice.name}` : ''}.` },
+                {
+                    type: 'paragraph',
+                    text: 'A senha da sua conta foi alterada e as sessões abertas em outros dispositivos foram encerradas.',
+                },
+                { type: 'details', rows: [{ label: 'Data da alteração', value: `${changedAt} (horário de Brasília)` }] },
+                {
+                    type: 'paragraph',
+                    text: 'Se foi você, nenhuma ação é necessária. Se não reconhece esta alteração, redefina sua senha agora mesmo.',
+                },
+                { type: 'button', label: 'Redefinir minha senha', url: `${branding.siteUrl}/esqueci-senha` },
+            ],
+            footerNote: 'Nunca pedimos sua senha por e-mail.',
+        });
+        try {
+            const result = await this.gateway.send({
+                from: this.from,
+                to: notice.email,
+                subject: 'Sua senha foi alterada',
+                text,
+                html,
+            });
+            return this.deliveries.markSent(delivery.id, delivery.attempts + 1, result.messageId);
+        }
+        catch (error) {
+            await this.deliveries.markFailed(delivery.id, delivery.attempts + 1, error instanceof Error ? error.message : String(error));
+            throw error;
+        }
+    }
+    /**
+     * Aviso de CPF alterado. Como no aviso de senha, é o único sinal que chega a
+     * quem perdeu a conta. Não imprime nem o CPF antigo nem o novo: o e-mail pode
+     * ser lido por terceiros, e o dado em si não ajuda a vítima a reagir.
+     */
+    async sendDocumentChangedNotice(notice, idempotencyKey) {
+        const delivery = await this.deliveries.claim({
+            idempotencyKey,
+            template: 'document-changed',
+            recipient: notice.email,
+            payload: { changedAt: notice.changedAt.toISOString() },
+        });
+        if (!delivery.shouldSend)
+            return delivery;
+        const branding = await this.branding.load();
+        const changedAt = new Intl.DateTimeFormat('pt-BR', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+            timeZone: 'America/Sao_Paulo',
+        }).format(notice.changedAt);
+        const { html, text } = renderEmail({
+            branding,
+            preheader: 'O CPF da sua conta foi alterado.',
+            blocks: [
+                { type: 'heading', text: 'Seu CPF foi alterado' },
+                { type: 'paragraph', text: `Olá${notice.name ? `, ${notice.name}` : ''}.` },
+                { type: 'paragraph', text: 'O CPF cadastrado na sua conta foi alterado a partir da área de dados pessoais.' },
+                { type: 'details', rows: [{ label: 'Data da alteração', value: `${changedAt} (horário de Brasília)` }] },
+                {
+                    type: 'paragraph',
+                    text: 'Se foi você, nenhuma ação é necessária. Se não reconhece esta alteração, redefina sua senha agora mesmo e fale com o suporte.',
+                },
+                { type: 'button', label: 'Redefinir minha senha', url: `${branding.siteUrl}/esqueci-senha` },
+            ],
+            footerNote: 'Nunca pedimos seu CPF ou sua senha por e-mail.',
+        });
+        try {
+            const result = await this.gateway.send({
+                from: this.from,
+                to: notice.email,
+                subject: 'Seu CPF foi alterado',
+                text,
+                html,
+            });
+            return this.deliveries.markSent(delivery.id, delivery.attempts + 1, result.messageId);
+        }
+        catch (error) {
+            await this.deliveries.markFailed(delivery.id, delivery.attempts + 1, error instanceof Error ? error.message : String(error));
+            throw error;
+        }
+    }
 }
 //# sourceMappingURL=email-service.js.map

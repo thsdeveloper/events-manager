@@ -3,11 +3,18 @@ export class ApiError extends Error {
     statusCode;
     code;
     context;
-    constructor(message, statusCode = 500, code = 'INTERNAL_ERROR', context) {
+    /**
+     * Details of 5xx problems are masked by default, so an unexpected failure
+     * never leaks internals. An application error can opt in when its message was
+     * written for the person (e.g. "SMS is not configured in this environment").
+     */
+    exposeDetail;
+    constructor(message, statusCode = 500, code = 'INTERNAL_ERROR', context, options = {}) {
         super(message);
         this.statusCode = statusCode;
         this.code = code;
         this.context = context;
+        this.exposeDetail = options.exposeDetail ?? false;
     }
 }
 export function installErrorHandler(app) {
@@ -62,7 +69,9 @@ function sendProblem(reply, request, error, requestId) {
         type: `https://events-manager.local/problems/${error.code.toLowerCase()}`,
         title: error.code,
         status: error.statusCode,
-        detail: error.statusCode >= 500 ? 'Ocorreu um erro interno. Tente novamente em alguns instantes.' : error.message,
+        detail: error.statusCode >= 500 && !error.exposeDetail
+            ? 'Ocorreu um erro interno. Tente novamente em alguns instantes.'
+            : error.message,
         instance: request.url,
         requestId,
         ...(error.context ? { context: error.context } : {}),

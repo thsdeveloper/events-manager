@@ -1,7 +1,13 @@
-import { credentialsSchema, emailConfirmationSchema, registerSchema, resendEmailConfirmationSchema, updateProfileSchema, } from '@events-manager/contracts';
+import { credentialsSchema, emailConfirmationSchema, newPasswordSchema, registerSchema, resendEmailConfirmationSchema, updateProfileSchema, phoneVerificationConfirmSchema, phoneVerificationRequestSchema, } from '@events-manager/contracts';
 import { z } from 'zod';
-import { clearSessionCookies, readAccessToken, requireUser, serializeUser, setSessionCookies, } from '../application/auth/session.js';
+import { DocumentAlreadyInUse } from '../application/auth/auth-service.js';
+import { createEmailService } from '../infrastructure/email/create-email-service.js';
+import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
+import { EnforceRateLimit, RateLimitExceeded } from '../application/security/rate-limit.js';
+import { SupabaseRateLimitRepository } from '../infrastructure/supabase/rate-limit-repository.js';
 import { ApiError } from '../shared/errors.js';
+import { readAccessToken, requireUser } from './auth-context.js';
+import { clearSessionCookies, setSessionCookies } from './session-cookies.js';
 const compatibleRegisterSchema = registerSchema
     .partial({ first_name: true, last_name: true })
     .extend({
@@ -14,30 +20,71 @@ const compatibleRegisterSchema = registerSchema
     if (!value.last_name && !value.lastName)
         context.addIssue({ code: 'custom', path: ['last_name'], message: 'Sobrenome obrigatório' });
 });
+/**
+ * `currentPassword` has no length rule on purpose: it is checked against the
+ * stored one, and a minimum here would reject accounts created before the
+ * current policy instead of letting them change to a compliant password.
+ */
+const changePasswordSchema = z.object({
+    currentPassword: z.string().min(1),
+    password: newPasswordSchema,
+});
+async function sessionPayload(auth, user) {
+    const serialized = await auth.serialize(user);
+    const isSuperAdmin = serialized.role === 'super_admin';
+    const isOrganizer = serialized.role === 'organizer' || serialized.role === 'admin' || serialized.organizer?.status === 'active';
+    return {
+        success: true,
+        user: serialized,
+        isOrganizer,
+        isSuperAdmin,
+        redirect: isSuperAdmin ? '/super-admin' : isOrganizer ? '/admin' : '/perfil',
+    };
+}
 export async function authRoutes(app, options) {
     const { env, clients } = options;
+    const { email } = createEmailService(env, clients);
+    const auth = createSupabaseAuthService(clients, {
+        // Aviso fora de banda, como na troca de senha: quem perdeu a conta precisa
+        // saber que o CPF mudou. Falha aqui é registrada, nunca devolvida.
+        documentChanged: (notice) => email
+            .sendDocumentChangedNotice(notice, `document-changed-${notice.email}-${notice.changedAt.getTime()}`)
+            .catch((error) => {
+            app.log.error({ err: error, email: notice.email }, 'Falha ao enviar o aviso de CPF alterado.');
+        }),
+    });
+    const rateLimit = new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin));
+    const limit = async (scope, subject, attempts, windowSeconds) => {
+        try {
+            await rateLimit.execute({ scope, subject, limit: attempts, windowSeconds });
+        }
+        catch (error) {
+            if (error instanceof RateLimitExceeded) {
+                throw new ApiError('Muitas tentativas. Aguarde e tente novamente.', 429, 'RATE_LIMITED');
+            }
+            throw error;
+        }
+    };
     app.post('/api/auth/register', async (request, reply) => {
         const input = compatibleRegisterSchema.parse(request.body);
-        const firstName = input.first_name ?? input.firstName;
-        const lastName = input.last_name ?? input.lastName;
-        const { data, error } = await clients.public.auth.signUp({
+        await Promise.all([
+            limit('auth-register-ip', request.ip, 20, 3_600),
+            limit('auth-register-account', input.email.toLowerCase(), 5, 600),
+        ]);
+        const result = await auth.register({
             email: input.email,
             password: input.password,
-            options: {
-                data: { first_name: firstName, last_name: lastName },
-                emailRedirectTo: `${env.WEB_URL}/confirmar-email`,
-            },
+            firstName: input.first_name ?? input.firstName,
+            lastName: input.last_name ?? input.lastName,
+            birthDate: input.birth_date,
+            redirectTo: `${env.WEB_URL}/confirmar-email`,
         });
-        if (error)
-            throw new ApiError(error.message, error.status ?? 400, 'REGISTRATION_ERROR');
-        if (!data.user)
-            throw new ApiError('Não foi possível criar o usuário.', 500, 'REGISTRATION_ERROR');
-        if (data.session) {
-            setSessionCookies(reply, env, data.session);
+        if (result.session) {
+            setSessionCookies(reply, env, result.session);
             return reply.code(201).send({
                 success: true,
                 confirmationRequired: false,
-                user: await serializeUser(clients, data.user),
+                user: await auth.serialize(result.user),
                 redirect: '/perfil',
             });
         }
@@ -50,69 +97,40 @@ export async function authRoutes(app, options) {
     });
     app.post('/api/auth/register/confirm', async (request, reply) => {
         const input = emailConfirmationSchema.parse(request.body);
-        const { data, error } = await clients.public.auth.verifyOtp({
-            email: input.email,
-            token: input.token,
-            type: 'email',
-        });
-        if (error || !data.session || !data.user) {
-            throw new ApiError('Código inválido ou expirado.', 400, 'INVALID_EMAIL_CONFIRMATION_CODE');
-        }
-        setSessionCookies(reply, env, data.session);
-        const user = await serializeUser(clients, data.user);
-        const isSuperAdmin = user.role === 'super_admin';
-        const isOrganizer = user.role === 'organizer' || user.role === 'admin' || user.organizer?.status === 'active';
-        return {
-            success: true,
-            user,
-            isOrganizer,
-            isSuperAdmin,
-            redirect: isSuperAdmin ? '/super-admin' : isOrganizer ? '/admin' : '/perfil',
-        };
+        await Promise.all([
+            limit('auth-confirm-ip', request.ip, 30, 600),
+            limit('auth-confirm-account', input.email.toLowerCase(), 10, 600),
+        ]);
+        const result = await auth.confirmEmail(input.email, input.token);
+        setSessionCookies(reply, env, result.session);
+        return sessionPayload(auth, result.user);
     });
     app.post('/api/auth/register/resend', async (request) => {
         const input = resendEmailConfirmationSchema.parse(request.body);
-        const { error } = await clients.public.auth.resend({
-            type: 'signup',
-            email: input.email,
-            options: { emailRedirectTo: `${env.WEB_URL}/confirmar-email` },
-        });
-        if (error) {
-            const isRateLimited = error.status === 429 || error.code === 'over_email_send_rate_limit';
-            throw new ApiError(isRateLimited
-                ? 'Aguarde um minuto antes de solicitar outro código.'
-                : 'Não foi possível reenviar o código de confirmação.', isRateLimited ? 429 : 400, isRateLimited ? 'EMAIL_CONFIRMATION_RATE_LIMIT' : 'EMAIL_CONFIRMATION_RESEND_ERROR');
-        }
+        await Promise.all([
+            limit('auth-resend-ip', request.ip, 10, 600),
+            limit('auth-resend-account', input.email.toLowerCase(), 3, 600),
+        ]);
+        await auth.resendEmailConfirmation(input.email, `${env.WEB_URL}/confirmar-email`);
         return { success: true, message: 'Enviamos um novo código de confirmação para o seu e-mail.' };
     });
     app.post('/api/auth/login', async (request, reply) => {
         const input = credentialsSchema.parse(request.body);
-        const { data, error } = await clients.public.auth.signInWithPassword(input);
-        if (error?.code === 'email_not_confirmed') {
-            throw new ApiError('Confirme seu e-mail antes de entrar.', 403, 'EMAIL_NOT_CONFIRMED');
-        }
-        if (error || !data.session || !data.user)
-            throw new ApiError('E-mail ou senha inválidos.', 401, 'INVALID_CREDENTIALS');
-        setSessionCookies(reply, env, data.session);
-        const user = await serializeUser(clients, data.user);
-        const isSuperAdmin = user.role === 'super_admin';
-        const isOrganizer = user.role === 'organizer' || user.role === 'admin' || user.organizer?.status === 'active';
-        return {
-            success: true,
-            user,
-            isOrganizer,
-            isSuperAdmin,
-            redirect: isSuperAdmin ? '/super-admin' : isOrganizer ? '/admin' : '/perfil',
-        };
+        await Promise.all([
+            limit('auth-login-ip', request.ip, 50, 300),
+            limit('auth-login-account', input.email.toLowerCase(), 10, 300),
+        ]);
+        const result = await auth.login(input.email, input.password);
+        setSessionCookies(reply, env, result.session);
+        return sessionPayload(auth, result.user);
     });
     app.get('/api/auth/me', async (request) => {
-        const auth = await requireUser(request, clients);
-        const user = await serializeUser(clients, auth.user);
+        const context = await requireUser(request, auth);
+        const user = await auth.serialize(context.user);
         const organizerStatus = user.organizer?.status ?? null;
-        const isOrganizer = user.role === 'admin' || user.role === 'organizer' || organizerStatus === 'active';
         return {
             user,
-            isOrganizer,
+            isOrganizer: user.role === 'admin' || user.role === 'organizer' || organizerStatus === 'active',
             isSuperAdmin: user.role === 'super_admin',
             organizerProfile: user.organizer,
             organizerStatus,
@@ -120,80 +138,124 @@ export async function authRoutes(app, options) {
         };
     });
     app.post('/api/auth/refresh', async (request, reply) => {
+        await limit('auth-refresh', request.ip, 30, 60);
         const body = z.object({ refresh_token: z.string().optional() }).parse(request.body ?? {});
         const refreshToken = body.refresh_token ?? request.cookies.refresh_token;
         if (!refreshToken)
             throw new ApiError('Token de atualização ausente.', 401, 'MISSING_REFRESH_TOKEN');
-        const { data, error } = await clients.public.auth.refreshSession({ refresh_token: refreshToken });
-        if (error || !data.session || !data.user)
-            throw new ApiError('Não foi possível renovar a sessão.', 401, 'INVALID_REFRESH_TOKEN');
-        setSessionCookies(reply, env, data.session);
-        return { success: true, user: await serializeUser(clients, data.user) };
+        const result = await auth.refresh(refreshToken);
+        setSessionCookies(reply, env, result.session);
+        return { success: true, user: await auth.serialize(result.user) };
     });
     app.post('/api/auth/logout', async (request, reply) => {
         const accessToken = readAccessToken(request);
         if (accessToken)
-            await clients.admin.auth.admin.signOut(accessToken).catch(() => undefined);
+            await auth.signOut(accessToken).catch(() => undefined);
         clearSessionCookies(reply, env);
         return reply.code(204).send();
     });
-    app.post('/api/auth/password/request', async (request) => {
+    const requestPasswordReset = async (request) => {
         const { email } = z.object({ email: z.string().email() }).parse(request.body);
-        await clients.public.auth.resetPasswordForEmail(email, { redirectTo: `${env.WEB_URL}/redefinir-senha` });
+        await Promise.all([
+            limit('auth-password-request-ip', request.ip, 10, 600),
+            limit('auth-password-request-account', email.toLowerCase(), 3, 600),
+        ]);
+        // A resposta é sempre a mesma para não revelar quais e-mails estão cadastrados,
+        // então a causa real da falha só existe no log: sem ela, provedor fora do ar e
+        // rate limit ficam indistinguíveis de um envio bem-sucedido.
+        await auth.requestPasswordReset(email, `${env.WEB_URL}/redefinir-senha`).catch((error) => {
+            request.log.warn({ err: error, email }, 'Falha ao enviar o e-mail de redefinição de senha.');
+        });
         return { success: true, message: 'Se o e-mail estiver cadastrado, as instruções serão enviadas.' };
-    });
-    app.post('/api/auth/forgot-password', async (request) => {
-        const { email } = z.object({ email: z.string().email() }).parse(request.body);
-        await clients.public.auth.resetPasswordForEmail(email, { redirectTo: `${env.WEB_URL}/redefinir-senha` });
-        return { success: true, message: 'Se o e-mail estiver cadastrado, as instruções serão enviadas.' };
-    });
+    };
+    app.post('/api/auth/password/request', requestPasswordReset);
+    app.post('/api/auth/forgot-password', requestPasswordReset);
     app.post('/api/auth/password/reset', async (request) => {
-        const input = z.object({ access_token: z.string(), password: z.string().min(8) }).parse(request.body);
-        const client = clients.forAccessToken(input.access_token);
-        const { error } = await client.auth.updateUser({ password: input.password });
-        if (error)
-            throw new ApiError(error.message, 400, 'PASSWORD_RESET_ERROR');
+        const input = z.object({ access_token: z.string(), password: newPasswordSchema }).parse(request.body);
+        await limit('auth-password-reset', request.ip, 5, 600);
+        await auth.resetPassword(input.access_token, input.password);
         return { success: true };
     });
     app.patch('/api/user/profile', async (request) => {
-        const auth = await requireUser(request, clients);
+        const context = await requireUser(request, auth);
         const input = updateProfileSchema.parse(request.body);
-        const metadata = {};
-        if (input.first_name)
-            metadata.first_name = input.first_name;
-        if (input.last_name)
-            metadata.last_name = input.last_name;
-        if (input.email) {
-            const { error } = await clients.admin.auth.admin.updateUserById(auth.user.id, {
-                email: input.email,
-                user_metadata: metadata,
+        // A troca de CPF checa a senha atual; o orçamento evita que uma sessão
+        // roubada use o campo para adivinhá-la.
+        if (input.document !== undefined)
+            await limit('user-document-change', context.user.id, 5, 900);
+        try {
+            const user = await auth.updateProfile(context.user, input, {
+                ip: request.ip,
+                userAgent: request.headers['user-agent'],
             });
-            if (error)
-                throw error;
+            return { success: true, user };
         }
-        else if (Object.keys(metadata).length) {
-            const { error } = await clients.admin.auth.admin.updateUserById(auth.user.id, { user_metadata: metadata });
-            if (error)
-                throw error;
-        }
-        const profileUpdate = { ...input, email: input.email ?? auth.user.email };
-        const { data, error } = await clients.admin
-            .from('profiles')
-            .update(profileUpdate)
-            .eq('id', auth.user.id)
-            .select()
-            .single();
-        if (error)
+        catch (error) {
+            if (error instanceof DocumentAlreadyInUse) {
+                throw new ApiError('Este CPF já está cadastrado em outra conta.', 409, 'DOCUMENT_ALREADY_IN_USE', {
+                    field: 'document',
+                });
+            }
             throw error;
-        return { success: true, user: data };
+        }
     });
+    app.post('/api/user/phone/request', async (request) => {
+        const context = await requireUser(request, auth);
+        const { phone } = phoneVerificationRequestSchema.parse(request.body);
+        const refreshToken = request.cookies.refresh_token;
+        if (!refreshToken)
+            throw new ApiError('Sessão incompleta. Entre novamente.', 401, 'MISSING_REFRESH_TOKEN');
+        await limit('user-phone-request', context.user.id, 5, 900);
+        // Em desenvolvimento não há provedor de SMS: o clique confirma na hora, para
+        // que o resto do fluxo (cadastro completo, organizador) possa ser testado.
+        if (env.NODE_ENV === 'development') {
+            const user = await auth.confirmPhoneWithoutCode(context.user, phone);
+            return { success: true, verified: true, user, message: 'Telefone confirmado automaticamente (desenvolvimento).' };
+        }
+        await auth.requestPhoneVerification(context.user, { accessToken: context.accessToken, refreshToken }, phone);
+        return { success: true, message: 'Enviamos um código por SMS para o telefone informado.' };
+    });
+    app.post('/api/user/phone/confirm', async (request) => {
+        const context = await requireUser(request, auth);
+        const { phone, token } = phoneVerificationConfirmSchema.parse(request.body);
+        await limit('user-phone-confirm', context.user.id, 10, 900);
+        const user = await auth.confirmPhoneVerification(context.user, phone, token);
+        return { success: true, user };
+    });
+    /**
+     * Changing a password is what turns temporary access to a session into
+     * permanent ownership of an account, so it is guarded on four fronts: the
+     * current password is required, attempts are rate limited, every other device
+     * is signed out, and the account owner is warned by e-mail.
+     */
     app.patch('/api/user/password', async (request) => {
-        const auth = await requireUser(request, clients);
-        const { password } = z.object({ password: z.string().min(8) }).parse(request.body);
-        const { error } = await clients.admin.auth.admin.updateUserById(auth.user.id, { password });
-        if (error)
-            throw error;
-        return { success: true };
+        const context = await requireUser(request, auth);
+        const { currentPassword, password } = changePasswordSchema.parse(request.body);
+        // Both budgets are spent before the current password is checked, so the
+        // endpoint cannot be used to brute-force it from a stolen session.
+        await Promise.all([
+            limit('user-password-change', context.user.id, 5, 900),
+            limit('user-password-change-ip', request.ip, 20, 900),
+        ]);
+        await auth.changePassword(context.user, currentPassword, password);
+        // From here the password has already changed. Neither follow-up may turn a
+        // successful change into an error response, so both are logged instead —
+        // telling the user it failed would leave them using the old password.
+        const otherSessionsRevoked = await auth
+            .revokeOtherSessions(context.accessToken)
+            .then(() => true)
+            .catch((error) => {
+            request.log.error({ err: error, userId: context.user.id }, 'Falha ao encerrar as outras sessões após a troca de senha.');
+            return false;
+        });
+        if (context.user.email) {
+            await email
+                .sendPasswordChangedNotice({ changedAt: new Date(), email: context.user.email }, `password-changed-${context.user.id}-${Date.now()}`)
+                .catch((error) => {
+                request.log.error({ err: error, userId: context.user.id }, 'Falha ao enviar o aviso de senha alterada.');
+            });
+        }
+        return { success: true, otherSessionsRevoked };
     });
 }
 //# sourceMappingURL=auth.js.map
