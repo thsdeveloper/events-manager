@@ -3,7 +3,15 @@
  * Um `it` por regra de negócio; os números vêm da política de taxas publicada.
  */
 import { describe, expect, it } from 'vitest';
-import { calculateBuyerPrice, calculateConvenienceFeePercentage, calculateFees, type FeeConfig } from './fees';
+import {
+	calculateBuyerPrice,
+	calculateConvenienceFeePercentage,
+	calculateFees,
+	calculateFeesForMethod,
+	DEFAULT_PUBLIC_FEES,
+	PAYMENT_METHODS,
+	type FeeConfig,
+} from './fees';
 
 const config: FeeConfig = { platformFeePercentage: 5, providerPercentageFee: 3.5, providerFixedFee: 0.6 };
 
@@ -49,5 +57,51 @@ describe('calculateBuyerPrice', () => {
 describe('calculateConvenienceFeePercentage', () => {
 	it('expresses the convenience fee as a percentage of the base price', () => {
 		expect(calculateConvenienceFeePercentage(200, config)).toBe(5);
+	});
+});
+
+describe('calculateFeesForMethod', () => {
+	it('charges only the fixed PIX fee on top of the platform fee passed to the buyer', () => {
+		expect(calculateFeesForMethod(100, 'passed_to_buyer', 'pix', DEFAULT_PUBLIC_FEES)).toEqual({
+			ticketPrice: 100,
+			convenienceFee: 5,
+			buyerPrice: 105,
+			providerFee: 0.8,
+			platformFee: 5,
+			organizerReceives: 99.2,
+		});
+	});
+
+	it('uses the installment rate of the range chosen when the organizer absorbs the fee', () => {
+		expect(calculateFeesForMethod(100, 'absorbed', 'card_installments_2_6', DEFAULT_PUBLIC_FEES)).toMatchObject({
+			buyerPrice: 100,
+			providerFee: 4.6,
+			platformFee: 5,
+			organizerReceives: 90.4,
+		});
+		expect(calculateFeesForMethod(100, 'absorbed', 'card_installments_7_12', DEFAULT_PUBLIC_FEES)).toMatchObject({
+			providerFee: 5.1,
+			organizerReceives: 89.9,
+		});
+	});
+
+	it('matches the card estimate of the ticket form and charges boleto as a fixed amount', () => {
+		expect(calculateFeesForMethod(100, 'passed_to_buyer', 'card', DEFAULT_PUBLIC_FEES)).toEqual(
+			calculateFees(100, 'passed_to_buyer', config),
+		);
+		expect(calculateFeesForMethod(100, 'passed_to_buyer', 'boleto', DEFAULT_PUBLIC_FEES)).toMatchObject({
+			providerFee: 2.5,
+			organizerReceives: 97.5,
+		});
+	});
+
+	it('describes every payment method the checkout offers', () => {
+		expect(PAYMENT_METHODS.map((method) => method.value)).toEqual([
+			'pix',
+			'card',
+			'card_installments_2_6',
+			'card_installments_7_12',
+			'boleto',
+		]);
 	});
 });

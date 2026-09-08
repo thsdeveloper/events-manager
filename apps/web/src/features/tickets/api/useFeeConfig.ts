@@ -10,7 +10,8 @@ const FALLBACK_FEE_CONFIG: FeeConfig = {
 };
 
 async function fetchFeeConfig(): Promise<FeeConfig> {
-	const response = await fetch('/api/admin/event-configurations', { credentials: 'include' });
+	// Tabela pública: funciona para visitantes e organizadores sem depender de sessão.
+	const response = await fetch('/api/content/fees');
 	if (!response.ok) throw new Error('Não foi possível carregar as taxas da plataforma.');
 	const config = await response.json();
 

@@ -13,7 +13,7 @@ describe('useFeeConfig', () => {
 	it('maps the platform configuration into the fee shape used by the forms', async () => {
 		mockFetch([
 			[
-				'/api/admin/event-configurations',
+				'/api/content/fees',
 				() => jsonResponse({ platform_fee_percentage: 7, card_fee_percentage: 2.9, card_fee_fixed: 0.39 }),
 			],
 		]);
@@ -30,7 +30,7 @@ describe('useFeeConfig', () => {
 	});
 
 	it('falls back to the published defaults and flags it when the request fails', async () => {
-		mockFetch([['/api/admin/event-configurations', () => problemResponse(500, 'INTERNAL_ERROR')]]);
+		mockFetch([['/api/content/fees', () => problemResponse(500, 'INTERNAL_ERROR')]]);
 
 		const { result } = renderHookWithProviders(() => useFeeConfig());
 
