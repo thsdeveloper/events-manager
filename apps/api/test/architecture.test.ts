@@ -68,6 +68,9 @@ describe('architecture boundaries', () => {
 
 		expect(repository).toContain(".from('site_settings')");
 		expect(repository).not.toMatch(/from\(['"]site_settings['"]\)\s*\.select\(['"]\*['"]\)/s);
+		// A tabela de taxas é pública, mas o gateway e os prefixos operacionais não.
+		expect(repository).toContain(".from('event_configurations')");
+		expect(repository).not.toMatch(/from\(['"]event_configurations['"]\)\s*\.select\(['"]\*['"]\)/s);
 	});
 
 	it('keeps inventory persistence behind an application port', () => {
@@ -265,5 +268,36 @@ describe('database security invariants', () => {
 		]) {
 			expect(hardening!.sql).toContain(`constraint ${constraint}`);
 		}
+	});
+
+	describe('CMS migration', () => {
+		const cms = () => migrations().find(({ file }) => file.includes('cms_admin_and_cleanup'));
+
+		it('removes the unused ai_prompts table from the schema', () => {
+			expect(cms()).toBeDefined();
+			expect(cms()!.sql).toMatch(/drop table if exists public\.ai_prompts/i);
+		});
+
+		it('enforces URL invariants for pages, posts and redirects in Postgres', () => {
+			expect(cms()!.sql).toMatch(/constraint pages_permalink_format check/i);
+			expect(cms()!.sql).toMatch(/constraint posts_slug_format check/i);
+			expect(cms()!.sql).toMatch(/constraint redirects_url_from_relative check/i);
+		});
+
+		it('links event blocks to categories and removes block items together with their page block', () => {
+			expect(cms()!.sql).toMatch(/block_events_filter_by_category_fkey[\s\S]*references public\.event_categories\(id\) on delete set null/i);
+			expect(cms()!.sql).toMatch(/create or replace function public\.delete_page_block_item\(\)[\s\S]*security invoker/i);
+			expect(cms()!.sql).toMatch(/create trigger page_blocks_delete_item[\s\S]*after delete on public\.page_blocks/i);
+			expect(cms()!.sql).toMatch(/revoke execute on function public\.delete_page_block_item\(\) from public, anon, authenticated/i);
+		});
+
+		it('keeps the page freshness date in sync with its blocks for caching and sitemaps', () => {
+			expect(cms()!.sql).toMatch(/create or replace function public\.touch_page_from_block\(\)/i);
+			expect(cms()!.sql).toMatch(/create trigger page_blocks_touch_page[\s\S]*after insert or update or delete on public\.page_blocks/i);
+		});
+
+		it('stores a default Open Graph image on the site settings', () => {
+			expect(cms()!.sql).toMatch(/alter table public\.site_settings[\s\S]*add column if not exists default_og_image uuid references public\.media_files\(id\) on delete set null/i);
+		});
 	});
 });

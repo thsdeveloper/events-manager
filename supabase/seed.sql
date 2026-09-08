@@ -35,15 +35,36 @@ insert into public.navigation (id, title, is_active)
 values ('main', 'Navegação principal', true), ('footer', 'Rodapé', true)
 on conflict (id) do nothing;
 
-insert into public.navigation_items (id, navigation, page, title, type, sort)
-values (
-  '30000000-0000-0000-0000-000000000001',
-  'main',
-  '20000000-0000-0000-0000-000000000001',
-  'Início',
-  'page',
-  1
-)
+insert into public.pages (id, title, permalink, status, published_at, seo)
+values
+  (
+    '20000000-0000-0000-0000-000000000002',
+    'Sobre',
+    '/sobre',
+    'published',
+    timezone('utc', now()),
+    '{"title":"Sobre o Events Manager","meta_description":"Conheça a plataforma que conecta organizadores e participantes."}'::jsonb
+  ),
+  (
+    '20000000-0000-0000-0000-000000000003',
+    'Contato',
+    '/contato',
+    'published',
+    timezone('utc', now()),
+    '{"title":"Fale com a gente","meta_description":"Tire dúvidas sobre eventos, ingressos e a plataforma."}'::jsonb
+  )
+on conflict (id) do nothing;
+
+insert into public.navigation_items (id, navigation, page, title, type, url, sort)
+values
+  ('30000000-0000-0000-0000-000000000001', 'main', '20000000-0000-0000-0000-000000000001', 'Início', 'page', null, 1),
+  ('30000000-0000-0000-0000-000000000002', 'main', null, 'Eventos', 'url', '/eventos', 2),
+  ('30000000-0000-0000-0000-000000000003', 'main', null, 'Blog', 'url', '/blog', 3),
+  ('30000000-0000-0000-0000-000000000004', 'main', '20000000-0000-0000-0000-000000000002', 'Sobre', 'page', null, 4),
+  ('30000000-0000-0000-0000-000000000011', 'footer', '20000000-0000-0000-0000-000000000001', 'Início', 'page', null, 1),
+  ('30000000-0000-0000-0000-000000000012', 'footer', null, 'Eventos', 'url', '/eventos', 2),
+  ('30000000-0000-0000-0000-000000000013', 'footer', '20000000-0000-0000-0000-000000000002', 'Sobre', 'page', null, 3),
+  ('30000000-0000-0000-0000-000000000014', 'footer', '20000000-0000-0000-0000-000000000003', 'Contato', 'page', null, 4)
 on conflict (id) do nothing;
 
 insert into public.block_button_groups (id, sort)
@@ -102,6 +123,75 @@ values
     2,
     'light'
   )
+on conflict (id) do nothing;
+
+insert into public.block_richtext (id, tagline, headline, content, alignment)
+values
+  (
+    '45000000-0000-0000-0000-000000000001',
+    'Como funciona',
+    'Do cadastro ao check-in em um só lugar',
+    '<p>Organizadores publicam eventos, vendem ingressos com Pix, cartão ou boleto e acompanham as inscrições em tempo real. Participantes encontram experiências perto de si e recebem o ingresso por e-mail.</p><ul><li>Ingressos com lotes, cupons e parcelamento.</li><li>Check-in por QR Code no dia do evento.</li><li>Repasses automáticos para o organizador.</li></ul>',
+    'center'
+  ),
+  (
+    '45000000-0000-0000-0000-000000000002',
+    'Sobre nós',
+    'Uma plataforma feita para quem cria experiências',
+    '<p>O Events Manager nasceu para simplificar a vida de quem organiza eventos: menos planilha, mais palco. Toda a operação — divulgação, ingressos, pagamentos e relatórios — fica no mesmo painel.</p><p>Quer organizar o seu? <a href="/perfil/organizador">Crie sua organização</a> em poucos minutos.</p>',
+    'left'
+  ),
+  (
+    '45000000-0000-0000-0000-000000000003',
+    'Contato',
+    'Fale com a gente',
+    '<p>Dúvidas sobre ingressos, pagamentos ou como publicar um evento? Envie sua mensagem e respondemos em até um dia útil.</p>',
+    'center'
+  )
+on conflict (id) do nothing;
+
+insert into public.forms (id, title, submit_label, success_message, on_success, is_active)
+values (
+  '46000000-0000-0000-0000-000000000001',
+  'Contato',
+  'Enviar mensagem',
+  'Recebemos sua mensagem. Em breve entraremos em contato.',
+  'message',
+  true
+)
+on conflict (id) do nothing;
+
+insert into public.form_fields (id, form, name, type, label, placeholder, validation, width, required, sort)
+values
+  ('47000000-0000-0000-0000-000000000001', '46000000-0000-0000-0000-000000000001', 'nome', 'text', 'Nome', 'Seu nome', 'min:2|max:100', '50', true, 1),
+  ('47000000-0000-0000-0000-000000000002', '46000000-0000-0000-0000-000000000001', 'email', 'text', 'E-mail', 'voce@exemplo.com', 'email|max:255', '50', true, 2),
+  ('47000000-0000-0000-0000-000000000003', '46000000-0000-0000-0000-000000000001', 'mensagem', 'textarea', 'Mensagem', 'Como podemos ajudar?', 'min:10|max:2000', '100', true, 3)
+on conflict (id) do nothing;
+
+insert into public.block_form (id, form, tagline, headline)
+values ('48000000-0000-0000-0000-000000000001', '46000000-0000-0000-0000-000000000001', null, null)
+on conflict (id) do nothing;
+
+insert into public.page_blocks (id, page, collection, item, sort, background)
+values
+  ('44000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', 'block_richtext', '45000000-0000-0000-0000-000000000001', 3, 'light'),
+  ('44000000-0000-0000-0000-000000000011', '20000000-0000-0000-0000-000000000002', 'block_richtext', '45000000-0000-0000-0000-000000000002', 1, 'light'),
+  ('44000000-0000-0000-0000-000000000021', '20000000-0000-0000-0000-000000000003', 'block_richtext', '45000000-0000-0000-0000-000000000003', 1, 'light'),
+  ('44000000-0000-0000-0000-000000000022', '20000000-0000-0000-0000-000000000003', 'block_form', '48000000-0000-0000-0000-000000000001', 2, 'light')
+on conflict (id) do nothing;
+
+insert into public.posts (id, title, name, slug, description, content, status, published_at, seo)
+values (
+  '49000000-0000-0000-0000-000000000001',
+  'Bem-vindo ao blog do Events Manager',
+  'Bem-vindo ao blog do Events Manager',
+  'bem-vindo-ao-blog',
+  'Novidades da plataforma, dicas para organizadores e bastidores dos eventos.',
+  '<p>Este é o primeiro post do blog. Aqui vamos compartilhar novidades da plataforma, boas práticas para vender ingressos e histórias de quem organiza eventos com a gente.</p><h2>O que vem por aí</h2><ul><li>Guias passo a passo para publicar seu evento.</li><li>Dicas de divulgação e precificação.</li><li>Estudos de caso com organizadores.</li></ul>',
+  'published',
+  timezone('utc', now()),
+  '{"title":"Bem-vindo ao blog","meta_description":"Novidades, dicas e bastidores dos eventos."}'::jsonb
+)
 on conflict (id) do nothing;
 
 insert into public.event_categories (id, name, slug, description, icon, color, sort)

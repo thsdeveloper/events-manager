@@ -1,5 +1,3 @@
-'use client';
-
 import Tagline from '@/components/ui/Tagline';
 import Headline from '@/components/ui/Headline';
 import PricingCard from '@/components/blocks/PricingCard';
@@ -47,19 +45,9 @@ const Pricing = ({ data }: PricingProps) => {
 
 	return (
 		<section>
-			{tagline && (
-				<Tagline
-					tagline={tagline}
-				/>
-			)}
-			{headline && (
-				<Headline
-					headline={headline}
-				/>
-			)}
-			<div
-				className={`grid gap-6 mt-8 ${gridClasses}`}
-			>
+			{tagline && <Tagline as="p" tagline={tagline} />}
+			{headline && <Headline as="h2" headline={headline} />}
+			<div className={`grid gap-6 mt-8 ${gridClasses}`}>
 				{pricing_cards.map((card) => (
 					<PricingCard key={card.id} card={card} />
 				))}

@@ -4,8 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '@/test';
 import { SuperAdminShell } from './SuperAdminShell';
 
+const navigationState = vi.hoisted(() => ({ pathname: '/super-admin' }));
+
 vi.mock('next/navigation', () => ({
-	usePathname: () => '/super-admin',
+	usePathname: () => navigationState.pathname,
 	useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock('next/link', () => ({
@@ -26,6 +28,54 @@ const user = {
 };
 
 describe('SuperAdminShell', () => {
+	it('offers the content management section next to the platform links', () => {
+		renderWithProviders(
+			<SuperAdminShell user={user as never} isOrganizer={false}>
+				<p>conteúdo</p>
+			</SuperAdminShell>,
+		);
+
+		const sidebar = screen.getByRole('navigation', { name: /navegação do super admin/i });
+		const links = Array.from(sidebar.querySelectorAll('a')).map((anchor) => [
+			anchor.textContent?.trim(),
+			anchor.getAttribute('href'),
+		]);
+
+		expect(links).toEqual(
+			expect.arrayContaining([
+				['Categorias', '/super-admin/categorias'],
+				['Visão do conteúdo', '/super-admin/conteudo'],
+				['Páginas', '/super-admin/conteudo/paginas'],
+				['Blog', '/super-admin/conteudo/blog'],
+				['Menus', '/super-admin/conteudo/menus'],
+				['Formulários', '/super-admin/conteudo/formularios'],
+				['Redirecionamentos', '/super-admin/conteudo/redirecionamentos'],
+				['Mídia', '/super-admin/conteudo/midia'],
+				['Site e SEO', '/super-admin/conteudo/site'],
+			]),
+		);
+	});
+
+	it('marks only the pages link as current when editing pages, not the content overview', () => {
+		navigationState.pathname = '/super-admin/conteudo/paginas/abc';
+		try {
+			renderWithProviders(
+				<SuperAdminShell user={user as never} isOrganizer={false}>
+					<p>conteúdo</p>
+				</SuperAdminShell>,
+			);
+
+			const sidebar = screen.getByRole('navigation', { name: /navegação do super admin/i });
+			const current = Array.from(sidebar.querySelectorAll('a[aria-current="page"]')).map((anchor) =>
+				anchor.textContent?.trim(),
+			);
+
+			expect(current).toEqual(['Páginas']);
+		} finally {
+			navigationState.pathname = '/super-admin';
+		}
+	});
+
 	it('shows the shared account avatar and menu in its header', async () => {
 		const { user: person } = renderWithProviders(
 			<SuperAdminShell user={user as never} isOrganizer={false}>

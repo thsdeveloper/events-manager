@@ -106,8 +106,8 @@ const Posts = ({ data }: PostsProps) => {
 
 	return (
 		<div>
-			{tagline && <Tagline tagline={tagline} />}
-			{headline && <Headline headline={headline} />}
+			{tagline && <Tagline as="p" tagline={tagline} />}
+			{headline && <Headline as="h2" headline={headline} />}
 
 			<div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
 				{paginatedPosts.length > 0 ? (

@@ -55,8 +55,11 @@ automaticamente como organizador e pagamentos e repasses são simulados. Para te
 ## Confirmação de telefone
 
 O telefone do perfil é confirmado por código SMS pelo Supabase Auth (fluxo `phone_change`).
-Localmente nenhum SMS é enviado: o `supabase/config.toml` define códigos de teste por número em
-`[auth.sms.test_otp]` (por exemplo, `(11) 99999-0000` aceita `123456`). No projeto hospedado,
+Com `NODE_ENV=development`, a API não pede código: o clique em "Confirmar por SMS" confirma o
+telefone na hora, para que o restante do fluxo (cadastro completo, organizador) possa ser testado.
+Fora de desenvolvimento nenhum atalho existe. O `supabase/config.toml` ainda define códigos de
+teste por número em `[auth.sms.test_otp]` (por exemplo, `(11) 99999-0000` aceita `123456`) para
+exercitar o fluxo real localmente. No projeto hospedado,
 configure um provedor de SMS (Twilio, Vonage, MessageBird ou Textlocal) em Authentication > Providers >
 Phone; cadastro e login por telefone permanecem desligados, o telefone é apenas dado de contato.
 
@@ -99,3 +102,10 @@ O usuário local `ths.pereira@gmail.com` já está promovido para testes. Para p
 
 Checkout, PIX, webhooks e repasses usam uma abstração de gateway com adapters local e AbacatePay. Veja o fluxo completo,
 as variáveis e o roteiro para o ambiente de desenvolvimento em [docs/PAGAMENTOS-ABACATEPAY.md](docs/PAGAMENTOS-ABACATEPAY.md).
+
+## CMS do superadmin
+
+A página inicial e as páginas institucionais são montadas por blocos no painel
+`/super-admin/conteudo` (páginas, menus, blog, formulários, redirecionamentos,
+mídia e SEO). O guia completo, com modelo de dados, rotas e regras de segurança,
+está em [`docs/CMS.md`](docs/CMS.md).

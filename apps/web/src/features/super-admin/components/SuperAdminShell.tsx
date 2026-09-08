@@ -5,11 +5,18 @@ import {
 	Building2,
 	CalendarDays,
 	ChevronRight,
+	FileText,
+	FormInput,
 	Gauge,
+	Globe,
+	Images,
+	LayoutTemplate,
+	ListTree,
 	LogOut,
+	Newspaper,
 	Palette,
+	Route,
 	Tags,
-	ReceiptText,
 	Settings2,
 	ShieldCheck,
 } from 'lucide-react';
@@ -20,14 +27,47 @@ import { UserMenu } from '@/components/layout/UserMenu';
 import type { AuthUser } from '@/lib/auth/server-auth';
 import { cn } from '@/lib/utils';
 
-const navigation = [
-	{ label: 'Visão geral', href: '/super-admin', icon: Gauge },
-	{ label: 'Organizadores', href: '/super-admin/organizadores', icon: Building2 },
-	{ label: 'Financeiro', href: '/super-admin/financeiro', icon: BarChart3 },
-	{ label: 'Taxas e gateway', href: '/super-admin/taxas', icon: Settings2 },
-	{ label: 'Identidade visual', href: '/super-admin/identidade-visual', icon: Palette },
-	{ label: 'Categorias', href: '/super-admin/categorias', icon: Tags },
+interface NavigationItem {
+	label: string;
+	href: string;
+	icon: typeof Gauge;
+	/** Só marca ativo quando o caminho é exatamente este (raiz de uma seção). */
+	exact?: boolean;
+}
+
+interface NavigationGroup {
+	label: string;
+	items: NavigationItem[];
+}
+
+const navigationGroups: NavigationGroup[] = [
+	{
+		label: 'Plataforma',
+		items: [
+			{ label: 'Visão geral', href: '/super-admin', icon: Gauge, exact: true },
+			{ label: 'Organizadores', href: '/super-admin/organizadores', icon: Building2 },
+			{ label: 'Financeiro', href: '/super-admin/financeiro', icon: BarChart3 },
+			{ label: 'Taxas e gateway', href: '/super-admin/taxas', icon: Settings2 },
+			{ label: 'Identidade visual', href: '/super-admin/identidade-visual', icon: Palette },
+			{ label: 'Categorias', href: '/super-admin/categorias', icon: Tags },
+		],
+	},
+	{
+		label: 'Conteúdo',
+		items: [
+			{ label: 'Visão do conteúdo', href: '/super-admin/conteudo', icon: LayoutTemplate, exact: true },
+			{ label: 'Páginas', href: '/super-admin/conteudo/paginas', icon: FileText },
+			{ label: 'Blog', href: '/super-admin/conteudo/blog', icon: Newspaper },
+			{ label: 'Menus', href: '/super-admin/conteudo/menus', icon: ListTree },
+			{ label: 'Formulários', href: '/super-admin/conteudo/formularios', icon: FormInput },
+			{ label: 'Redirecionamentos', href: '/super-admin/conteudo/redirecionamentos', icon: Route },
+			{ label: 'Mídia', href: '/super-admin/conteudo/midia', icon: Images },
+			{ label: 'Site e SEO', href: '/super-admin/conteudo/site', icon: Globe },
+		],
+	},
 ];
+
+const navigation = navigationGroups.flatMap((group) => group.items);
 
 export function SuperAdminShell({
 	children,
@@ -42,7 +82,8 @@ export function SuperAdminShell({
 	const canOpenOrganizer = isOrganizer;
 	const pathname = usePathname();
 	const router = useRouter();
-	const active = (href: string) => (href === '/super-admin' ? pathname === href : pathname.startsWith(href));
+	const active = (item: NavigationItem) =>
+		item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 	async function logout() {
 		await fetch('/api/auth/logout', { method: 'POST' });
 		router.push('/login');
@@ -63,27 +104,36 @@ export function SuperAdminShell({
 						</div>
 					</Link>
 				</div>
-				<nav aria-label="Navegação do super admin" className="flex-1 space-y-1 p-4">
-					{navigation.map((item) => {
-						const Icon = item.icon;
+				<nav aria-label="Navegação do super admin" className="flex-1 space-y-6 overflow-y-auto p-4">
+					{navigationGroups.map((group) => (
+						<div key={group.label} className="space-y-1">
+							<p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+								{group.label}
+							</p>
+							{group.items.map((item) => {
+								const Icon = item.icon;
+								const isActive = active(item);
 
-						return (
-							<Link
-								key={item.href}
-								href={item.href}
-								className={cn(
-									'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition',
-									active(item.href)
-										? 'bg-white text-slate-950 shadow-sm'
-										: 'text-slate-300 hover:bg-white/10 hover:text-white',
-								)}
-							>
-								<Icon className="size-5" />
-								{item.label}
-								<ChevronRight className="ml-auto size-4 opacity-50" />
-							</Link>
-						);
-					})}
+								return (
+									<Link
+										key={item.href}
+										href={item.href}
+										aria-current={isActive ? 'page' : undefined}
+										className={cn(
+											'flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+											isActive
+												? 'bg-white text-slate-950 shadow-sm'
+												: 'text-slate-300 hover:bg-white/10 hover:text-white',
+										)}
+									>
+										<Icon className="size-5" />
+										{item.label}
+										<ChevronRight className="ml-auto size-4 opacity-50" />
+									</Link>
+								);
+							})}
+						</div>
+					))}
 				</nav>
 				<div className="space-y-2 border-t border-white/10 p-4">
 					{canOpenOrganizer && (
@@ -129,9 +179,10 @@ export function SuperAdminShell({
 						<Link
 							key={item.href}
 							href={item.href}
+							aria-current={active(item) ? 'page' : undefined}
 							className={cn(
 								'whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold',
-								active(item.href) ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-700',
+								active(item) ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-700',
 							)}
 						>
 							{item.label}

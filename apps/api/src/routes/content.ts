@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { ContentService } from '../application/content/content-service.js';
+import type { ApiEnv } from '../config/env.js';
 import { FormUnavailable, InvalidFormSubmission, SubmitForm } from '../application/content/submit-form.js';
 import { EnforceRateLimit, RateLimitExceeded } from '../application/security/rate-limit.js';
 import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
@@ -11,20 +12,26 @@ import { SupabaseRateLimitRepository } from '../infrastructure/supabase/rate-lim
 import { ApiError } from '../shared/errors.js';
 import { readAccessToken, requireUser } from './auth-context.js';
 
-export async function contentRoutes(app: FastifyInstance, options: { clients: SupabaseClients }) {
-	const { clients } = options;
+export async function contentRoutes(app: FastifyInstance, options: { clients: SupabaseClients; env: ApiEnv }) {
+	const { clients, env } = options;
 	const auth = createSupabaseAuthService(clients);
-	const content = new ContentService(new SupabaseContentRepository(clients.admin));
+	const content = new ContentService(new SupabaseContentRepository(clients.admin), { previewSecret: env.COOKIE_SECRET });
 	const submitForm = new SubmitForm(new SupabaseFormSubmissionRepository(clients.admin));
 	const enforceRateLimit = new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin));
 
 	app.get('/api/content/site', () => content.getSite());
 
+	app.get('/api/content/fees', () => content.getFees());
+
 	app.get('/api/content/pages', async (request) => {
 		const query = z
-			.object({ permalink: z.string().default('/'), page: z.coerce.number().int().positive().default(1) })
+			.object({
+				permalink: z.string().default('/'),
+				page: z.coerce.number().int().positive().default(1),
+				preview: z.string().max(200).optional(),
+			})
 			.parse(request.query);
-		return content.getPage(query.permalink, query.page);
+		return content.getPage(query.permalink, query.page, query.preview);
 	});
 
 	app.get('/api/content/posts/:slug', async (request) => {

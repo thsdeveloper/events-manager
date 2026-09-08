@@ -15,36 +15,21 @@ interface BlogPostClientProps {
 	author?: AppUser | null;
 	authorName: string;
 	postUrl: string;
-	isDraft?: boolean;
 }
 
-export default function BlogPostClient({
-	post,
-	relatedPosts,
-	author,
-	authorName,
-	postUrl,
-	isDraft,
-}: BlogPostClientProps) {
+export default function BlogPostClient({ post, relatedPosts, author, authorName, postUrl }: BlogPostClientProps) {
 	return (
 		<>
-			{isDraft && <p>(Draft Mode)</p>}
-
 			<Container className="py-12">
 				{post.image && (
 					<div className="mb-8">
 						<div className="relative w-full h-[400px] overflow-hidden rounded-lg">
-							<MediaImage
-								uuid={post.image as string}
-								alt={post.title || 'post header image'}
-								className="object-cover"
-								fill
-							/>
+							<MediaImage uuid={post.image} alt={post.title || 'post header image'} className="object-cover" fill />
 						</div>
 					</div>
 				)}
 
-				<Headline as="h2" headline={post.title} className="!text-accent mb-4" />
+				<Headline as="h1" headline={post.title} className="!text-accent mb-4" />
 				<Separator className="mb-8" />
 
 				<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,_2fr)_400px] gap-12">
@@ -74,32 +59,34 @@ export default function BlogPostClient({
 							<ShareDialog postUrl={postUrl} postTitle={post.title} />
 						</div>
 
-						<div>
-							<Separator className="my-4" />
-							<h3 className="font-bold mb-4">Related Posts</h3>
-							<div className="space-y-4">
-								{relatedPosts.map((relatedPost) => (
-									<Link
-										key={relatedPost.id}
-										href={`/blog/${relatedPost.slug}`}
-										className="flex items-center space-x-4 hover:text-accent group"
-									>
-										{relatedPost.image && (
-											<div className="relative shrink-0 w-[150px] h-[100px] overflow-hidden rounded-lg">
-												<MediaImage
-													uuid={relatedPost.image as string}
-													alt={relatedPost.title || 'related posts'}
-													className="object-cover transition-transform duration-300 group-hover:scale-110"
-													fill
-													sizes="(max-width: 768px) 100px, (max-width: 1024px) 150px, 150px"
-												/>
-											</div>
-										)}
-										<span className="font-heading">{relatedPost.title}</span>
-									</Link>
-								))}
+						{relatedPosts.length > 0 && (
+							<div>
+								<Separator className="my-4" />
+								<h2 className="font-bold mb-4">Posts relacionados</h2>
+								<div className="space-y-4">
+									{relatedPosts.map((relatedPost) => (
+										<Link
+											key={relatedPost.id}
+											href={`/blog/${relatedPost.slug}`}
+											className="flex items-center space-x-4 hover:text-accent group"
+										>
+											{relatedPost.image && (
+												<div className="relative shrink-0 w-[150px] h-[100px] overflow-hidden rounded-lg">
+													<MediaImage
+														uuid={relatedPost.image}
+														alt={relatedPost.title || 'related posts'}
+														className="object-cover transition-transform duration-300 group-hover:scale-110"
+														fill
+														sizes="(max-width: 768px) 100px, (max-width: 1024px) 150px, 150px"
+													/>
+												</div>
+											)}
+											<span className="font-heading">{relatedPost.title}</span>
+										</Link>
+									))}
+								</div>
 							</div>
-						</div>
+						)}
 					</aside>
 				</div>
 			</Container>

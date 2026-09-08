@@ -23,19 +23,23 @@ afterEach(() => {
 });
 
 if (typeof window !== 'undefined') {
+	// Funções simples, não `vi.fn()`: com `restoreMocks` ligado, um mock aqui
+	// seria esvaziado antes de cada teste e `matchMedia()` passaria a devolver
+	// undefined (motion/react lê prefers-reduced-motion na primeira renderização).
 	if (!window.matchMedia) {
+		const noop = () => {};
 		Object.defineProperty(window, 'matchMedia', {
 			writable: true,
-			value: vi.fn().mockImplementation((query: string) => ({
+			value: (query: string) => ({
 				matches: false,
 				media: query,
 				onchange: null,
-				addListener: vi.fn(),
-				removeListener: vi.fn(),
-				addEventListener: vi.fn(),
-				removeEventListener: vi.fn(),
-				dispatchEvent: vi.fn(),
-			})),
+				addListener: noop,
+				removeListener: noop,
+				addEventListener: noop,
+				removeEventListener: noop,
+				dispatchEvent: () => false,
+			}),
 		});
 	}
 
@@ -68,5 +72,12 @@ if (typeof window !== 'undefined') {
 
 	if (!Element.prototype.scrollIntoView) {
 		Element.prototype.scrollIntoView = vi.fn();
+	}
+
+	// O ProseMirror (editor de texto rico) consulta a posição do cursor com
+	// elementFromPoint, que o jsdom não implementa; sem o stub cada clique no
+	// editor vira um erro não tratado e derruba a suíte mesmo com testes verdes.
+	if (!document.elementFromPoint) {
+		document.elementFromPoint = () => null;
 	}
 }

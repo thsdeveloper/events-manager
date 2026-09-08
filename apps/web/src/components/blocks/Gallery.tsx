@@ -76,21 +76,11 @@ const Gallery = ({ data }: GalleryProps) => {
 
 	return (
 		<section className="relative">
-			{tagline && (
-				<Tagline
-					tagline={tagline}
-				/>
-			)}
-			{headline && (
-				<Headline
-					headline={headline}
-				/>
-			)}
+			{tagline && <Tagline as="p" tagline={tagline} />}
+			{headline && <Headline as="h2" headline={headline} />}
 
 			{sortedItems.length > 0 && (
-				<div
-					className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
-				>
+				<div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
 					{sortedItems.map((item, index) => (
 						<div
 							key={item.id}

@@ -10,6 +10,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { AppProgressProvider } from '@/contexts/ProgressProvider';
 import { fetchSiteData } from '@/lib/content/fetchers';
 import { getMediaAssetUrl } from '@/lib/media';
+import { resolveSiteUrl } from '@/lib/seo/site-url';
 
 export async function generateMetadata(): Promise<Metadata> {
 	const { globals } = await fetchSiteData();
@@ -19,6 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
 	const faviconURL = globals?.favicon ? getMediaAssetUrl(globals.favicon) : '/favicon.ico';
 
 	return {
+		// Base para URLs relativas em Open Graph, canonical e ícones.
+		metadataBase: new URL(resolveSiteUrl(globals)),
 		title: {
 			default: siteTitle,
 			template: `%s | ${siteTitle}`,

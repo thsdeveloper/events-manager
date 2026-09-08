@@ -1,4 +1,4 @@
-import { Button as ShadcnButton, buttonVariants } from '@/components/ui/button';
+import { Button as ShadcnButton } from '@/components/ui/button';
 import { LucideIcon, ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -52,12 +52,9 @@ const Button = ({
 		return url || undefined;
 	})();
 
-	const buttonClasses = cn(
-		buttonVariants({ variant: variant as any, size }),
-		className,
-		disabled && 'opacity-50 cursor-not-allowed',
-		block && 'w-full',
-	);
+	// As classes de variante e tamanho ficam por conta do ShadcnButton (client);
+	// invocar o helper de variantes daquele módulo aqui quebraria o render no servidor.
+	const buttonClasses = cn(className, disabled && 'opacity-50 cursor-not-allowed', block && 'w-full');
 
 	const content = (
 		<span className="flex items-center space-x-2">

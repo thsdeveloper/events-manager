@@ -8,6 +8,7 @@
 - `supabase/` contém configuração local, migrations, políticas RLS e seed.
 - `testsprite_tests/` contém cenários de aceitação (E2E).
 - `docs/TDD.md` é o guia da metodologia de desenvolvimento orientado a testes, obrigatória em todo o repositório.
+- `docs/CMS.md` descreve o CMS gerenciado pelo superadmin (páginas, blocos, menus, posts, formulários, redirecionamentos, mídia, SEO): modelo de dados, rotas `/api/super-admin/cms/*`, preview de rascunhos, cache e regras de segurança.
 
 ## Commands
 

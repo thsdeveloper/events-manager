@@ -35,20 +35,10 @@ const FormBlock = ({ data }: FormBlockProps) => {
 
 	return (
 		<section className="mx-auto">
-			{tagline && (
-				<Tagline
-					tagline={tagline}
-				/>
-			)}
+			{tagline && <Tagline as="p" tagline={tagline} />}
+			{headline && <Headline as="h2" headline={headline} />}
 
-			{headline && (
-				<Headline
-					headline={headline}
-				/>
-			)}
-
-			<div
-			>
+			<div>
 				<FormBuilder form={form} className="mt-8" />
 			</div>
 		</section>

@@ -1,5 +1,3 @@
-'use client';
-
 import RichText from '@/components/blocks/RichText';
 import Hero from '@/components/blocks/Hero';
 import Gallery from '@/components/blocks/Gallery';

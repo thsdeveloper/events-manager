@@ -9,11 +9,14 @@ describe('safe text', () => {
 		).toBe('Primeiro & seguro\nSegundo\nfim');
 	});
 
-	it('renders user-authored content as text instead of raw HTML', () => {
-		const output = renderToStaticMarkup(<Text content={'<img src=x onerror="alert(1)">Texto'} />);
+	it('keeps the editorial content but strips event handlers and unsafe image sources', () => {
+		const output = renderToStaticMarkup(
+			<Text content={'<img src=x onerror="alert(1)">Texto<img src="javascript:alert(2)" alt="x">'} />,
+		);
 
-		expect(output).not.toContain('<img');
 		expect(output).not.toContain('onerror');
+		expect(output).not.toContain('javascript:');
 		expect(output).toContain('Texto');
+		expect(output.match(/<img/g)).toHaveLength(1);
 	});
 });

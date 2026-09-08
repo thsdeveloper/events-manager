@@ -1,5 +1,3 @@
-'use client';
-
 import Tagline from '../ui/Tagline';
 import Headline from '@/components/ui/Headline';
 import MediaImage from '@/components/shared/MediaImage';

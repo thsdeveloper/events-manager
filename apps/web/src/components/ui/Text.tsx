@@ -1,3 +1,4 @@
+import { sanitizeHtml } from '@events-manager/contracts';
 import { cn } from '@/lib/utils';
 
 export interface TextProps {
@@ -33,8 +34,18 @@ export function htmlToPlainText(content: string) {
 		.trim();
 }
 
+/**
+ * Renderiza o HTML rico do CMS. A API já sanitiza na gravação e na leitura;
+ * esta é a segunda camada, para que nenhum caminho (cache antigo, seed manual,
+ * bug do editor) consiga colocar script na página.
+ */
 const Text = ({ content, className }: TextProps) => {
-	return <div className={cn('prose whitespace-pre-wrap dark:prose-invert', className)}>{htmlToPlainText(content)}</div>;
+	return (
+		<div
+			className={cn('prose prose-slate max-w-none dark:prose-invert', className)}
+			dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
+		/>
+	);
 };
 
 export default Text;

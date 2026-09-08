@@ -25,8 +25,8 @@ const RichText = ({ data, className }: RichTextProps) => {
 				className,
 			)}
 		>
-			{tagline && <Tagline tagline={tagline} />}
-			{headline && <Headline headline={headline} />}
+			{tagline && <Tagline as="p" tagline={tagline} />}
+			{headline && <Headline as="h2" headline={headline} />}
 			{content && <Text content={content} />}
 		</div>
 	);

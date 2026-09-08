@@ -9,6 +9,7 @@ import { createSupabaseClients } from './infrastructure/supabase/clients.js';
 import { SupabaseHealthRepository } from './infrastructure/supabase/health-repository.js';
 import { createPaymentGateway } from './infrastructure/payments/create-payment-gateway.js';
 import { authRoutes } from './routes/auth.js';
+import { cmsRoutes } from './routes/cms.js';
 import { contentRoutes } from './routes/content.js';
 import { eventRoutes } from './routes/events.js';
 import { adminRoutes } from './routes/admin.js';
@@ -46,7 +47,7 @@ export async function buildApp(env: ApiEnv) {
 	app.get('/health', () => checkHealth.execute());
 
 	await app.register(authRoutes, { env, clients });
-	await app.register(contentRoutes, { clients });
+	await app.register(contentRoutes, { env, clients });
 	await app.register(eventRoutes, { clients });
 	await app.register(organizerRoutes, { env, clients });
 	await app.register(adminRoutes, { clients });
@@ -55,6 +56,7 @@ export async function buildApp(env: ApiEnv) {
 	await app.register(financeRoutes, { env, clients, payments });
 	await app.register(paymentRoutes, { env, clients, payments });
 	await app.register(superAdminRoutes, { clients, payments });
+	await app.register(cmsRoutes, { clients, env });
 	await app.register(uploadRoutes, { clients });
 	await app.register(emailRoutes, { env, clients });
 	await app.register(externalRoutes, { env, clients });

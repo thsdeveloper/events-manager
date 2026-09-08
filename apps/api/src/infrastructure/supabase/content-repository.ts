@@ -1,6 +1,6 @@
 import type { MediaFile } from '@events-manager/contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ContentRepository } from '../../application/content/content-service.js';
+import type { ContentRepository, PageReadOptions, PublicFeeTable } from '../../application/content/content-service.js';
 import { ApiError } from '../../shared/errors.js';
 
 /**
@@ -12,6 +12,11 @@ function toMediaFile(value: unknown): MediaFile | null {
 	if (!record || typeof record !== 'object') return null;
 	const { id, bucket, path } = record as { bucket?: string | null; id?: string; path?: string | null };
 	return id ? { id, bucket: bucket ?? undefined, path: path ?? undefined } : null;
+}
+
+/** Conteúdo publicado cuja data agendada já chegou (ou sem agendamento). */
+function alreadyPublished() {
+	return `published_at.is.null,published_at.lte.${new Date().toISOString()}`;
 }
 
 const blockTables = {
@@ -66,13 +71,39 @@ export class SupabaseContentRepository implements ContentRepository {
 		};
 	}
 
-	async getPage(permalink: string, postPage = 1) {
-		const { data: page, error } = await this.database
-			.from('pages')
-			.select('*')
-			.eq('permalink', permalink)
-			.eq('status', 'published')
-			.maybeSingle();
+	async getFees(): Promise<PublicFeeTable> {
+		const { data, error } = await this.database
+			.from('event_configurations')
+			.select(
+				'platform_fee_percentage,pix_fee_fixed,card_fee_percentage,card_fee_fixed,card_installment_2_6_percentage,card_installment_7_12_percentage,boleto_fee_fixed,payout_fee_fixed,minimum_payout,convenience_fee_calculation_method',
+			)
+			.eq('id', 1)
+			.single();
+		if (error) throw error;
+		const row = data as Record<string, unknown>;
+		const numeric = (key: string) => Number(row[key] ?? 0);
+		return {
+			platform_fee_percentage: numeric('platform_fee_percentage'),
+			pix_fee_fixed: numeric('pix_fee_fixed'),
+			card_fee_percentage: numeric('card_fee_percentage'),
+			card_fee_fixed: numeric('card_fee_fixed'),
+			card_installment_2_6_percentage: numeric('card_installment_2_6_percentage'),
+			card_installment_7_12_percentage: numeric('card_installment_7_12_percentage'),
+			boleto_fee_fixed: numeric('boleto_fee_fixed'),
+			payout_fee_fixed: numeric('payout_fee_fixed'),
+			minimum_payout: numeric('minimum_payout'),
+			convenience_fee_calculation_method:
+				row.convenience_fee_calculation_method === 'organizer_absorbs' ? 'organizer_absorbs' : 'buyer_pays',
+		};
+	}
+
+	async getPage(permalink: string, postPage: number, options: PageReadOptions) {
+		let query = this.database.from('pages').select('*').eq('permalink', permalink);
+		if (!options.includeDrafts) {
+			// Publicação agendada: a página só aparece quando a data chega.
+			query = query.eq('status', 'published').or(`published_at.is.null,published_at.lte.${options.now}`);
+		}
+		const { data: page, error } = await query.maybeSingle();
 
 		if (error) throw error;
 		if (!page) throw new ApiError('Página não encontrada.', 404, 'PAGE_NOT_FOUND');
@@ -103,11 +134,13 @@ export class SupabaseContentRepository implements ContentRepository {
 				.select('*, author:profiles(id,first_name,last_name,avatar), image:media_files(*)')
 				.eq('slug', slug)
 				.eq('status', 'published')
+				.or(alreadyPublished())
 				.maybeSingle(),
 			this.database
 				.from('posts')
 				.select('id,title,slug,image:media_files(*)')
 				.eq('status', 'published')
+				.or(alreadyPublished())
 				.neq('slug', slug)
 				.order('published_at', { ascending: false })
 				.limit(2),
@@ -125,9 +158,21 @@ export class SupabaseContentRepository implements ContentRepository {
 			.from('posts')
 			.select('id,title,description,slug,image:media_files(*),name,published_at', { count: 'exact' })
 			.eq('status', 'published')
+			.or(alreadyPublished())
 			.order('published_at', { ascending: false })
 			.range(from, from + limit - 1);
 
+		if (error && (error as { code?: string }).code === 'PGRST103') {
+			// Página além do acervo: lista vazia com o total real, para o site
+			// decidir o 404 sem tratar isso como falha da API.
+			const { count: total, error: countError } = await this.database
+				.from('posts')
+				.select('id', { count: 'exact', head: true })
+				.eq('status', 'published')
+				.or(alreadyPublished());
+			if (countError) throw countError;
+			return { data: [], total: total ?? 0, page, limit };
+		}
 		if (error) throw error;
 		return { data: data ?? [], total: count ?? 0, page, limit };
 	}
@@ -149,12 +194,14 @@ export class SupabaseContentRepository implements ContentRepository {
 				.from('pages')
 				.select('id,title,permalink')
 				.eq('status', 'published')
+				.or(alreadyPublished())
 				.ilike('title', pattern)
 				.limit(10),
 			this.database
 				.from('posts')
 				.select('id,title,slug,description')
 				.eq('status', 'published')
+				.or(alreadyPublished())
 				.ilike('title', pattern)
 				.limit(10),
 			this.database
@@ -170,8 +217,8 @@ export class SupabaseContentRepository implements ContentRepository {
 
 	async getSitemap() {
 		const [pages, posts, events] = await Promise.all([
-			this.database.from('pages').select('permalink,published_at,date_updated').eq('status', 'published'),
-			this.database.from('posts').select('slug,published_at,date_updated').eq('status', 'published'),
+			this.database.from('pages').select('permalink,published_at,date_updated,seo').eq('status', 'published'),
+			this.database.from('posts').select('slug,published_at,date_updated,seo').eq('status', 'published'),
 			this.database.from('events').select('slug,start_date,date_updated').eq('status', 'published'),
 		]);
 		for (const result of [pages, posts, events]) if (result.error) throw result.error;
