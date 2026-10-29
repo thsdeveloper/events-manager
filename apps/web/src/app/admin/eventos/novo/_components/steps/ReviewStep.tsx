@@ -11,6 +11,7 @@ import type { EventWizardFormValues } from '../types';
 
 interface ReviewStepProps {
 	categories: EventCategory[];
+	mode?: 'create' | 'edit';
 }
 
 const STATUS_LABELS: Record<EventWizardFormValues['status'], string> = {
@@ -20,10 +21,10 @@ const STATUS_LABELS: Record<EventWizardFormValues['status'], string> = {
 	archived: 'Arquivado',
 };
 
-export function ReviewStep({ categories }: ReviewStepProps) {
+export function ReviewStep({ categories, mode = 'create' }: ReviewStepProps) {
 	const form = useFormContext<EventWizardFormValues>();
 	const values = form.watch();
-	const category = categories.find(item => String(item.id) === values.category_id);
+	const category = categories.find((item) => String(item.id) === values.category_id);
 
 	const formatDateTime = (value: string) => {
 		if (!value) return '-';
@@ -48,103 +49,121 @@ export function ReviewStep({ categories }: ReviewStepProps) {
 					</div>
 
 					<div className="mt-6 space-y-6">
+						<Card className="space-y-6 p-6">
+							<section>
+								<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+									Informações básicas
+								</h3>
+								<div className="mt-3 grid gap-2 text-sm">
+									<p>
+										<span className="font-medium text-foreground">Título:</span> {values.title || '-'}
+									</p>
+									<p>
+										<span className="font-medium text-foreground">Categoria:</span> {category?.name ?? '-'}
+									</p>
+									<p className="text-muted-foreground">{values.short_description || 'Sem descrição curta'}</p>
+								</div>
+							</section>
 
-			<Card className="space-y-6 p-6">
-				<section>
-					<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Informações básicas</h3>
-					<div className="mt-3 grid gap-2 text-sm">
-						<p>
-							<span className="font-medium text-foreground">Título:</span> {values.title || '-'}
-						</p>
-						<p>
-							<span className="font-medium text-foreground">Categoria:</span> {category?.name ?? '-'}
-						</p>
-						<p className="text-muted-foreground">{values.short_description || 'Sem descrição curta'}</p>
-					</div>
-				</section>
+							<Separator />
 
-				<Separator />
+							<section>
+								<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Conteúdo</h3>
+								<div className="mt-3 space-y-3 text-sm">
+									<p className="text-muted-foreground whitespace-pre-wrap">{values.description || '-'}</p>
+									{(values.tags?.length ?? 0) > 0 && (
+										<div className="flex flex-wrap gap-2">
+											{values.tags!.map((tag) => (
+												<Badge key={tag} variant="secondary">
+													#{tag}
+												</Badge>
+											))}
+										</div>
+									)}
+								</div>
+							</section>
 
-				<section>
-					<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Conteúdo</h3>
-					<div className="mt-3 space-y-3 text-sm">
-						<p className="text-muted-foreground whitespace-pre-wrap">{values.description || '-'}</p>
-						{(values.tags?.length ?? 0) > 0 && (
-							<div className="flex flex-wrap gap-2">
-								{values.tags!.map(tag => (
-									<Badge key={tag} variant="secondary">
-										#{tag}
-									</Badge>
-								))}
-							</div>
-						)}
-					</div>
-				</section>
+							<Separator />
 
-				<Separator />
+							<section className="grid gap-3 text-sm md:grid-cols-2">
+								<div>
+									<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Agenda</h3>
+									<p className="mt-2">
+										<span className="font-medium text-foreground">Início:</span> {formatDateTime(values.start_date)}
+									</p>
+									<p>
+										<span className="font-medium text-foreground">Término:</span> {formatDateTime(values.end_date)}
+									</p>
+									<p>
+										<span className="font-medium text-foreground">Inscrições:</span>{' '}
+										{values.registration_start && values.registration_end
+											? `${formatDateTime(values.registration_start)} até ${formatDateTime(values.registration_end)}`
+											: 'Abertas até o evento'}
+									</p>
+								</div>
+								<div>
+									<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Formato</h3>
+									<p className="mt-2 capitalize">
+										<span className="font-medium text-foreground">Tipo:</span>{' '}
+										{values.event_type === 'in_person'
+											? 'Presencial'
+											: values.event_type === 'online'
+												? 'Online'
+												: 'Híbrido'}
+									</p>
+									{(values.event_type === 'in_person' || values.event_type === 'hybrid') && (
+										<div className="mt-2 text-muted-foreground">
+											<p>{values.location_name}</p>
+											<p>{values.location_address}</p>
+										</div>
+									)}
+									{(values.event_type === 'online' || values.event_type === 'hybrid') && (
+										<p className="mt-2 truncate text-muted-foreground">{values.online_url}</p>
+									)}
+								</div>
+							</section>
 
-				<section className="grid gap-3 text-sm md:grid-cols-2">
-					<div>
-						<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Agenda</h3>
-						<p className="mt-2">
-							<span className="font-medium text-foreground">Início:</span> {formatDateTime(values.start_date)}
-						</p>
-						<p>
-							<span className="font-medium text-foreground">Término:</span> {formatDateTime(values.end_date)}
-						</p>
-						<p>
-							<span className="font-medium text-foreground">Inscrições:</span>{' '}
-							{values.registration_start && values.registration_end
-								? `${formatDateTime(values.registration_start)} até ${formatDateTime(values.registration_end)}`
-								: 'Abertas até o evento'}
-						</p>
-					</div>
-					<div>
-						<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Formato</h3>
-						<p className="mt-2 capitalize">
-							<span className="font-medium text-foreground">Tipo:</span>{' '}
-							{values.event_type === 'in_person' ? 'Presencial' : values.event_type === 'online' ? 'Online' : 'Híbrido'}
-						</p>
-						{(values.event_type === 'in_person' || values.event_type === 'hybrid') && (
-							<div className="mt-2 text-muted-foreground">
-								<p>{values.location_name}</p>
-								<p>{values.location_address}</p>
-							</div>
-						)}
-						{(values.event_type === 'online' || values.event_type === 'hybrid') && (
-							<p className="mt-2 truncate text-muted-foreground">{values.online_url}</p>
-						)}
-					</div>
-				</section>
+							<Separator />
 
-				<Separator />
-
-				<section className="grid gap-3 text-sm md:grid-cols-2">
-					<div>
-						<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ingressos</h3>
-						<p className="mt-2">
-							<span className="font-medium text-foreground">{values.is_free ? 'Evento gratuito' : 'Evento pago'}</span>
-						</p>
-						<p className="text-muted-foreground">
-							{values.max_attendees ? `${values.max_attendees} vagas disponíveis` : 'Sem limite definido'}
-						</p>
-					</div>
-					<div>
-						<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Publicação</h3>
-						<p className="mt-2">
-							<span className="font-medium text-foreground">Status:</span> {STATUS_LABELS[values.status]}
-						</p>
-						<p className="text-muted-foreground">
-							{values.featured ? 'Evento será destacado na página inicial.' : 'Sem destaque na home.'}
-						</p>
-						<p className="text-muted-foreground">
-							{values.publish_after_create
-								? 'Publicaremos automaticamente após a criação.'
-								: 'Você poderá publicar depois manualmente.'}
-						</p>
-					</div>
-				</section>
-			</Card>
+							<section className="grid gap-3 text-sm md:grid-cols-2">
+								<div>
+									<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ingressos</h3>
+									<p className="mt-2">
+										<span className="font-medium text-foreground">
+											{values.is_free ? 'Evento gratuito' : 'Evento pago'}
+										</span>
+									</p>
+									<p className="text-muted-foreground">
+										{values.max_attendees ? `${values.max_attendees} vagas disponíveis` : 'Sem limite definido'}
+									</p>
+								</div>
+								<div>
+									<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Publicação</h3>
+									<p className="mt-2">
+										<span className="font-medium text-foreground">Status:</span> {STATUS_LABELS[values.status]}
+									</p>
+									<p>
+										{values.visibility === 'unlisted'
+											? 'Não listado — acesso pelo link'
+											: 'Público — aparece no catálogo e nas buscas'}
+									</p>
+									<p className="text-muted-foreground">
+										{values.visibility === 'unlisted'
+											? 'Fora do catálogo, das buscas e dos destaques.'
+											: values.featured
+												? 'Evento será destacado na página inicial.'
+												: 'Sem destaque na home.'}
+									</p>
+									{mode === 'create' && (
+										<p className="text-muted-foreground">
+											{values.status === 'published'
+												? 'O evento será publicado ao concluir.'
+												: 'O evento será salvo sem publicação.'}
+										</p>
+									)}
+								</div>
+							</section>
+						</Card>
 					</div>
 				</div>
 			</div>

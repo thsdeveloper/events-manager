@@ -15,13 +15,21 @@ export class SupabaseCheckoutReconciliationRepository {
             registrationIds: row.registration_ids,
         }));
     }
-    async settlePaid(candidate) {
+    async settlePaid(candidate, receiptUrl = null) {
         const { error } = await this.database.rpc('settle_reconciled_checkout', {
             target_checkout_id: candidate.checkoutId,
             target_registrations: candidate.registrationIds,
         });
         if (error)
             throw error;
+        if (!receiptUrl)
+            return;
+        const receipt = await this.database
+            .from('event_registrations')
+            .update({ receipt_url: receiptUrl })
+            .in('id', candidate.registrationIds);
+        if (receipt.error)
+            throw receipt.error;
     }
     async cancel(candidate, providerStatus) {
         const { error } = await this.database.rpc('cancel_reconciled_checkout', {

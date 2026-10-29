@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CreditCard, Loader2, Ticket } from 'lucide-react';
 import { RefreshCw } from '@/components/animate-ui/icons/refresh-cw';
-import type { EventRegistration } from '@events-manager/contracts';
+import type { NominalTicket } from '@events-manager/contracts';
 
 import { TransactionHistory } from '@/components/account/TransactionHistory';
 import { MyTicketsContent } from '@/components/tickets/MyTicketsContent';
@@ -47,7 +47,7 @@ export function ProfilePageClient({ initialUser }: ProfilePageClientProps) {
 	const [user, setUser] = useState(initialUser);
 	const [activeSection, setActiveSection] = useState<ProfileSection>('overview');
 	const [tickets, setTickets] = useState<TicketSummary>({
-		registrations: [],
+		tickets: [],
 		isLoading: true,
 		hasError: false,
 	});
@@ -70,10 +70,10 @@ export function ProfilePageClient({ initialUser }: ProfilePageClientProps) {
 			try {
 				const response = await fetch('/api/user/tickets', { credentials: 'include' });
 				if (!response.ok) throw new Error('Tickets unavailable');
-				const registrations = (await response.json()) as EventRegistration[];
-				if (isActive) setTickets({ registrations, isLoading: false, hasError: false });
+				const nominalTickets = (await response.json()) as NominalTicket[];
+				if (isActive) setTickets({ tickets: nominalTickets, isLoading: false, hasError: false });
 			} catch {
-				if (isActive) setTickets({ registrations: [], isLoading: false, hasError: true });
+				if (isActive) setTickets({ tickets: [], isLoading: false, hasError: true });
 			}
 		}
 
@@ -144,7 +144,12 @@ export function ProfilePageClient({ initialUser }: ProfilePageClientProps) {
 						</div>
 
 						{activeSection === 'overview' && (
-							<ProfileOverview isOrganizer={auth.isOrganizer} user={user} completion={completion} onNavigate={navigateTo} />
+							<ProfileOverview
+								isOrganizer={auth.isOrganizer}
+								user={user}
+								completion={completion}
+								onNavigate={navigateTo}
+							/>
 						)}
 						{activeSection === 'personal' && <ProfileDetailsForm user={user} onSaved={handleProfileSaved} />}
 						{activeSection === 'security' && <ProfileSecurity user={user} onLogout={auth.logout} />}
@@ -180,7 +185,7 @@ export function ProfilePageClient({ initialUser }: ProfilePageClientProps) {
 										</Button>
 									</div>
 								) : (
-									<MyTicketsContent registrations={tickets.registrations} />
+									<MyTicketsContent tickets={tickets.tickets} />
 								)}
 							</section>
 						)}

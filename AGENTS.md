@@ -8,6 +8,8 @@
 - `supabase/` contém configuração local, migrations, políticas RLS e seed.
 - `testsprite_tests/` contém cenários de aceitação (E2E).
 - `docs/TDD.md` é o guia da metodologia de desenvolvimento orientado a testes, obrigatória em todo o repositório.
+- `docs/PAGINA_DO_EVENTO.md` descreve a landing page do evento montada pelo organizador (layout JSON em `event_pages`, seções, regras de publicação, construtor e renderização).
+- `docs/INGRESSOS_NOMINAIS.md` descreve o modelo de ingressos nominais (pedido × ingresso), o checkout com participantes, a entrega por e-mail e o painel por ingresso.
 - `docs/CMS.md` descreve o CMS gerenciado pelo superadmin (páginas, blocos, menus, posts, formulários, redirecionamentos, mídia, SEO): modelo de dados, rotas `/api/super-admin/cms/*`, preview de rascunhos, cache e regras de segurança.
 
 ## Commands

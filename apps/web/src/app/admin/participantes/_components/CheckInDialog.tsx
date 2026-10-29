@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { ParticipantRow } from '../_lib/types';
+import { getParticipantFullName } from '../_lib/utils';
 
 interface CheckInDialogProps {
 	participant: ParticipantRow | null;
@@ -26,7 +27,9 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 	const { toast } = useToast();
 
 	const hasCheckedIn = !!participant?.check_in_date;
-	const isCancelled = participant?.status === 'cancelled';
+	const isCancelled = participant?.registration.status === 'cancelled';
+	// Ingresso nominal sem pessoa: não há quem confirmar na porta.
+	const isUnnamed = !participant?.attendee_name;
 
 	const handleCheckIn = async () => {
 		if (!participant) return;
@@ -46,7 +49,7 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 
 			toast({
 				title: 'Check-in realizado! ✓',
-				description: `${participant.participant_name} confirmou presença no evento`,
+				description: `${getParticipantFullName(participant)} confirmou presença no evento`,
 				variant: 'success',
 			});
 
@@ -81,7 +84,7 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 
 			toast({
 				title: 'Check-in desfeito',
-				description: `${participant.participant_name} voltou para status confirmado`,
+				description: `${getParticipantFullName(participant)} voltou para status confirmado`,
 				variant: 'warning',
 			});
 
@@ -130,11 +133,22 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 						<div className="space-y-2">
 							<div>
 								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Participante</p>
-								<p className="text-base font-semibold text-gray-900 dark:text-white">{participant.participant_name}</p>
+								<p className="text-base font-semibold text-gray-900 dark:text-white">
+									{getParticipantFullName(participant)}
+								</p>
 							</div>
+							{participant.attendee_email && (
+								<div>
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</p>
+									<p className="text-sm text-gray-900 dark:text-white">{participant.attendee_email}</p>
+								</div>
+							)}
 							<div>
-								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</p>
-								<p className="text-sm text-gray-900 dark:text-white">{participant.participant_email}</p>
+								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ingresso</p>
+								<p className="text-sm text-gray-900 dark:text-white">
+									{participant.ticket_type?.title ?? 'Ingresso'} · {participant.sequence} de{' '}
+									{participant.registration.quantity}
+								</p>
 							</div>
 							<div>
 								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Código</p>
@@ -144,13 +158,25 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 					</div>
 
 					{/* Warnings */}
+					{isUnnamed && !isCancelled && (
+						<div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+							<AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+							<div>
+								<p className="font-medium text-amber-900 dark:text-amber-200">Sem participante</p>
+								<p className="text-sm text-amber-700 dark:text-amber-300">
+									Informe o participante antes do check-in: ingressos são nominais.
+								</p>
+							</div>
+						</div>
+					)}
+
 					{isCancelled && (
 						<div className="flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 dark:border-rose-800 dark:bg-rose-900/20">
 							<AlertTriangle className="size-5 shrink-0 text-rose-600 dark:text-rose-400" />
 							<div>
-								<p className="font-medium text-rose-900 dark:text-rose-200">Inscrição cancelada</p>
+								<p className="font-medium text-rose-900 dark:text-rose-200">Pedido cancelado</p>
 								<p className="text-sm text-rose-700 dark:text-rose-300">
-									Não é possível realizar check-in de uma inscrição cancelada
+									Não é possível realizar check-in de um ingresso de pedido cancelado
 								</p>
 							</div>
 						</div>
@@ -186,7 +212,7 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 						<Button
 							onClick={handleCheckIn}
 							loading={isLoading}
-							disabled={isCancelled}
+							disabled={isCancelled || isUnnamed}
 							className="gap-2 bg-emerald-600 hover:bg-emerald-700"
 						>
 							<CheckCircle className="size-4" />

@@ -1,55 +1,11 @@
-import type { EventRegistration, Event, EventTicket, AppUser } from '@events-manager/contracts';
+import type { EventRegistration, NominalTicket } from '@events-manager/contracts';
 
-// Tipo expandido com relações
-export interface ParticipantRow extends Omit<EventRegistration, 'event_id' | 'ticket_type_id' | 'user_id'> {
-	event_id: {
-		id: string;
-		title: string;
-		slug: string;
-		start_date: string;
-		location_name: string | null;
-		organizer_id: string;
-	};
-	ticket_type_id: {
-		id: string;
-		title: string;
-		price: number;
-	} | null;
-	user_id: {
-		id: string;
-		first_name: string | null;
-		last_name: string | null;
-		email: string | null;
-		avatar: string | null;
-	} | null;
-}
-
-// Tipo completo para detalhes do participante
-export interface ParticipantDetails extends Omit<ParticipantRow, 'event_id' | 'ticket_type_id'> {
-	event_id: {
-		id: string;
-		title: string;
-		slug: string;
-		start_date: string;
-		end_date: string | null;
-		location_name: string | null;
-		location_address: string | null;
-		organizer_id: string;
-	};
-	ticket_type_id: {
-		id: string;
-		title: string;
-		price: number;
-		description: string | null;
-	} | null;
-	user_id: {
-		id: string;
-		first_name: string | null;
-		last_name: string | null;
-		email: string | null;
-		avatar: string | null;
-	} | null;
-}
+/**
+ * Cada linha do painel é um ingresso nominal: quem vai, quem comprou (o
+ * pedido), o evento e o tipo. A API devolve a mesma forma na lista e no detalhe.
+ */
+export type ParticipantRow = NominalTicket;
+export type ParticipantDetails = NominalTicket;
 
 // Filtros disponíveis
 export interface ParticipantFilters {
@@ -81,12 +37,13 @@ export interface ParticipantTableState {
 	filters: ParticipantFilters;
 }
 
-// Dados para edição de participante
+/** Dados do participante de um ingresso, como o organizador os edita. */
 export interface EditParticipantData {
 	participant_name: string;
 	participant_email: string;
 	participant_phone?: string;
 	participant_document?: string;
+	/** Observações internas: pertencem ao pedido, não ao ingresso. */
 	notes?: string;
 }
 

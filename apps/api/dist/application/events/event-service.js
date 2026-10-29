@@ -1,4 +1,12 @@
 import { eventInputSchema, } from '@events-manager/contracts';
+/** Sem `sort`, a categoria vai para o fim da fila em vez de para o começo. */
+function compareCategories(left, right) {
+    const leftSort = left.sort ?? Number.POSITIVE_INFINITY;
+    const rightSort = right.sort ?? Number.POSITIVE_INFINITY;
+    if (leftSort !== rightSort)
+        return leftSort - rightSort;
+    return (left.name ?? '').localeCompare(right.name ?? '', 'pt-BR');
+}
 export class EventNotFound extends Error {
 }
 export class OrganizerRequired extends Error {
@@ -34,8 +42,15 @@ export class EventService {
             },
         };
     }
-    listCategories() {
-        return this.repository.listCategories();
+    /**
+     * O catálogo sai na ordem que o super admin arrumou: primeiro o `sort` que
+     * ele definiu, e as categorias sem posição no fim, em ordem alfabética. A
+     * ordenação fica aqui, e não só no SQL, para que o organizador veja a mesma
+     * sequência do painel do super admin venha ela de onde vier.
+     */
+    async listCategories() {
+        const categories = (await this.repository.listCategories());
+        return [...categories].sort(compareCategories);
     }
     async create(userId, input) {
         const { tickets, ...eventInput } = input;

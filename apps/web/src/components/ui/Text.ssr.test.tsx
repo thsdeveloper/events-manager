@@ -30,4 +30,22 @@ describe('Text (rich HTML from the CMS)', () => {
 
 		expect(markup).toMatch(/class="[^"]*\bprose\b[^"]*dark:prose-invert[^"]*"/);
 	});
+
+	it('turns plain text written before the rich editor into paragraphs, keeping its line breaks', () => {
+		const markup = renderToStaticMarkup(
+			<Text content={'Primeiro parágrafo & detalhes.\n\nSegundo parágrafo,\nsegunda linha.'} />,
+		);
+
+		expect(markup).toContain('<p>Primeiro parágrafo &amp; detalhes.</p>');
+		expect(markup).toMatch(/<p>Segundo parágrafo,<br\s*\/?>segunda linha\.<\/p>/);
+		expect(markup).not.toContain('<p>Primeiro parágrafo & detalhes.\n\nSegundo');
+	});
+
+	it('leaves real HTML untouched even when it also contains line breaks', () => {
+		const markup = renderToStaticMarkup(<Text content={'<p>Um</p>\n<p>Dois</p>'} />);
+
+		expect(markup).toContain('<p>Um</p>');
+		expect(markup).toContain('<p>Dois</p>');
+		expect(markup).not.toContain('<br');
+	});
 });

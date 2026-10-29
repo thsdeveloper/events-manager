@@ -2,9 +2,11 @@ import { ticketInputSchema } from '@events-manager/contracts';
 import { ApiError } from '../../shared/errors.js';
 export class AdminService {
     repository;
+    refunds;
     now;
-    constructor(repository, now = () => new Date()) {
+    constructor(repository, refunds, now = () => new Date()) {
         this.repository = repository;
+        this.refunds = refunds;
         this.now = now;
     }
     getConfiguration() {
@@ -127,11 +129,27 @@ export class AdminService {
             data: await this.repository.updateRegistration(id, { status: 'confirmed', check_in_date: null }),
         };
     }
-    async cancelParticipant(organizerId, id, reason) {
+    /**
+     * O estorno vem antes do cancelamento: se o provedor recusar, a vaga continua
+     * da pessoa e o organizador decide o que fazer. Se o cancelamento falhar
+     * depois do estorno, o webhook `*.refunded` cancela a inscrição de qualquer
+     * jeito.
+     */
+    async cancelParticipant(organizerId, id, reason, options = {}) {
+        let refund;
+        if (options.refund) {
+            if (!this.refunds) {
+                throw new ApiError('Reembolso indisponível neste ambiente.', 409, 'REFUND_UNAVAILABLE');
+            }
+            const registration = await this.repository.findOwnedRegistration(organizerId, id);
+            if (!registration)
+                throw registrationNotFound();
+            refund = await this.refunds.execute(registration, reason);
+        }
         const data = await this.repository.cancelRegistration(organizerId, id, reason);
         if (!data)
             throw registrationNotFound();
-        return { success: true, data };
+        return { success: true, data, ...(refund ? { refund } : {}) };
     }
     async exportParticipants(organizerId) {
         const eventIds = await this.repository.listOwnedEventIds(organizerId);

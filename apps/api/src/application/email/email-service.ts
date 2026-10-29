@@ -1,5 +1,6 @@
 import type { EmailBrandingSource } from './email-branding.js';
 import { renderEmail } from './email-template.js';
+import type { AttendeeTicketNotice, PurchaseConfirmationNotice, TicketMailer } from '../tickets/deliver-tickets.js';
 
 export interface PasswordChangedNotice {
 	changedAt: Date;
@@ -49,7 +50,20 @@ export interface EmailGateway {
 	}): Promise<{ messageId: string }>;
 }
 
-export class EmailService {
+const eventDateFormatter = new Intl.DateTimeFormat('pt-BR', {
+	dateStyle: 'full',
+	timeStyle: 'short',
+	timeZone: 'America/Sao_Paulo',
+});
+
+function formatEventDate(value: string | null) {
+	if (!value) return null;
+	const date = new Date(value);
+
+	return Number.isNaN(date.getTime()) ? null : eventDateFormatter.format(date);
+}
+
+export class EmailService implements TicketMailer {
 	constructor(
 		private readonly deliveries: EmailDeliveryRepository,
 		private readonly gateway: EmailGateway,
@@ -213,6 +227,140 @@ export class EmailService {
 				text,
 				html,
 			});
+			return this.deliveries.markSent(delivery.id, delivery.attempts + 1, result.messageId);
+		} catch (error) {
+			await this.deliveries.markFailed(
+				delivery.id,
+				delivery.attempts + 1,
+				error instanceof Error ? error.message : String(error),
+			);
+			throw error;
+		}
+	}
+
+	/**
+	 * Recibo da compra para quem pagou: todos os ingressos do checkout, com o
+	 * participante de cada um. Um ingresso sem participante aparece como "a
+	 * informar", com o caminho para nomeá-lo na área de ingressos.
+	 */
+	async sendPurchaseConfirmation(notice: PurchaseConfirmationNotice, idempotencyKey: string) {
+		const delivery = await this.deliveries.claim({
+			idempotencyKey,
+			template: 'purchase-confirmation',
+			recipient: notice.buyerEmail,
+			payload: { eventTitle: notice.eventTitle, ticketCodes: notice.tickets.map((ticket) => ticket.ticketCode) },
+		});
+		if (!delivery.shouldSend) return delivery;
+
+		const branding = await this.branding.load();
+		const pending = notice.tickets.filter((ticket) => !ticket.attendeeName).length;
+		const eventDate = formatEventDate(notice.eventDate);
+		const { html, text } = renderEmail({
+			branding,
+			preheader: `Sua compra para ${notice.eventTitle} está confirmada.`,
+			blocks: [
+				{ type: 'heading', text: 'Compra confirmada' },
+				{ type: 'paragraph', text: `Olá, ${notice.buyerName}.` },
+				{
+					type: 'paragraph',
+					text: `Recebemos o pagamento da sua compra para ${notice.eventTitle}${eventDate ? `, ${eventDate}` : ''}. Estes são os ingressos do pedido:`,
+				},
+				{
+					type: 'details',
+					rows: notice.tickets.map((ticket) => ({
+						label: `${ticket.ticketTypeTitle ?? 'Ingresso'} · ${ticket.ticketCode}`,
+						value: ticket.attendeeName ?? 'participante a informar',
+					})),
+				},
+				...(pending > 0
+					? ([
+							{
+								type: 'paragraph',
+								text:
+									pending === 1
+										? 'Um ingresso ainda não tem participante. Informe o nome e o e-mail na sua área de ingressos para que a pessoa receba o ingresso dela.'
+										: `${pending} ingressos ainda não têm participante. Informe o nome e o e-mail de cada um na sua área de ingressos para que cada pessoa receba o seu.`,
+							},
+						] as const)
+					: []),
+				{
+					type: 'paragraph',
+					text: 'Quem foi nomeado com outro e-mail recebe o próprio ingresso em uma mensagem separada.',
+				},
+				{ type: 'button', label: 'Ver meus ingressos', url: `${branding.siteUrl}/perfil?section=ingressos` },
+				...(notice.receiptUrl
+					? ([{ type: 'button', label: 'Ver comprovante de pagamento', url: notice.receiptUrl }] as const)
+					: []),
+			],
+			footerNote: 'Guarde esta mensagem: ela reúne os códigos dos seus ingressos.',
+		});
+
+		return this.dispatch(delivery, {
+			to: notice.buyerEmail,
+			subject: `Compra confirmada — ${notice.eventTitle}`,
+			html,
+			text,
+		});
+	}
+
+	/**
+	 * Ingresso nominal para quem vai ao evento sem ter comprado. Diz quem
+	 * comprou, porque a pessoa pode não estar esperando a mensagem.
+	 */
+	async sendAttendeeTicket(notice: AttendeeTicketNotice, idempotencyKey: string) {
+		const delivery = await this.deliveries.claim({
+			idempotencyKey,
+			template: 'attendee-ticket',
+			recipient: notice.attendeeEmail,
+			payload: { eventTitle: notice.eventTitle, ticketCode: notice.ticketCode },
+		});
+		if (!delivery.shouldSend) return delivery;
+
+		const branding = await this.branding.load();
+		const eventDate = formatEventDate(notice.eventDate);
+		const { html, text } = renderEmail({
+			branding,
+			preheader: `${notice.buyerName} comprou um ingresso para você em ${notice.eventTitle}.`,
+			blocks: [
+				{ type: 'heading', text: 'Seu ingresso chegou' },
+				{ type: 'paragraph', text: `Olá, ${notice.attendeeName}.` },
+				{
+					type: 'paragraph',
+					text: `${notice.buyerName} comprou um ingresso em seu nome para ${notice.eventTitle}.`,
+				},
+				{
+					type: 'details',
+					rows: [
+						{ label: 'Ingresso', value: notice.ticketTypeTitle ?? 'Ingresso' },
+						...(eventDate ? [{ label: 'Quando', value: eventDate }] : []),
+						...(notice.locationName ? [{ label: 'Onde', value: notice.locationName }] : []),
+					],
+				},
+				{ type: 'code', label: 'Código do ingresso', value: notice.ticketCode },
+				{ type: 'paragraph', text: 'Apresente este código no credenciamento do evento.' },
+				{
+					type: 'paragraph',
+					text: `Se você criar uma conta com este e-mail (${notice.attendeeEmail}), o ingresso também aparece na sua área de ingressos.`,
+				},
+				{ type: 'button', label: 'Ver meus ingressos', url: `${branding.siteUrl}/perfil?section=ingressos` },
+			],
+			footerNote: 'Guarde esta mensagem: ela dá acesso ao seu ingresso.',
+		});
+
+		return this.dispatch(delivery, {
+			to: notice.attendeeEmail,
+			subject: `Seu ingresso para ${notice.eventTitle}`,
+			html,
+			text,
+		});
+	}
+
+	private async dispatch(
+		delivery: EmailDelivery,
+		message: { html: string; subject: string; text: string; to: string },
+	) {
+		try {
+			const result = await this.gateway.send({ from: this.from, ...message });
 			return this.deliveries.markSent(delivery.id, delivery.attempts + 1, result.messageId);
 		} catch (error) {
 			await this.deliveries.markFailed(

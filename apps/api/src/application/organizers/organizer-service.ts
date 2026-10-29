@@ -11,6 +11,31 @@ export interface OrganizerInput {
 	website?: string | null;
 }
 
+/** O que a API lê do perfil validado para abrir a conta de uma pessoa física. */
+export interface OrganizerSignupProfile {
+	document: string | null;
+	email: string | null;
+	first_name: string | null;
+	last_name: string | null;
+	phone: string | null;
+}
+
+function detailsFromProfile(profile: OrganizerSignupProfile) {
+	if (!profile.document) {
+		throw new ApiError('Cadastre e valide seu CPF no perfil antes de continuar.', 422, 'PROFILE_DOCUMENT_REQUIRED');
+	}
+	if (!profile.first_name || !profile.last_name || !profile.email || !profile.phone) {
+		throw new ApiError('Complete nome, e-mail e telefone no seu perfil antes de continuar.', 422, 'PROFILE_INCOMPLETE');
+	}
+
+	return {
+		name: `${profile.first_name} ${profile.last_name}`,
+		email: profile.email,
+		phone: profile.phone,
+		document: profile.document,
+	};
+}
+
 export interface OrganizerStats {
 	totalEvents: number;
 	totalRegistrations: number;
@@ -45,37 +70,31 @@ export class OrganizerService {
 	 * documento); quem vende como empresa informa um CNPJ que ainda não pertence
 	 * a outra organização.
 	 */
+	/**
+	 * Regras do cadastro: uma conta de organizador por pessoa; pessoa física
+	 * vende com os dados já validados no perfil (nome, e-mail, telefone e CPF),
+	 * ignorando qualquer valor enviado pelo cliente; empresa informa os dados
+	 * da organização e um CNPJ válido e único.
+	 */
 	async create(
 		userId: string,
 		input: OrganizerSignupInput,
 		initialStatus: 'active' | 'pending',
-		context: { profileDocument: string | null },
+		context: { profile: OrganizerSignupProfile },
 	) {
 		if (await this.repository.existsForUser(userId)) {
 			throw new ApiError('Você já possui uma conta de organizador.', 409, 'ORGANIZER_EXISTS');
 		}
 
-		let document: string;
-		if (input.account_type === 'individual') {
-			if (!context.profileDocument) {
-				throw new ApiError('Cadastre e valide seu CPF no perfil antes de continuar.', 422, 'PROFILE_DOCUMENT_REQUIRED');
-			}
-			document = context.profileDocument;
-		} else {
-			const owner = await this.repository.findByDocument(input.document);
-			if (owner) throw new ApiError('Este CNPJ já está vinculado a outra organização.', 409, 'DOCUMENT_IN_USE');
-			document = input.document;
-		}
+		const details =
+			input.account_type === 'individual' ? detailsFromProfile(context.profile) : await this.detailsFromCompany(input);
 
 		const organizer = await this.repository.create(
 			userId,
 			normalizeWebsite({
-				name: input.name,
-				email: input.email,
-				phone: input.phone,
+				...details,
 				description: input.description ?? null,
 				website: input.website ?? null,
-				document,
 			}),
 			initialStatus,
 		);
@@ -83,6 +102,13 @@ export class OrganizerService {
 			throw new ApiError('Você já possui uma conta de organizador.', 409, 'ORGANIZER_EXISTS');
 		}
 		return organizer;
+	}
+
+	private async detailsFromCompany(input: Extract<OrganizerSignupInput, { account_type: 'company' }>) {
+		const owner = await this.repository.findByDocument(input.document);
+		if (owner) throw new ApiError('Este CNPJ já está vinculado a outra organização.', 409, 'DOCUMENT_IN_USE');
+
+		return { name: input.name, email: input.email, phone: input.phone, document: input.document };
 	}
 
 	async update(organizerId: string, input: Partial<OrganizerInput>) {

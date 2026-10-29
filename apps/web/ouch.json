@@ -1,0 +1,63 @@
+{
+	"style": "neat",
+	"target_ratio": 1.0,
+	"notes": "Estilo da interface do produto (estados vazios, 404). As páginas de marketing usam o estilo 3d-business em public/images/fees e public/images/organizer. Saímos do primeiro tier porque nenhum estilo dele cobre calendário, ingresso e 404 juntos.",
+	"slots": {
+		"events": {
+			"id": "68d183aadc66ec000139d597",
+			"heading": "calendar icon",
+			"file": "public/images/empty/events.svg",
+			"width": 334,
+			"height": 376,
+			"free_distribution": false
+		},
+		"overview": {
+			"id": "69a6fb8d3787ab0017c7eee0",
+			"heading": "bar chart with positive trend, business growth and performance tracking",
+			"file": "public/images/empty/overview.svg",
+			"width": 750,
+			"height": 750,
+			"free_distribution": false
+		},
+		"search": {
+			"id": "69a6050d21ca86000104823b",
+			"heading": "magnifying glass",
+			"file": "public/images/empty/search.svg",
+			"width": 428,
+			"height": 486,
+			"free_distribution": false
+		},
+		"transactions": {
+			"id": "69288f50b4dc2300015cb870",
+			"heading": "receipt",
+			"file": "public/images/empty/transactions.svg",
+			"width": 812,
+			"height": 470,
+			"free_distribution": false
+		},
+		"tickets": {
+			"id": "6a19a77ef3251e3fe8d282d4",
+			"heading": "Sale coupon ticket with percentage sign for retail price reduction",
+			"file": "public/images/empty/tickets.svg",
+			"width": 1207,
+			"height": 883,
+			"free_distribution": false
+		},
+		"payments": {
+			"id": "69a6047f21ca860001047eb0",
+			"heading": "wallet with bank card",
+			"file": "public/images/empty/payments.svg",
+			"width": 433,
+			"height": 603,
+			"free_distribution": false
+		},
+		"notFound": {
+			"id": "6881138e32c62b0001551630",
+			"heading": "404 error",
+			"file": "public/images/empty/not-found.svg",
+			"width": 1647,
+			"height": 887,
+			"free_distribution": false
+		}
+	}
+}

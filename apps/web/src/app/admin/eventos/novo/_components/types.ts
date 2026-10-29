@@ -1,15 +1,9 @@
 'use client';
 
+import type { EventVisibility } from '@events-manager/contracts';
 import type { TicketDraft } from '@/features/tickets/types';
 
-export type EventWizardStepId =
-	| 'basic'
-	| 'visual'
-	| 'details'
-	| 'schedule'
-	| 'location'
-	| 'tickets'
-	| 'review';
+export type EventWizardStepId = 'basic' | 'visual' | 'details' | 'schedule' | 'location' | 'tickets' | 'review';
 
 export interface EventWizardStepMeta {
 	id: EventWizardStepId;
@@ -40,6 +34,7 @@ export interface EventWizardFormValues {
 	tickets: TicketDraft[];
 	max_attendees?: number | null;
 	status: 'draft' | 'published' | 'cancelled' | 'archived';
+	visibility?: EventVisibility;
 	featured: boolean;
 	publish_after_create: boolean;
 }

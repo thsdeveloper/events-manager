@@ -317,6 +317,8 @@ export interface EventRegistration {
     provider_transaction_id?: string | null;
     provider_checkout_id?: string | null;
     provider_refund_id?: string | null;
+    /** @description Comprovante emitido pelo provedor após o pagamento */
+    receipt_url?: string | null;
     provider_fee?: number | null;
     platform_fee?: number | null;
     /** @description Método de pagamento usado */
@@ -342,10 +344,13 @@ export interface EventRegistration {
     /** @description Parcelas de pagamento relacionadas */
     installments?: PaymentInstallment[] | string[];
 }
+export type EventVisibility = 'public' | 'unlisted';
 export interface Event {
     /** @primaryKey */
     id: string;
     status?: 'published' | 'draft' | 'cancelled' | 'archived';
+    /** Unlisted events are reachable by link and omitted from public discovery. */
+    visibility?: EventVisibility;
     sort?: number | null;
     user_created?: AppUser | string | null;
     date_created?: string | null;
@@ -395,6 +400,8 @@ export interface Event {
     registrations?: EventRegistration[] | string[];
     /** @description Tipos de ingressos disponíveis */
     tickets?: EventTicket[] | string[];
+    /** Landing page publicada pelo organizador; nula quando o evento usa o layout padrão. */
+    page?: import('./event-page.js').EventPageLayout | null;
 }
 export interface EventTicket {
     /** @primaryKey */
@@ -772,5 +779,84 @@ export interface City {
 /** Cidade com o estado resolvido, como devolvida ao carregar um perfil. */
 export interface CityWithState extends City {
     state: State;
+}
+/** Uma unidade de ingresso, nominal, dentro de um pedido (`event_registrations`). */
+export interface RegistrationTicket {
+    /** @primaryKey */
+    id: string;
+    registration_id: string;
+    event_id: string;
+    ticket_type_id: string | null;
+    /** Posição da unidade dentro do pedido (1..quantidade). */
+    sequence: number;
+    ticket_code: string;
+    /** Nulo enquanto quem comprou ainda não informou o participante. */
+    attendee_name: string | null;
+    attendee_email: string | null;
+    attendee_phone: string | null;
+    attendee_document: string | null;
+    /** Este ingresso é de quem comprou. */
+    is_buyer: boolean;
+    named_at: string | null;
+    unit_price: number;
+    service_fee: number;
+    discount: number;
+    total_amount: number;
+    check_in_date: string | null;
+    date_created: string;
+    date_updated: string;
+}
+/**
+ * Ingresso nominal como a API o devolve, com o pedido (quem comprou e pagou),
+ * o evento e o tipo. É a mesma forma para a área de ingressos da pessoa e para
+ * o painel do organizador.
+ */
+export interface NominalTicket extends Omit<RegistrationTicket, 'registration_id' | 'event_id' | 'ticket_type_id'> {
+    registration: {
+        id: string;
+        user_id: string | null;
+        participant_name: string;
+        participant_email: string;
+        participant_phone: string | null;
+        participant_document: string | null;
+        status: EventRegistration['status'] | string;
+        payment_status: EventRegistration['payment_status'] | string | null;
+        payment_method: string | null;
+        total_amount: number | null;
+        quantity: number;
+        receipt_url: string | null;
+        notes: string | null;
+        date_created: string | null;
+        cancelled_at: string | null;
+        /** Conta de quem comprou, quando cadastrada. */
+        user: {
+            id: string;
+            first_name: string | null;
+            last_name: string | null;
+            email: string | null;
+            avatar: string | null;
+        } | null;
+    };
+    event: {
+        id: string;
+        title: string;
+        slug: string;
+        start_date: string;
+        end_date: string | null;
+        location_name: string | null;
+        location_address: string | null;
+        event_type: string | null;
+        online_url: string | null;
+        organizer_id: string;
+        cover_image: MediaFile | string | null;
+    };
+    ticket_type: {
+        id: string;
+        title: string;
+        price: number;
+        description: string | null;
+    } | null;
+    /** Só na área da pessoa: ela pode nomear ou corrigir o participante. */
+    can_edit_attendee?: boolean;
 }
 //# sourceMappingURL=domain.d.ts.map

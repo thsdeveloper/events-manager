@@ -22,7 +22,7 @@ export class ReconcileCheckouts {
             try {
                 const checkout = await this.gateway.getCheckout(candidate.checkoutId);
                 if (checkout.status === 'PAID') {
-                    await this.repository.settlePaid(candidate);
+                    await this.repository.settlePaid(candidate, checkout.receiptUrl ?? null);
                     result.paid += 1;
                 }
                 else if (cancellationStatuses.has(checkout.status)) {

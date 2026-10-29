@@ -5,8 +5,10 @@
 import { describe, expect, it } from 'vitest';
 import {
 	birthDateSchema,
+	checkoutStatusSchema,
 	cpfSchema,
 	eventCreateSchema,
+	eventPatchSchema,
 	isAtLeastYearsOld,
 	MIN_REGISTRATION_AGE,
 	newPasswordSchema,
@@ -225,5 +227,68 @@ describe('phone verification schemas', () => {
 		expect(issuePaths(phoneVerificationConfirmSchema.safeParse({ phone: '11912345678', token: 'abcdef' }))).toContain(
 			'token',
 		);
+	});
+});
+
+describe('checkoutStatusSchema', () => {
+	const registration = {
+		id: '00000000-0000-4000-8000-000000000020',
+		status: 'confirmed',
+		paymentStatus: 'paid',
+		totalAmount: 100,
+		ticketCode: 'EVT-1',
+		event: { id: '00000000-0000-4000-8000-000000000030', title: 'Evento', slug: 'evento' },
+	};
+
+	it('carries the nominal tickets of each order, and tolerates older rows without them', () => {
+		const withTickets = checkoutStatusSchema.parse({
+			status: 'confirmed',
+			registrations: [
+				{
+					...registration,
+					tickets: [
+						{
+							id: '00000000-0000-4000-8000-000000000071',
+							sequence: 1,
+							ticketCode: 'EVT-1',
+							attendeeName: null,
+							attendeeEmail: null,
+							isBuyer: false,
+							ticketType: 'Inteira',
+						},
+					],
+				},
+			],
+		});
+		const legacy = checkoutStatusSchema.parse({ status: 'confirmed', registrations: [registration] });
+
+		expect(withTickets.registrations[0].tickets[0].attendeeName).toBeNull();
+		expect(legacy.registrations[0].tickets).toEqual([]);
+	});
+});
+
+describe('event visibility', () => {
+	it.each(['public', 'unlisted'])('preserves the %s visibility', (visibility) => {
+		expect(eventCreateSchema.parse({ ...validEvent, visibility })).toMatchObject({ visibility });
+	});
+	it('rejects unknown visibility', () => {
+		expect(eventCreateSchema.safeParse({ ...validEvent, visibility: 'private' }).success).toBe(false);
+	});
+	it('updates visibility without overwriting it on unrelated patches', () => {
+		expect(eventPatchSchema.parse({ visibility: 'unlisted' })).toEqual({ visibility: 'unlisted' });
+		expect(eventPatchSchema.parse({ title: 'Outro evento' })).not.toHaveProperty('visibility');
+	});
+});
+describe('tickets created with an event', () => {
+	it.each([
+		[{ min_quantity_per_purchase: 3, max_quantity_per_purchase: 2 }, 'max_quantity_per_purchase'],
+		[{ allow_installments: true }, 'max_installments'],
+		[{ sale_start_date: '2026-10-01T18:00:00Z', sale_end_date: '2026-10-01T17:00:00Z' }, 'sale_end_date'],
+		[{ sale_start_date: '2026-10-01T18:00:00Z', sale_end_date: '2026-10-01T18:00:00Z' }, 'sale_end_date'],
+		[{ price: Infinity }, 'price'],
+	])('rejects invalid ticket rules %o at the ticket field', (patch, field) => {
+		const ticket = { ...validTicket, ...patch };
+		const result = eventCreateSchema.safeParse({ ...validEvent, is_free: false, tickets: [ticket] });
+		expect(issuePaths(result)).toContain('tickets.0.' + field);
 	});
 });

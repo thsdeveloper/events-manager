@@ -222,7 +222,7 @@ export default function ParticipantesPage() {
 				<div>
 					<h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gerenciar Participantes</h1>
 					<p className="mt-1 text-gray-600 dark:text-gray-400">
-						Visualize e gerencie todos os participantes dos seus eventos
+						Um ingresso por pessoa: veja quem vai, quem comprou e faça o check-in de cada um
 					</p>
 				</div>
 			</div>

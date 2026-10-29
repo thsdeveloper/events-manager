@@ -7,10 +7,13 @@ import {
 	ExternalLink,
 	Globe,
 	Info,
+	LayoutTemplate,
 	MapPin,
+	Rocket,
 	Settings,
 	Star,
 	Ticket,
+	TicketPercent,
 	Trash2,
 	TrendingUp,
 	UserCheck,
@@ -31,12 +34,15 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import Text from '@/components/ui/Text';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EventCoupons } from '@/features/coupons/components/EventCoupons';
 import { TicketFormSheet } from '@/features/tickets/components/TicketFormSheet';
 import { TicketList } from '@/features/tickets/components/TicketList';
 import type { TicketDraft } from '@/features/tickets/types';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/fees';
+import { describeProblem } from '@/lib/problem';
 import { cn } from '@/lib/utils';
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
@@ -77,7 +83,17 @@ function toTicketDraft(ticket: EventTicket): TicketDraft {
 	};
 }
 
-function MetricCard({ icon: Icon, label, value, hint }: { icon: typeof Users; label: string; value: string; hint?: string }) {
+function MetricCard({
+	icon: Icon,
+	label,
+	value,
+	hint,
+}: {
+	icon: typeof Users;
+	label: string;
+	value: string;
+	hint?: string;
+}) {
 	return (
 		<div className="rounded-lg border bg-card p-4">
 			<div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -116,6 +132,8 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 	const [editingTicket, setEditingTicket] = useState<TicketDraft | null>(null);
 	const [ticketToDelete, setTicketToDelete] = useState<TicketDraft | null>(null);
 	const [eventDeleteOpen, setEventDeleteOpen] = useState(false);
+	const [publishOpen, setPublishOpen] = useState(false);
+	const [publishError, setPublishError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	const storedTickets = useMemo(() => (event.tickets ?? []) as EventTicket[], [event.tickets]);
@@ -155,7 +173,7 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 
 	const handleRemoveTicket = useCallback(
 		(ticket: TicketDraft) => {
-			const stored = storedTickets.find(item => item.id === ticket.id);
+			const stored = storedTickets.find((item) => item.id === ticket.id);
 			if (stored?.quantity_sold) {
 				toast({
 					title: 'Ingresso com vendas',
@@ -213,6 +231,32 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 		}
 	}, [evento_id, router, toast]);
 
+	// Publicar torna o evento visível ao público: exige confirmação e mostra a
+	// recusa da API no próprio diálogo, para a pessoa corrigir e tentar de novo.
+	const confirmPublish = useCallback(async () => {
+		setBusy(true);
+		setPublishError(null);
+		try {
+			const response = await fetch(`/api/events/${evento_id}`, {
+				method: 'PATCH',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ status: 'published' }),
+			});
+			if (!response.ok) {
+				const problem = await response.json().catch(() => null);
+				throw new Error(describeProblem(problem, 'Não foi possível publicar o evento.'));
+			}
+			toast({ title: 'Evento publicado', description: 'Ele já aparece para o público.', variant: 'success' });
+			setPublishOpen(false);
+			router.refresh();
+		} catch (error) {
+			setPublishError(error instanceof Error ? error.message : 'Tente novamente.');
+		} finally {
+			setBusy(false);
+		}
+	}, [evento_id, router, toast]);
+
 	const requestDeleteEvent = useCallback(() => {
 		if (participantsCount > 0 || stats.totalSold > 0) {
 			toast({
@@ -239,7 +283,9 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 					</Link>
 					<div className="mt-2 flex flex-wrap items-center gap-3">
 						<h1 className="text-2xl font-bold tracking-tight text-foreground">{event.title}</h1>
-						<span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', status.className)}>{status.label}</span>
+						<span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', status.className)}>
+							{status.label}
+						</span>
 						{event.featured && (
 							<span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
 								<Star className="size-3" />
@@ -249,7 +295,7 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 					</div>
 				</div>
 
-				<div className="flex flex-wrap items-center gap-2">
+				<div role="toolbar" aria-label="Ações do evento" className="flex flex-wrap items-center gap-2">
 					{event.slug && (
 						<Button variant="outline" size="sm" asChild>
 							<Link href={`/eventos/${event.slug}`} target="_blank">
@@ -258,6 +304,12 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 							</Link>
 						</Button>
 					)}
+					<Button variant="outline" size="sm" asChild>
+						<Link href={`/admin/eventos/${evento_id}/pagina`}>
+							<LayoutTemplate className="mr-2 size-4" />
+							Página do evento
+						</Link>
+					</Button>
 					<Button variant="outline" size="sm" asChild>
 						<Link href={`/admin/eventos/${evento_id}/configuracoes`}>
 							<Settings className="mr-2 size-4" />
@@ -269,6 +321,23 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 							<Edit className="mr-2 size-4" />
 							Editar
 						</Link>
+					</Button>
+					{event.status === 'draft' && (
+						<Button
+							size="sm"
+							className="bg-emerald-600 text-white hover:bg-emerald-700"
+							onClick={() => {
+								setPublishError(null);
+								setPublishOpen(true);
+							}}
+						>
+							<Rocket className="mr-2 size-4" />
+							Publicar
+						</Button>
+					)}
+					<Button variant="destructive" size="sm" onClick={requestDeleteEvent}>
+						<Trash2 className="mr-2 size-4" />
+						Excluir
 					</Button>
 				</div>
 			</div>
@@ -282,7 +351,11 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 					hint={stats.totalQuantity > 0 ? `de ${stats.totalQuantity.toLocaleString('pt-BR')} disponíveis` : undefined}
 				/>
 				<MetricCard icon={TrendingUp} label="Receita bruta" value={formatCurrency(stats.revenue)} />
-				<MetricCard icon={Users} label="Capacidade" value={event.max_attendees ? String(event.max_attendees) : 'Ilimitada'} />
+				<MetricCard
+					icon={Users}
+					label="Capacidade"
+					value={event.max_attendees ? String(event.max_attendees) : 'Ilimitada'}
+				/>
 			</div>
 
 			<Tabs defaultValue="informacoes" className="space-y-4">
@@ -298,15 +371,25 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 							<span className="rounded-full bg-muted px-1.5 text-xs tabular-nums">{tickets.length}</span>
 						)}
 					</TabsTrigger>
+					<TabsTrigger value="cupons" className="gap-1.5">
+						<TicketPercent className="size-4" />
+						Cupons
+					</TabsTrigger>
 				</TabsList>
+
+				<TabsContent value="cupons" className="space-y-4">
+					<EventCoupons eventId={evento_id} />
+				</TabsContent>
 
 				<TabsContent value="informacoes" className="space-y-4">
 					<div className="grid gap-4 lg:grid-cols-3">
 						<div className="rounded-lg border bg-card p-5 lg:col-span-2">
 							<h2 className="text-sm font-semibold text-foreground">Sobre o evento</h2>
-							<p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">
-								{event.description || 'Nenhuma descrição cadastrada.'}
-							</p>
+							{event.description ? (
+								<Text className="prose-sm mt-2 text-muted-foreground" content={event.description} />
+							) : (
+								<p className="mt-2 text-sm leading-6 text-muted-foreground">Nenhuma descrição cadastrada.</p>
+							)}
 						</div>
 
 						<div className="rounded-lg border bg-card p-5">
@@ -328,13 +411,6 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 								</InfoRow>
 							</div>
 						</div>
-					</div>
-
-					<div className="flex justify-end">
-						<Button variant="ghost" size="sm" onClick={requestDeleteEvent} className="text-destructive hover:bg-destructive/10">
-							<Trash2 className="mr-2 size-4" />
-							Excluir evento
-						</Button>
 					</div>
 				</TabsContent>
 
@@ -369,7 +445,7 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 				onSaved={handleTicketSaved}
 			/>
 
-			<AlertDialog open={Boolean(ticketToDelete)} onOpenChange={open => !open && setTicketToDelete(null)}>
+			<AlertDialog open={Boolean(ticketToDelete)} onOpenChange={(open) => !open && setTicketToDelete(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Excluir ingresso</AlertDialogTitle>
@@ -386,12 +462,45 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 				</AlertDialogContent>
 			</AlertDialog>
 
+			<AlertDialog open={publishOpen} onOpenChange={setPublishOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Publicar evento</AlertDialogTitle>
+						<AlertDialogDescription>
+							&ldquo;{event.title}&rdquo; passa a aparecer na lista pública e as inscrições abrem conforme as datas
+							configuradas. Você pode voltar a rascunho depois pela edição do evento.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					{publishError && (
+						<p
+							role="alert"
+							className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+						>
+							{publishError}
+						</p>
+					)}
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={(event) => {
+								event.preventDefault();
+								void confirmPublish();
+							}}
+							loading={busy}
+						>
+							Publicar
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
 			<AlertDialog open={eventDeleteOpen} onOpenChange={setEventDeleteOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Excluir evento</AlertDialogTitle>
 						<AlertDialogDescription>
-							&ldquo;{event.title}&rdquo; e seus ingressos serão removidos permanentemente. Esta ação não pode ser desfeita.
+							&ldquo;{event.title}&rdquo; e seus ingressos serão removidos permanentemente. Esta ação não pode ser
+							desfeita.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

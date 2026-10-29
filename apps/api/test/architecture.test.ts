@@ -229,9 +229,7 @@ describe('database security invariants', () => {
 		expect(hardening!.sql).toContain('drop policy if exists anyone_submit_forms');
 		expect(hardening!.sql).toContain('drop policy if exists anyone_submit_form_values');
 		expect(hardening!.sql).toContain('drop policy if exists create_registrations');
-		expect(hardening!.sql).toContain(
-			'revoke insert, update, delete on all tables in schema public from authenticated',
-		);
+		expect(hardening!.sql).toContain('revoke insert, update, delete on all tables in schema public from authenticated');
 		expect(hardening!.sql).not.toMatch(/grant insert, update, delete on table public\./i);
 		expect(hardening!.sql).toMatch(
 			/create or replace function public\.create_validated_form_submission\([\s\S]*?security invoker/i,
@@ -270,6 +268,39 @@ describe('database security invariants', () => {
 		}
 	});
 
+	describe('event coupons migration', () => {
+		const coupons = () => migrations().find(({ file }) => file.includes('event_coupons'));
+
+		it('ships the coupon table with the event it belongs to', () => {
+			expect(coupons()).toBeDefined();
+			expect(coupons()!.sql).toMatch(/create table public\.event_coupons/i);
+			expect(coupons()!.sql).toMatch(/event_id uuid not null references public\.events\(id\) on delete cascade/i);
+		});
+
+		it('keeps a code unique inside its event, so two organizers may reuse the same word', () => {
+			expect(coupons()!.sql).toMatch(/unique\s*\(\s*event_id\s*,\s*code\s*\)/i);
+		});
+
+		it('refuses a nonsensical discount in the database, not only in the API', () => {
+			expect(coupons()!.sql).toMatch(/discount_type[\s\S]*check \(discount_type in \('percentage', 'fixed'\)\)/i);
+			expect(coupons()!.sql).toMatch(/check \(discount_value > 0\)/i);
+			expect(coupons()!.sql).toMatch(/event_coupons_percentage_range/i);
+			expect(coupons()!.sql).toMatch(/event_coupons_window/i);
+			expect(coupons()!.sql).toMatch(/uses <= max_uses|event_coupons_uses_within_limit/i);
+		});
+
+		it('isolates coupons by organizer through row level security', () => {
+			expect(coupons()!.sql).toMatch(/alter table public\.event_coupons enable row level security/i);
+			expect(coupons()!.sql).toMatch(
+				/create policy manage_coupons on public\.event_coupons[\s\S]*public\.owns_event\(event_id\)/i,
+			);
+		});
+
+		it('indexes the lookup the checkout does on every attempt', () => {
+			expect(coupons()!.sql).toMatch(/create index event_coupons_event_id_code_idx/i);
+		});
+	});
+
 	describe('CMS migration', () => {
 		const cms = () => migrations().find(({ file }) => file.includes('cms_admin_and_cleanup'));
 
@@ -285,19 +316,122 @@ describe('database security invariants', () => {
 		});
 
 		it('links event blocks to categories and removes block items together with their page block', () => {
-			expect(cms()!.sql).toMatch(/block_events_filter_by_category_fkey[\s\S]*references public\.event_categories\(id\) on delete set null/i);
-			expect(cms()!.sql).toMatch(/create or replace function public\.delete_page_block_item\(\)[\s\S]*security invoker/i);
+			expect(cms()!.sql).toMatch(
+				/block_events_filter_by_category_fkey[\s\S]*references public\.event_categories\(id\) on delete set null/i,
+			);
+			expect(cms()!.sql).toMatch(
+				/create or replace function public\.delete_page_block_item\(\)[\s\S]*security invoker/i,
+			);
 			expect(cms()!.sql).toMatch(/create trigger page_blocks_delete_item[\s\S]*after delete on public\.page_blocks/i);
-			expect(cms()!.sql).toMatch(/revoke execute on function public\.delete_page_block_item\(\) from public, anon, authenticated/i);
+			expect(cms()!.sql).toMatch(
+				/revoke execute on function public\.delete_page_block_item\(\) from public, anon, authenticated/i,
+			);
 		});
 
 		it('keeps the page freshness date in sync with its blocks for caching and sitemaps', () => {
 			expect(cms()!.sql).toMatch(/create or replace function public\.touch_page_from_block\(\)/i);
-			expect(cms()!.sql).toMatch(/create trigger page_blocks_touch_page[\s\S]*after insert or update or delete on public\.page_blocks/i);
+			expect(cms()!.sql).toMatch(
+				/create trigger page_blocks_touch_page[\s\S]*after insert or update or delete on public\.page_blocks/i,
+			);
 		});
 
 		it('stores a default Open Graph image on the site settings', () => {
-			expect(cms()!.sql).toMatch(/alter table public\.site_settings[\s\S]*add column if not exists default_og_image uuid references public\.media_files\(id\) on delete set null/i);
+			expect(cms()!.sql).toMatch(
+				/alter table public\.site_settings[\s\S]*add column if not exists default_og_image uuid references public\.media_files\(id\) on delete set null/i,
+			);
+		});
+	});
+
+	describe('registration receipt migration', () => {
+		it('keeps the provider receipt url on the registration, so the buyer can open it later', () => {
+			const migration = migrations().find(({ file }) => file.includes('registration_receipt_url'));
+
+			expect(migration).toBeDefined();
+			expect(migration!.sql).toMatch(
+				/alter table public\.event_registrations[\s\S]*add column if not exists receipt_url text/i,
+			);
+		});
+	});
+
+	describe('event pages migration', () => {
+		const pages = () => migrations().find(({ file }) => file.includes('event_pages'));
+
+		it('stores one landing page per event, as a JSON layout with draft and published copies', () => {
+			expect(pages()).toBeDefined();
+			expect(pages()!.sql).toMatch(/create table public\.event_pages/i);
+			expect(pages()!.sql).toMatch(/event_id uuid primary key references public\.events\(id\) on delete cascade/i);
+			expect(pages()!.sql).toMatch(/draft jsonb not null/i);
+			expect(pages()!.sql).toMatch(/published jsonb/i);
+			expect(pages()!.sql).toMatch(/enabled boolean not null default false/i);
+		});
+
+		it('lets the organizer read it, the public read only the published copy through the API, and only the API write', () => {
+			expect(pages()!.sql).toMatch(/alter table public\.event_pages enable row level security/i);
+			expect(pages()!.sql).toMatch(/create policy read_event_pages on public\.event_pages for select[\s\S]*public\.owns_event\(event_id\)/i);
+			expect(pages()!.sql).toMatch(/revoke insert, update, delete on public\.event_pages from anon, authenticated/i);
+		});
+	});
+
+	describe('nominal tickets migration', () => {
+		const nominal = () => migrations().find(({ file }) => file.includes('nominal_tickets'));
+
+		it('issues one ticket row per purchased unit, tied to the order and the event', () => {
+			expect(nominal()).toBeDefined();
+			expect(nominal()!.sql).toMatch(/create table public\.registration_tickets/i);
+			expect(nominal()!.sql).toMatch(
+				/registration_id uuid not null references public\.event_registrations\(id\) on delete cascade/i,
+			);
+			expect(nominal()!.sql).toMatch(/event_id uuid not null references public\.events\(id\)/i);
+			expect(nominal()!.sql).toMatch(/constraint registration_tickets_sequence_key unique \(registration_id, sequence\)/i);
+		});
+
+		it('gives every ticket its own code, so five people never share one at the door', () => {
+			expect(nominal()!.sql).toMatch(/constraint registration_tickets_code_key unique \(ticket_code\)/i);
+			expect(nominal()!.sql).toMatch(/check_in_date timestamptz/i);
+		});
+
+		it('keeps a ticket either fully named or pending, never half-filled', () => {
+			expect(nominal()!.sql).toMatch(/constraint registration_tickets_attendee_complete check/i);
+		});
+
+		it('backfills existing orders: the buyer keeps the code already e-mailed on the first unit', () => {
+			expect(nominal()!.sql).toMatch(/insert into public\.registration_tickets[\s\S]*generate_series\(1, greatest\(r\.quantity, 1\)\)/i);
+			expect(nominal()!.sql).toMatch(/when s\.sequence = 1 and r\.ticket_code is not null then r\.ticket_code/i);
+		});
+
+		it('lets buyers, named attendees and organizers read tickets, and only the API write them', () => {
+			expect(nominal()!.sql).toMatch(/alter table public\.registration_tickets enable row level security/i);
+			expect(nominal()!.sql).toMatch(
+				/create policy read_registration_tickets on public\.registration_tickets for select to authenticated[\s\S]*attendee_email[\s\S]*public\.owns_event\(event_id\)/i,
+			);
+			expect(nominal()!.sql).not.toMatch(/grant insert, update, delete on public\.registration_tickets/i);
+		});
+
+		it('indexes the lookups the account page and the door make', () => {
+			expect(nominal()!.sql).toMatch(/create index registration_tickets_registration_id_idx/i);
+			expect(nominal()!.sql).toMatch(/create index registration_tickets_attendee_email_idx[\s\S]*lower\(attendee_email\)/i);
+		});
+	});
+
+	describe('payment transactions idempotency migration', () => {
+		const migration = () =>
+			migrations().find(({ file }) => file.includes('payment_transactions_provider_event_unique'));
+
+		it('backs the API upsert on provider_event_id with a full unique constraint', () => {
+			// O cliente Supabase gera `on conflict (provider_event_id)` sem predicado;
+			// o Postgres não infere um índice parcial a partir disso (erro 42P10), e
+			// o checkout em modo mock e os webhooks caíam em 500 ao gravar a transação.
+			const repository = readFileSync(
+				join(repositoryRoot, 'apps/api/src/infrastructure/supabase/payment-repository.ts'),
+				'utf8',
+			);
+
+			expect(repository).toMatch(/\.upsert\([^)]*onConflict:\s*'provider_event_id'/);
+			expect(migration()).toBeDefined();
+			expect(migration()!.sql).toMatch(/drop index if exists public\.payment_transactions_provider_event_idx/i);
+			expect(migration()!.sql).toMatch(
+				/alter table public\.payment_transactions[\s\S]*add constraint payment_transactions_provider_event_id_key unique \(provider_event_id\)/i,
+			);
 		});
 	});
 });

@@ -2,11 +2,15 @@
 
 import type { ReactNode } from 'react';
 import { AnimateIcon } from '@/components/animate-ui/icons/icon';
+import { Illustration } from '@/components/design-system/atoms/Illustration';
+import type { Illustration as IllustrationArt } from '@/lib/illustrations';
 import { cn } from '@/lib/utils';
 
 interface AccountEmptyStateProps {
 	/** An animate-ui icon (e.g. `<Ticket />`); it animates on view and on hover. */
 	icon: ReactNode;
+	/** Quando presente, a ilustração substitui o ícone animado. */
+	illustration?: IllustrationArt;
 	title: string;
 	description: string;
 	action?: ReactNode;
@@ -19,7 +23,14 @@ interface AccountEmptyStateProps {
  * what will show up here and how. The icon draws itself when the panel scrolls
  * into view and again on hover, which is the only motion the panel needs.
  */
-export function AccountEmptyState({ icon, title, description, action, className }: AccountEmptyStateProps) {
+export function AccountEmptyState({
+	icon,
+	illustration,
+	title,
+	description,
+	action,
+	className,
+}: AccountEmptyStateProps) {
 	return (
 		<div
 			className={cn(
@@ -27,14 +38,18 @@ export function AccountEmptyState({ icon, title, description, action, className 
 				className,
 			)}
 		>
-			<AnimateIcon animateOnView animateOnViewOnce animateOnHover asChild>
-				<span
-					aria-hidden="true"
-					className="mx-auto flex size-12 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 [&_svg]:size-6"
-				>
-					{icon}
-				</span>
-			</AnimateIcon>
+			{illustration ? (
+				<Illustration illustration={illustration} className="mx-auto h-40" />
+			) : (
+				<AnimateIcon animateOnView animateOnViewOnce animateOnHover asChild>
+					<span
+						aria-hidden="true"
+						className="mx-auto flex size-12 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 [&_svg]:size-6"
+					>
+						{icon}
+					</span>
+				</AnimateIcon>
+			)}
 			<h2 className="mt-4 font-semibold text-slate-950 dark:text-white">{title}</h2>
 			<p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
 			{action ? <div className="mt-6 flex justify-center">{action}</div> : null}

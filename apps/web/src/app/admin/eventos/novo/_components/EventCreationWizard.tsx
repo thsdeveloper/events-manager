@@ -8,7 +8,8 @@ import { useForm } from 'react-hook-form';
 import { Form } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { PENDING_UPLOAD_VALUE } from '@/components/admin/ImageUpload';
-import type { EventCategory } from '@events-manager/contracts';
+import type { Event, EventCategory, EventTicket } from '@events-manager/contracts';
+import type { TicketDraft } from '@/features/tickets/types';
 import { useOrganizer } from '@/hooks/useOrganizer';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
 import { WizardProgressBar } from './WizardProgressBar';
@@ -94,7 +95,7 @@ const stepFieldGroups: Array<(keyof EventWizardFormValues)[]> = [
 	['description', 'tags'],
 	['start_date', 'end_date', 'registration_start', 'registration_end'],
 	['event_type', 'location_name', 'location_address', 'latitude', 'longitude', 'online_url'],
-	['is_free', 'tickets', 'max_attendees', 'status', 'featured', 'publish_after_create'],
+	['is_free', 'tickets', 'max_attendees', 'status', 'visibility', 'featured', 'publish_after_create'],
 	[
 		'title',
 		'category_id',
@@ -109,6 +110,95 @@ const stepFieldGroups: Array<(keyof EventWizardFormValues)[]> = [
 		'status',
 	],
 ];
+
+const emptyValues: EventWizardFormValues = {
+	title: '',
+	category_id: '',
+	short_description: '',
+	cover_image: '',
+	description: '',
+	tags: [],
+	start_date: '',
+	end_date: '',
+	registration_start: '',
+	registration_end: '',
+	event_type: 'in_person',
+	location_name: '',
+	location_address: '',
+	latitude: null,
+	longitude: null,
+	online_url: '',
+	is_free: true,
+	tickets: [],
+	max_attendees: null,
+	status: 'draft',
+	visibility: 'public',
+	featured: false,
+	publish_after_create: false,
+};
+
+function relationId(value: unknown): string {
+	if (!value) return '';
+	if (typeof value === 'string') return value;
+
+	return typeof value === 'object' && 'id' in value ? String((value as { id: unknown }).id) : '';
+}
+
+/** Os ingressos existentes entram no formulário só para a revisão e a regra do evento pago. */
+function ticketDraft(ticket: EventTicket): TicketDraft {
+	return {
+		id: ticket.id,
+		title: ticket.title ?? '',
+		description: ticket.description ?? null,
+		quantity: ticket.quantity ?? 0,
+		price: Number(ticket.price ?? 0),
+		service_fee_type: (ticket.service_fee_type ?? 'passed_to_buyer') as TicketDraft['service_fee_type'],
+		visibility: (ticket.visibility ?? 'public') as TicketDraft['visibility'],
+		sale_start_date: ticket.sale_start_date ?? null,
+		sale_end_date: ticket.sale_end_date ?? null,
+		min_quantity_per_purchase: ticket.min_quantity_per_purchase ?? 1,
+		max_quantity_per_purchase: ticket.max_quantity_per_purchase ?? 5,
+		allow_installments: ticket.allow_installments ?? false,
+		max_installments: ticket.max_installments ?? null,
+	};
+}
+
+/** O evento guardado, na forma que o assistente edita. */
+function valuesFromEvent(event: Event): EventWizardFormValues {
+	const tickets = (event.tickets ?? []).filter((ticket): ticket is EventTicket => typeof ticket !== 'string');
+
+	return {
+		...emptyValues,
+		title: event.title ?? '',
+		category_id: relationId(event.category_id),
+		short_description: event.short_description ?? '',
+		cover_image: relationId(event.cover_image),
+		description: event.description ?? '',
+		tags: Array.isArray(event.tags) ? event.tags : [],
+		start_date: event.start_date ?? '',
+		end_date: event.end_date ?? '',
+		registration_start: event.registration_start ?? '',
+		registration_end: event.registration_end ?? '',
+		event_type: (event.event_type ?? 'in_person') as EventWizardFormValues['event_type'],
+		location_name: event.location_name ?? '',
+		location_address: event.location_address ?? '',
+		latitude: event.latitude ?? null,
+		longitude: event.longitude ?? null,
+		online_url: event.online_url ?? '',
+		is_free: Boolean(event.is_free),
+		tickets: tickets.map(ticketDraft),
+		max_attendees: event.max_attendees ?? null,
+		visibility: event.visibility ?? 'public',
+		status: (event.status ?? 'draft') as EventWizardFormValues['status'],
+		featured: Boolean(event.featured),
+	};
+}
+
+interface EventCreationWizardProps {
+	/** `edit` parte do evento guardado e atualiza em vez de criar. */
+	mode?: 'create' | 'edit';
+	event?: Event;
+}
 
 function getStepSchema(stepIndex: number) {
 	switch (steps[stepIndex].id) {
@@ -129,7 +219,8 @@ function getStepSchema(stepIndex: number) {
 	}
 }
 
-export function EventCreationWizard() {
+export function EventCreationWizard({ mode = 'create', event }: EventCreationWizardProps = {}) {
+	const isEdit = mode === 'edit' && Boolean(event);
 	const router = useRouter();
 	const { toast } = useToast();
 	const { organizer, loading: organizerLoading } = useOrganizer();
@@ -139,7 +230,10 @@ export function EventCreationWizard() {
 
 	const [categories, setCategories] = useState<EventCategory[]>([]);
 	const [currentStep, setCurrentStep] = useState(0);
-	const [visitedSteps, setVisitedSteps] = useState<Set<number>>(new Set([0]));
+	// Na edição tudo já foi preenchido uma vez: qualquer etapa fica ao alcance.
+	const [visitedSteps, setVisitedSteps] = useState<Set<number>>(
+		() => new Set(isEdit ? steps.map((_, index) => index) : [0]),
+	);
 	const [isSavingDraft, setIsSavingDraft] = useState(false);
 	const [lastSaved, setLastSaved] = useState<Date | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -156,30 +250,7 @@ export function EventCreationWizard() {
 		mode: 'onBlur',
 		reValidateMode: 'onChange',
 		// Don't use resolver - we'll validate manually per step
-		defaultValues: {
-			title: '',
-			category_id: '',
-			short_description: '',
-			cover_image: '',
-			description: '',
-			tags: [],
-			start_date: '',
-			end_date: '',
-			registration_start: '',
-			registration_end: '',
-			event_type: 'in_person',
-			location_name: '',
-			location_address: '',
-			latitude: null,
-			longitude: null,
-			online_url: '',
-			is_free: true,
-			tickets: [],
-			max_attendees: null,
-			status: 'draft',
-			featured: false,
-			publish_after_create: false,
-		},
+		defaultValues: isEdit && event ? valuesFromEvent(event) : emptyValues,
 	});
 
 	const watchedValues = form.watch();
@@ -204,12 +275,13 @@ export function EventCreationWizard() {
 		};
 	}, []);
 
-
 	useEffect(() => {
 		if (typeof window === 'undefined') {
 			return;
 		}
 
+		// O rascunho local é da criação; na edição o ponto de partida é o evento.
+		if (isEdit) return;
 		const stored = window.localStorage.getItem(LOCAL_STORAGE_KEY);
 		if (!stored) {
 			return;
@@ -245,11 +317,11 @@ export function EventCreationWizard() {
 		} catch (error) {
 			console.error('Erro ao carregar rascunho do evento', error);
 		}
-	}, [form]);
+	}, [form, isEdit]);
 
 	const handleCoverFileSelected = useCallback((file: File | null) => {
 		setCoverFile(file);
-		setCoverPreviewUrl(current => {
+		setCoverPreviewUrl((current) => {
 			if (current) URL.revokeObjectURL(current);
 
 			return file ? URL.createObjectURL(file) : null;
@@ -265,7 +337,7 @@ export function EventCreationWizard() {
 
 	const persistDraft = useCallback(
 		(formValues: Partial<EventWizardFormValues>, stepOverride?: number) => {
-			if (typeof window === 'undefined') {
+			if (typeof window === 'undefined' || isEdit) {
 				return false;
 			}
 
@@ -285,15 +357,15 @@ export function EventCreationWizard() {
 				return false;
 			}
 		},
-		[currentStep],
+		[currentStep, isEdit],
 	);
 
 	useEffect(() => {
-		if (typeof window === 'undefined') {
+		if (typeof window === 'undefined' || isEdit) {
 			return;
 		}
 
-		const subscription = form.watch(values => {
+		const subscription = form.watch((values) => {
 			if (!initializedRef.current) {
 				initializedRef.current = true;
 
@@ -316,7 +388,7 @@ export function EventCreationWizard() {
 			subscription.unsubscribe();
 			window.clearTimeout(autoSaveTimeoutRef.current);
 		};
-	}, [form, persistDraft]);
+	}, [form, isEdit, persistDraft]);
 
 	useEffect(() => {
 		const loadCategories = async () => {
@@ -336,7 +408,7 @@ export function EventCreationWizard() {
 	const goToStep = useCallback(
 		(stepIndex: number) => {
 			setCurrentStep(stepIndex);
-			setVisitedSteps(prev => {
+			setVisitedSteps((prev) => {
 				const updated = new Set(prev);
 				for (let index = 0; index <= stepIndex; index += 1) {
 					updated.add(index);
@@ -377,7 +449,7 @@ export function EventCreationWizard() {
 					title,
 					description,
 					short_description,
-					categoryId
+					categoryId,
 				}),
 			});
 
@@ -435,7 +507,7 @@ export function EventCreationWizard() {
 
 		const parseResult = schema.safeParse(values);
 		if (!parseResult.success) {
-			parseResult.error.issues.forEach(issue => {
+			parseResult.error.issues.forEach((issue) => {
 				const path = issue.path[0] as keyof EventWizardFormValues;
 				form.setError(path, { message: issue.message });
 			});
@@ -469,33 +541,45 @@ export function EventCreationWizard() {
 		[goToStep, visitedSteps],
 	);
 
-	const onSubmit = useCallback(
-		async (values: EventWizardFormValues) => {
-			// Prevent submission if not on the last step
-			if (currentStep !== steps.length - 1) {
-				return;
-			}
-
-			// Validate the entire form with the complete schema
+	/**
+	 * Valida o formulário inteiro e, se algo falhar, leva a pessoa até a etapa
+	 * do primeiro problema: um erro numa etapa que ela não está vendo seria
+	 * invisível.
+	 */
+	const validateAll = useCallback(
+		(values: EventWizardFormValues) => {
 			const validationResult = eventWizardSchema.safeParse(values);
-			if (!validationResult.success) {
-				validationResult.error.issues.forEach(issue => {
-					const path = issue.path[0] as keyof EventWizardFormValues;
-					form.setError(path, { message: issue.message });
-				});
-				toast({
-					title: 'Erro de validação',
-					description: 'Por favor, revise todos os campos obrigatórios.',
-					variant: 'destructive',
-				});
-				
-return;
-			}
+			if (validationResult.success) return true;
+
+			validationResult.error.issues.forEach((issue) => {
+				const path = issue.path[0] as keyof EventWizardFormValues;
+				form.setError(path, { message: issue.message });
+			});
+			const firstField = validationResult.error.issues[0]?.path[0] as keyof EventWizardFormValues | undefined;
+			const failingStep = firstField
+				? stepFieldGroups.findIndex((fields, index) => index < steps.length - 1 && fields.includes(firstField))
+				: -1;
+			if (failingStep >= 0 && failingStep !== currentStep) goToStep(failingStep);
+			toast({
+				title: 'Revise os campos destacados',
+				description: 'Complete as informações obrigatórias antes de salvar.',
+				variant: 'destructive',
+			});
+
+			return false;
+		},
+		[currentStep, form, goToStep, toast],
+	);
+
+	const submitValues = useCallback(
+		async (values: EventWizardFormValues) => {
+			if (!validateAll(values)) return;
 
 			setIsSubmitting(true);
 
 			try {
-				if (!organizer?.id) {
+				// Na edição a posse do evento já foi verificada pela API ao carregá-lo.
+				if (!isEdit && !organizer?.id) {
 					throw new Error('Crie um perfil de organizador antes de publicar eventos.');
 				}
 
@@ -516,6 +600,52 @@ return;
 					coverImageId = values.cover_image;
 				}
 
+				if (isEdit && event) {
+					// Um evento pago que vira gratuito com ingressos cadastrados deixaria
+					// vendas órfãs; a página do evento é o lugar de remover os ingressos.
+					// Um evento já gratuito pode ter tipos de ingresso (categorias de inscrição).
+					if (values.is_free && !event.is_free && values.tickets.length > 0) {
+						throw new Error(
+							`Este evento possui ${values.tickets.length} ingresso(s) cadastrado(s). Remova todos os ingressos antes de marcá-lo como gratuito.`,
+						);
+					}
+					const response = await fetch(`/api/events/${event.id}`, {
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							title: values.title,
+							description: values.description,
+							short_description: values.short_description || null,
+							start_date: values.start_date,
+							end_date: values.end_date,
+							event_type: values.event_type,
+							location_name: values.location_name || null,
+							location_address: values.location_address || null,
+							latitude: values.latitude ?? null,
+							longitude: values.longitude ?? null,
+							online_url: values.online_url || null,
+							max_attendees: values.max_attendees ?? null,
+							registration_start: values.registration_start || null,
+							registration_end: values.registration_end || null,
+							status: values.status,
+							visibility: values.visibility ?? 'public',
+							is_free: values.is_free,
+							category_id: values.category_id || null,
+							tags: values.tags ?? [],
+							featured: values.featured,
+							cover_image: coverImageId,
+						}),
+					});
+					if (!response.ok) {
+						const problem = await response.json().catch(() => null);
+						throw new Error(problem?.detail ?? 'Não foi possível salvar o evento.');
+					}
+					toast({ title: 'Evento atualizado', description: 'As alterações já estão salvas.', variant: 'success' });
+					router.push(`/admin/eventos/${event.id}`);
+
+					return;
+				}
+
 				const eventData: Record<string, unknown> = {
 					title: values.title,
 					description: values.description,
@@ -532,12 +662,13 @@ return;
 					registration_start: values.registration_start || null,
 					registration_end: values.registration_end || null,
 					status: values.status,
+					visibility: values.visibility ?? 'public',
 					is_free: values.is_free,
 					// Tickets ride along with the event so the API can reject a paid event
 					// without one and create both in a single atomic call.
 					tickets: values.tickets.map(({ clientId, id, ...ticket }) => ticket),
 					category_id: values.category_id || null,
-					tags: values.tags?.length ? values.tags : null,
+					tags: values.tags ?? [],
 					featured: values.featured,
 					cover_image: coverImageId,
 				};
@@ -548,7 +679,9 @@ return;
 						.normalize('NFD')
 						.replace(/[\u0300-\u036f]/g, '')
 						.replace(/[^a-z0-9]+/g, '-')
-						.replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).substring(2, 8);
+						.replace(/^-+|-+$/g, '') +
+					'-' +
+					Math.random().toString(36).substring(2, 8);
 
 				eventData.slug = slug;
 
@@ -567,9 +700,10 @@ return;
 
 				toast({
 					title: 'Evento criado com sucesso!',
-					description: values.publish_after_create
-						? 'Seu evento está no ar. Que tal compartilhar agora?'
-						: 'O evento foi salvo como rascunho. Publique quando estiver pronto.',
+					description:
+						values.status === 'published'
+							? 'Seu evento está no ar. Que tal compartilhar agora?'
+							: 'O evento foi salvo como rascunho. Publique quando estiver pronto.',
 					variant: 'success',
 				});
 
@@ -592,8 +726,22 @@ return;
 				setIsSubmitting(false);
 			}
 		},
-		[coverFile, currentStep, form, organizer?.id, router, toast],
+		[coverFile, event, form, isEdit, organizer?.id, router, toast, validateAll],
 	);
+
+	const onSubmit = useCallback(
+		async (values: EventWizardFormValues) => {
+			// Prevent submission if not on the last step
+			if (currentStep !== steps.length - 1) return;
+			await submitValues(values);
+		},
+		[currentStep, submitValues],
+	);
+
+	// Edição: salvar de qualquer etapa, sem passar pela revisão.
+	const handleQuickSave = useCallback(() => {
+		void submitValues(form.getValues());
+	}, [form, submitValues]);
 
 	const isFirstStep = currentStep === 0;
 	const isLastStep = currentStep === steps.length - 1;
@@ -605,7 +753,9 @@ return;
 			case 'visual':
 				return (
 					<CoverImageStep
-						onChangeCoverImage={value => form.setValue('cover_image', value ?? '', { shouldDirty: true, shouldValidate: true })}
+						onChangeCoverImage={(value) =>
+							form.setValue('cover_image', value ?? '', { shouldDirty: true, shouldValidate: true })
+						}
 						onCoverFileSelected={handleCoverFileSelected}
 						pendingPreviewUrl={coverPreviewUrl}
 						onGenerateCoverImage={handleGenerateCover}
@@ -620,9 +770,9 @@ return;
 			case 'location':
 				return <LocationStep />;
 			case 'tickets':
-				return <TicketsStep />;
+				return <TicketsStep manageTicketsHref={isEdit && event ? `/admin/eventos/${event.id}` : undefined} />;
 			case 'review':
-				return <ReviewStep categories={categories} />;
+				return <ReviewStep categories={categories} mode={mode} />;
 			default:
 				return null;
 		}
@@ -631,10 +781,13 @@ return;
 		coverAiError,
 		coverPreviewUrl,
 		currentStep,
+		event,
 		form,
 		handleCoverFileSelected,
 		handleGenerateCover,
+		isEdit,
 		isGeneratingCover,
+		mode,
 	]);
 
 	const handleFormSubmit = useCallback(
@@ -663,7 +816,7 @@ return;
 					visitedSteps={visitedSteps}
 					onStepSelect={handleSelectStep}
 				/>
-				<AutoSaveIndicator isSaving={isSavingDraft} lastSaved={lastSaved} />
+				{!isEdit && <AutoSaveIndicator isSaving={isSavingDraft} lastSaved={lastSaved} />}
 
 				<div className="relative">
 					{/* scroll-mt keeps anything scrolled into view (a focused field, a
@@ -672,6 +825,8 @@ return;
 						{stepContent}
 					</div>
 					<StepNavigation
+						submitLabel={isEdit ? 'Salvar alterações' : 'Criar evento'}
+						onSave={isEdit ? handleQuickSave : undefined}
 						isFirstStep={isFirstStep}
 						isLastStep={isLastStep}
 						isSubmitting={isSubmitting}
@@ -691,7 +846,7 @@ return;
 			<AIImageGenerationModal
 				isOpen={isGeneratingCover}
 				eventTitle={form.watch('title') || 'Seu Evento'}
-				categoryName={categories.find(c => c.id === form.watch('category_id'))?.name}
+				categoryName={categories.find((c) => c.id === form.watch('category_id'))?.name}
 			/>
 		</Form>
 	);

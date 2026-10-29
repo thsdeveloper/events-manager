@@ -116,7 +116,7 @@ const Posts = ({ data }: PostsProps) => {
 							<div className="relative w-full h-64 rounded-lg overflow-hidden">
 								{post.image && (
 									<MediaImage
-										uuid={typeof post.image === 'string' ? post.image : post.image?.id}
+										uuid={post.image}
 										alt={post.title}
 										fill
 										sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"

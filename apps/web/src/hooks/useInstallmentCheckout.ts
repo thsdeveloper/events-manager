@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { describeProblem } from '@/lib/problem';
 
 interface TicketItem {
 	ticketId: string;
@@ -69,7 +70,7 @@ export function useInstallmentCheckout({ onSuccess }: InstallmentCheckoutOptions
 			const data = await response.json();
 
 			if (!response.ok) {
-				throw new Error(data.detail || 'Erro ao criar checkout parcelado');
+				throw new Error(describeProblem(data, 'Erro ao criar checkout parcelado'));
 			}
 
 			if (onSuccess) {

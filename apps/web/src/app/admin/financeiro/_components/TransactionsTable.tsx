@@ -6,6 +6,8 @@ import type { PaginationState, TransactionRow } from '@/lib/finance/server-fetch
 import type { TransactionSort, TransactionSortField } from '@/lib/finance/api-client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Illustration } from '@/components/design-system/atoms/Illustration';
+import { emptyIllustrations } from '@/lib/illustrations';
 
 interface TransactionsTableProps {
 	rows: TransactionRow[];
@@ -19,7 +21,6 @@ interface TransactionsTableProps {
 
 function formatDate(value: string) {
 	if (!value) {
-
 		return '—';
 	}
 
@@ -58,11 +59,8 @@ function getStatusLabel(status: string) {
 
 function SortIcon({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
 	if (!active) {
-
 		return (
-			<span className="ml-1 inline-flex size-3 items-center justify-center text-gray-300 dark:text-gray-600">
-				•
-			</span>
+			<span className="ml-1 inline-flex size-3 items-center justify-center text-gray-300 dark:text-gray-600">•</span>
 		);
 	}
 
@@ -172,29 +170,22 @@ function TransactionsTable({
 					) : rows.length === 0 ? (
 						<tr>
 							<td colSpan={9} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+								<Illustration illustration={emptyIllustrations.transactions} className="mx-auto mb-4 h-28" />
 								Nenhuma transação encontrada para os filtros selecionados.
 							</td>
 						</tr>
 					) : (
 						rows.map((row) => (
 							<tr key={row.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40">
-								<td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
-									{formatDate(row.date)}
-								</td>
+								<td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{formatDate(row.date)}</td>
 								<td className="px-4 py-3 text-xs font-medium text-purple-600 dark:text-purple-300">
 									{row.transactionId || '—'}
 								</td>
-								<td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">
-									{row.eventTitle}
-								</td>
+								<td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">{row.eventTitle}</td>
 								<td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
 									<div className="flex flex-col">
-										<span className="font-medium text-gray-800 dark:text-gray-100">
-											{row.participantName}
-										</span>
-										<span className="text-xs text-gray-500 dark:text-gray-400">
-											{row.participantEmail}
-										</span>
+										<span className="font-medium text-gray-800 dark:text-gray-100">{row.participantName}</span>
+										<span className="text-xs text-gray-500 dark:text-gray-400">{row.participantEmail}</span>
 									</div>
 								</td>
 								<td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">

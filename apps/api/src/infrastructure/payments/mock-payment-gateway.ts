@@ -1,5 +1,6 @@
 import type {
 	CreateCheckoutInput,
+	CreateCustomerInput,
 	CreatePixInput,
 	CreateProductInput,
 	PaymentCheckoutState,
@@ -14,6 +15,10 @@ export class MockPaymentGateway implements PaymentGateway {
 		return { id: `mock_product_${input.externalId}`, externalId: input.externalId };
 	}
 
+	async createCustomer(input: CreateCustomerInput) {
+		return { id: `mock_customer_${input.email}` };
+	}
+
 	async createCheckout(input: CreateCheckoutInput) {
 		return { id: `mock_checkout_${input.externalId}`, url: input.completionUrl, amountInCents: 0 };
 	}
@@ -25,7 +30,16 @@ export class MockPaymentGateway implements PaymentGateway {
 			status: 'PAID' as const,
 			amountInCents: 0,
 			paidAmountInCents: 0,
+			receiptUrl: null,
 		};
+	}
+
+	async refundCheckout(checkoutId: string) {
+		return { refundId: `mock_refund_${checkoutId}` };
+	}
+
+	async refundPixCharge(chargeId: string) {
+		return { refundId: `mock_refund_${chargeId}` };
 	}
 
 	async createPixCharge(input: {

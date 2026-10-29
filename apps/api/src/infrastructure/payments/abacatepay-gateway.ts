@@ -1,13 +1,16 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type {
 	CreateCheckoutInput,
+	CreateCustomerInput,
 	CreatePixInput,
 	CreateProductInput,
 	PaymentCheckout,
 	PaymentCheckoutState,
 	PaymentCheckoutStatus,
+	PaymentCustomer,
 	PaymentGateway,
 	PaymentProduct,
+	PaymentRefund,
 	PixCharge,
 	PixChargeState,
 	PixTransfer,
@@ -43,10 +46,15 @@ export class AbacatePayGateway implements PaymentGateway {
 		});
 		const body = (await response.json().catch(() => null)) as AbacatePayEnvelope<T> | null;
 		if (!response.ok || !body?.success || !body.data) {
+			// A recusa do provedor ("CARD is not available for this store", "Invalid
+			// taxId") é escrita para quem opera a loja: mascarada, vira um 502 sem
+			// pista. Sem mensagem do provedor, o detalhe genérico continua oculto.
 			throw new ApiError(
 				body?.error ?? 'Não foi possível processar a operação no AbacatePay.',
 				502,
 				'PAYMENT_PROVIDER_ERROR',
+				undefined,
+				{ exposeDetail: Boolean(body?.error) },
 			);
 		}
 		return body.data;
@@ -66,6 +74,19 @@ export class AbacatePayGateway implements PaymentGateway {
 		return { id: product.id, externalId: product.externalId };
 	}
 
+	async createCustomer(input: CreateCustomerInput): Promise<PaymentCustomer> {
+		const customer = await this.request<{ id: string }>('/customers/create', {
+			method: 'POST',
+			body: JSON.stringify({
+				name: input.name,
+				email: input.email,
+				...(input.taxId ? { taxId: input.taxId } : {}),
+				...(input.cellphone ? { cellphone: input.cellphone } : {}),
+			}),
+		});
+		return { id: customer.id };
+	}
+
 	async createCheckout(input: CreateCheckoutInput): Promise<PaymentCheckout> {
 		const checkout = await this.request<{ id: string; url: string; amount: number }>('/checkouts/create', {
 			method: 'POST',
@@ -76,6 +97,10 @@ export class AbacatePayGateway implements PaymentGateway {
 				returnUrl: input.returnUrl,
 				completionUrl: input.completionUrl,
 				metadata: input.metadata,
+				...(input.customerId ? { customerId: input.customerId } : {}),
+				...(input.cardMaxInstallments && input.cardMaxInstallments > 1
+					? { card: { maxInstallments: Math.min(12, input.cardMaxInstallments) } }
+					: {}),
 			}),
 		});
 		return { id: checkout.id, url: checkout.url, amountInCents: checkout.amount };
@@ -88,6 +113,7 @@ export class AbacatePayGateway implements PaymentGateway {
 			status: string;
 			amount: number;
 			paidAmount?: number | null;
+			receiptUrl?: string | null;
 		}>(`/checkouts/get?id=${encodeURIComponent(checkoutId)}`, { method: 'GET' });
 		const status = checkout.status.toUpperCase();
 		if (!['PENDING', 'PAID', 'EXPIRED', 'CANCELLED', 'REFUNDED'].includes(status)) {
@@ -99,7 +125,29 @@ export class AbacatePayGateway implements PaymentGateway {
 			status: status as PaymentCheckoutStatus,
 			amountInCents: checkout.amount,
 			paidAmountInCents: checkout.paidAmount ?? null,
+			receiptUrl: checkout.receiptUrl ?? null,
 		};
+	}
+
+	refundCheckout(checkoutId: string, reason?: string): Promise<PaymentRefund> {
+		return this.refund('/checkouts/refund', checkoutId, reason);
+	}
+
+	refundPixCharge(chargeId: string, reason?: string): Promise<PaymentRefund> {
+		return this.refund('/transparents/refund', chargeId, reason);
+	}
+
+	/**
+	 * Os dois endpoints de estorno têm o mesmo contrato: `id` do recurso pago,
+	 * `reason` opcional de até 500 caracteres, resposta com `refundPublicId`.
+	 * São idempotentes no provedor: repetir o pedido devolve o mesmo id.
+	 */
+	private async refund(path: string, id: string, reason?: string): Promise<PaymentRefund> {
+		const refund = await this.request<{ refundPublicId: string }>(path, {
+			method: 'POST',
+			body: JSON.stringify({ id, ...(reason ? { reason: reason.slice(0, 500) } : {}) }),
+		});
+		return { refundId: refund.refundPublicId };
 	}
 
 	async createPixCharge(input: {
@@ -124,7 +172,10 @@ export class AbacatePayGateway implements PaymentGateway {
 					amount: input.amountInCents,
 					description: input.description,
 					expiresIn: input.expiresInSeconds,
-					customer: input.customer,
+					// O provedor exige `name` e `taxId` juntos quando `customer` é enviado
+					// (422 sem CPF). Comprador sem documento paga do mesmo jeito: a
+					// cobrança vai sem cliente e o pagador aparece no webhook.
+					...(input.customer.taxId ? { customer: input.customer } : {}),
 					metadata: input.metadata,
 				},
 			}),
@@ -142,15 +193,11 @@ export class AbacatePayGateway implements PaymentGateway {
 			`/transparents/check?id=${encodeURIComponent(chargeId)}`,
 			{ method: 'GET' },
 		);
-		const status = charge.status.toUpperCase();
-		if (!['PENDING', 'PAID', 'EXPIRED', 'CANCELLED'].includes(status)) {
+		const status = pixChargeStatus(charge.status);
+		if (!status) {
 			throw new ApiError('O provedor retornou um status PIX desconhecido.', 502, 'PAYMENT_PROVIDER_ERROR');
 		}
-		return {
-			id: charge.id,
-			status: status as PixChargeState['status'],
-			expiresAt: charge.expiresAt ?? null,
-		};
+		return { id: charge.id, status, expiresAt: charge.expiresAt ?? null };
 	}
 
 	async sendPix(input: CreatePixInput): Promise<PixTransfer> {
@@ -175,6 +222,20 @@ export class AbacatePayGateway implements PaymentGateway {
 			providerFeeInCents: transfer.platformFee,
 		};
 	}
+}
+
+/**
+ * A doc lista nove estados para uma cobrança transparente. Para a reconciliação
+ * só importam quatro: o que liquida, os que encerram e o que ainda espera. Um
+ * estado terminal sem dinheiro para nós (estorno, falha) encerra a reserva; um
+ * estado intermediário (disputa, aprovação de cartão, resgate) aguarda o webhook.
+ */
+function pixChargeStatus(raw: string): PixChargeState['status'] | null {
+	const status = raw.toUpperCase();
+	if (status === 'PENDING' || status === 'PAID' || status === 'EXPIRED' || status === 'CANCELLED') return status;
+	if (status === 'REFUNDED' || status === 'FAILED') return 'CANCELLED';
+	if (status === 'UNDER_DISPUTE' || status === 'APPROVED' || status === 'REDEEMED') return 'PENDING';
+	return null;
 }
 
 export function verifyAbacatePayWebhook(rawBody: Buffer, signature: string) {

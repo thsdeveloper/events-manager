@@ -376,17 +376,6 @@ export class SupabaseAuthRepository implements AuthRepository {
 		if (error) throw error;
 		return Boolean(data);
 	}
-
-	async findOwnedRegistration(organizerId: string, registrationId: string) {
-		const { data, error } = await this.clients.admin
-			.from('event_registrations')
-			.select('*,event_id:events!inner(*),ticket_type_id:event_tickets(*),user_id:profiles(*)')
-			.eq('id', registrationId)
-			.eq('event_id.organizer_id', organizerId)
-			.maybeSingle();
-		if (error) throw error;
-		return data;
-	}
 }
 
 export function createSupabaseAuthService(clients: SupabaseClients, notifications?: ProfileNotifications) {

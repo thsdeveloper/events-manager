@@ -3,11 +3,12 @@ import type { EventRepository } from '../../application/events/event-service.js'
 import type { SupabaseClients } from './clients.js';
 
 export const publicEventSelection = `
-  id,status,sort,date_created,date_updated,title,slug,description,short_description,event_type,start_date,end_date,
+  id,status,visibility,sort,date_created,date_updated,title,slug,description,short_description,event_type,start_date,end_date,
   location_name,location_address,latitude,longitude,max_attendees,registration_start,registration_end,is_free,tags,featured,
   cover_image:media_files(id,bucket,path,filename,title,type,filesize,width,height,description,metadata,date_created),
   organizer_id:organizers(id,name,email,phone,description,logo,website),
   category_id:event_categories(id,sort,name,slug,description,icon,color),
+  page:event_pages(enabled,published),
   tickets:event_tickets(id,event_id,title,description,status,quantity,quantity_sold,price,service_fee_type,buyer_price,sale_start_date,sale_end_date,min_quantity_per_purchase,max_quantity_per_purchase,visibility,allow_installments,max_installments,min_amount_for_installments,sort,date_created,date_updated)
 `;
 
@@ -52,6 +53,7 @@ export class SupabaseEventRepository implements EventRepository {
 			.from('events')
 			.select(publicEventListSelection, { count: 'exact' })
 			.eq('status', 'published')
+			.eq('visibility', 'public')
 			.gte('end_date', new Date().toISOString());
 		if (query.search) builder = builder.ilike('title', `%${query.search}%`);
 		const { data, count, error } = await builder
@@ -79,6 +81,7 @@ export class SupabaseEventRepository implements EventRepository {
 		const { data, error } = await this.clients.admin
 			.from('event_categories')
 			.select('id,sort,name,slug,description,icon,color')
+			.order('sort', { ascending: true, nullsFirst: false })
 			.order('name');
 		if (error) throw error;
 		return data ?? [];

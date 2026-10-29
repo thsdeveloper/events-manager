@@ -1,11 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-// Type-only, so nothing is evaluated at import time. Imported by path on
-// purpose — see src/types/cropperjs-full.d.ts. The runtime import lives in
-// `attachCropper`; see the note there.
-import type Cropper from 'cropperjs/dist/cropper.esm.js';
-
+import { useEffect, useMemo, useState } from 'react';
+import Cropper, { type Area, type MediaSize } from 'react-easy-crop';
+import { RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
@@ -15,6 +12,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import { loadImage, renderCroppedFile } from '@/lib/crop-image';
 
 export interface ImageCropperDialogProps {
 	/** The picked file. The dialog opens whenever this is set. */
@@ -22,50 +20,28 @@ export interface ImageCropperDialogProps {
 	onCancel: () => void;
 	/** Receives the cropped image, ready to upload. */
 	onCropped: (file: File) => void;
-	/** Width / height the selection is locked to. Omit for a free crop. */
+	/** Width / height the frame is locked to. Omit to keep the image's own proportion. */
 	aspectRatio?: number;
-	/** Pixel size of the exported image. Height defaults to `outputWidth / aspectRatio`. */
+	/** Pixel size of the exported image. Height defaults to `outputWidth / aspect`. */
 	outputWidth?: number;
 	outputHeight?: number;
 	title?: string;
 	description?: string;
-	/** Rounds the preview mask, for avatars. Output stays square. */
+	/** Rounds the frame, for avatars. Output stays square. */
 	circular?: boolean;
 	confirmLabel?: string;
 }
 
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+const ZOOM_STEP = 0.1;
+
 /**
- * Wraps Cropper.js 2.x, which ships as web components rather than a React API:
- * the class is handed a plain `<img>` and replaces it with its own element tree,
- * so the instance lives in a ref and is disposed when the dialog closes.
- *
- * The template mirrors the library default, with `aspect-ratio` applied to the
- * selection and the crosshair dropped — it adds noise at avatar sizes.
+ * A janela de recorte fica fixa e é a imagem que se move: a pessoa arrasta,
+ * aproxima e afasta até o enquadramento certo, como nas redes sociais. A
+ * biblioteca devolve a área em pixels da imagem original e o export desenha
+ * exatamente essa área no tamanho pedido, então o que se vê é o que sai.
  */
-function buildTemplate(aspectRatio?: number) {
-	const ratio = aspectRatio ? ` aspect-ratio="${aspectRatio}"` : '';
-
-	return (
-		'<cropper-canvas background style="width:100%;height:100%">' +
-		'<cropper-image rotatable scalable skewable translatable></cropper-image>' +
-		'<cropper-shade hidden></cropper-shade>' +
-		'<cropper-handle action="select" plain></cropper-handle>' +
-		`<cropper-selection initial-coverage="0.9" movable resizable${ratio}>` +
-		'<cropper-grid role="grid" bordered covered></cropper-grid>' +
-		'<cropper-handle action="move" theme-color="rgba(255, 255, 255, 0.35)"></cropper-handle>' +
-		'<cropper-handle action="n-resize"></cropper-handle>' +
-		'<cropper-handle action="e-resize"></cropper-handle>' +
-		'<cropper-handle action="s-resize"></cropper-handle>' +
-		'<cropper-handle action="w-resize"></cropper-handle>' +
-		'<cropper-handle action="ne-resize"></cropper-handle>' +
-		'<cropper-handle action="nw-resize"></cropper-handle>' +
-		'<cropper-handle action="se-resize"></cropper-handle>' +
-		'<cropper-handle action="sw-resize"></cropper-handle>' +
-		'</cropper-selection>' +
-		'</cropper-canvas>'
-	);
-}
-
 export function ImageCropperDialog({
 	file,
 	onCancel,
@@ -74,89 +50,51 @@ export function ImageCropperDialog({
 	outputWidth = 800,
 	outputHeight,
 	title = 'Ajustar imagem',
-	description = 'Arraste e redimensione a área para escolher o enquadramento.',
+	description = 'Arraste a imagem para posicionar e use o zoom para enquadrar. A moldura fica fixa.',
 	circular = false,
 	confirmLabel = 'Usar imagem',
 }: ImageCropperDialogProps) {
-	const cropperRef = useRef<Cropper | null>(null);
-	const objectUrlRef = useRef<string | null>(null);
-	// Bumped on every attach and on unmount, so a dynamic import that resolves
-	// after the node was swapped or torn down knows it is stale.
-	const attachIdRef = useRef(0);
+	const [objectUrl, setObjectUrl] = useState<string | null>(null);
+	const [crop, setCrop] = useState({ x: 0, y: 0 });
+	const [zoom, setZoom] = useState(MIN_ZOOM);
+	const [mediaAspect, setMediaAspect] = useState<number | null>(null);
+	const [area, setArea] = useState<Area | null>(null);
 	const [isCropping, setIsCropping] = useState(false);
-	const [isReady, setIsReady] = useState(false);
 
-	/**
-	 * A callback ref rather than `useRef` + `useEffect`: the dialog body is
-	 * mounted by Radix inside a portal, so an effect can run before the node
-	 * exists — and would then never retry. This fires exactly when the node
-	 * attaches and again with `null` when it detaches.
-	 */
-	const attachCropper = useCallback(
-		(container: HTMLDivElement | null) => {
-			const attachId = ++attachIdRef.current;
-
-			cropperRef.current?.destroy();
-			cropperRef.current = null;
-			setIsReady(false);
-			if (objectUrlRef.current) {
-				URL.revokeObjectURL(objectUrlRef.current);
-				objectUrlRef.current = null;
-			}
-
-			if (!container || !file) return;
-
-			const objectUrl = URL.createObjectURL(file);
-			objectUrlRef.current = objectUrl;
-
-			const image = document.createElement('img');
-			image.src = objectUrl;
-			image.alt = '';
-			container.replaceChildren(image);
-
-			/**
-			 * Loaded here instead of at the top of the file because Cropper.js 2.x
-			 * registers its web components at module scope: evaluating it runs
-			 * `class ... extends HTMLElement`, which throws "HTMLElement is not
-			 * defined" while Next renders this client component on the server. The
-			 * dynamic import keeps it browser-only — this callback ref only ever
-			 * runs after the node attached in the DOM.
-			 */
-			void (async () => {
-				const { default: CropperClass } = await import('cropperjs/dist/cropper.esm.js');
-				if (attachIdRef.current !== attachId) return;
-
-				cropperRef.current = new CropperClass(image, { template: buildTemplate(aspectRatio) });
-				setIsReady(true);
-			})();
-		},
-		[aspectRatio, file],
-	);
-
-	// The object URL outlives the node when the whole dialog unmounts.
+	// Uma URL de objeto por arquivo, revogada quando o arquivo muda ou o diálogo fecha.
 	useEffect(() => {
-		return () => {
-			attachIdRef.current += 1;
-			cropperRef.current?.destroy();
-			if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-		};
-	}, []);
+		if (!file) {
+			setObjectUrl(null);
+
+			return;
+		}
+		const url = URL.createObjectURL(file);
+		setObjectUrl(url);
+		setCrop({ x: 0, y: 0 });
+		setZoom(MIN_ZOOM);
+		setMediaAspect(null);
+		setArea(null);
+
+		return () => URL.revokeObjectURL(url);
+	}, [file]);
+
+	// Sem proporção pedida, a moldura assume a da própria imagem: serve para
+	// aparar margens de uma logo sem impor um formato.
+	const aspect = aspectRatio ?? mediaAspect ?? 1;
+	const isReady = Boolean(objectUrl && area && (aspectRatio || mediaAspect));
+	const zoomPercent = useMemo(() => Math.round(zoom * 100), [zoom]);
+
+	const handleMediaLoaded = (media: MediaSize) => {
+		if (media.naturalWidth > 0 && media.naturalHeight > 0) setMediaAspect(media.naturalWidth / media.naturalHeight);
+	};
 
 	const handleConfirm = async () => {
-		const selection = cropperRef.current?.getCropperSelection();
-		if (!selection || !file) return;
-
+		if (!file || !objectUrl || !area) return;
 		setIsCropping(true);
 		try {
-			const height = outputHeight ?? (aspectRatio ? Math.round(outputWidth / aspectRatio) : outputWidth);
-			const canvas = await selection.$toCanvas({ width: outputWidth, height });
-			const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-			if (!blob) throw new Error('empty canvas');
-
-			// Renamed to .png because the canvas always re-encodes; keeping the
-			// original extension would mislabel the upload.
-			const baseName = file.name.replace(/\.[^.]+$/, '') || 'imagem';
-			onCropped(new File([blob], `${baseName}.png`, { type: 'image/png' }));
+			const height = outputHeight ?? Math.round(outputWidth / aspect);
+			const image = await loadImage(objectUrl);
+			onCropped(await renderCroppedFile({ area, image, originalName: file.name, outputWidth, outputHeight: height }));
 		} catch {
 			// Falls back to the untouched file rather than blocking the upload.
 			onCropped(file);
@@ -164,6 +102,8 @@ export function ImageCropperDialog({
 			setIsCropping(false);
 		}
 	};
+
+	const clampZoom = (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(value.toFixed(2))));
 
 	return (
 		<Dialog open={Boolean(file)} onOpenChange={(open) => !open && onCancel()}>
@@ -173,20 +113,79 @@ export function ImageCropperDialog({
 					<DialogDescription>{description}</DialogDescription>
 				</DialogHeader>
 
-				<div
-					ref={attachCropper}
-					className={`h-[360px] w-full overflow-hidden bg-slate-950 ${
-						circular ? '[&_cropper-selection]:rounded-full' : ''
-					}`}
-				/>
+				<div className="relative h-[380px] w-full overflow-hidden rounded-lg bg-slate-950">
+					{objectUrl ? (
+						<Cropper
+							image={objectUrl}
+							crop={crop}
+							zoom={zoom}
+							aspect={aspect}
+							minZoom={MIN_ZOOM}
+							maxZoom={MAX_ZOOM}
+							zoomSpeed={0.5}
+							cropShape={circular ? 'round' : 'rect'}
+							showGrid={!circular}
+							restrictPosition
+							onCropChange={setCrop}
+							onZoomChange={(value) => setZoom(clampZoom(value))}
+							onCropComplete={(_percent, pixels) => setArea(pixels)}
+							onMediaLoaded={handleMediaLoaded}
+						/>
+					) : null}
+				</div>
+
+				<div className="flex items-center gap-3">
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						aria-label="Diminuir zoom"
+						onClick={() => setZoom((value) => clampZoom(value - ZOOM_STEP * 2))}
+						disabled={zoom <= MIN_ZOOM}
+					>
+						<ZoomOut className="size-4" aria-hidden />
+					</Button>
+					<input
+						type="range"
+						aria-label="Zoom"
+						aria-valuetext={`${zoomPercent}%`}
+						min={MIN_ZOOM}
+						max={MAX_ZOOM}
+						step={ZOOM_STEP}
+						value={zoom}
+						onChange={(event) => setZoom(clampZoom(Number(event.target.value)))}
+						className="h-2 flex-1 cursor-pointer accent-primary"
+					/>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						aria-label="Aumentar zoom"
+						onClick={() => setZoom((value) => clampZoom(value + ZOOM_STEP * 2))}
+						disabled={zoom >= MAX_ZOOM}
+					>
+						<ZoomIn className="size-4" aria-hidden />
+					</Button>
+					<span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{zoomPercent}%</span>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={() => {
+							setCrop({ x: 0, y: 0 });
+							setZoom(MIN_ZOOM);
+						}}
+						disabled={zoom === MIN_ZOOM && crop.x === 0 && crop.y === 0}
+					>
+						<RotateCcw className="size-4" aria-hidden />
+						Restaurar
+					</Button>
+				</div>
 
 				<DialogFooter>
 					<Button type="button" variant="outline" onClick={onCancel}>
 						Cancelar
 					</Button>
-					{/* Disabled until the dynamic import resolves: without the cropper
-					    instance there is no selection to export, and the click would
-					    otherwise be a silent no-op. */}
 					<Button type="button" onClick={handleConfirm} loading={isCropping} disabled={!isReady}>
 						{confirmLabel}
 					</Button>

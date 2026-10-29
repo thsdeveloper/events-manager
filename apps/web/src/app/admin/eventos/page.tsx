@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { EventsEmptyState } from './_components/EventsEmptyState';
 import { EventsTable } from './_components/EventsTable';
 import { PageErrorState } from '@/components/design-system/molecules/PageErrorState';
 import { PageLoadingState } from '@/components/design-system/molecules/PageLoadingState';
@@ -197,24 +198,7 @@ export default function EventosPage() {
 					</TabsContent>
 				</Tabs>
 			) : (
-				/* Empty State */
-				<Card className="grid place-items-center border-dashed py-16 text-center">
-					<CardHeader className="items-center">
-						<div className="rounded-full border border-dashed border-border/80 p-4">
-							<Calendar className="size-10 text-muted-foreground" />
-						</div>
-						<CardTitle className="text-xl">Nenhum evento criado ainda</CardTitle>
-						<CardDescription>Crie seu primeiro evento e acompanhe tudo por aqui.</CardDescription>
-					</CardHeader>
-					<CardFooter>
-						<Button asChild className="gap-2">
-							<Link href="/admin/eventos/novo">
-								<Plus className="size-4" />
-								Criar primeiro evento
-							</Link>
-						</Button>
-					</CardFooter>
-				</Card>
+				<EventsEmptyState />
 			)}
 		</div>
 	);

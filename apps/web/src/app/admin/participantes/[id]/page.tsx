@@ -14,9 +14,11 @@ import { EditParticipantDialog } from '../_components/EditParticipantDialog';
 import { ResendEmailDialog } from '../_components/ResendEmailDialog';
 import type { ParticipantDetails } from '../_lib/types';
 import {
+	deriveTicketStatus,
 	formatDate,
 	formatCurrency,
 	getInitials,
+	getParticipantFullName,
 	statusLabels,
 	statusBadgeClasses,
 	paymentStatusLabels,
@@ -88,7 +90,7 @@ export default function ParticipantDetailsPage() {
 	};
 
 	const handleDownloadTicket = async () => {
-		if (!participant?.ticket_code || isDownloading) return;
+		if (!participant || isDownloading) return;
 		setIsDownloading(true);
 
 		try {
@@ -97,12 +99,12 @@ export default function ParticipantDetailsPage() {
 			const pdf = new jsPDF({ format: 'a4', orientation: 'portrait', unit: 'mm' });
 
 			pdf.setFontSize(20);
-			pdf.text(participant.event_id.title, 20, 25);
+			pdf.text(participant.event.title, 20, 25);
 			pdf.setFontSize(12);
-			pdf.text(`Participante: ${participant.participant_name}`, 20, 40);
-			pdf.text(`Ingresso: ${participant.ticket_type_id?.title ?? 'Ingresso'}`, 20, 48);
+			pdf.text(`Participante: ${getParticipantFullName(participant)}`, 20, 40);
+			pdf.text(`Ingresso: ${participant.ticket_type?.title ?? 'Ingresso'}`, 20, 48);
 			pdf.text(`Código: ${participant.ticket_code}`, 20, 56);
-			pdf.text(`Data: ${formatDate(participant.event_id.start_date, 'dd/MM/yyyy HH:mm')}`, 20, 64);
+			pdf.text(`Data: ${formatDate(participant.event.start_date, 'dd/MM/yyyy HH:mm')}`, 20, 64);
 			pdf.addImage(qrCode, 'PNG', 65, 78, 80, 80);
 			pdf.setFontSize(10);
 			pdf.text('Apresente este código na entrada do evento.', 67, 168);
@@ -136,11 +138,11 @@ export default function ParticipantDetailsPage() {
 					>
 						<ArrowLeft className="size-5" />
 					</Link>
-					<h1 className="text-3xl font-bold text-gray-900 dark:text-white">Detalhes do Participante</h1>
+					<h1 className="text-3xl font-bold text-gray-900 dark:text-white">Detalhes do Ingresso</h1>
 				</div>
 
 				<div className="rounded-lg border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-800 dark:bg-rose-900/20">
-					<p className="font-medium text-rose-900 dark:text-rose-200">{error || 'Participante não encontrado'}</p>
+					<p className="font-medium text-rose-900 dark:text-rose-200">{error || 'Ingresso não encontrado'}</p>
 					<Button variant="outline" className="mt-4" onClick={() => router.push('/admin/participantes')}>
 						Voltar para lista
 					</Button>
@@ -149,8 +151,11 @@ export default function ParticipantDetailsPage() {
 		);
 	}
 
-	const initials = getInitials(participant.participant_name);
-	const avatar = participant.user_id?.avatar;
+	const attendeeName = getParticipantFullName(participant);
+	const { registration, event } = participant;
+	const status = deriveTicketStatus(participant);
+	const avatar = participant.is_buyer ? registration.user?.avatar : null;
+	const isCancelled = registration.status === 'cancelled';
 
 	return (
 		<div className="space-y-6">
@@ -164,13 +169,13 @@ export default function ParticipantDetailsPage() {
 						<ArrowLeft className="size-5" />
 					</Link>
 					<div>
-						<h1 className="text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">Detalhes do Participante</h1>
+						<h1 className="text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">Detalhes do Ingresso</h1>
 						<p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
 							<Link href="/admin/participantes" className="hover:underline">
 								Participantes
 							</Link>
 							{' / '}
-							<span className="font-medium">{participant.participant_name}</span>
+							<span className="font-medium">{attendeeName}</span>
 						</p>
 					</div>
 				</div>
@@ -182,6 +187,7 @@ export default function ParticipantDetailsPage() {
 						size="sm"
 						className="flex-1 sm:flex-initial"
 						onClick={() => setActiveDialog('resend')}
+						disabled={!participant.attendee_email}
 					>
 						Reenviar Email
 					</Button>
@@ -191,16 +197,16 @@ export default function ParticipantDetailsPage() {
 						className="flex-1 sm:flex-initial"
 						onClick={() => setActiveDialog('edit')}
 					>
-						Editar
+						{participant.attendee_name ? 'Editar' : 'Informar participante'}
 					</Button>
 					<Button
 						variant="destructive"
 						size="sm"
 						className="flex-1 sm:flex-initial"
 						onClick={() => setActiveDialog('cancel')}
-						disabled={participant.status === 'cancelled'}
+						disabled={isCancelled}
 					>
-						Cancelar Inscrição
+						Cancelar Pedido
 					</Button>
 				</div>
 			</div>
@@ -208,33 +214,49 @@ export default function ParticipantDetailsPage() {
 			<div className="grid gap-6 lg:grid-cols-3">
 				{/* Coluna Principal */}
 				<div className="space-y-6 lg:col-span-2">
-					{/* Seção: Informações Pessoais */}
+					{/* Seção: Participante do ingresso */}
 					<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
 						<div className="mb-4 flex items-center gap-2">
 							<User className="size-5 text-gray-600 dark:text-gray-400" />
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Informações Pessoais</h2>
+							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Participante</h2>
 						</div>
 
 						<div className="space-y-4">
 							<div className="flex items-center gap-4">
 								<Avatar className="size-16">
-									{avatar && <AvatarImage src={avatar} alt={participant.participant_name} />}
-									<AvatarFallback className="text-lg">{initials}</AvatarFallback>
+									{avatar && <AvatarImage src={avatar} alt={attendeeName} />}
+									<AvatarFallback className="text-lg">
+										{participant.attendee_name ? getInitials(participant.attendee_name) : '?'}
+									</AvatarFallback>
 								</Avatar>
 								<div>
-									<h3 className="text-xl font-bold text-gray-900 dark:text-white">{participant.participant_name}</h3>
-									<p className="text-sm text-gray-600 dark:text-gray-400">{participant.participant_email}</p>
+									<h3
+										className={`text-xl font-bold ${
+											participant.attendee_name
+												? 'text-gray-900 dark:text-white'
+												: 'italic text-amber-700 dark:text-amber-300'
+										}`}
+									>
+										{attendeeName}
+									</h3>
+									{participant.attendee_email ? (
+										<p className="text-sm text-gray-600 dark:text-gray-400">{participant.attendee_email}</p>
+									) : (
+										<p className="text-sm text-gray-600 dark:text-gray-400">
+											Quem comprou ainda não informou quem vai usar este ingresso.
+										</p>
+									)}
 								</div>
 							</div>
 
 							<div className="grid gap-4 sm:grid-cols-2">
 								<div>
 									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Telefone</p>
-									<p className="text-base text-gray-900 dark:text-white">{participant.participant_phone || '—'}</p>
+									<p className="text-base text-gray-900 dark:text-white">{participant.attendee_phone || '—'}</p>
 								</div>
 								<div>
 									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Documento</p>
-									<p className="text-base text-gray-900 dark:text-white">{participant.participant_document || '—'}</p>
+									<p className="text-base text-gray-900 dark:text-white">{participant.attendee_document || '—'}</p>
 								</div>
 								<div>
 									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Código do Ingresso</p>
@@ -242,58 +264,51 @@ export default function ParticipantDetailsPage() {
 								</div>
 								<div>
 									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</p>
-									<Badge className={`${statusBadgeClasses[participant.status || '']} mt-1`}>
-										{statusLabels[participant.status || ''] || participant.status}
-									</Badge>
+									<Badge className={`${statusBadgeClasses[status]} mt-1`}>{statusLabels[status] || status}</Badge>
 								</div>
 							</div>
 						</div>
 					</div>
 
-					{/* Seção: Detalhes da Inscrição */}
+					{/* Seção: Ingresso e evento */}
 					<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
 						<div className="mb-4 flex items-center gap-2">
 							<Calendar className="size-5 text-gray-600 dark:text-gray-400" />
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Detalhes da Inscrição</h2>
+							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Ingresso e Evento</h2>
 						</div>
 
 						<div className="space-y-4">
 							<div>
 								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Evento</p>
-								<p className="text-lg font-semibold text-gray-900 dark:text-white">{participant.event_id.title}</p>
+								<p className="text-lg font-semibold text-gray-900 dark:text-white">{event.title}</p>
 								<p className="text-sm text-gray-600 dark:text-gray-400">
-									{formatDate(participant.event_id.start_date, 'dd MMM yyyy, HH:mm')}
-									{participant.event_id.end_date &&
-										` - ${formatDate(participant.event_id.end_date, 'dd MMM yyyy, HH:mm')}`}
+									{formatDate(event.start_date, 'dd MMM yyyy, HH:mm')}
+									{event.end_date && ` - ${formatDate(event.end_date, 'dd MMM yyyy, HH:mm')}`}
 								</p>
-								{participant.event_id.location_name && (
-									<p className="text-sm text-gray-600 dark:text-gray-400">{participant.event_id.location_name}</p>
+								{event.location_name && (
+									<p className="text-sm text-gray-600 dark:text-gray-400">{event.location_name}</p>
 								)}
 							</div>
 
 							<div className="grid gap-4 sm:grid-cols-2">
 								<div>
 									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tipo de Ingresso</p>
-									<p className="text-base text-gray-900 dark:text-white">{participant.ticket_type_id?.title || '—'}</p>
-									{participant.ticket_type_id?.description && (
-										<p className="text-sm text-gray-600 dark:text-gray-400">{participant.ticket_type_id.description}</p>
+									<p className="text-base text-gray-900 dark:text-white">{participant.ticket_type?.title || '—'}</p>
+									{participant.ticket_type?.description && (
+										<p className="text-sm text-gray-600 dark:text-gray-400">{participant.ticket_type.description}</p>
 									)}
 								</div>
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Quantidade</p>
-									<p className="text-base text-gray-900 dark:text-white">{participant.quantity}</p>
-								</div>
-								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Data de Inscrição</p>
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Unidade</p>
 									<p className="text-base text-gray-900 dark:text-white">
-										{formatDate(participant.date_created || '', 'dd MMM yyyy, HH:mm')}
+										Ingresso {participant.sequence} de {registration.quantity}
 									</p>
 								</div>
-								{participant.date_updated && (
+								{participant.named_at && (
 									<div>
-										<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Última Atualização</p>
+										<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Participante informado em</p>
 										<p className="text-base text-gray-900 dark:text-white">
-											{formatDate(participant.date_updated, 'dd MMM yyyy, HH:mm')}
+											{formatDate(participant.named_at, 'dd MMM yyyy, HH:mm')}
 										</p>
 									</div>
 								)}
@@ -301,26 +316,37 @@ export default function ParticipantDetailsPage() {
 						</div>
 					</div>
 
-					{/* Seção: Pagamento */}
+					{/* Seção: Pedido e pagamento */}
 					<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
 						<div className="mb-4 flex items-center gap-2">
 							<CreditCard className="size-5 text-gray-600 dark:text-gray-400" />
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Pagamento</h2>
+							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Pedido e Pagamento</h2>
 						</div>
 
 						<div className="space-y-4">
 							<div className="grid gap-4 sm:grid-cols-2">
 								<div>
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Comprado por</p>
+									<p className="text-base text-gray-900 dark:text-white">{registration.participant_name}</p>
+									<p className="text-sm text-gray-600 dark:text-gray-400">{registration.participant_email}</p>
+								</div>
+								<div>
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Data da Compra</p>
+									<p className="text-base text-gray-900 dark:text-white">
+										{formatDate(registration.date_created, 'dd MMM yyyy, HH:mm')}
+									</p>
+								</div>
+								<div>
 									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Status do Pagamento</p>
-									<Badge className={`${paymentStatusBadgeClasses[participant.payment_status || '']} mt-1`}>
-										{paymentStatusLabels[participant.payment_status || ''] || participant.payment_status}
+									<Badge className={`${paymentStatusBadgeClasses[registration.payment_status || '']} mt-1`}>
+										{paymentStatusLabels[registration.payment_status || ''] || registration.payment_status}
 									</Badge>
 								</div>
 								<div>
 									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Método de Pagamento</p>
 									<p className="text-base text-gray-900 dark:text-white">
-										{participant.payment_method
-											? paymentMethodLabels[participant.payment_method] || participant.payment_method
+										{registration.payment_method
+											? paymentMethodLabels[registration.payment_method] || registration.payment_method
 											: '—'}
 									</p>
 								</div>
@@ -334,11 +360,7 @@ export default function ParticipantDetailsPage() {
 											{formatCurrency(participant.unit_price)}
 										</span>
 									</div>
-									<div className="flex justify-between">
-										<span className="text-gray-600 dark:text-gray-400">Quantidade</span>
-										<span className="font-medium text-gray-900 dark:text-white">{participant.quantity}</span>
-									</div>
-									{(participant.service_fee ?? 0) > 0 && (
+									{participant.service_fee > 0 && (
 										<div className="flex justify-between">
 											<span className="text-gray-600 dark:text-gray-400">Taxa de Serviço</span>
 											<span className="font-medium text-gray-900 dark:text-white">
@@ -346,50 +368,51 @@ export default function ParticipantDetailsPage() {
 											</span>
 										</div>
 									)}
+									{participant.discount > 0 && (
+										<div className="flex justify-between">
+											<span className="text-gray-600 dark:text-gray-400">Desconto</span>
+											<span className="font-medium text-gray-900 dark:text-white">
+												- {formatCurrency(participant.discount)}
+											</span>
+										</div>
+									)}
 									<div className="border-t border-gray-200 pt-3 dark:border-gray-700">
 										<div className="flex justify-between">
-											<span className="text-lg font-semibold text-gray-900 dark:text-white">Total</span>
+											<span className="text-lg font-semibold text-gray-900 dark:text-white">Este ingresso</span>
 											<span className="text-lg font-bold text-gray-900 dark:text-white">
 												{formatCurrency(participant.total_amount)}
 											</span>
+										</div>
+										<div className="mt-1 flex justify-between text-sm">
+											<span className="text-gray-600 dark:text-gray-400">
+												Pedido inteiro ({registration.quantity} ingresso{registration.quantity > 1 ? 's' : ''})
+											</span>
+											<span className="text-gray-900 dark:text-white">{formatCurrency(registration.total_amount)}</span>
 										</div>
 									</div>
 								</div>
 							</div>
 
-							{participant.provider_transaction_id && (
+							{registration.receipt_url && (
+								<a
+									href={registration.receipt_url}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+								>
+									<FileText className="size-4" />
+									Ver comprovante de pagamento
+								</a>
+							)}
+
+							{registration.notes && (
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">ID do Pagamento</p>
-									<p className="font-mono text-sm text-gray-900 dark:text-white">
-										{participant.provider_transaction_id}
-									</p>
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Observações do pedido</p>
+									<p className="whitespace-pre-line text-base text-gray-900 dark:text-white">{registration.notes}</p>
 								</div>
 							)}
 						</div>
 					</div>
-
-					{/* Seção: Informações Adicionais */}
-					{participant.additional_info && Object.keys(participant.additional_info).length > 0 && (
-						<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-							<div className="mb-4 flex items-center gap-2">
-								<FileText className="size-5 text-gray-600 dark:text-gray-400" />
-								<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Informações Adicionais</h2>
-							</div>
-
-							<div className="space-y-3">
-								{Object.entries(participant.additional_info as Record<string, unknown>).map(([key, value]) => (
-									<div key={key}>
-										<p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-											{key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-										</p>
-										<p className="text-base text-gray-900 dark:text-white">
-											{typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-										</p>
-									</div>
-								))}
-							</div>
-						</div>
-					)}
 				</div>
 
 				{/* Coluna Lateral */}
@@ -419,12 +442,16 @@ export default function ParticipantDetailsPage() {
 							</div>
 						) : (
 							<div className="space-y-3">
-								<p className="text-sm text-gray-600 dark:text-gray-400">Check-in ainda não realizado</p>
+								<p className="text-sm text-gray-600 dark:text-gray-400">
+									{participant.attendee_name
+										? 'Check-in ainda não realizado'
+										: 'Informe o participante antes do check-in'}
+								</p>
 								<Button
 									className="w-full bg-emerald-600 hover:bg-emerald-700"
 									size="sm"
 									onClick={() => setActiveDialog('checkin')}
-									disabled={participant.status === 'cancelled'}
+									disabled={isCancelled || !participant.attendee_name}
 								>
 									Fazer Check-in
 								</Button>
@@ -445,15 +472,16 @@ export default function ParticipantDetailsPage() {
 								className="w-full justify-start"
 								size="sm"
 								onClick={() => setActiveDialog('resend')}
+								disabled={!participant.attendee_email}
 							>
-								Reenviar Email de Confirmação
+								{participant.is_buyer ? 'Reenviar Recibo da Compra' : 'Reenviar Ingresso'}
 							</Button>
 							<Button
 								variant="outline"
 								className="w-full justify-start"
 								size="sm"
 								onClick={handleDownloadTicket}
-								disabled={isDownloading || !participant.ticket_code}
+								disabled={isDownloading}
 							>
 								{isDownloading ? 'Gerando PDF...' : 'Baixar Ingresso (PDF)'}
 							</Button>
@@ -463,16 +491,16 @@ export default function ParticipantDetailsPage() {
 								size="sm"
 								onClick={() => setActiveDialog('edit')}
 							>
-								Editar Dados
+								{participant.attendee_name ? 'Editar Participante' : 'Informar Participante'}
 							</Button>
 							<Button
 								variant="destructive"
 								className="w-full justify-start"
 								size="sm"
 								onClick={() => setActiveDialog('cancel')}
-								disabled={participant.status === 'cancelled'}
+								disabled={isCancelled}
 							>
-								Cancelar Inscrição
+								Cancelar Pedido
 							</Button>
 						</div>
 					</div>

@@ -21,6 +21,11 @@ interface ResendEmailDialogProps {
 	onSuccess?: () => void;
 }
 
+/**
+ * Reenvio por ingresso. O que sai depende de quem é o ingresso: o recibo da
+ * compra, com todos os ingressos do pedido, vai para quem comprou; o ingresso
+ * nominal vai para o participante. Sem participante não há para quem enviar.
+ */
 export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }: ResendEmailDialogProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -55,7 +60,9 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 
 			toast({
 				title: 'Email reenviado',
-				description: 'O email de confirmação foi reenviado com sucesso',
+				description: participant.is_buyer
+					? 'O recibo da compra foi reenviado para quem comprou'
+					: 'O ingresso foi reenviado para o participante',
 				variant: 'success',
 			});
 
@@ -74,7 +81,10 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 
 	if (!participant) return null;
 
-	const isCancelled = participant.status === 'cancelled';
+	const isCancelled = participant.registration.status === 'cancelled';
+	const isUnnamed = !participant.attendee_email;
+	const recipientName = participant.is_buyer ? participant.registration.participant_name : participant.attendee_name;
+	const recipientEmail = participant.is_buyer ? participant.registration.participant_email : participant.attendee_email;
 
 	return (
 		<Dialog open={open} onOpenChange={handleClose}>
@@ -85,8 +95,12 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 							<Mail className="size-5 text-blue-600 dark:text-blue-400" />
 						</div>
 						<div>
-							<DialogTitle>Reenviar Email de Confirmação</DialogTitle>
-							<DialogDescription>Enviar novamente o email com os detalhes da inscrição</DialogDescription>
+							<DialogTitle>{participant.is_buyer ? 'Reenviar Recibo da Compra' : 'Reenviar Ingresso'}</DialogTitle>
+							<DialogDescription>
+								{participant.is_buyer
+									? `Envia de novo o recibo da compra para ${recipientName}, com todos os ingressos do pedido.`
+									: `Envia de novo o ingresso de ${recipientName ?? 'quem for informado'}, com o código de acesso.`}
+							</DialogDescription>
 						</div>
 					</div>
 				</DialogHeader>
@@ -97,33 +111,47 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 						<dl className="space-y-2 text-sm">
 							<div className="flex justify-between">
 								<dt className="text-gray-600 dark:text-gray-400">Destinatário:</dt>
-								<dd className="font-medium text-gray-900 dark:text-white">{participant.participant_name}</dd>
+								<dd className="font-medium text-gray-900 dark:text-white">{recipientName ?? '—'}</dd>
 							</div>
 							<div className="flex justify-between">
 								<dt className="text-gray-600 dark:text-gray-400">Email:</dt>
-								<dd className="font-medium text-gray-900 dark:text-white">{participant.participant_email}</dd>
+								<dd className="font-medium text-gray-900 dark:text-white">{recipientEmail ?? '—'}</dd>
 							</div>
 							<div className="flex justify-between">
 								<dt className="text-gray-600 dark:text-gray-400">Evento:</dt>
-								<dd className="font-medium text-gray-900 dark:text-white">{participant.event_id.title}</dd>
+								<dd className="font-medium text-gray-900 dark:text-white">{participant.event.title}</dd>
 							</div>
 							<div className="flex justify-between">
 								<dt className="text-gray-600 dark:text-gray-400">Código do Ingresso:</dt>
 								<dd className="font-mono text-xs font-medium text-gray-900 dark:text-white">
-									{participant.ticket_code || 'N/A'}
+									{participant.ticket_code}
 								</dd>
 							</div>
 						</dl>
 					</div>
+
+					{isUnnamed && (
+						<div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+							<div className="flex items-start gap-2">
+								<AlertTriangle className="mt-0.5 size-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+								<div>
+									<p className="text-sm font-medium text-amber-900 dark:text-amber-200">Sem participante</p>
+									<p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+										Informe quem vai usar este ingresso antes de reenviar.
+									</p>
+								</div>
+							</div>
+						</div>
+					)}
 
 					{isCancelled && (
 						<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
 							<div className="flex items-start gap-2">
 								<AlertTriangle className="mt-0.5 size-4 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
 								<div>
-									<p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">Inscrição Cancelada</p>
+									<p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">Pedido Cancelado</p>
 									<p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-										Esta inscrição foi cancelada. O email será enviado normalmente, mas o participante não poderá fazer
+										Este pedido foi cancelado. O email será enviado normalmente, mas o participante não poderá fazer
 										check-in.
 									</p>
 								</div>
@@ -134,10 +162,19 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 					<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
 						<h4 className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-200">O email incluirá:</h4>
 						<ul className="list-inside list-disc space-y-1 text-sm text-blue-700 dark:text-blue-300">
-							<li>Detalhes completos do evento</li>
-							<li>Informações do ingresso</li>
-							<li>Código único de check-in</li>
-							<li>QR code para facilitar o check-in</li>
+							{participant.is_buyer ? (
+								<>
+									<li>Todos os ingressos do pedido e seus participantes</li>
+									<li>Quais ingressos ainda precisam de participante</li>
+									<li>Comprovante de pagamento, quando houver</li>
+								</>
+							) : (
+								<>
+									<li>Detalhes do evento: data e local</li>
+									<li>Quem comprou o ingresso</li>
+									<li>Código único de check-in</li>
+								</>
+							)}
 						</ul>
 					</div>
 				</div>
@@ -146,8 +183,8 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 					<Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
 						Cancelar
 					</Button>
-					<Button onClick={handleResend} disabled={isSubmitting}>
-						{isSubmitting ? 'Enviando...' : 'Reenviar Email'}
+					<Button onClick={handleResend} disabled={isSubmitting || isUnnamed}>
+						{isSubmitting ? 'Enviando...' : participant.is_buyer ? 'Reenviar Recibo' : 'Reenviar Ingresso'}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

@@ -66,12 +66,13 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 	// Atualizar formulário quando participante mudar
 	useEffect(() => {
 		if (participant && open) {
+			// O formulário edita a pessoa do ingresso; as observações são do pedido.
 			reset({
-				participant_name: participant.participant_name || '',
-				participant_email: participant.participant_email || '',
-				participant_phone: participant.participant_phone || '',
-				participant_document: participant.participant_document || '',
-				notes: participant.notes || '',
+				participant_name: participant.attendee_name || '',
+				participant_email: participant.attendee_email || '',
+				participant_phone: participant.attendee_phone || '',
+				participant_document: participant.attendee_document || '',
+				notes: participant.registration.notes || '',
 			});
 		}
 	}, [participant, open, reset]);
@@ -125,110 +126,131 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<Pencil className="size-5 text-blue-600" />
-						Editar Participante
+						{participant.attendee_name ? 'Editar Participante' : 'Informar Participante'}
 					</DialogTitle>
-					<DialogDescription>Atualize as informações básicas do participante</DialogDescription>
+					<DialogDescription>
+						Quem vai usar este ingresso ({participant.ticket_type?.title ?? 'Ingresso'} {participant.sequence} de{' '}
+						{participant.registration.quantity}). Comprado por {participant.registration.participant_name}.
+					</DialogDescription>
 				</DialogHeader>
 
-				<form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
-					{/* Nome completo */}
-					<div className="space-y-2">
-						<Label htmlFor="participant_name">
-							Nome completo <span className="text-rose-600">*</span>
-						</Label>
-						<Input
-							id="participant_name"
-							{...register('participant_name')}
-							disabled={isLoading}
-							placeholder="Ex: João Silva"
-						/>
-						{errors.participant_name && <p className="text-sm text-rose-600">{errors.participant_name.message}</p>}
-					</div>
-
-					{/* Email */}
-					<div className="space-y-2">
-						<Label htmlFor="participant_email">
-							Email <span className="text-rose-600">*</span>
-						</Label>
-						<Input
-							id="participant_email"
-							type="email"
-							{...register('participant_email')}
-							disabled={isLoading}
-							placeholder="email@exemplo.com"
-						/>
-						{errors.participant_email && <p className="text-sm text-rose-600">{errors.participant_email.message}</p>}
-					</div>
-
-					{/* Telefone */}
-					<div className="space-y-2">
-						<Label htmlFor="participant_phone">Telefone</Label>
-						<Controller
-							control={control}
-							name="participant_phone"
-							render={({ field }) => (
-								<PhoneInput
-									id="participant_phone"
-									value={field.value ?? ''}
-									onChange={field.onChange}
-									onBlur={field.onBlur}
-									disabled={isLoading}
-									showError={false}
-								/>
-							)}
-						/>
-						{errors.participant_phone && <p className="text-sm text-rose-600">{errors.participant_phone.message}</p>}
-						
-					</div>
-
-					{/* Documento */}
-					<div className="space-y-2">
-						<Label htmlFor="participant_document">Documento</Label>
-						<Controller
-							control={control}
-							name="participant_document"
-							render={({ field }) => (
-								<DocumentInput
-									id="participant_document"
-									value={field.value ?? ''}
-									onChange={field.onChange}
-									onBlur={field.onBlur}
-									disabled={isLoading}
-									showError={false}
-								/>
-							)}
-						/>
-						{errors.participant_document && (
-							<p className="text-sm text-rose-600">{errors.participant_document.message}</p>
-						)}
-					</div>
-
-					{/* Observações */}
-					<div className="space-y-2">
-						<Label htmlFor="notes">Observações</Label>
-						<Textarea
-							id="notes"
-							{...register('notes')}
-							disabled={isLoading}
-							placeholder="Notas internas visíveis apenas para você"
-							rows={3}
-						/>
-						{errors.notes && <p className="text-sm text-rose-600">{errors.notes.message}</p>}
-						<p className="text-xs text-gray-500">
-							Estas observações são internas e não serão compartilhadas com o participante
+				{participant.check_in_date ? (
+					// Regra de negócio: ingresso com check-in é imutável. A saída é
+					// desfazer o check-in, e isso fica registrado.
+					<div className="space-y-4 py-4">
+						<p
+							role="alert"
+							className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+						>
+							Este ingresso já passou pelo check-in e não pode ser alterado. Desfaça o check-in para editar o
+							participante.
 						</p>
+						<DialogFooter>
+							<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+								Fechar
+							</Button>
+						</DialogFooter>
 					</div>
+				) : (
+					<form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+						{/* Nome completo */}
+						<div className="space-y-2">
+							<Label htmlFor="participant_name">
+								Nome completo <span className="text-rose-600">*</span>
+							</Label>
+							<Input
+								id="participant_name"
+								{...register('participant_name')}
+								disabled={isLoading}
+								placeholder="Ex: João Silva"
+							/>
+							{errors.participant_name && <p className="text-sm text-rose-600">{errors.participant_name.message}</p>}
+						</div>
 
-					<DialogFooter className="gap-2 pt-4">
-						<Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-							Cancelar
-						</Button>
-						<Button type="submit" loading={isLoading} className="gap-2">
-							<Pencil className="size-4" />
-							Salvar Alterações
-						</Button>
-					</DialogFooter>
-				</form>
+						{/* Email */}
+						<div className="space-y-2">
+							<Label htmlFor="participant_email">
+								Email <span className="text-rose-600">*</span>
+							</Label>
+							<Input
+								id="participant_email"
+								type="email"
+								{...register('participant_email')}
+								disabled={isLoading}
+								placeholder="email@exemplo.com"
+							/>
+							{errors.participant_email && <p className="text-sm text-rose-600">{errors.participant_email.message}</p>}
+						</div>
+
+						{/* Telefone */}
+						<div className="space-y-2">
+							<Label htmlFor="participant_phone">Telefone</Label>
+							<Controller
+								control={control}
+								name="participant_phone"
+								render={({ field }) => (
+									<PhoneInput
+										id="participant_phone"
+										value={field.value ?? ''}
+										onChange={field.onChange}
+										onBlur={field.onBlur}
+										disabled={isLoading}
+										showError={false}
+									/>
+								)}
+							/>
+							{errors.participant_phone && <p className="text-sm text-rose-600">{errors.participant_phone.message}</p>}
+						</div>
+
+						{/* Documento */}
+						<div className="space-y-2">
+							<Label htmlFor="participant_document">Documento</Label>
+							<Controller
+								control={control}
+								name="participant_document"
+								render={({ field }) => (
+									<DocumentInput
+										id="participant_document"
+										value={field.value ?? ''}
+										onChange={field.onChange}
+										onBlur={field.onBlur}
+										disabled={isLoading}
+										showError={false}
+									/>
+								)}
+							/>
+							{errors.participant_document && (
+								<p className="text-sm text-rose-600">{errors.participant_document.message}</p>
+							)}
+						</div>
+
+						{/* Observações */}
+						<div className="space-y-2">
+							<Label htmlFor="notes">Observações</Label>
+							<Textarea
+								id="notes"
+								{...register('notes')}
+								disabled={isLoading}
+								placeholder="Notas internas visíveis apenas para você"
+								rows={3}
+							/>
+							{errors.notes && <p className="text-sm text-rose-600">{errors.notes.message}</p>}
+							<p className="text-xs text-gray-500">
+								Estas observações são internas e não serão compartilhadas com o participante
+							</p>
+						</div>
+
+						<DialogFooter className="gap-2 pt-4">
+							<Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+								Cancelar
+							</Button>
+							<Button type="submit" loading={isLoading} className="gap-2">
+								<Pencil className="size-4" />
+								Salvar Alterações
+							</Button>
+						</DialogFooter>
+					</form>
+				)}
 			</DialogContent>
 		</Dialog>
 	);

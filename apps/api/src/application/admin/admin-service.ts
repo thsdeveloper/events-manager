@@ -1,5 +1,7 @@
-import { ticketInputSchema, type TicketInput } from '@events-manager/contracts';
+import { ticketInputSchema, type NominalTicket, type TicketInput } from '@events-manager/contracts';
 import { ApiError } from '../../shared/errors.js';
+import type { RefundableRegistration } from '../payments/refund-registration.js';
+import type { TicketDelivery } from '../tickets/deliver-tickets.js';
 
 export interface AdminTicket extends Record<string, unknown> {
 	buyer_price?: number | null;
@@ -34,35 +36,58 @@ export interface TicketQuery {
 	status?: string;
 }
 
+/** Dados do participante de um ingresso, como o organizador os edita. */
+export interface ParticipantInput {
+	notes?: string | null;
+	participant_document?: string | null;
+	participant_email: string;
+	participant_name: string;
+	participant_phone?: string | null;
+}
+
+export interface ParticipantTicketPage {
+	data: NominalTicket[];
+	metricRows: Array<{ check_in_date: string | null; registration_status: string | null }>;
+	total: number;
+}
+
+/**
+ * Porta do reembolso. O cancelamento pelo organizador pode devolver o dinheiro
+ * pelo provedor; quem sabe estornar é o caso de uso de pagamentos.
+ */
+export interface RegistrationRefunder {
+	execute(registration: RefundableRegistration, reason: string): Promise<{ refundIds: string[] }>;
+}
+
 export interface AdminRepository {
 	cancelRegistration(organizerId: string, id: string, reason: string): Promise<unknown | null>;
 	createTicket(input: TicketInput & { buyer_price: number; quantity_sold: number; sort: number }): Promise<unknown>;
 	deleteTicket(id: string): Promise<void>;
 	duplicateTicket(input: Record<string, unknown>): Promise<unknown>;
 	findOwnedRegistration(organizerId: string, id: string): Promise<unknown | null>;
+	/** Um ingresso nominal de um evento deste organizador, ou `null`. */
+	findOwnedTicket(organizerId: string, id: string): Promise<NominalTicket | null>;
 	findTicket(id: string): Promise<AdminTicket | null>;
 	getConfiguration(): Promise<unknown>;
 	getPlatformFeePercentage(): Promise<number>;
 	listEventOptions(organizerId: string): Promise<unknown[]>;
 	listOwnedEventIds(organizerId: string): Promise<string[]>;
 	listParticipantFilterOptions(eventIds: string[]): Promise<{ events: unknown[]; ticketTypes: unknown[] }>;
-	listParticipants(
-		eventIds: string[],
-		query: ParticipantQuery,
-	): Promise<{
-		data: unknown[];
-		metricRows: Array<{ check_in_date: string | null; status: string | null }>;
-		total: number;
-	}>;
+	/** Uma linha por ingresso nominal, com pedido, evento e tipo. */
+	listParticipantTickets(eventIds: string[], query: ParticipantQuery): Promise<ParticipantTicketPage>;
 	listTickets(eventIds: string[], query: TicketQuery): Promise<{ data: unknown[]; total: number }>;
 	updateRegistration(id: string, input: Record<string, unknown>): Promise<unknown>;
+	/** Atualiza um ingresso nominal (participante ou check-in). */
+	updateRegistrationTicket(id: string, input: Record<string, unknown>): Promise<NominalTicket>;
 	updateTicket(id: string, input: Record<string, unknown>): Promise<unknown>;
 }
 
 export class AdminService {
 	constructor(
 		private readonly repository: AdminRepository,
+		private readonly refunds?: RegistrationRefunder,
 		private readonly now: () => Date = () => new Date(),
+		private readonly ticketDelivery?: TicketDelivery,
 	) {}
 
 	getConfiguration() {
@@ -153,9 +178,9 @@ export class AdminService {
 		const requested = query.eventIds?.split(',').filter((id) => ownedIds.includes(id));
 		const eventIds = requested?.length ? requested : ownedIds;
 		if (!eventIds.length) return emptyParticipantPage(query.page, query.limit);
-		const result = await this.repository.listParticipants(eventIds, query);
+		const result = await this.repository.listParticipantTickets(eventIds, query);
 		const checkedIn = result.metricRows.filter((row) => row.check_in_date).length;
-		const pending = result.metricRows.filter((row) => row.status === 'pending').length;
+		const pending = result.metricRows.filter((row) => row.registration_status === 'pending').length;
 		return {
 			data: result.data,
 			meta: {
@@ -174,72 +199,122 @@ export class AdminService {
 	}
 
 	async getParticipant(organizerId: string, id: string) {
-		const data = await this.repository.findOwnedRegistration(organizerId, id);
-		if (!data) throw registrationNotFound();
+		return { success: true, data: await this.ownedNominalTicket(organizerId, id) };
+	}
+
+	/**
+	 * O participante é do ingresso; as observações são do pedido. Nomear alguém
+	 * com o e-mail de quem comprou marca o ingresso como sendo dela.
+	 */
+	async editParticipant(organizerId: string, id: string, input: ParticipantInput) {
+		const ticket = await this.ownedNominalTicket(organizerId, id);
+		// Regra de negócio: depois do check-in o ingresso é imutável. Quem precisa
+		// corrigir algo desfaz o check-in primeiro, e a trilha fica registrada.
+		if (ticket.check_in_date)
+			throw new ApiError(
+				'Este ingresso já passou pelo check-in e não pode ser alterado. Desfaça o check-in para editar.',
+				409,
+				'TICKET_CHECKED_IN',
+			);
+		const data = await this.repository.updateRegistrationTicket(id, {
+			attendee_name: input.participant_name,
+			attendee_email: input.participant_email,
+			attendee_phone: input.participant_phone || null,
+			attendee_document: input.participant_document || null,
+			is_buyer: sameEmail(input.participant_email, ticket.registration.participant_email),
+			named_at: this.now().toISOString(),
+		});
+		if (input.notes !== undefined)
+			await this.repository.updateRegistration(ticket.registration.id, { notes: input.notes });
 		return { success: true, data };
 	}
 
-	async editParticipant(organizerId: string, id: string, input: Record<string, unknown>) {
-		await this.assertRegistration(organizerId, id);
-		return { success: true, data: await this.repository.updateRegistration(id, input) };
-	}
-
+	/** Check-in é por pessoa: exige um participante nomeado e um pedido pago. */
 	async checkIn(organizerId: string, id: string) {
-		await this.assertRegistration(organizerId, id);
+		const ticket = await this.ownedNominalTicket(organizerId, id);
+		if (!ticket.attendee_name)
+			throw new ApiError('Informe o participante deste ingresso antes do check-in.', 409, 'TICKET_UNNAMED');
+		if (
+			ticket.registration.status === 'cancelled' ||
+			!['paid', 'free'].includes(ticket.registration.payment_status ?? '')
+		)
+			throw new ApiError('Este ingresso não está confirmado.', 409, 'TICKET_NOT_CONFIRMED');
 		return {
 			success: true,
-			data: await this.repository.updateRegistration(id, {
-				status: 'checked_in',
-				check_in_date: this.now().toISOString(),
-			}),
+			data: await this.repository.updateRegistrationTicket(id, { check_in_date: this.now().toISOString() }),
 		};
 	}
 
 	async undoCheckIn(organizerId: string, id: string) {
-		await this.assertRegistration(organizerId, id);
-		return {
-			success: true,
-			data: await this.repository.updateRegistration(id, { status: 'confirmed', check_in_date: null }),
-		};
+		await this.ownedNominalTicket(organizerId, id);
+		return { success: true, data: await this.repository.updateRegistrationTicket(id, { check_in_date: null }) };
 	}
 
-	async cancelParticipant(organizerId: string, id: string, reason: string) {
-		const data = await this.repository.cancelRegistration(organizerId, id, reason);
+	/** Reenvio pedido pelo organizador: sai com chave nova, para ir de verdade. */
+	async resendTicket(organizerId: string, id: string, requestId: string) {
+		const ticket = await this.ownedNominalTicket(organizerId, id);
+		if (!this.ticketDelivery) throw new ApiError('Envio de e-mail indisponível.', 409, 'EMAIL_UNAVAILABLE');
+		const result = await this.ticketDelivery.execute([ticket.registration.id], {
+			keySuffix: requestId,
+			onlyTicketId: id,
+		});
+		return { success: true, ...result };
+	}
+
+	/**
+	 * O estorno vem antes do cancelamento: se o provedor recusar, a vaga continua
+	 * da pessoa e o organizador decide o que fazer. Se o cancelamento falhar
+	 * depois do estorno, o webhook `*.refunded` cancela a inscrição de qualquer
+	 * jeito.
+	 */
+	async cancelParticipant(organizerId: string, id: string, reason: string, options: { refund?: boolean } = {}) {
+		// A lista mostra ingressos; o cancelamento é do pedido inteiro. Um id de
+		// pedido continua aceito, para chamadas antigas.
+		const ticket = await this.repository.findOwnedTicket(organizerId, id);
+		const registrationId = ticket?.registration.id ?? id;
+		let refund: { refundIds: string[] } | undefined;
+		if (options.refund) {
+			if (!this.refunds) {
+				throw new ApiError('Reembolso indisponível neste ambiente.', 409, 'REFUND_UNAVAILABLE');
+			}
+			const registration = await this.repository.findOwnedRegistration(organizerId, registrationId);
+			if (!registration) throw registrationNotFound();
+			refund = await this.refunds.execute(registration as RefundableRegistration, reason);
+		}
+		const data = await this.repository.cancelRegistration(organizerId, registrationId, reason);
 		if (!data) throw registrationNotFound();
-		return { success: true, data };
+		return { success: true, data, ...(refund ? { refund } : {}) };
 	}
 
 	async exportParticipants(organizerId: string) {
 		const eventIds = await this.repository.listOwnedEventIds(organizerId);
 		const result = eventIds.length
-			? await this.repository.listParticipants(eventIds, {
+			? await this.repository.listParticipantTickets(eventIds, {
 					page: 1,
 					limit: 10_000,
 					search: '',
 					sortField: 'date_created',
 					sortDirection: 'desc',
 				})
-			: { data: [] };
+			: { data: [] as NominalTicket[] };
 		return `\uFEFF${[
-			'Nome,Email,Telefone,Evento,Ingresso,Status,Pagamento,Check-in',
-			...result.data.map((value) => {
-				const row = value as Record<string, unknown> & {
-					event_id?: { title?: string };
-					ticket_type_id?: { title?: string };
-				};
-				return [
-					row.participant_name,
-					row.participant_email,
-					row.participant_phone,
-					row.event_id?.title,
-					row.ticket_type_id?.title,
-					row.status,
-					row.payment_status,
-					row.check_in_date,
+			'Participante,Email,Telefone,Comprador,Evento,Ingresso,Código,Status,Pagamento,Check-in',
+			...result.data.map((ticket) =>
+				[
+					ticket.attendee_name ?? 'a informar',
+					ticket.attendee_email,
+					ticket.attendee_phone,
+					ticket.registration.participant_name,
+					ticket.event.title,
+					ticket.ticket_type?.title,
+					ticket.ticket_code,
+					ticket.registration.status,
+					ticket.registration.payment_status,
+					ticket.check_in_date,
 				]
 					.map(csvCell)
-					.join(',');
-			}),
+					.join(','),
+			),
 		].join('\n')}`;
 	}
 
@@ -256,9 +331,15 @@ export class AdminService {
 		return feeType === 'passed_to_buyer' ? price * (1 + fee / 100) : price;
 	}
 
-	private async assertRegistration(organizerId: string, id: string) {
-		if (!(await this.repository.findOwnedRegistration(organizerId, id))) throw registrationNotFound();
+	private async ownedNominalTicket(organizerId: string, id: string) {
+		const ticket = await this.repository.findOwnedTicket(organizerId, id);
+		if (!ticket) throw new ApiError('Ingresso não encontrado ou sem permissão.', 404, 'TICKET_NOT_FOUND');
+		return ticket;
 	}
+}
+
+function sameEmail(left: string, right: string) {
+	return left.trim().toLowerCase() === right.trim().toLowerCase();
 }
 
 function eventRelation(ticket: AdminTicket) {

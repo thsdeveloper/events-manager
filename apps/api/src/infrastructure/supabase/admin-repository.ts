@@ -3,10 +3,12 @@ import type {
 	AdminRepository,
 	AdminTicket,
 	ParticipantQuery,
+	ParticipantTicketPage,
 	TicketQuery,
 } from '../../application/admin/admin-service.js';
 import type { SupabaseClients } from './clients.js';
 import { sanitizePostgrestOrTerm } from './search.js';
+import { mapNominalTicket, nominalTicketSelection } from './ticket-selection.js';
 
 const registrationSelection = `
   *,
@@ -113,34 +115,69 @@ export class SupabaseAdminRepository implements AdminRepository {
 		return { events: events.data ?? [], ticketTypes: tickets.data ?? [] };
 	}
 
-	async listParticipants(eventIds: string[], query: ParticipantQuery) {
+	/**
+	 * Ordenação por colunas do pedido (status, pagamento) não atravessa a
+	 * relação no PostgREST; essas opções caem na data de compra.
+	 */
+	async listParticipantTickets(eventIds: string[], query: ParticipantQuery): Promise<ParticipantTicketPage> {
 		let builder = this.clients.admin
-			.from('event_registrations')
-			.select(registrationSelection, { count: 'exact' })
+			.from('registration_tickets')
+			.select(nominalTicketSelection, { count: 'exact' })
 			.in('event_id', eventIds);
 		if (query.search) {
 			const search = sanitizePostgrestOrTerm(query.search);
 			if (search)
 				builder = builder.or(
-					`participant_name.ilike.%${search}%,participant_email.ilike.%${search}%,ticket_code.ilike.%${search}%`,
+					`attendee_name.ilike.%${search}%,attendee_email.ilike.%${search}%,ticket_code.ilike.%${search}%`,
 				);
 		}
 		if (query.ticketTypeIds) builder = builder.in('ticket_type_id', query.ticketTypeIds.split(','));
-		if (query.registrationStatus) builder = builder.in('status', query.registrationStatus.split(','));
-		if (query.paymentStatus) builder = builder.in('payment_status', query.paymentStatus.split(','));
+		if (query.registrationStatus) builder = builder.in('registration.status', query.registrationStatus.split(','));
+		if (query.paymentStatus) builder = builder.in('registration.payment_status', query.paymentStatus.split(','));
 		if (query.hasCheckedIn === 'true') builder = builder.not('check_in_date', 'is', null);
 		if (query.hasCheckedIn === 'false') builder = builder.is('check_in_date', null);
+		const sortField = query.sortField === 'participant_name' ? 'attendee_name' : 'date_created';
 		const from = (query.page - 1) * query.limit;
 		const result = await builder
-			.order(query.sortField, { ascending: query.sortDirection === 'asc' })
+			.order(sortField, { ascending: query.sortDirection === 'asc' })
+			.order('sequence', { ascending: true })
 			.range(from, from + query.limit - 1);
 		if (result.error) throw result.error;
 		const { data: metricRows, error } = await this.clients.admin
-			.from('event_registrations')
-			.select('status,check_in_date')
+			.from('registration_tickets')
+			.select('check_in_date,registration:event_registrations!inner(status)')
 			.in('event_id', eventIds);
 		if (error) throw error;
-		return { data: result.data ?? [], total: result.count ?? 0, metricRows: metricRows ?? [] };
+		return {
+			data: (result.data ?? []).map((row) => mapNominalTicket(row as unknown as Record<string, unknown>)),
+			total: result.count ?? 0,
+			metricRows: (metricRows ?? []).map((row) => ({
+				check_in_date: row.check_in_date,
+				registration_status: (row.registration as unknown as { status: string | null } | null)?.status ?? null,
+			})),
+		};
+	}
+
+	async findOwnedTicket(organizerId: string, id: string) {
+		const { data, error } = await this.clients.admin
+			.from('registration_tickets')
+			.select(nominalTicketSelection)
+			.eq('id', id)
+			.eq('event.organizer_id', organizerId)
+			.maybeSingle();
+		if (error) throw error;
+		return data ? mapNominalTicket(data as unknown as Record<string, unknown>) : null;
+	}
+
+	async updateRegistrationTicket(id: string, input: Record<string, unknown>) {
+		const { data, error } = await this.clients.admin
+			.from('registration_tickets')
+			.update(input)
+			.eq('id', id)
+			.select(nominalTicketSelection)
+			.single();
+		if (error) throw error;
+		return mapNominalTicket(data as unknown as Record<string, unknown>);
 	}
 
 	async findOwnedRegistration(organizerId: string, id: string) {

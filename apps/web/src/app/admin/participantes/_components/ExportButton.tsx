@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { Download } from '@/components/animate-ui/icons/download';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { downloadCSV } from '../_lib/export';
-import type { ParticipantFilters, ParticipantRow } from '../_lib/types';
+import type { ParticipantFilters } from '../_lib/types';
 
 interface ExportButtonProps {
 	filters: ParticipantFilters;
@@ -37,30 +36,29 @@ export function ExportButton({ filters, disabled }: ExportButtonProps) {
 				credentials: 'include',
 			});
 
-			const json = await response.json();
-
 			if (!response.ok) {
-				throw new Error(json.detail || 'Erro ao exportar dados');
+				const problem = await response.json().catch(() => null);
+				throw new Error(problem?.detail || 'Erro ao exportar dados');
 			}
 
-			const data = json.data as ParticipantRow[];
-
-			if (data.length === 0) {
+			// A API monta o CSV, uma linha por ingresso nominal; aqui só baixamos.
+			const csv = await response.text();
+			const rows = csv.split('\n').length - 1;
+			if (rows <= 0) {
 				toast({
 					title: 'Nenhum dado para exportar',
-					description: 'Não há participantes com os filtros aplicados',
+					description: 'Não há ingressos com os filtros aplicados',
 					variant: 'destructive',
 				});
 
 				return;
 			}
 
-			// Download CSV
-			downloadCSV(data);
+			downloadFile(csv, `participantes_${new Date().toISOString().slice(0, 10)}.csv`);
 
 			toast({
 				title: 'Exportação iniciada',
-				description: `${data.length} participante${data.length > 1 ? 's' : ''} exportado${data.length > 1 ? 's' : ''} com sucesso`,
+				description: `${rows} ingresso${rows > 1 ? 's' : ''} exportado${rows > 1 ? 's' : ''} com sucesso`,
 				variant: 'success',
 			});
 		} catch (error) {
@@ -75,9 +73,29 @@ export function ExportButton({ filters, disabled }: ExportButtonProps) {
 	};
 
 	return (
-		<Button variant="outline" size="sm" onClick={handleExport} loading={isExporting} disabled={disabled} className="gap-2">
+		<Button
+			variant="outline"
+			size="sm"
+			onClick={handleExport}
+			loading={isExporting}
+			disabled={disabled}
+			className="gap-2"
+		>
 			<Download className="size-4" animateOnHover />
 			Exportar CSV
 		</Button>
 	);
+}
+
+function downloadFile(content: string, filename: string) {
+	const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = filename;
+	link.style.visibility = 'hidden';
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	URL.revokeObjectURL(url);
 }

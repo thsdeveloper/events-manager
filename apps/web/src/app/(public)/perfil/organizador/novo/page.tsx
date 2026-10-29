@@ -68,8 +68,8 @@ export default function NovoOrganizadorPage() {
 							Crie sua conta de organizador
 						</h1>
 						<p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
-							Escolha se vai vender como pessoa física ou como empresa. Já preenchemos o que sabemos sobre você; confira
-							e ajuste o que quiser.
+							Escolha se vai vender como pessoa física ou como empresa. Pessoa física vende com os dados já validados no
+							seu perfil; empresa informa os dados da organização e o CNPJ.
 						</p>
 					</header>
 					<OrganizerSignupForm

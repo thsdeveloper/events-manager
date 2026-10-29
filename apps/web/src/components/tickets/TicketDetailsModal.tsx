@@ -20,73 +20,65 @@ import {
 	Copy,
 	ExternalLink,
 	Globe,
+	UserRoundPen,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { EventRegistration } from '@events-manager/contracts';
+import type { NominalTicket } from '@events-manager/contracts';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { describeAttendee } from './TicketCard';
 
 interface TicketDetailsModalProps {
-	registration: EventRegistration;
+	ticket: NominalTicket;
 	onClose: () => void;
+	/** Quem comprou nomeia ou corrige o participante; ausente quando não pode. */
+	onChangeAttendee?: (ticket: NominalTicket) => void;
 }
 
-export function TicketDetailsModal({ registration, onClose }: TicketDetailsModalProps) {
+export function TicketDetailsModal({ ticket, onClose, onChangeAttendee }: TicketDetailsModalProps) {
 	const { toast } = useToast();
 	const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 	const [isDownloading, setIsDownloading] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const ticketRef = useRef<HTMLDivElement>(null);
 
-	const event = registration.event_id;
-	const eventDate =
-		event && typeof event === 'object' && 'start_date' in event ? new Date(event.start_date as string) : null;
-
-	const eventEndDate =
-		event && typeof event === 'object' && 'end_date' in event ? new Date(event.end_date as string) : null;
+	const { event, registration } = ticket;
+	const eventDate = event.start_date ? new Date(event.start_date) : null;
+	const eventEndDate = event.end_date ? new Date(event.end_date) : null;
 
 	// Generate high-quality QR Code
 	useEffect(() => {
-		if (registration.ticket_code) {
-			QRCode.toDataURL(registration.ticket_code, {
-				width: 600,
-				margin: 2,
-				color: {
-					dark: '#6366F1',
-					light: '#FFFFFF',
-				},
-			})
-				.then(setQrCodeUrl)
-				.catch(() => {
-					toast({
-						title: 'QR Code indisponível',
-						description: 'Não foi possível gerar o QR Code deste ingresso.',
-						variant: 'destructive',
-					});
+		QRCode.toDataURL(ticket.ticket_code, {
+			width: 600,
+			margin: 2,
+			color: {
+				dark: '#6366F1',
+				light: '#FFFFFF',
+			},
+		})
+			.then(setQrCodeUrl)
+			.catch(() => {
+				toast({
+					title: 'QR Code indisponível',
+					description: 'Não foi possível gerar o QR Code deste ingresso.',
+					variant: 'destructive',
 				});
-		}
-	}, [registration.ticket_code, toast]);
+			});
+	}, [ticket.ticket_code, toast]);
 
-	const eventTitle = event && typeof event === 'object' && 'title' in event ? event.title : 'Evento';
-
-	const locationName = event && typeof event === 'object' && 'location_name' in event ? event.location_name : null;
-
-	const locationAddress =
-		event && typeof event === 'object' && 'location_address' in event ? event.location_address : null;
-	const onlineUrl = event && typeof event === 'object' && 'online_url' in event ? event.online_url : null;
-
-	const ticketTitle =
-		registration.ticket_type_id &&
-		typeof registration.ticket_type_id === 'object' &&
-		'title' in registration.ticket_type_id
-			? registration.ticket_type_id.title
-			: 'Ingresso';
+	const eventTitle = event.title;
+	const locationName = event.location_name;
+	const locationAddress = event.location_address;
+	const onlineUrl = event.online_url;
+	const ticketTitle = ticket.ticket_type?.title ?? 'Ingresso';
+	const attendee = describeAttendee(ticket);
+	const canChangeAttendee = Boolean(onChangeAttendee && ticket.can_edit_attendee);
 
 	// Copy ticket code to clipboard
 	const handleCopyCode = async () => {
 		try {
-			await navigator.clipboard.writeText(registration.ticket_code || '');
+			await navigator.clipboard.writeText(ticket.ticket_code);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		} catch {
@@ -122,7 +114,7 @@ export function TicketDetailsModal({ registration, onClose }: TicketDetailsModal
 			const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
 			pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-			pdf.save(`ingresso-${registration.ticket_code}.pdf`);
+			pdf.save(`ingresso-${ticket.ticket_code}.pdf`);
 		} catch {
 			toast({
 				title: 'Erro ao gerar PDF',
@@ -177,9 +169,9 @@ export function TicketDetailsModal({ registration, onClose }: TicketDetailsModal
 			: format(new Date(eventDate.getTime() + 2 * 60 * 60 * 1000), "yyyyMMdd'T'HHmmss"); // +2h default
 
 		const location = locationAddress || locationName || '';
-		const description = `Ingresso: ${ticketTitle}\\nCódigo: ${registration.ticket_code}`;
+		const description = `Ingresso: ${ticketTitle}\\nCódigo: ${ticket.ticket_code}`;
 
-		const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle as string)}&dates=${startDate}/${endDate}&details=${encodeURIComponent(description)}&location=${encodeURIComponent(location)}`;
+		const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${startDate}/${endDate}&details=${encodeURIComponent(description)}&location=${encodeURIComponent(location)}`;
 
 		window.open(calendarUrl, '_blank', 'noopener,noreferrer');
 	};
@@ -225,7 +217,7 @@ export function TicketDetailsModal({ registration, onClose }: TicketDetailsModal
 						<p className="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">Código do Ingresso</p>
 						<div className="flex items-center justify-center gap-3">
 							<p className="font-mono text-2xl font-bold tracking-widest text-indigo-900 dark:text-indigo-100">
-								{registration.ticket_code}
+								{ticket.ticket_code}
 							</p>
 							<button
 								type="button"
@@ -290,8 +282,10 @@ export function TicketDetailsModal({ registration, onClose }: TicketDetailsModal
 								<span className="font-semibold">Tipo de Ingresso</span>
 							</div>
 							<p className="text-sm text-gray-700 dark:text-gray-300">{ticketTitle}</p>
-							{registration.quantity && registration.quantity > 1 && (
-								<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Quantidade: {registration.quantity}</p>
+							{registration.quantity > 1 && (
+								<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+									Ingresso {ticket.sequence} de {registration.quantity} do pedido
+								</p>
 							)}
 						</div>
 
@@ -300,21 +294,40 @@ export function TicketDetailsModal({ registration, onClose }: TicketDetailsModal
 								<User className="size-5" />
 								<span className="font-semibold">Participante</span>
 							</div>
-							<p className="text-sm text-gray-700 dark:text-gray-300">{registration.participant_name}</p>
-							<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{registration.participant_email}</p>
+							<p
+								className={`text-sm ${attendee.isPending ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'}`}
+							>
+								{attendee.name}
+							</p>
+							{ticket.attendee_email ? (
+								<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{ticket.attendee_email}</p>
+							) : null}
+							{attendee.boughtBy ? (
+								<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{attendee.boughtBy}</p>
+							) : null}
+							{canChangeAttendee ? (
+								<button
+									type="button"
+									onClick={() => onChangeAttendee?.(ticket)}
+									className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950"
+								>
+									<UserRoundPen className="size-3.5" />
+									{attendee.changeLabel}
+								</button>
+							) : null}
 						</div>
 
-						{registration.total_amount && (
+						{ticket.total_amount > 0 && (
 							<div className="rounded-lg border bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-800">
 								<div className="mb-2 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
 									<CreditCard className="size-5" />
-									<span className="font-semibold">Valor Pago</span>
+									<span className="font-semibold">Valor deste ingresso</span>
 								</div>
 								<p className="text-lg font-bold text-gray-900 dark:text-white">
 									{new Intl.NumberFormat('pt-BR', {
 										style: 'currency',
 										currency: 'BRL',
-									}).format(Number(registration.total_amount))}
+									}).format(ticket.total_amount)}
 								</p>
 							</div>
 						)}
@@ -343,7 +356,7 @@ export function TicketDetailsModal({ registration, onClose }: TicketDetailsModal
 
 				{/* Action Buttons */}
 				<div className="sticky bottom-0 border-t bg-gray-50 px-6 py-4 dark:bg-gray-800">
-					<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+					<div className={`grid grid-cols-2 gap-3 ${registration.receipt_url ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
 						<button
 							type="button"
 							onClick={handleDownloadPDF}
@@ -371,6 +384,18 @@ export function TicketDetailsModal({ registration, onClose }: TicketDetailsModal
 							<CalendarPlus className="size-4" />
 							Calendário
 						</button>
+
+						{registration.receipt_url ? (
+							<a
+								href={registration.receipt_url}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+							>
+								<ExternalLink className="size-4" />
+								Comprovante
+							</a>
+						) : null}
 
 						<button
 							type="button"

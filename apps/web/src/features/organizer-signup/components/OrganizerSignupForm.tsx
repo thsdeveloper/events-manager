@@ -72,6 +72,12 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 	});
 	const accountType = form.watch('account_type');
 	const profileCpf = onlyDigits(user.document ?? '');
+	// Regra de negócio: pessoa física vende com os dados validados no perfil.
+	// Os campos só mostram o que a API vai usar; para mudar, edita-se o perfil.
+	const locked = accountType === 'individual';
+	const labels = locked
+		? { name: 'Nome', email: 'Seu e-mail', phone: 'Seu telefone' }
+		: { name: 'Nome da organização ou marca *', email: 'E-mail de contato *', phone: 'Telefone com DDD *' };
 
 	function switchAccountType(next: OrganizerAccountType) {
 		if (next === accountType) return;
@@ -164,9 +170,13 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 
 				<div className="space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
 					<div>
-						<h2 className="font-semibold text-slate-950 dark:text-white">Dados da organização</h2>
+						<h2 className="font-semibold text-slate-950 dark:text-white">
+							{locked ? 'Seus dados' : 'Dados da organização'}
+						</h2>
 						<p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-							Aparecem na página dos seus eventos e nos e-mails enviados aos participantes.
+							{locked
+								? 'Vêm do seu perfil validado e aparecem na página dos seus eventos e nos e-mails enviados aos participantes.'
+								: 'Aparecem na página dos seus eventos e nos e-mails enviados aos participantes.'}
 						</p>
 					</div>
 
@@ -214,9 +224,9 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 						name="name"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Nome da organização ou marca *</FormLabel>
+								<FormLabel>{labels.name}</FormLabel>
 								<FormControl>
-									<Input {...field} maxLength={120} placeholder="Como o público conhece você" />
+									<Input {...field} maxLength={120} placeholder="Como o público conhece você" disabled={locked} />
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -229,9 +239,9 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 							name="email"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>E-mail de contato *</FormLabel>
+									<FormLabel>{labels.email}</FormLabel>
 									<FormControl>
-										<Input {...field} type="email" autoComplete="email" />
+										<Input {...field} type="email" autoComplete="email" disabled={locked} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -242,7 +252,7 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 							name="phone"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Telefone com DDD *</FormLabel>
+									<FormLabel>{labels.phone}</FormLabel>
 									<FormControl>
 										<PhoneInput
 											value={field.value}
@@ -251,6 +261,7 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 											name={field.name}
 											showError={false}
 											autoComplete="tel"
+											disabled={locked}
 										/>
 									</FormControl>
 									<FormMessage />
@@ -258,6 +269,22 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 							)}
 						/>
 					</div>
+
+					{locked && (
+						<p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+							<Lock className="size-3.5 shrink-0" aria-hidden="true" />
+							<span>
+								Dados validados no seu perfil. Para alterá-los,{' '}
+								<Link
+									href="/perfil?section=personal"
+									className="font-medium text-violet-700 underline-offset-4 hover:underline dark:text-violet-300"
+								>
+									editar perfil
+								</Link>
+								.
+							</span>
+						</p>
+					)}
 				</div>
 
 				<div className="space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">

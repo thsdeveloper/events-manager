@@ -1,4 +1,5 @@
 import type { PaymentCheckoutStatus, PaymentGateway } from './payment-gateway.js';
+import type { TicketDelivery } from '../tickets/deliver-tickets.js';
 
 export interface CheckoutReconciliationCandidate {
 	checkoutId: string;
@@ -7,7 +8,7 @@ export interface CheckoutReconciliationCandidate {
 
 export interface CheckoutReconciliationRepository {
 	claimPending(input: { before: string; batchSize: number }): Promise<CheckoutReconciliationCandidate[]>;
-	settlePaid(candidate: CheckoutReconciliationCandidate): Promise<void>;
+	settlePaid(candidate: CheckoutReconciliationCandidate, receiptUrl?: string | null): Promise<void>;
 	cancel(
 		candidate: CheckoutReconciliationCandidate,
 		providerStatus: 'EXPIRED' | 'CANCELLED' | 'REFUNDED',
@@ -28,6 +29,7 @@ export class ReconcileCheckouts {
 	constructor(
 		private readonly gateway: PaymentGateway,
 		private readonly repository: CheckoutReconciliationRepository,
+		private readonly ticketDelivery?: TicketDelivery,
 	) {}
 
 	async execute(input: { before: Date; batchSize: number }): Promise<CheckoutReconciliationResult> {
@@ -47,8 +49,10 @@ export class ReconcileCheckouts {
 			try {
 				const checkout = await this.gateway.getCheckout(candidate.checkoutId);
 				if (checkout.status === 'PAID') {
-					await this.repository.settlePaid(candidate);
+					await this.repository.settlePaid(candidate, checkout.receiptUrl ?? null);
 					result.paid += 1;
+					// A entrega registra as próprias falhas; não conta como falha da reconciliação.
+					await this.ticketDelivery?.execute(candidate.registrationIds).catch(() => undefined);
 				} else if (cancellationStatuses.has(checkout.status)) {
 					await this.repository.cancel(candidate, checkout.status as 'EXPIRED' | 'CANCELLED' | 'REFUNDED');
 					result.cancelled += 1;

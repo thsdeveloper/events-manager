@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Heading } from '@/components/design-system/atoms/Heading';
+import { Illustration } from '@/components/design-system/atoms/Illustration';
+import { emptyIllustrations } from '@/lib/illustrations';
 import { Button } from '@/components/ui/button';
 
 export default function NotFound() {
 	return (
 		<section className="flex min-h-[70vh] items-center justify-center px-6 text-center">
 			<div className="max-w-xl">
+				<Illustration illustration={emptyIllustrations.notFound} className="mx-auto mb-8 h-40 sm:h-48" />
 				<p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Erro 404</p>
 				<Heading className="mt-3" level="h1">
 					Esta página não existe

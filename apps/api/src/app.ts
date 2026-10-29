@@ -11,9 +11,11 @@ import { createPaymentGateway } from './infrastructure/payments/create-payment-g
 import { authRoutes } from './routes/auth.js';
 import { cmsRoutes } from './routes/cms.js';
 import { contentRoutes } from './routes/content.js';
+import { couponRoutes } from './routes/coupons.js';
 import { eventRoutes } from './routes/events.js';
 import { adminRoutes } from './routes/admin.js';
 import { emailRoutes } from './routes/email.js';
+import { eventPageRoutes } from './routes/event-pages.js';
 import { externalRoutes } from './routes/external.js';
 import { financeRoutes } from './routes/finance.js';
 import { locationRoutes } from './routes/locations.js';
@@ -48,10 +50,12 @@ export async function buildApp(env: ApiEnv) {
 
 	await app.register(authRoutes, { env, clients });
 	await app.register(contentRoutes, { env, clients });
+	await app.register(couponRoutes, { clients });
 	await app.register(eventRoutes, { clients });
 	await app.register(organizerRoutes, { env, clients });
-	await app.register(adminRoutes, { clients });
-	await app.register(userRoutes, { clients });
+	await app.register(adminRoutes, { clients, payments });
+	await app.register(userRoutes, { clients, env });
+	await app.register(eventPageRoutes, { clients });
 	await app.register(locationRoutes, { clients });
 	await app.register(financeRoutes, { env, clients, payments });
 	await app.register(paymentRoutes, { env, clients, payments });

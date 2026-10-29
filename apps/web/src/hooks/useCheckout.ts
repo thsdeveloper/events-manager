@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import type { PaymentMethod } from '@/features/checkout/api/usePaymentMethods';
+import { describeProblem } from '@/lib/problem';
 
 interface TicketItem {
 	ticketId: string;
 	quantity: number;
+	/** Um participante por unidade; `null` fica pendente. Sem a lista, a primeira unidade é de quem compra. */
+	attendees?: Array<{ name: string; email: string; phone?: string; document?: string } | null>;
 }
 
 interface ParticipantInfo {
@@ -27,7 +31,12 @@ export function useCheckout({ eventId, userId }: CheckoutOptions) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const createCheckoutSession = async (tickets: TicketItem[], participantInfo: ParticipantInfo) => {
+	const createCheckoutSession = async (
+		tickets: TicketItem[],
+		participantInfo: ParticipantInfo,
+		couponCode?: string,
+		paymentMethod: PaymentMethod = 'PIX',
+	) => {
 		setIsLoading(true);
 		setError(null);
 
@@ -43,13 +52,18 @@ export function useCheckout({ eventId, userId }: CheckoutOptions) {
 					tickets,
 					participantInfo,
 					userId,
+					// O servidor confere se a loja aceita o método e envia só ele ao provedor.
+					paymentMethod,
+					// O servidor reconfere o cupom e recalcula o total: aqui ele viaja
+					// apenas como código, nunca como valor de desconto.
+					...(couponCode ? { couponCode } : {}),
 				}),
 			});
 
 			const data = await response.json();
 
 			if (!response.ok) {
-				throw new Error(data.detail || 'Erro ao criar sessão de checkout');
+				throw new Error(describeProblem(data, 'Erro ao criar sessão de checkout'));
 			}
 
 			// Redirecionar para o checkout hospedado ou para a confirmação local.

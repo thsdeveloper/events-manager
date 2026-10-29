@@ -156,6 +156,7 @@ export class AuthService {
                 missing,
             });
         }
+        return profile;
     }
     /**
      * Confirmação de telefone pelo provedor (Supabase Auth, fluxo phone_change):
@@ -296,6 +297,10 @@ export class AuthService {
         return this.repository.listOrganizers(userId);
     }
     async createOrganizer(userId, input) {
+        // Regra de negócio: uma conta de organizador por pessoa, em qualquer status.
+        if ((await this.repository.listOrganizers(userId)).length > 0) {
+            throw new ApiError('Você já possui uma conta de organizador.', 409, 'ORGANIZER_EXISTS');
+        }
         const organizer = await this.repository.createOrganizer(userId, input);
         await this.repository.rememberActiveOrganizer(userId, organizer.id);
         return organizer;

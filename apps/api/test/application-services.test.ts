@@ -16,6 +16,7 @@ import { LocationService, type LocationRepository } from '../src/application/loc
 import { CheckHealth } from '../src/application/health/check-health.js';
 import type { MediaService } from '../src/application/media/media-service.js';
 import { PaymentService, type PaymentRepository } from '../src/application/payments/payment-service.js';
+import type { RegistrationRefunder } from '../src/application/admin/admin-service.js';
 import type { GetCheckoutStatus } from '../src/application/payments/get-checkout-status.js';
 import type { ManageTicketInventory } from '../src/application/payments/manage-ticket-inventory.js';
 import type { PaymentGateway } from '../src/application/payments/payment-gateway.js';
@@ -49,6 +50,8 @@ describe('AdminService', () => {
 
 	it('delegates cancellation to the atomic organizer-scoped repository operation', async () => {
 		const repository = partialMock<AdminRepository>({
+			// Um id de pedido continua aceito: nenhum ingresso com esse id, cai no pedido.
+			findOwnedTicket: vi.fn().mockResolvedValue(null),
 			cancelRegistration: vi.fn().mockResolvedValue({ id: 'registration', status: 'cancelled' }),
 		});
 
@@ -58,6 +61,60 @@ describe('AdminService', () => {
 			success: true,
 		});
 		expect(repository.cancelRegistration).toHaveBeenCalledWith('organizer', 'registration', 'Solicitação');
+	});
+});
+
+describe('AdminService: cancelamento com reembolso', () => {
+	const owned = { id: 'registration', payment_status: 'paid', payment_provider: 'abacatepay' };
+
+	it('refunds through the provider before cancelling, so a failed refund keeps the seat', async () => {
+		const repository = partialMock<AdminRepository>({
+			findOwnedTicket: vi.fn().mockResolvedValue(null),
+			findOwnedRegistration: vi.fn().mockResolvedValue(owned),
+			cancelRegistration: vi.fn().mockResolvedValue({ ...owned, status: 'cancelled' }),
+		});
+		const refunds = partialMock<RegistrationRefunder>({
+			execute: vi.fn().mockResolvedValue({ refundIds: ['tran_refund_1'] }),
+		});
+
+		const result = await new AdminService(repository, refunds).cancelParticipant(
+			'organizer',
+			'registration',
+			'Motivo',
+			{
+				refund: true,
+			},
+		);
+
+		expect(refunds.execute).toHaveBeenCalledWith(owned, 'Motivo');
+		expect(result).toMatchObject({ success: true, refund: { refundIds: ['tran_refund_1'] } });
+		const refundOrder = (refunds.execute as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+		expect((repository.cancelRegistration as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]).toBeGreaterThan(
+			refundOrder,
+		);
+	});
+
+	it('cancels without touching the provider when no refund was requested', async () => {
+		const repository = partialMock<AdminRepository>({
+			findOwnedTicket: vi.fn().mockResolvedValue(null),
+			cancelRegistration: vi.fn().mockResolvedValue({ ...owned, status: 'cancelled' }),
+		});
+		const refunds = partialMock<RegistrationRefunder>({ execute: vi.fn() });
+
+		await new AdminService(repository, refunds).cancelParticipant('organizer', 'registration', 'Motivo');
+
+		expect(refunds.execute).not.toHaveBeenCalled();
+	});
+
+	it('refuses a refund when no payment gateway is wired', async () => {
+		const repository = partialMock<AdminRepository>({
+			findOwnedTicket: vi.fn().mockResolvedValue(null),
+			findOwnedRegistration: vi.fn().mockResolvedValue(owned),
+		});
+
+		await expect(
+			new AdminService(repository).cancelParticipant('organizer', 'registration', 'Motivo', { refund: true }),
+		).rejects.toMatchObject({ statusCode: 409, code: 'REFUND_UNAVAILABLE' });
 	});
 });
 

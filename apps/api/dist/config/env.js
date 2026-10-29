@@ -1,6 +1,7 @@
 import { config } from 'dotenv';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+const checkoutMethods = ['PIX', 'CARD'];
 config({ path: resolve(process.cwd(), '../../.env') });
 config();
 const envSchema = z.object({
@@ -16,6 +17,29 @@ const envSchema = z.object({
     ABACATEPAY_API_KEY: z.string().optional(),
     ABACATEPAY_BASE_URL: z.string().url().default('https://api.abacatepay.com/v2'),
     ABACATEPAY_WEBHOOK_SECRET: z.string().optional(),
+    /**
+     * Métodos oferecidos no checkout hospedado. O AbacatePay recusa o checkout
+     * inteiro quando um método não está habilitado na loja e não expõe quais
+     * estão, então a lista é configuração explícita, com PIX como padrão.
+     */
+    ABACATEPAY_METHODS: z
+        .string()
+        .default('PIX')
+        .transform((value, context) => {
+        const methods = value
+            .split(',')
+            .map((method) => method.trim().toUpperCase())
+            .filter(Boolean);
+        const unsupported = methods.filter((method) => !checkoutMethods.includes(method));
+        if (methods.length === 0 || unsupported.length > 0) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `ABACATEPAY_METHODS aceita apenas ${checkoutMethods.join(', ')}`,
+            });
+            return z.NEVER;
+        }
+        return [...new Set(methods)];
+    }),
     PAYMENTS_MODE: z.enum(['mock', 'abacatepay']).default('mock'),
     PAYMENT_RECONCILIATION_INTERVAL_SECONDS: z.coerce.number().int().min(30).default(60),
     PAYMENT_RECONCILIATION_MIN_AGE_MINUTES: z.coerce.number().int().min(1).default(20),

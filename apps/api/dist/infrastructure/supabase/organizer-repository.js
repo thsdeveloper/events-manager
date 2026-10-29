@@ -29,6 +29,26 @@ export class SupabaseOrganizerRepository {
             throw error;
         return data ? data : 'exists';
     }
+    async existsForUser(userId) {
+        const { count, error } = await this.clients.admin
+            .from('organizers')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId);
+        if (error)
+            throw error;
+        return (count ?? 0) > 0;
+    }
+    async findByDocument(document) {
+        const { data, error } = await this.clients.admin
+            .from('organizers')
+            .select('id,user_id')
+            .eq('document', document)
+            .limit(1)
+            .maybeSingle();
+        if (error)
+            throw error;
+        return data;
+    }
     // Keyed by organization, not by user: a user may own several, and filtering by
     // user_id would write the same values into every one of them.
     async updateById(organizerId, input) {

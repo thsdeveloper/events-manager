@@ -5,16 +5,21 @@ import type {
 	PaymentRepository,
 	RegistrationRow,
 } from '../../application/payments/payment-service.js';
+import type { PaymentProvider } from '../../application/payments/payment-gateway.js';
 import type { SupabaseClients } from './clients.js';
 import { isUuid } from './search.js';
 
 type RegistrationInsert = Database['public']['Tables']['event_registrations']['Insert'];
 type RegistrationUpdate = Database['public']['Tables']['event_registrations']['Update'];
 type InstallmentInsert = Database['public']['Tables']['payment_installments']['Insert'];
+type RegistrationTicketInsert = Database['public']['Tables']['registration_tickets']['Insert'];
 type TransactionInsert = Database['public']['Tables']['payment_transactions']['Insert'];
 
 export class SupabasePaymentRepository implements PaymentRepository {
-	constructor(private readonly clients: SupabaseClients) {}
+	constructor(
+		private readonly clients: SupabaseClients,
+		private readonly provider: PaymentProvider = 'abacatepay',
+	) {}
 
 	async findCheckoutEvent(id: string) {
 		const { data, error } = await this.clients.admin
@@ -39,11 +44,64 @@ export class SupabasePaymentRepository implements PaymentRepository {
 		return data;
 	}
 
-	async setTicketProviderProduct(id: string, productId: string) {
+	async createRegistrationTickets(rows: RegistrationTicketInsert[]) {
+		const { data, error } = await this.clients.admin.from('registration_tickets').insert(rows).select('*');
+		if (error) throw error;
+		return data ?? [];
+	}
+
+	async hasProcessedWebhook(eventId: string) {
+		const { data, error } = await this.clients.admin
+			.from('payment_webhook_events')
+			.select('id')
+			.eq('id', eventId)
+			.maybeSingle();
+		if (error) throw error;
+		return data !== null;
+	}
+
+	async markWebhookProcessed(eventId: string, event: string) {
 		const { error } = await this.clients.admin
-			.from('event_tickets')
-			.update({ provider_product_id: productId })
-			.eq('id', id);
+			.from('payment_webhook_events')
+			.upsert({ id: eventId, event }, { onConflict: 'id' });
+		if (error) throw error;
+	}
+
+	/** Parcelas pagas com cobrança no provedor: cada uma é estornada em separado. */
+	async listPaidInstallmentCharges(registrationId: string) {
+		const { data, error } = await this.clients.admin
+			.from('payment_installments')
+			.select('amount,provider_transaction_id')
+			.eq('registration_id', registrationId)
+			.eq('status', 'paid')
+			.not('provider_transaction_id', 'is', null)
+			.order('installment_number');
+		if (error) throw error;
+		return (data ?? []).map((row) => ({ chargeId: String(row.provider_transaction_id), amount: Number(row.amount) }));
+	}
+
+	async findProviderProduct(ticketId: string, unitPriceCents: number) {
+		const { data, error } = await this.clients.admin
+			.from('ticket_provider_products')
+			.select('provider_product_id')
+			.eq('ticket_id', ticketId)
+			.eq('provider', this.provider)
+			.eq('unit_price_cents', unitPriceCents)
+			.maybeSingle();
+		if (error) throw error;
+		return data?.provider_product_id ?? null;
+	}
+
+	async saveProviderProduct(ticketId: string, unitPriceCents: number, productId: string) {
+		const { error } = await this.clients.admin.from('ticket_provider_products').upsert(
+			{
+				ticket_id: ticketId,
+				provider: this.provider,
+				unit_price_cents: unitPriceCents,
+				provider_product_id: productId,
+			},
+			{ onConflict: 'ticket_id,provider,unit_price_cents' },
+		);
 		if (error) throw error;
 	}
 

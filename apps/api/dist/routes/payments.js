@@ -1,6 +1,7 @@
 import { brDocumentSchema, brPhoneSchema } from '@events-manager/contracts';
 import { httpUrlSchema } from '@events-manager/contracts';
 import { z } from 'zod';
+import { CouponService } from '../application/coupons/coupon-service.js';
 import { GetCheckoutStatus } from '../application/payments/get-checkout-status.js';
 import { ManageTicketInventory } from '../application/payments/manage-ticket-inventory.js';
 import { PaymentService } from '../application/payments/payment-service.js';
@@ -10,6 +11,7 @@ import { EnforceRateLimit } from '../application/security/rate-limit.js';
 import { verifyAbacatePayWebhook } from '../infrastructure/payments/abacatepay-gateway.js';
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
 import { SupabaseCheckoutReconciliationRepository } from '../infrastructure/supabase/checkout-reconciliation-repository.js';
+import { SupabaseCouponRepository } from '../infrastructure/supabase/coupon-repository.js';
 import { SupabaseCheckoutStatusRepository } from '../infrastructure/supabase/checkout-status-repository.js';
 import { SupabaseInstallmentReconciliationRepository } from '../infrastructure/supabase/installment-reconciliation-repository.js';
 import { SupabasePaymentRepository } from '../infrastructure/supabase/payment-repository.js';
@@ -18,7 +20,9 @@ import { SupabaseTicketInventoryRepository } from '../infrastructure/supabase/ti
 import { ApiError } from '../shared/errors.js';
 import { requireUser } from './auth-context.js';
 const checkoutSchema = z.object({
+    couponCode: z.string().trim().min(1).max(32).optional(),
     eventId: z.string().uuid(),
+    paymentMethod: z.enum(['PIX', 'CARD']).optional(),
     tickets: z.array(z.object({ ticketId: z.string().uuid(), quantity: z.number().int().positive() })).min(1),
     participantInfo: z.object({
         name: z.string().trim().min(1),
@@ -62,6 +66,8 @@ const webhookPayloadSchema = z
             .object({
             id: z.string(),
             externalId: z.string().optional(),
+            amount: providerAmountSchema.optional(),
+            paidAmount: providerAmountSchema.nullable().optional(),
             platformFee: providerAmountSchema.optional(),
             methods: z.array(z.string()).optional(),
         })
@@ -87,8 +93,12 @@ export async function paymentRoutes(app, options) {
     const { env, clients, payments } = options;
     const auth = createSupabaseAuthService(clients);
     const inventory = new ManageTicketInventory(new SupabaseTicketInventoryRepository(clients.admin));
-    const payment = new PaymentService(new SupabasePaymentRepository(clients), payments, inventory, new GetCheckoutStatus(new SupabaseCheckoutStatusRepository(clients.admin)), new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin)), env.WEB_URL);
-    const reconcileCheckouts = new ReconcileCheckouts(payments, new SupabaseCheckoutReconciliationRepository(clients.admin));
+    const checkoutReconciliation = new SupabaseCheckoutReconciliationRepository(clients.admin);
+    const payment = new PaymentService(new SupabasePaymentRepository(clients, payments.provider), payments, inventory, new GetCheckoutStatus(new SupabaseCheckoutStatusRepository(clients.admin), {
+        gateway: payments,
+        reconciliation: checkoutReconciliation,
+    }), new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin)), env.WEB_URL, undefined, new CouponService(new SupabaseCouponRepository(clients)), env.ABACATEPAY_METHODS);
+    const reconcileCheckouts = new ReconcileCheckouts(payments, checkoutReconciliation);
     const reconcileInstallments = new ReconcileInstallmentCharges(payments, new SupabaseInstallmentReconciliationRepository(clients.admin));
     let reconciliationTimer;
     let reconciliationRunning = false;
@@ -123,6 +133,11 @@ export async function paymentRoutes(app, options) {
                 clearInterval(reconciliationTimer);
         });
     }
+    // Público: o front decide se oferece cartão antes de a pessoa preencher tudo.
+    // O modo simulado representa uma loja com tudo habilitado.
+    app.get('/api/payments/methods', async () => ({
+        methods: payments.provider === 'mock' ? ['PIX', 'CARD'] : env.ABACATEPAY_METHODS,
+    }));
     app.get('/api/payments/checkout/status', async (request) => {
         const context = await requireUser(request, auth);
         const query = z

@@ -62,6 +62,29 @@ export class SupabaseContentRepository {
             footerNavigation: footerResult,
         };
     }
+    async getFees() {
+        const { data, error } = await this.database
+            .from('event_configurations')
+            .select('platform_fee_percentage,pix_fee_fixed,card_fee_percentage,card_fee_fixed,card_installment_2_6_percentage,card_installment_7_12_percentage,boleto_fee_fixed,payout_fee_fixed,minimum_payout,convenience_fee_calculation_method')
+            .eq('id', 1)
+            .single();
+        if (error)
+            throw error;
+        const row = data;
+        const numeric = (key) => Number(row[key] ?? 0);
+        return {
+            platform_fee_percentage: numeric('platform_fee_percentage'),
+            pix_fee_fixed: numeric('pix_fee_fixed'),
+            card_fee_percentage: numeric('card_fee_percentage'),
+            card_fee_fixed: numeric('card_fee_fixed'),
+            card_installment_2_6_percentage: numeric('card_installment_2_6_percentage'),
+            card_installment_7_12_percentage: numeric('card_installment_7_12_percentage'),
+            boleto_fee_fixed: numeric('boleto_fee_fixed'),
+            payout_fee_fixed: numeric('payout_fee_fixed'),
+            minimum_payout: numeric('minimum_payout'),
+            convenience_fee_calculation_method: row.convenience_fee_calculation_method === 'organizer_absorbs' ? 'organizer_absorbs' : 'buyer_pays',
+        };
+    }
     async getPage(permalink, postPage, options) {
         let query = this.database.from('pages').select('*').eq('permalink', permalink);
         if (!options.includeDrafts) {

@@ -1,8 +1,10 @@
 import { isUuid } from './search.js';
 export class SupabasePaymentRepository {
     clients;
-    constructor(clients) {
+    provider;
+    constructor(clients, provider = 'abacatepay') {
         this.clients = clients;
+        this.provider = provider;
     }
     async findCheckoutEvent(id) {
         const { data, error } = await this.clients.admin
@@ -27,11 +29,57 @@ export class SupabasePaymentRepository {
             throw error;
         return data;
     }
-    async setTicketProviderProduct(id, productId) {
+    async hasProcessedWebhook(eventId) {
+        const { data, error } = await this.clients.admin
+            .from('payment_webhook_events')
+            .select('id')
+            .eq('id', eventId)
+            .maybeSingle();
+        if (error)
+            throw error;
+        return data !== null;
+    }
+    async markWebhookProcessed(eventId, event) {
         const { error } = await this.clients.admin
-            .from('event_tickets')
-            .update({ provider_product_id: productId })
-            .eq('id', id);
+            .from('payment_webhook_events')
+            .upsert({ id: eventId, event }, { onConflict: 'id' });
+        if (error)
+            throw error;
+    }
+    /** Parcelas pagas com cobrança no provedor: cada uma é estornada em separado. */
+    async listPaidInstallmentCharges(registrationId) {
+        const { data, error } = await this.clients.admin
+            .from('payment_installments')
+            .select('amount,provider_transaction_id')
+            .eq('registration_id', registrationId)
+            .eq('status', 'paid')
+            .not('provider_transaction_id', 'is', null)
+            .order('installment_number');
+        if (error)
+            throw error;
+        return (data ?? []).map((row) => ({ chargeId: String(row.provider_transaction_id), amount: Number(row.amount) }));
+    }
+    async findProviderProduct(ticketId, unitPriceCents) {
+        const { data, error } = await this.clients.admin
+            .from('ticket_provider_products')
+            .select('provider_product_id')
+            .eq('ticket_id', ticketId)
+            .eq('provider', this.provider)
+            .eq('unit_price_cents', unitPriceCents)
+            .maybeSingle();
+        if (error)
+            throw error;
+        return data?.provider_product_id ?? null;
+    }
+    async saveProviderProduct(ticketId, unitPriceCents, productId) {
+        const { error } = await this.clients.admin
+            .from('ticket_provider_products')
+            .upsert({
+            ticket_id: ticketId,
+            provider: this.provider,
+            unit_price_cents: unitPriceCents,
+            provider_product_id: productId,
+        }, { onConflict: 'ticket_id,provider,unit_price_cents' });
         if (error)
             throw error;
     }

@@ -5,6 +5,7 @@ vi.mock('@/lib/backend', () => ({ backendFetch }));
 
 import {
 	CMS_CONTENT_CACHE_TAG,
+	eventCacheTag,
 	fetchEventBySlug,
 	fetchPageData,
 	fetchPaginatedPosts,
@@ -39,7 +40,9 @@ describe('content fetchers', () => {
 			tags: [CMS_CONTENT_CACHE_TAG],
 		});
 		expect(backendFetch).toHaveBeenNthCalledWith(5, '/api/content/redirects', { tags: [CMS_CONTENT_CACHE_TAG] });
-		expect(backendFetch).toHaveBeenNthCalledWith(6, '/api/events/slug/festival');
+		// Cada evento tem a própria tag: publicar a landing page derruba só o cache dele.
+		expect(backendFetch).toHaveBeenNthCalledWith(6, '/api/events/slug/festival', { tags: [eventCacheTag('festival')] });
+		expect(eventCacheTag('festival')).toBe('event:festival');
 	});
 
 	it('never caches a draft preview and forwards its token', async () => {

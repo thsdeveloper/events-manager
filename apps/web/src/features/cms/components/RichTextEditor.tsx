@@ -32,6 +32,8 @@ interface RichTextEditorProps {
 	label?: string;
 	placeholder?: string;
 	minHeightClassName?: string;
+	/** Oferece a biblioteca de mídia do CMS. Fora do CMS não há biblioteca a oferecer. */
+	allowImages?: boolean;
 }
 
 interface ToolbarButtonProps {
@@ -72,6 +74,7 @@ export function RichTextEditor({
 	label = 'Conteúdo',
 	placeholder,
 	minHeightClassName = 'min-h-[240px]',
+	allowImages = true,
 }: RichTextEditorProps) {
 	const editorId = useId();
 	const [linkOpen, setLinkOpen] = useState(false);
@@ -218,9 +221,11 @@ export function RichTextEditor({
 						<Link2Off className="size-4" />
 					</ToolbarButton>
 				)}
-				<ToolbarButton label="Inserir imagem" onClick={() => setImageOpen(true)}>
-					<ImageIcon className="size-4" />
-				</ToolbarButton>
+				{allowImages && (
+					<ToolbarButton label="Inserir imagem" onClick={() => setImageOpen(true)}>
+						<ImageIcon className="size-4" />
+					</ToolbarButton>
+				)}
 				<span className="ml-auto flex items-center gap-0.5">
 					<ToolbarButton label="Desfazer" disabled={!state.canUndo} onClick={() => editor.chain().focus().undo().run()}>
 						<Undo2 className="size-4" />
@@ -254,18 +259,20 @@ export function RichTextEditor({
 				</div>
 			)}
 			<EditorContent editor={editor} data-placeholder={placeholder} />
-			<MediaPickerDialog
-				open={imageOpen}
-				onOpenChange={setImageOpen}
-				onSelect={(media) => {
-					editor
-						.chain()
-						.focus()
-						.setImage({ src: mediaUrl(media), alt: media.title ?? media.filename ?? '' })
-						.run();
-					setImageOpen(false);
-				}}
-			/>
+			{allowImages && (
+				<MediaPickerDialog
+					open={imageOpen}
+					onOpenChange={setImageOpen}
+					onSelect={(media) => {
+						editor
+							.chain()
+							.focus()
+							.setImage({ src: mediaUrl(media), alt: media.title ?? media.filename ?? '' })
+							.run();
+						setImageOpen(false);
+					}}
+				/>
+			)}
 		</div>
 	);
 }

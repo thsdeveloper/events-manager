@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders } from '@/test';
 import { Ticket } from '@/components/animate-ui/icons/ticket';
+import { emptyIllustrations } from '@/lib/illustrations';
 import { AccountEmptyState } from './AccountEmptyState';
 
 describe('AccountEmptyState', () => {
@@ -27,5 +28,22 @@ describe('AccountEmptyState', () => {
 
 		const icon = container.querySelector('svg');
 		expect(icon?.closest('[aria-hidden="true"]')).not.toBeNull();
+	});
+
+	it('shows the illustration instead of the icon chip when one is given', () => {
+		const { container } = renderWithProviders(
+			<AccountEmptyState
+				icon={<Ticket />}
+				illustration={emptyIllustrations.tickets}
+				title="Nenhum ingresso por aqui"
+				description="Nada por enquanto."
+			/>,
+		);
+
+		const img = container.querySelector('img');
+		expect(img).toHaveAttribute('src', '/images/empty/tickets.svg');
+		expect(img).toHaveAttribute('aria-hidden', 'true');
+		// One decoration is enough: the animated icon gives way to the picture.
+		expect(container.querySelector('svg')).toBeNull();
 	});
 });

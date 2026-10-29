@@ -15,6 +15,7 @@ export async function contentRoutes(app, options) {
     const submitForm = new SubmitForm(new SupabaseFormSubmissionRepository(clients.admin));
     const enforceRateLimit = new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin));
     app.get('/api/content/site', () => content.getSite());
+    app.get('/api/content/fees', () => content.getFees());
     app.get('/api/content/pages', async (request) => {
         const query = z
             .object({

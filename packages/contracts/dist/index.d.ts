@@ -1,8 +1,11 @@
 export * from './br-documents.js';
 export * from './cms.js';
+export * from './coupons.js';
 export * from './html-sanitizer.js';
 export * from './database.types.js';
 export * from './domain.js';
+export * from './event-page.js';
 export * from './profile.js';
 export * from './schemas.js';
+export * from './tickets.js';
 //# sourceMappingURL=index.d.ts.map

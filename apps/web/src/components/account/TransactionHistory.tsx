@@ -10,6 +10,7 @@ import { CreditCard as AnimatedCreditCard } from '@/components/animate-ui/icons/
 import { AccountEmptyState } from '@/components/account/AccountEmptyState';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { emptyIllustrations } from '@/lib/illustrations';
 
 interface TransactionHistoryProps {
 	userId: string;
@@ -97,6 +98,7 @@ export function TransactionHistory({ userId }: TransactionHistoryProps) {
 		return (
 			<AccountEmptyState
 				icon={<AnimatedCreditCard />}
+				illustration={emptyIllustrations.payments}
 				title="Nenhum pagamento por aqui"
 				description="Quando você comprar um ingresso, os dados da transação e do recibo aparecerão nesta área."
 			/>

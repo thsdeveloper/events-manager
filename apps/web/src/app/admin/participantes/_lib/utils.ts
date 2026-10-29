@@ -28,18 +28,29 @@ export function formatCurrency(value: number | null | undefined) {
 	}).format(value);
 }
 
+export const PENDING_ATTENDEE_LABEL = 'Participante a informar';
+
 /**
- * Obtém nome completo do participante
+ * Nome de quem vai usar o ingresso. Um ingresso ainda sem participante mostra
+ * o marcador, para o organizador saber que falta alguém nomear.
  */
 export function getParticipantFullName(participant: ParticipantRow) {
-	if (participant.user_id) {
-		const { first_name, last_name } = participant.user_id;
-		if (first_name && last_name) {
-			return `${first_name} ${last_name}`;
-		}
-	}
+	return participant.attendee_name ?? PENDING_ATTENDEE_LABEL;
+}
 
-	return participant.participant_name;
+export type TicketStatus = 'confirmed' | 'pending' | 'cancelled' | 'checked_in';
+
+/**
+ * Estado de um ingresso nominal. O cancelamento e o pagamento são do pedido;
+ * o check-in é da própria unidade.
+ */
+export function deriveTicketStatus(ticket: ParticipantRow): TicketStatus {
+	const { registration } = ticket;
+	if (registration.status === 'cancelled') return 'cancelled';
+	if (ticket.check_in_date) return 'checked_in';
+	if (registration.status === 'pending' || registration.payment_status === 'pending') return 'pending';
+
+	return 'confirmed';
 }
 
 /**

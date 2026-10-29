@@ -15,20 +15,31 @@ function issuePaths(result: { success: boolean; error?: { issues: Array<{ path: 
 }
 
 describe('organizerSignupSchema', () => {
-	it('accepts an individual without a document: the CPF comes from the verified profile', () => {
+	it('accepts an individual with only what the person can choose: name, e-mail, phone and CPF come from the verified profile', () => {
 		const result = organizerSignupSchema.safeParse({
 			account_type: 'individual',
-			name: 'Ana Silva Produções',
-			email: 'ana@example.com',
-			phone: '11 99999-0000',
+			name: 'Outro Nome',
+			email: 'outro@example.com',
+			phone: '11 98888-7777',
+			document: '529.982.247-25',
 			accept_terms: true,
 		});
 
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data).toMatchObject({ account_type: 'individual', phone: '11999990000', description: null, website: null });
-			expect('document' in result.data).toBe(false);
+			expect(result.data).toEqual({ account_type: 'individual', description: null, website: null, accept_terms: true });
 		}
+	});
+
+	it('still demands the terms and the optional texts from an individual', () => {
+		expect(issuePaths(organizerSignupSchema.safeParse({ account_type: 'individual', accept_terms: false }))).toContain(
+			'accept_terms',
+		);
+		expect(
+			issuePaths(
+				organizerSignupSchema.safeParse({ account_type: 'individual', accept_terms: true, website: 'festivais' }),
+			),
+		).toContain('website');
 	});
 
 	it('requires a valid CNPJ for a company and normalises it to digits', () => {
@@ -37,12 +48,14 @@ describe('organizerSignupSchema', () => {
 		expect(result.success).toBe(true);
 		if (result.success) expect(result.data).toMatchObject({ document: '45723174000110' });
 
-		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, document: '529.982.247-25' }))).toContain('document');
+		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, document: '529.982.247-25' }))).toContain(
+			'document',
+		);
 		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, document: '' }))).toContain('document');
 		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, document: undefined }))).toContain('document');
 	});
 
-	it('demands brand name, contact e-mail, a phone with DDD and the terms', () => {
+	it('demands brand name, contact e-mail, a phone with DDD and the terms from a company', () => {
 		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, name: 'A' }))).toContain('name');
 		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, email: 'contato' }))).toContain('email');
 		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, phone: '1234' }))).toContain('phone');
@@ -55,12 +68,16 @@ describe('organizerSignupSchema', () => {
 			website: null,
 			description: null,
 		});
-		expect(organizerSignupSchema.parse({ ...company, website: 'https://festivais.com', description: 'Shows' })).toMatchObject({
+		expect(
+			organizerSignupSchema.parse({ ...company, website: 'https://festivais.com', description: 'Shows' }),
+		).toMatchObject({
 			website: 'https://festivais.com',
 			description: 'Shows',
 		});
 		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, website: 'festivais' }))).toContain('website');
-		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, description: 'x'.repeat(601) }))).toContain('description');
+		expect(issuePaths(organizerSignupSchema.safeParse({ ...company, description: 'x'.repeat(601) }))).toContain(
+			'description',
+		);
 	});
 
 	it('rejects unknown account types', () => {

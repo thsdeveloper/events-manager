@@ -31,28 +31,49 @@ function setup() {
 	return { repository, service: new OrganizerService(repository as unknown as OrganizerRepository) };
 }
 
+// Pessoa física só escolhe o que é opcional: nome, e-mail, telefone e CPF vêm do perfil.
 const individual = {
 	account_type: 'individual' as const,
-	name: 'Ana Produções',
-	email: 'ana@example.com',
-	phone: '11999990000',
 	description: null,
 	website: null,
 	accept_terms: true as const,
 };
 
-const company = { ...individual, account_type: 'company' as const, name: 'Festivais Ltda', document: '45723174000110' };
+const company = {
+	account_type: 'company' as const,
+	name: 'Festivais Ltda',
+	email: 'ana@example.com',
+	phone: '11999990000',
+	document: '45723174000110',
+	description: null,
+	website: null,
+	accept_terms: true as const,
+};
+
+const verifiedProfile = {
+	document: '52998224725',
+	first_name: 'Ana',
+	last_name: 'Silva',
+	email: 'ana@example.com',
+	phone: '11999990000',
+};
 
 describe('OrganizerService.create', () => {
-	it('registers an individual with the CPF already validated on the profile, never one sent by the client', async () => {
+	it('registers an individual with the name, e-mail, phone and CPF validated on the profile, never the ones sent by the client', async () => {
 		const { repository, service } = setup();
+		const tampered = { ...individual, name: 'Outro Nome', email: 'outro@example.com', phone: '11988887777' } as never;
 
-		const organizer = await service.create(TEST_USER_ID, individual, 'active', { profileDocument: '52998224725' });
+		const organizer = await service.create(TEST_USER_ID, tampered, 'active', { profile: verifiedProfile });
 
-		expect(organizer).toMatchObject({ id: 'org-1', document: '52998224725', name: 'Ana Produções' });
+		expect(organizer).toMatchObject({ id: 'org-1', document: '52998224725', name: 'Ana Silva' });
 		expect(repository.create).toHaveBeenCalledWith(
 			TEST_USER_ID,
-			expect.objectContaining({ document: '52998224725', phone: '11999990000', email: 'ana@example.com' }),
+			expect.objectContaining({
+				document: '52998224725',
+				name: 'Ana Silva',
+				email: 'ana@example.com',
+				phone: '11999990000',
+			}),
 			'active',
 		);
 	});
@@ -60,17 +81,28 @@ describe('OrganizerService.create', () => {
 	it('cannot register an individual whose profile has no CPF', async () => {
 		const { repository, service } = setup();
 
-		await expect(service.create(TEST_USER_ID, individual, 'active', { profileDocument: null })).rejects.toMatchObject({
-			statusCode: 422,
-			code: 'PROFILE_DOCUMENT_REQUIRED',
-		});
+		await expect(
+			service.create(TEST_USER_ID, individual, 'active', { profile: { ...verifiedProfile, document: null } }),
+		).rejects.toMatchObject({ statusCode: 422, code: 'PROFILE_DOCUMENT_REQUIRED' });
+		expect(repository.create).not.toHaveBeenCalled();
+	});
+
+	it('cannot register an individual whose profile lacks name, e-mail or phone', async () => {
+		const { repository, service } = setup();
+
+		await expect(
+			service.create(TEST_USER_ID, individual, 'active', { profile: { ...verifiedProfile, phone: null } }),
+		).rejects.toMatchObject({ statusCode: 422, code: 'PROFILE_INCOMPLETE' });
+		await expect(
+			service.create(TEST_USER_ID, individual, 'active', { profile: { ...verifiedProfile, last_name: null } }),
+		).rejects.toMatchObject({ statusCode: 422, code: 'PROFILE_INCOMPLETE' });
 		expect(repository.create).not.toHaveBeenCalled();
 	});
 
 	it('registers a company with its own CNPJ', async () => {
 		const { repository, service } = setup();
 
-		await service.create(TEST_USER_ID, company, 'pending', { profileDocument: '52998224725' });
+		await service.create(TEST_USER_ID, company, 'pending', { profile: verifiedProfile });
 
 		expect(repository.create).toHaveBeenCalledWith(
 			TEST_USER_ID,
@@ -83,7 +115,7 @@ describe('OrganizerService.create', () => {
 		const { repository, service } = setup();
 		repository.existsForUser.mockResolvedValue(true);
 
-		await expect(service.create(TEST_USER_ID, company, 'active', { profileDocument: null })).rejects.toMatchObject({
+		await expect(service.create(TEST_USER_ID, company, 'active', { profile: verifiedProfile })).rejects.toMatchObject({
 			statusCode: 409,
 			code: 'ORGANIZER_EXISTS',
 		});
@@ -94,7 +126,7 @@ describe('OrganizerService.create', () => {
 		const { repository, service } = setup();
 		repository.findByDocument.mockResolvedValue({ id: 'other', user_id: 'someone-else' });
 
-		await expect(service.create(TEST_USER_ID, company, 'active', { profileDocument: null })).rejects.toMatchObject({
+		await expect(service.create(TEST_USER_ID, company, 'active', { profile: verifiedProfile })).rejects.toMatchObject({
 			statusCode: 409,
 			code: 'DOCUMENT_IN_USE',
 		});
@@ -147,21 +179,33 @@ describe('POST /api/organizer/request', () => {
 		return { app: await buildRouteTestApp(organizerRoutes, { env: createTestEnv(), clients: stub.clients }), stub };
 	}
 
-	it('creates an individual organizer with the profile CPF and the contact data sent', async () => {
+	it('creates an individual organizer with the profile CPF and contact data, ignoring whatever the client sent', async () => {
 		const { app: server, stub } = await app();
 
 		const response = await server.inject({
 			method: 'POST',
 			url: '/api/organizer/request',
 			headers: sessionCookie(),
-			payload: { ...individual, phone: '(11) 99999-0000', document: '00000000000' },
+			payload: {
+				...individual,
+				name: 'Outro Nome',
+				email: 'outro@example.com',
+				phone: '(11) 98888-7777',
+				document: '00000000000',
+			},
 		});
 
 		expect(response.statusCode).toBe(201);
 		expect(response.json()).toMatchObject({ success: true, organizer: { id: 'org-new' } });
 		expect(stub.clients.admin.rpc).toHaveBeenCalledWith(
 			'create_organizer_profile',
-			expect.objectContaining({ target_document: '52998224725', target_phone: '11999990000', target_status: 'active' }),
+			expect.objectContaining({
+				target_document: '52998224725',
+				target_name: 'Ana Silva',
+				target_email: 'ana@example.com',
+				target_phone: '11999990000',
+				target_status: 'active',
+			}),
 		);
 	});
 

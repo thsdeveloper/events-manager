@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { Tag, Wand2, X } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
+import { FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { htmlToPlainText } from '@/components/ui/Text';
+import { RichTextEditor } from '@/features/cms/components/RichTextEditor';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -28,7 +29,7 @@ export function DetailsStep() {
 	const removeTag = (tagToRemove: string) => {
 		form.setValue(
 			'tags',
-			tags.filter(tag => tag !== tagToRemove),
+			tags.filter((tag) => tag !== tagToRemove),
 			{ shouldDirty: true, shouldValidate: true },
 		);
 	};
@@ -54,17 +55,22 @@ export function DetailsStep() {
 							name="description"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Descrição completa</FormLabel>
-									<FormControl>
-										<Textarea
-											{...field}
-											rows={6}
-											placeholder="Compartilhe a programação, palestrantes, diferenciais e motivos para participar. Use uma linguagem acolhedora e clara."
-										/>
-									</FormControl>
+									<p className="text-sm font-medium">Descrição completa</p>
+									{/* Texto livre: negrito, itálico, listas e links. O HTML sai daqui e a
+									    API sanitiza antes de guardar. Sem biblioteca de imagens: a capa
+									    já tem o próprio campo. */}
+									<RichTextEditor
+										label="Descrição completa"
+										value={field.value ?? ''}
+										onChange={(html) => field.onChange(html)}
+										allowImages={false}
+										minHeightClassName="min-h-[220px]"
+										placeholder="Compartilhe a programação, palestrantes, diferenciais e motivos para participar."
+									/>
 									<FormMessage />
 									<p className="text-xs text-muted-foreground">
-										{field.value.length || 0} caracteres — recomendamos entre 150 e 500 para bons resultados.
+										{htmlToPlainText(field.value ?? '').length} caracteres — recomendamos entre 150 e 500 para bons
+										resultados.
 									</p>
 								</FormItem>
 							)}
@@ -79,8 +85,8 @@ export function DetailsStep() {
 							<div className="mt-3 flex gap-2">
 								<Input
 									value={tagDraft}
-									onChange={event => setTagDraft(event.target.value)}
-									onKeyDown={event => {
+									onChange={(event) => setTagDraft(event.target.value)}
+									onKeyDown={(event) => {
 										if (event.key === 'Enter') {
 											event.preventDefault();
 											addTag(tagDraft);
@@ -99,7 +105,7 @@ export function DetailsStep() {
 
 							{tags.length > 0 && (
 								<div className="mt-4 flex flex-wrap gap-2">
-									{tags.map(tag => (
+									{tags.map((tag) => (
 										<button
 											key={tag}
 											type="button"
@@ -115,17 +121,19 @@ export function DetailsStep() {
 							)}
 
 							<div className="mt-4 flex flex-wrap gap-2">
-									{popularTags.map(tag => {
-										const isActive = tags.includes(tag);
+								{popularTags.map((tag) => {
+									const isActive = tags.includes(tag);
 
-										return (
+									return (
 										<button
 											type="button"
 											key={tag}
 											onClick={() => addTag(tag)}
 											className={cn(
 												'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-												isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-dashed hover:border-primary',
+												isActive
+													? 'border-primary bg-primary text-primary-foreground'
+													: 'border-dashed hover:border-primary',
 											)}
 										>
 											#{tag}

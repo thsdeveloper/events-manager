@@ -1,322 +1,318 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Minus, Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Flame, Minus, Plus, Ticket } from 'lucide-react';
 import type { EventTicket } from '@events-manager/contracts';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 
 export interface TicketSelectionItem {
-  ticketId: string;
-  quantity: number;
+	ticketId: string;
+	quantity: number;
 }
 
 interface TicketSelectionProps {
-  eventId: string;
-  tickets: EventTicket[];
-  onCheckout: (selectedTickets: TicketSelectionItem[]) => void;
-  isLoading?: boolean;
+	eventId: string;
+	tickets: EventTicket[];
+	onCheckout: (selectedTickets: TicketSelectionItem[]) => void;
+	/** Avisa a cada mudança, para o resumo da compra acompanhar ao lado. */
+	onSelectionChange?: (selectedTickets: TicketSelectionItem[]) => void;
+	/** O resumo da compra assume o botão de avançar. */
+	hideAction?: boolean;
+	isLoading?: boolean;
 }
 
-// Helper function to convert price strings to numbers
+/** Abaixo disso a disponibilidade vira um aviso de escassez. */
+const SCARCITY_THRESHOLD = 10;
+
 const toNumber = (value: number | string | null | undefined): number => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
+	if (typeof value === 'number' && Number.isFinite(value)) return value;
+	if (typeof value === 'string') {
+		const parsed = parseFloat(value);
 
-  if (typeof value === 'string') {
-    const parsed = parseFloat(value);
-    
-return Number.isFinite(parsed) ? parsed : 0;
-  }
+		return Number.isFinite(parsed) ? parsed : 0;
+	}
 
-  return 0;
+	return 0;
 };
 
+/**
+ * Regras de quantidade de um ingresso, resolvidas uma vez por cartão: quanto
+ * ainda há em estoque, o mínimo e o máximo por compra e de onde vem o teto.
+ */
+function describeLimits(ticket: EventTicket) {
+	const available = Math.max((ticket.quantity ?? 0) - (ticket.quantity_sold ?? 0), 0);
+	const maxPerPurchase = ticket.max_quantity_per_purchase || null;
+	const minPerPurchase = Math.max(ticket.min_quantity_per_purchase ?? 1, 1);
+	const maxAllowed = Math.min(available, maxPerPurchase ?? available);
+	const limitedByPurchase = maxPerPurchase !== null && maxPerPurchase <= available;
+
+	return { available, limitedByPurchase, maxAllowed, maxPerPurchase, minPerPurchase };
+}
+
 export default function TicketSelection({
-  eventId,
-  tickets,
-  onCheckout,
-  isLoading = false,
+	eventId: _eventId,
+	tickets,
+	onCheckout,
+	onSelectionChange,
+	hideAction = false,
+	isLoading = false,
 }: TicketSelectionProps) {
-  const [selectedTickets, setSelectedTickets] = useState<Map<string, number>>(new Map());
+	const [selectedTickets, setSelectedTickets] = useState<Map<string, number>>(new Map());
 
-  // Filtrar apenas ingressos disponíveis
-  const availableTickets = useMemo(() => {
-    const now = new Date();
+	const toItems = (selection: Map<string, number>): TicketSelectionItem[] =>
+		Array.from(selection.entries()).map(([ticketId, quantity]) => ({ ticketId, quantity }));
 
-    return tickets.filter((ticket) => {
-      // Verificar status
-      if (ticket.status !== 'active') return false;
+	const availableTickets = useMemo(() => {
+		const now = new Date();
 
-      // Verificar se há estoque
-      const totalQuantity = ticket.quantity ?? 0;
-      const sold = ticket.quantity_sold ?? 0;
-      const available = Math.max(totalQuantity - sold, 0);
-      if (available <= 0) return false;
+		return tickets.filter((ticket) => {
+			if (ticket.status !== 'active') return false;
+			if (describeLimits(ticket).available <= 0) return false;
+			if (ticket.sale_start_date && new Date(ticket.sale_start_date) > now) return false;
+			if (ticket.sale_end_date && new Date(ticket.sale_end_date) < now) return false;
 
-      // Verificar período de vendas
-      if (ticket.sale_start_date && new Date(ticket.sale_start_date) > now) return false;
-      if (ticket.sale_end_date && new Date(ticket.sale_end_date) < now) return false;
+			return true;
+		});
+	}, [tickets]);
 
-      return true;
-    });
-  }, [tickets]);
+	const totals = useMemo(() => {
+		let subtotal = 0;
+		let convenienceFee = 0;
+		let total = 0;
+		let totalTickets = 0;
 
-  // Calcular totais
-  const totals = useMemo(() => {
-    let subtotal = 0;
-    let convenienceFee = 0;
-    let total = 0;
-    let totalTickets = 0;
+		selectedTickets.forEach((quantity, ticketId) => {
+			const ticket = tickets.find((t) => t.id === ticketId);
+			if (!ticket || quantity <= 0) return;
 
-    selectedTickets.forEach((quantity, ticketId) => {
-      const ticket = tickets.find((t) => t.id === ticketId);
-      if (!ticket || quantity <= 0) return;
+			totalTickets += quantity;
+			const ticketPrice = toNumber(ticket.price);
+			subtotal += ticketPrice * quantity;
 
-      totalTickets += quantity;
+			if ((ticket.service_fee_type ?? 'passed_to_buyer') === 'passed_to_buyer') {
+				const buyerPrice = toNumber(ticket.buyer_price || ticket.price);
+				convenienceFee += (buyerPrice - ticketPrice) * quantity;
+				total += buyerPrice * quantity;
+			} else {
+				total += ticketPrice * quantity;
+			}
+		});
 
-      // Preço base do ingresso (o que o organizador recebe)
-      const ticketPrice = toNumber(ticket.price);
-      const ticketSubtotal = ticketPrice * quantity;
-      subtotal += ticketSubtotal;
+		return { subtotal, serviceFee: convenienceFee, total, totalTickets };
+	}, [selectedTickets, tickets]);
 
-      // Se o comprador paga a taxa, calcular a diferença
-      const serviceFeeType = ticket.service_fee_type ?? 'passed_to_buyer';
-      if (serviceFeeType === 'passed_to_buyer') {
-        const buyerPrice = toNumber(ticket.buyer_price || ticket.price);
-        const feePerTicket = buyerPrice - ticketPrice;
-        convenienceFee += feePerTicket * quantity;
-        total += buyerPrice * quantity;
-      } else {
-        // Se organizador absorve, comprador paga apenas o preço base
-        total += ticketSubtotal;
-      }
-    });
+	const commit = (ticketId: string, quantity: number) => {
+		const next = new Map(selectedTickets);
+		if (quantity <= 0) next.delete(ticketId);
+		else next.set(ticketId, quantity);
+		setSelectedTickets(next);
+		onSelectionChange?.(toItems(next));
+	};
 
-    return { subtotal, serviceFee: convenienceFee, total, totalTickets };
-  }, [selectedTickets, tickets]);
+	// O passo respeita o mínimo por compra: do zero vai direto ao mínimo, e
+	// descer abaixo dele esvazia a linha em vez de deixar uma quantidade inválida.
+	const handleStep = (ticket: EventTicket, delta: number) => {
+		const { maxAllowed, minPerPurchase } = describeLimits(ticket);
+		const current = selectedTickets.get(ticket.id) ?? 0;
+		let next = current + delta;
+		if (delta > 0 && current === 0) next = minPerPurchase;
+		if (delta < 0 && next < minPerPurchase) next = 0;
+		next = Math.max(0, Math.min(next, maxAllowed));
+		if (next === current) return;
+		commit(ticket.id, next);
+	};
 
-  const handleQuantityChange = (ticketId: string, delta: number) => {
-    const ticket = tickets.find((t) => t.id === ticketId);
-    if (!ticket) return;
+	const handleDirectInput = (ticket: EventTicket, value: string) => {
+		const { maxAllowed } = describeLimits(ticket);
+		const quantity = parseInt(value, 10) || 0;
+		commit(ticket.id, Math.max(0, Math.min(quantity, maxAllowed)));
+	};
 
-    const currentQuantity = selectedTickets.get(ticketId) || 0;
-    const newQuantity = Math.max(0, currentQuantity + delta);
+	const handleBlur = (ticket: EventTicket) => {
+		const { maxAllowed, minPerPurchase } = describeLimits(ticket);
+		const current = selectedTickets.get(ticket.id) ?? 0;
+		if (current > 0 && current < minPerPurchase) commit(ticket.id, Math.min(minPerPurchase, maxAllowed));
+	};
 
-    // Validar limites
-    const totalQuantity = ticket.quantity ?? 0;
-    const sold = ticket.quantity_sold ?? 0;
-    const available = Math.max(totalQuantity - sold, 0);
-    const maxAllowed = Math.min(
-      available,
-      ticket.max_quantity_per_purchase || available
-    );
+	const hasSelection = selectedTickets.size > 0;
 
-    if (newQuantity > maxAllowed) return;
+	return (
+		<div className="space-y-6">
+			<div className="space-y-4">
+				{availableTickets.length === 0 ? (
+					<Card>
+						<CardContent className="py-8 text-center">
+							<p className="text-muted-foreground">Nenhum ingresso disponível no momento.</p>
+						</CardContent>
+					</Card>
+				) : (
+					availableTickets.map((ticket) => {
+						const { available, limitedByPurchase, maxAllowed, maxPerPurchase, minPerPurchase } = describeLimits(ticket);
+						const selected = selectedTickets.get(ticket.id) ?? 0;
+						const isAbsorbed = (ticket.service_fee_type ?? 'passed_to_buyer') === 'absorbed';
+						const basePrice = toNumber(ticket.price);
+						const buyerPrice = isAbsorbed ? basePrice : toNumber(ticket.buyer_price || ticket.price);
+						const fee = buyerPrice - basePrice;
+						const isScarce = available <= SCARCITY_THRESHOLD;
+						const atLimit = selected > 0 && selected >= maxAllowed;
 
-    const newSelected = new Map(selectedTickets);
-    if (newQuantity === 0) {
-      newSelected.delete(ticketId);
-    } else {
-      newSelected.set(ticketId, newQuantity);
-    }
+						return (
+							<Card
+								key={ticket.id}
+								data-selected={selected > 0 || undefined}
+								className={cn(
+									'transition-[border-color,box-shadow] duration-200',
+									selected > 0 ? 'border-primary shadow-md ring-1 ring-primary/40' : 'hover:border-foreground/20',
+								)}
+							>
+								<CardContent className="space-y-5 p-5 sm:p-6">
+									<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+										<div className="min-w-0 flex-1 space-y-1">
+											<h3 className="text-lg font-semibold leading-tight text-foreground">{ticket.title}</h3>
+											{ticket.description ? (
+												<p className="text-sm text-muted-foreground">{ticket.description}</p>
+											) : null}
+											<div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-xs">
+												{isScarce ? (
+													<span className="inline-flex items-center gap-1 font-semibold text-warning">
+														<Flame className="size-3.5" aria-hidden="true" />
+														{available === 1 ? 'Resta apenas 1 ingresso' : `Restam apenas ${available} ingressos`}
+													</span>
+												) : (
+													<span className="inline-flex items-center gap-1 text-muted-foreground">
+														<Ticket className="size-3.5" aria-hidden="true" />
+														{`${available} disponíveis`}
+													</span>
+												)}
+												{minPerPurchase > 1 ? (
+													<span className="text-muted-foreground">{`Mínimo de ${minPerPurchase} por compra`}</span>
+												) : null}
+												{maxPerPurchase ? (
+													<span className="text-muted-foreground">{`Até ${maxPerPurchase} por compra`}</span>
+												) : null}
+											</div>
+										</div>
 
-    setSelectedTickets(newSelected);
-  };
+										<div className="shrink-0 sm:text-right">
+											<p className="text-2xl font-bold tabular-nums leading-none text-foreground">
+												{formatCurrency(buyerPrice)}
+											</p>
+											<p className="mt-1.5 text-xs text-muted-foreground">
+												{isAbsorbed
+													? 'Sem taxa adicional'
+													: `${formatCurrency(basePrice)} + ${formatCurrency(fee)} de taxa de serviço`}
+											</p>
+										</div>
+									</div>
 
-  const handleDirectInput = (ticketId: string, value: string) => {
-    const ticket = tickets.find((t) => t.id === ticketId);
-    if (!ticket) return;
+									<div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+										<div className="min-h-5 space-y-1 text-sm">
+											{selected > 0 ? (
+												<p className="font-semibold tabular-nums text-foreground">
+													{`Subtotal ${formatCurrency(buyerPrice * selected)}`}
+												</p>
+											) : (
+												<p className="text-muted-foreground">Escolha a quantidade</p>
+											)}
+											{atLimit ? (
+												<p className="text-xs text-warning" role="status">
+													{limitedByPurchase && maxPerPurchase
+														? `Você chegou ao limite de ${maxPerPurchase} por compra`
+														: 'Não há mais ingressos disponíveis'}
+												</p>
+											) : null}
+										</div>
 
-    const quantity = parseInt(value) || 0;
-    const totalQuantity = ticket.quantity ?? 0;
-    const sold = ticket.quantity_sold ?? 0;
-    const available = Math.max(totalQuantity - sold, 0);
-    const maxAllowed = Math.min(
-      available,
-      ticket.max_quantity_per_purchase || available
-    );
+										<div
+											role="group"
+											aria-label={`Ingressos ${ticket.title}`}
+											className={cn(
+												'inline-flex h-11 items-center self-end overflow-hidden rounded-lg border bg-background shadow-sm sm:self-auto',
+												selected > 0 ? 'border-primary' : 'border-input',
+											)}
+										>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-full w-11 rounded-none"
+												onClick={() => handleStep(ticket, -1)}
+												disabled={selected === 0 || isLoading}
+												aria-label={`Remover um ingresso ${ticket.title}`}
+											>
+												<Minus className="size-4" aria-hidden="true" />
+											</Button>
+											<input
+												type="number"
+												inputMode="numeric"
+												min={0}
+												max={maxAllowed}
+												value={selected}
+												onChange={(event) => handleDirectInput(ticket, event.target.value)}
+												onBlur={() => handleBlur(ticket)}
+												aria-label={`Quantidade de ${ticket.title}`}
+												disabled={isLoading}
+												className="h-full w-14 border-x border-input bg-transparent text-center text-base font-semibold tabular-nums text-foreground outline-none focus-visible:bg-accent/40 disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+											/>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-full w-11 rounded-none"
+												onClick={() => handleStep(ticket, 1)}
+												disabled={selected >= maxAllowed || isLoading}
+												aria-label={`Adicionar um ingresso ${ticket.title}`}
+											>
+												<Plus className="size-4" aria-hidden="true" />
+											</Button>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+						);
+					})
+				)}
+			</div>
 
-    const validQuantity = Math.max(0, Math.min(quantity, maxAllowed));
+			{hasSelection && !hideAction ? (
+				<Card className="sticky bottom-4 shadow-lg">
+					<CardHeader>
+						<CardTitle>Resumo da Compra</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="space-y-3">
+							<div className="flex justify-between text-sm">
+								<span className="text-muted-foreground">{`Ingressos (${totals.totalTickets})`}</span>
+								<span className="font-medium tabular-nums">{formatCurrency(totals.subtotal)}</span>
+							</div>
+							{totals.serviceFee > 0 ? (
+								<div className="flex justify-between text-sm">
+									<span className="text-muted-foreground">Taxa de serviço</span>
+									<span className="font-medium tabular-nums">{formatCurrency(totals.serviceFee)}</span>
+								</div>
+							) : null}
+							<div className="flex justify-between border-t-2 pt-3 text-xl font-bold">
+								<span>Total</span>
+								<span className="tabular-nums text-primary">{formatCurrency(totals.total)}</span>
+							</div>
+						</div>
 
-    const newSelected = new Map(selectedTickets);
-    if (validQuantity === 0) {
-      newSelected.delete(ticketId);
-    } else {
-      newSelected.set(ticketId, validQuantity);
-    }
+						<Button
+							className="w-full"
+							size="lg"
+							onClick={() => onCheckout(toItems(selectedTickets))}
+							disabled={!hasSelection || isLoading}
+						>
+							{isLoading ? 'Processando...' : 'Finalizar Compra'}
+						</Button>
 
-    setSelectedTickets(newSelected);
-  };
-
-  const handleCheckout = () => {
-    const items: TicketSelectionItem[] = Array.from(selectedTickets.entries()).map(
-      ([ticketId, quantity]) => ({
-        ticketId,
-        quantity,
-      })
-    );
-
-    onCheckout(items);
-  };
-
-  const hasSelection = selectedTickets.size > 0;
-
-  return (
-    <div className="space-y-6">
-      {/* Lista de Ingressos */}
-      <div className="space-y-4">
-        {availableTickets.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground">
-                Nenhum ingresso disponível no momento.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          availableTickets.map((ticket) => {
-            const totalQuantity = ticket.quantity ?? 0;
-            const sold = ticket.quantity_sold ?? 0;
-            const available = Math.max(totalQuantity - sold, 0);
-            const selected = selectedTickets.get(ticket.id) || 0;
-            const serviceFeeType = ticket.service_fee_type ?? 'passed_to_buyer';
-            const isAbsorbed = serviceFeeType === 'absorbed';
-
-            return (
-              <Card key={ticket.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{ticket.title}</CardTitle>
-                      {ticket.description && (
-                        <CardDescription className="mt-1">
-                          {ticket.description}
-                        </CardDescription>
-                      )}
-                    </div>
-                    <div className="text-right ml-4">
-                      {!isAbsorbed ? (
-                        <div>
-                          <div className="text-sm text-muted-foreground line-through">
-                            R$ {toNumber(ticket.price).toFixed(2)}
-                          </div>
-                          <div className="text-2xl font-bold">
-                            R$ {toNumber(ticket.buyer_price || ticket.price).toFixed(2)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            (com taxa)
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-2xl font-bold">
-                          R$ {toNumber(ticket.price).toFixed(2)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        {available} disponíveis
-                      </Badge>
-                      {ticket.min_quantity_per_purchase && (
-                        <span className="text-xs text-muted-foreground">
-                          Mín: {ticket.min_quantity_per_purchase}
-                        </span>
-                      )}
-                      {ticket.max_quantity_per_purchase && (
-                        <span className="text-xs text-muted-foreground">
-                          Máx: {ticket.max_quantity_per_purchase}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleQuantityChange(ticket.id, -1)}
-                        disabled={selected === 0 || isLoading}
-                      >
-                        <Minus className="size-4" />
-                      </Button>
-                      <Input
-                        type="number"
-                        min="0"
-                        max={available}
-                        value={selected || ''}
-                        onChange={(e) => handleDirectInput(ticket.id, e.target.value)}
-                        className="w-16 text-center"
-                        disabled={isLoading}
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleQuantityChange(ticket.id, 1)}
-                        disabled={selected >= available || isLoading}
-                      >
-                        <Plus className="size-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
-
-      {/* Resumo do Pedido */}
-      {hasSelection && (
-        <Card className="sticky bottom-4 shadow-lg">
-          <CardHeader>
-            <CardTitle>Resumo da Compra</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Ingressos ({totals.totalTickets})</span>
-                <span className="font-medium">R$ {totals.subtotal.toFixed(2)}</span>
-              </div>
-              {totals.serviceFee > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Taxa de conveniência</span>
-                  <span className="font-medium">R$ {totals.serviceFee.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-xl font-bold pt-3 border-t-2">
-                <span>TOTAL</span>
-                <span className="text-purple-600">R$ {totals.total.toFixed(2)}</span>
-              </div>
-            </div>
-
-            <Button
-              className="w-full bg-purple-600 hover:bg-purple-700"
-              size="lg"
-              onClick={handleCheckout}
-              disabled={!hasSelection || isLoading}
-            >
-              {isLoading ? 'Processando...' : 'Finalizar Compra'}
-            </Button>
-
-            <div className="space-y-1">
-              <p className="text-xs text-center text-muted-foreground">
-                🔒 Pagamento seguro via AbacatePay
-              </p>
-              {totals.serviceFee > 0 && (
-                <p className="text-xs text-center text-muted-foreground">
-                  A taxa de conveniência cobre custos de processamento
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+						<p className="text-center text-xs text-muted-foreground">Pagamento seguro via AbacatePay</p>
+					</CardContent>
+				</Card>
+			) : null}
+		</div>
+	);
 }

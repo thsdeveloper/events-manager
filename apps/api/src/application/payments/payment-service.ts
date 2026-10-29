@@ -1,10 +1,13 @@
 import crypto from 'node:crypto';
-import type { Database, Json } from '@events-manager/contracts';
+import type { CheckoutAttendee, Database, Json } from '@events-manager/contracts';
+import { couponProblem } from '../coupons/coupon-problem.js';
 import {
 	assertRegistrationOpen,
+	applyDiscountToPlan,
 	assertTicketAvailable,
 	buildCheckoutPlan,
 	CheckoutRuleViolation,
+	splitAmount,
 	type CheckoutPlanItem,
 	type CheckoutTicketSnapshot,
 } from './checkout-plan.js';
@@ -12,12 +15,15 @@ import { calculateOrganizerNet } from './fees.js';
 import { CheckoutNotFound, type GetCheckoutStatus } from './get-checkout-status.js';
 import { buildInstallmentAmounts, InstallmentPlanUnavailable } from './installment-plan.js';
 import { type ManageTicketInventory, TicketInventoryUnavailable } from './manage-ticket-inventory.js';
-import type { PaymentGateway } from './payment-gateway.js';
+import type { CheckoutMethod, PaymentGateway } from './payment-gateway.js';
 import { type EnforceRateLimit, RateLimitExceeded } from '../security/rate-limit.js';
+import type { TicketDelivery } from '../tickets/deliver-tickets.js';
 import { ApiError } from '../../shared/errors.js';
 
 export type RegistrationRow = Database['public']['Tables']['event_registrations']['Row'];
 export type TicketRow = Database['public']['Tables']['event_tickets']['Row'];
+export type RegistrationTicketRow = Database['public']['Tables']['registration_tickets']['Row'];
+type RegistrationTicketInsert = Database['public']['Tables']['registration_tickets']['Insert'];
 type EventRow = Database['public']['Tables']['events']['Row'];
 type ConfigurationRow = Database['public']['Tables']['event_configurations']['Row'];
 type InstallmentRow = Database['public']['Tables']['payment_installments']['Row'];
@@ -27,10 +33,31 @@ export type InstallmentWithRegistration = InstallmentRow & {
 	registration_id: RegistrationRow & { event_id: EventRow };
 };
 
+/**
+ * Porta do cupom. O `PaymentService` nunca lê um desconto do corpo da
+ * requisição: ele manda o código e o subtotal que ele mesmo calculou, e recebe
+ * de volta quanto abater.
+ */
+export interface CouponApplier {
+	validate(input: { code: string; eventId: string; subtotal: number }): Promise<{
+		code: string;
+		discount: number;
+		subtotal: number;
+		total: number;
+	}>;
+}
+
 export interface CheckoutInput {
+	couponCode?: string;
 	eventId: string;
+	/** Método escolhido na tela; Pix quando omitido. */
+	paymentMethod?: CheckoutMethod;
 	participantInfo: { document?: string; email: string; name: string; phone?: string };
-	tickets: Array<{ quantity: number; ticketId: string }>;
+	/**
+	 * `attendees` traz um participante por unidade, na ordem; `null` deixa a
+	 * unidade pendente. Sem a lista, a primeira unidade fica com quem compra.
+	 */
+	tickets: Array<{ attendees?: Array<CheckoutAttendee | null>; quantity: number; ticketId: string }>;
 }
 
 export interface InstallmentCheckoutInput {
@@ -52,7 +79,12 @@ export interface WebhookMovement {
 
 export interface PaymentWebhookPayload extends Record<string, unknown> {
 	data?: {
-		checkout?: WebhookMovement & { methods?: string[]; platformFee?: number | string };
+		checkout?: WebhookMovement & {
+			amount?: number | string;
+			methods?: string[];
+			paidAmount?: number | string | null;
+			platformFee?: number | string;
+		};
 		externalId?: string;
 		id?: string;
 		payerInformation?: { method?: string };
@@ -75,8 +107,13 @@ export interface PaymentRepository {
 	cancelPendingInstallments(registrationId: string): Promise<void>;
 	createInstallments(rows: Database['public']['Tables']['payment_installments']['Insert'][]): Promise<InstallmentRow[]>;
 	createRegistration(input: Database['public']['Tables']['event_registrations']['Insert']): Promise<RegistrationRow>;
+	/** Uma linha por unidade comprada; ver `registration_tickets`. */
+	createRegistrationTickets(rows: RegistrationTicketInsert[]): Promise<RegistrationTicketRow[]>;
 	findCheckoutEvent(id: string): Promise<CheckoutEvent | null>;
 	findCheckoutRegistrations(checkoutId: string, externalId?: string): Promise<RegistrationRow[]>;
+	/** Entrega de webhook já processada (id `log_…` do provedor). */
+	hasProcessedWebhook(eventId: string): Promise<boolean>;
+	markWebhookProcessed(eventId: string, event: string): Promise<void>;
 	findInstallmentForUser(id: string, userId: string): Promise<InstallmentWithRegistration | null>;
 	findInstallmentForWebhook(providerId: string, externalId?: string): Promise<InstallmentWithRegistration | null>;
 	findTicketForInstallments(id: string): Promise<(TicketRow & { event_id: EventRow }) | null>;
@@ -94,7 +131,9 @@ export interface PaymentRepository {
 		id: string,
 		input: { providerId: string; qrCode: string | null; copyPaste: string },
 	): Promise<void>;
-	setTicketProviderProduct(id: string, productId: string): Promise<void>;
+	/** Produto do provedor já criado para este ingresso neste preço unitário, se houver. */
+	findProviderProduct(ticketId: string, unitPriceCents: number): Promise<string | null>;
+	saveProviderProduct(ticketId: string, unitPriceCents: number, productId: string): Promise<void>;
 	updatePayoutForWebhook(
 		providerId: string,
 		externalId: string | undefined,
@@ -112,6 +151,15 @@ export class PaymentService {
 		private readonly rateLimit: EnforceRateLimit,
 		private readonly webUrl: string,
 		private readonly now: () => Date = () => new Date(),
+		private readonly coupons?: CouponApplier,
+		/**
+		 * Métodos oferecidos no checkout hospedado. O provedor recusa o checkout
+		 * inteiro quando um deles não está habilitado na loja, então a lista é
+		 * configuração explícita e PIX é o único padrão seguro.
+		 */
+		private readonly checkoutMethods: CheckoutMethod[] = ['PIX'],
+		/** Manda os ingressos por e-mail quando o pagamento entra. */
+		private readonly ticketDelivery?: TicketDelivery,
 	) {}
 
 	async getStatus(userId: string, lookup: { checkoutGroupId: string } | { registrationId: string }) {
@@ -130,6 +178,12 @@ export class PaymentService {
 			this.repository.getConfiguration(),
 		]);
 		if (!event) throw new ApiError('Evento não encontrado.', 404, 'EVENT_NOT_FOUND');
+		// Pedir um método que a loja não aceita derruba o checkout inteiro no
+		// provedor; a recusa acontece aqui, antes de criar qualquer inscrição.
+		const paymentMethod = input.paymentMethod ?? 'PIX';
+		if (this.gateway.provider !== 'mock' && !this.checkoutMethods.includes(paymentMethod)) {
+			throw new ApiError('Esta forma de pagamento não está disponível.', 422, 'PAYMENT_METHOD_UNAVAILABLE');
+		}
 		const checkoutGroupId = crypto.randomUUID();
 		const registrations: RegistrationRow[] = [];
 		const checkoutItems: Array<{ productId: string; quantity: number }> = [];
@@ -145,12 +199,29 @@ export class PaymentService {
 			if (error instanceof CheckoutRuleViolation) throw checkoutRuleError(error);
 			throw error;
 		}
+		let appliedCoupon: { code: string; discount: number } | null = null;
+		if (input.couponCode && this.coupons) {
+			const subtotal = money(plan.reduce((total, item) => total + item.totalAmount, 0));
+			// Um cupom recusado interrompe a compra: cobrar o preço cheio de quem
+			// digitou um código seria uma surpresa desagradável na fatura.
+			let applied: Awaited<ReturnType<CouponApplier['validate']>>;
+			try {
+				applied = await this.coupons.validate({ code: input.couponCode, eventId: input.eventId, subtotal });
+			} catch (error) {
+				throw couponProblem(error) ?? error;
+			}
+			plan = applyDiscountToPlan(plan, applied.discount);
+			appliedCoupon = { code: applied.code, discount: applied.discount };
+		}
+
 		const allFree = plan.every((item) => item.totalAmount === 0);
 		let externalCheckoutCreated = false;
 		let inventoryReserved = false;
 		try {
 			for (const item of plan) {
 				const ticket = event.tickets.find((candidate) => candidate.id === item.ticket.id)!;
+				const selection = input.tickets.find((candidate) => candidate.ticketId === item.ticket.id);
+				const codes = Array.from({ length: item.quantity }, ticketCode);
 				const registration = await this.repository.createRegistration({
 					event_id: event.id,
 					ticket_type_id: ticket.id,
@@ -159,7 +230,7 @@ export class PaymentService {
 					participant_email: input.participantInfo.email,
 					participant_phone: input.participantInfo.phone ?? null,
 					participant_document: input.participantInfo.document ?? null,
-					ticket_code: ticketCode(),
+					ticket_code: codes[0],
 					status: item.totalAmount === 0 || this.gateway.provider === 'mock' ? 'confirmed' : 'pending',
 					payment_status: item.totalAmount === 0 ? 'free' : this.gateway.provider === 'mock' ? 'paid' : 'pending',
 					payment_amount: item.baseAmount,
@@ -169,23 +240,50 @@ export class PaymentService {
 					platform_fee: item.platformFee,
 					provider_fee: 0,
 					total_amount: item.totalAmount,
-					payment_method: item.totalAmount === 0 ? 'free' : this.gateway.provider === 'mock' ? 'pix' : null,
+					payment_method:
+						item.totalAmount === 0
+							? 'free'
+							: this.gateway.provider === 'mock'
+								? paymentMethod === 'CARD'
+									? 'card'
+									: 'pix'
+								: null,
 					payment_provider: this.gateway.provider,
-					additional_info: { checkout_group_id: checkoutGroupId },
+					additional_info: {
+						checkout_group_id: checkoutGroupId,
+						...(appliedCoupon
+							? { coupon_code: appliedCoupon.code, coupon_discount: (item as { discount?: number }).discount ?? 0 }
+							: {}),
+					},
 				});
 				registrations.push(registration);
+				await this.issueTickets({
+					attendees: selection?.attendees,
+					buyer: input.participantInfo,
+					codes,
+					discount: (item as { discount?: number }).discount ?? 0,
+					registration,
+					serviceFee: item.serviceFee,
+					ticket,
+					totalAmount: item.totalAmount,
+				});
 				if (item.totalAmount > 0 && this.gateway.provider !== 'mock') {
-					let productId = ticket.provider_product_id;
+					// O checkout hospedado cobra o preço do produto no provedor, então o
+					// produto reutilizado tem de ser o deste preço unitário: preço
+					// editado ou cupom aplicado não podem herdar um produto antigo.
+					const unitPriceCents = Math.round(money(item.totalAmount / item.quantity) * 100);
+					let productId = await this.repository.findProviderProduct(ticket.id, unitPriceCents);
 					if (!productId) {
-						const unitPrice = money(item.totalAmount / item.quantity);
 						const product = await this.gateway.createProduct({
-							externalId: `${ticket.id}:${Math.round(unitPrice * 100)}`,
+							// O provedor rejeita externalId repetido; o sufixo evita colisão
+							// com um produto criado antes de o cache ser perdido.
+							externalId: `${ticket.id}:${unitPriceCents}:${crypto.randomUUID().slice(0, 8)}`,
 							name: ticket.title,
 							description: `${event.title} · ingresso`,
-							priceInCents: Math.round(unitPrice * 100),
+							priceInCents: unitPriceCents,
 						});
 						productId = product.id;
-						await this.repository.setTicketProviderProduct(ticket.id, productId);
+						await this.repository.saveProviderProduct(ticket.id, unitPriceCents, productId);
 					}
 					checkoutItems.push({ productId, quantity: item.quantity });
 				}
@@ -217,6 +315,7 @@ export class PaymentService {
 						metadata: { local: true },
 					});
 				}
+				await this.deliverTickets(ids);
 				return {
 					checkoutId: this.gateway.provider === 'mock' ? `mock_${checkoutGroupId}` : 'free',
 					url: `${this.webUrl}/eventos/${event.slug}/checkout/success?registration_id=${registrations[0].id}&mock=${this.gateway.provider === 'mock'}`,
@@ -224,10 +323,23 @@ export class PaymentService {
 				};
 			}
 
+			const customerId = await this.registerCustomer(input.participantInfo, logger);
+			// No cartão, a própria página do provedor parcela: o limite vem do que os
+			// ingressos do carrinho permitem.
+			const cardMaxInstallments =
+				paymentMethod === 'CARD'
+					? plan.reduce((max, item) => {
+							const ticket = event.tickets.find((candidate) => candidate.id === item.ticket.id);
+							const allowed = ticket?.allow_installments ? Number(ticket.max_installments ?? 1) : 1;
+							return Math.max(max, allowed);
+						}, 1)
+					: 1;
 			const checkout = await this.gateway.createCheckout({
 				externalId: checkoutGroupId,
 				items: checkoutItems,
-				methods: ['PIX', 'CARD'],
+				methods: [paymentMethod],
+				...(customerId ? { customerId } : {}),
+				...(cardMaxInstallments > 1 ? { cardMaxInstallments } : {}),
 				returnUrl: `${this.webUrl}/eventos/${event.slug}/checkout/cancel?checkout_id=${checkoutGroupId}`,
 				completionUrl: `${this.webUrl}/eventos/${event.slug}/checkout/success?checkout_id=${checkoutGroupId}`,
 				metadata: { event_id: event.id, user_id: userId, registration_ids: ids.join(',') },
@@ -275,6 +387,7 @@ export class PaymentService {
 				throw new ApiError('O valor não atende aos requisitos para parcelamento.', 422, 'INSTALLMENTS_UNAVAILABLE');
 			throw error;
 		}
+		const codes = Array.from({ length: input.quantity }, ticketCode);
 		const registration = await this.repository.createRegistration({
 			event_id: ticket.event_id.id,
 			ticket_type_id: ticket.id,
@@ -283,7 +396,7 @@ export class PaymentService {
 			participant_email: input.participant_email,
 			participant_phone: input.participant_phone ?? null,
 			participant_document: input.participant_document ?? null,
-			ticket_code: ticketCode(),
+			ticket_code: codes[0],
 			status: 'partial_payment',
 			payment_status: 'pending',
 			quantity: input.quantity,
@@ -298,6 +411,20 @@ export class PaymentService {
 		});
 		let inventoryReserved = false;
 		try {
+			await this.issueTickets({
+				buyer: {
+					name: input.participant_name,
+					email: input.participant_email,
+					document: input.participant_document,
+					phone: input.participant_phone,
+				},
+				codes,
+				discount: 0,
+				registration,
+				serviceFee: money(total - Number(ticket.price) * input.quantity),
+				ticket,
+				totalAmount: total,
+			});
 			const installments = await this.repository.createInstallments(
 				Array.from({ length: input.installments }, (_, index) => ({
 					registration_id: registration.id,
@@ -377,7 +504,89 @@ export class PaymentService {
 		};
 	}
 
+	/**
+	 * Uma linha por unidade comprada. Sem lista de participantes, a primeira
+	 * unidade fica com quem compra e as demais ficam pendentes; com a lista,
+	 * cada posição vai para a sua unidade e `null` deixa a unidade pendente. O
+	 * dinheiro é rateado ao centavo para que reembolso e relatório funcionem
+	 * por ingresso.
+	 */
+	private async issueTickets(input: {
+		attendees?: Array<CheckoutAttendee | null>;
+		buyer: CheckoutInput['participantInfo'];
+		codes: string[];
+		discount: number;
+		registration: RegistrationRow;
+		serviceFee: number;
+		ticket: TicketRow;
+		totalAmount: number;
+	}) {
+		const quantity = input.codes.length;
+		const fees = splitAmount(input.serviceFee, quantity);
+		const discounts = splitAmount(input.discount, quantity);
+		const totals = splitAmount(input.totalAmount, quantity);
+		const buyerEmail = input.buyer.email.trim().toLowerCase();
+		const namedAt = this.now().toISOString();
+		const rows: RegistrationTicketInsert[] = input.codes.map((code, index) => {
+			const attendee =
+				input.attendees === undefined ? (index === 0 ? input.buyer : null) : (input.attendees[index] ?? null);
+
+			return {
+				registration_id: input.registration.id,
+				event_id: input.registration.event_id,
+				ticket_type_id: input.ticket.id,
+				sequence: index + 1,
+				ticket_code: code,
+				attendee_name: attendee?.name ?? null,
+				attendee_email: attendee?.email ?? null,
+				attendee_phone: attendee?.phone || null,
+				attendee_document: attendee?.document || null,
+				is_buyer: attendee ? attendee.email.trim().toLowerCase() === buyerEmail : false,
+				named_at: attendee ? namedAt : null,
+				unit_price: Number(input.ticket.price),
+				service_fee: fees[index],
+				discount: discounts[index],
+				total_amount: totals[index],
+			};
+		});
+
+		return this.repository.createRegistrationTickets(rows);
+	}
+
+	/**
+	 * O provedor deduplica clientes por CPF e usa o id para abrir a página
+	 * hospedada já preenchida. É conveniência: se o cadastro falhar, a venda
+	 * segue e a página pede os dados à pessoa.
+	 */
+	private async registerCustomer(info: CheckoutInput['participantInfo'], logger: PaymentOperationLogger) {
+		try {
+			const customer = await this.gateway.createCustomer({
+				name: info.name,
+				email: info.email,
+				...(info.document ? { taxId: info.document } : {}),
+				...(info.phone ? { cellphone: info.phone } : {}),
+			});
+			return customer.id;
+		} catch (error) {
+			logger.error({ err: error }, 'Failed to register customer at payment provider');
+			return undefined;
+		}
+	}
+
+	/**
+	 * O provedor reenvia o evento com backoff enquanto não recebe 2xx. O id da
+	 * entrega é consultado antes e gravado só depois de tudo processado: uma falha
+	 * no meio deixa a reentrega terminar o trabalho.
+	 */
 	async processWebhook(payload: PaymentWebhookPayload) {
+		const eventId = typeof payload.id === 'string' && payload.id.length > 0 ? payload.id : null;
+		if (eventId && (await this.repository.hasProcessedWebhook(eventId))) return { received: true, duplicate: true };
+		const result = await this.handleWebhook(payload);
+		if (eventId) await this.repository.markWebhookProcessed(eventId, payload.event);
+		return result;
+	}
+
+	private async handleWebhook(payload: PaymentWebhookPayload) {
 		const eventType = payload.event;
 		const transparent = payload.data?.transparent;
 		if (transparent?.id && eventType.startsWith('transparent.'))
@@ -402,8 +611,18 @@ export class PaymentService {
 		const total = registrations.reduce((sum, row) => sum + Number(row.total_amount ?? 0), 0);
 		const providerFeeTotal = Number(checkout.platformFee ?? 0) / 100;
 		const method = readPaymentMethod(payload.data?.payerInformation?.method ?? checkout.methods?.[0]);
+		if (eventType === 'checkout.completed' && !this.coversTotal(checkout.paidAmount, registrations, total)) {
+			// O provedor cobra o preço dos produtos cadastrados lá; se o valor pago
+			// não cobre o que a inscrição registrou, ninguém confirma nada: fica a
+			// transação pendente para revisão humana, com o payload inteiro.
+			for (const registration of registrations)
+				await this.recordCheckoutTransaction(payload, checkout, registration, total, providerFeeTotal, 'pending');
+			return { received: true, ignored: 'amount_mismatch' };
+		}
 		for (const registration of registrations)
 			await this.processCheckoutRegistration(payload, checkout, registration, total, providerFeeTotal, method);
+		if (eventType === 'checkout.completed')
+			await this.deliverTickets(registrations.map((registration) => registration.id));
 		return { received: true };
 	}
 
@@ -488,6 +707,7 @@ export class PaymentService {
 				payment_method: paymentMethod,
 				provider_transaction_id: checkout.id,
 				provider_fee: providerFee,
+				receipt_url: checkout.receiptUrl ?? null,
 			});
 		} else if (eventType === 'checkout.refunded' || eventType === 'checkout.lost') {
 			await this.releaseInventory([registration.id]);
@@ -500,12 +720,38 @@ export class PaymentService {
 				status: 'cancelled',
 			});
 		}
-		await this.repository.recordTransaction({
+		await this.recordCheckoutTransaction(
+			payload,
+			checkout,
+			registration,
+			total,
+			providerFeeTotal,
+			eventType === 'checkout.completed'
+				? 'succeeded'
+				: eventType === 'checkout.refunded'
+					? 'refunded'
+					: eventType === 'checkout.disputed'
+						? 'pending'
+						: 'failed',
+		);
+	}
+
+	private recordCheckoutTransaction(
+		payload: PaymentWebhookPayload,
+		checkout: WebhookMovement,
+		registration: RegistrationRow,
+		total: number,
+		providerFeeTotal: number,
+		status: 'succeeded' | 'refunded' | 'pending' | 'failed',
+	) {
+		const providerFee = money(providerFeeTotal * (total > 0 ? Number(registration.total_amount ?? 0) / total : 0));
+		const platformFee = Number(registration.platform_fee ?? 0);
+		return this.repository.recordTransaction({
 			registration_id: registration.id,
 			provider: 'abacatepay',
-			provider_event_id: `${eventType}:${checkout.id}:${registration.id}`,
+			provider_event_id: `${payload.event}:${checkout.id}:${registration.id}`,
 			provider_object_id: checkout.id,
-			event_type: eventType,
+			event_type: payload.event,
 			amount: Number(registration.total_amount),
 			provider_fee: providerFee,
 			platform_fee: platformFee,
@@ -515,16 +761,23 @@ export class PaymentService {
 				platformFee,
 				providerFee,
 			),
-			status:
-				eventType === 'checkout.completed'
-					? 'succeeded'
-					: eventType === 'checkout.refunded'
-						? 'refunded'
-						: eventType === 'checkout.disputed'
-							? 'pending'
-							: 'failed',
+			status,
 			metadata: payload as Json,
 		});
+	}
+
+	/**
+	 * Payloads antigos não trazem `paidAmount`; sem ele, confia-se no evento. Com
+	 * ele, o valor precisa cobrir o total das inscrições, tolerando um centavo por
+	 * unidade: o preço unitário enviado ao provedor é arredondado, e três unidades
+	 * de R$ 33,33 somam R$ 99,99 para uma inscrição de R$ 100,00.
+	 */
+	private coversTotal(paidAmount: number | string | null | undefined, registrations: RegistrationRow[], total: number) {
+		if (paidAmount === undefined || paidAmount === null) return true;
+		const paidCents = Number(paidAmount);
+		if (!Number.isFinite(paidCents)) return true;
+		const units = registrations.reduce((sum, row) => sum + Math.max(1, Number(row.quantity ?? 1)), 0);
+		return paidCents >= Math.round(total * 100) - units;
 	}
 
 	private createCharge(installment: InstallmentRow, registration: RegistrationRow, eventTitle: string) {
@@ -559,6 +812,20 @@ export class PaymentService {
 
 	private releaseInventory(ids: string[]) {
 		return this.inventory.release(ids);
+	}
+
+	/**
+	 * E-mail é consequência, não condição: o pagamento já está confirmado e o
+	 * provedor precisa do 2xx. A entrega registra as próprias falhas e pode ser
+	 * repetida pela reconciliação ou pelo reenvio manual.
+	 */
+	private async deliverTickets(registrationIds: string[]) {
+		if (!this.ticketDelivery) return;
+		try {
+			await this.ticketDelivery.execute(registrationIds);
+		} catch {
+			// Já registrado pela entrega; nada a fazer aqui.
+		}
 	}
 
 	private async limit(scope: string, userId: string, limit: number) {

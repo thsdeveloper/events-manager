@@ -1,6 +1,5 @@
 export interface UserRepository {
 	listPendingInstallmentRegistrations(userId: string): Promise<Record<string, unknown>[]>;
-	listTickets(userId: string): Promise<unknown[]>;
 	listTransactions(userId: string): Promise<unknown[]>;
 }
 
@@ -15,10 +14,6 @@ export class UserService {
 		private readonly repository: UserRepository,
 		private readonly now: () => number = Date.now,
 	) {}
-
-	listTickets(userId: string) {
-		return this.repository.listTickets(userId);
-	}
 
 	listTransactions(userId: string) {
 		return this.repository.listTransactions(userId);

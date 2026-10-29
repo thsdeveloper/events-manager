@@ -143,30 +143,32 @@ const config: Config = {
     							textDecoration: 'underline'
     						}
     					},
+    					// Tamanhos em `em`: escalam com o contêiner, então `prose-sm`,
+    					// `prose-base` e `prose-lg` continuam mandando no texto rico.
     					h1: {
     						fontFamily: 'Poppins',
-    						fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+    						fontSize: '2.25em',
     						fontWeight: '400',
     						lineHeight: '1.2',
     						marginTop: '1rem'
     					},
     					h2: {
     						fontFamily: 'Poppins',
-    						fontSize: 'clamp(2rem, 4vw, 2.5rem)',
+    						fontSize: '1.6em',
     						fontWeight: '400',
     						lineHeight: '1.3',
     						marginTop: '1rem'
     					},
     					h3: {
     						fontFamily: 'Poppins',
-    						fontSize: 'clamp(1.5rem, 3vw, 2rem)',
+    						fontSize: '1.3em',
     						fontWeight: '400',
     						lineHeight: '1.4',
     						marginTop: '0'
     					},
+    					// Sem tamanho fixo: o parágrafo herda do contêiner `prose`.
     					p: {
     						fontFamily: 'Inter',
-    						fontSize: 'clamp(1rem, 2vw, 1.25rem)',
     						fontWeight: '400',
     						lineHeight: '1.75'
     					},

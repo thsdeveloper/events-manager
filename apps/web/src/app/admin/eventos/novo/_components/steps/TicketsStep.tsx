@@ -1,7 +1,21 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { Sparkles, Ticket, DollarSign, Users, Info, ChevronDown, FileEdit, Globe, Ban, Archive, Rocket, Check, BadgeDollarSign } from 'lucide-react';
+import Link from 'next/link';
+import {
+	Sparkles,
+	Ticket,
+	DollarSign,
+	Users,
+	Info,
+	ChevronDown,
+	FileEdit,
+	Globe,
+	Ban,
+	Archive,
+	Check,
+	BadgeDollarSign,
+} from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -24,7 +38,7 @@ const MAIN_STATUS_OPTIONS = [
 	{
 		value: 'published' as const,
 		label: 'Publicado',
-		description: 'Seu evento ficará visível para todos imediatamente',
+		description: 'A página do evento ficará disponível após salvar',
 		icon: Globe,
 	},
 ] as const;
@@ -44,15 +58,21 @@ const ADVANCED_STATUS_OPTIONS = [
 	},
 ] as const;
 
-export function TicketsStep() {
+interface TicketsStepProps {
+	/**
+	 * Na edição, os tipos de ingresso já existem no banco e têm vendas: são
+	 * geridos na página do evento, não aqui. Recebe o link para lá.
+	 */
+	manageTicketsHref?: string;
+}
+
+export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 	const form = useFormContext<EventWizardFormValues>();
 	const isFree = form.watch('is_free');
 	const maxAttendees = form.watch('max_attendees');
 	const status = form.watch('status');
 	const [hasUnlimitedCapacity, setHasUnlimitedCapacity] = useState(!maxAttendees);
-	const [showAdvancedStatus, setShowAdvancedStatus] = useState(
-		status === 'cancelled' || status === 'archived',
-	);
+	const [showAdvancedStatus, setShowAdvancedStatus] = useState(status === 'cancelled' || status === 'archived');
 
 	// Tickets live in the wizard form because the event has no id yet — they are
 	// sent together with it and persisted by the API in one atomic call.
@@ -76,14 +96,16 @@ export function TicketsStep() {
 	}, []);
 
 	const handleRemoveTicket = useCallback(
-		(ticket: TicketDraft) => writeTickets(tickets.filter(item => ticketKey(item) !== ticketKey(ticket))),
+		(ticket: TicketDraft) => writeTickets(tickets.filter((item) => ticketKey(item) !== ticketKey(ticket))),
 		[tickets, writeTickets],
 	);
 
 	const handleTicketSaved = useCallback(
 		(saved: TicketDraft) => {
-			const exists = tickets.some(item => ticketKey(item) === ticketKey(saved));
-			writeTickets(exists ? tickets.map(item => (ticketKey(item) === ticketKey(saved) ? saved : item)) : [...tickets, saved]);
+			const exists = tickets.some((item) => ticketKey(item) === ticketKey(saved));
+			writeTickets(
+				exists ? tickets.map((item) => (ticketKey(item) === ticketKey(saved) ? saved : item)) : [...tickets, saved],
+			);
 			setEditingTicket(null);
 		},
 		[tickets, writeTickets],
@@ -97,6 +119,7 @@ export function TicketsStep() {
 	};
 
 	const isPublished = status === 'published';
+	const isUnlisted = form.watch('visibility') === 'unlisted';
 
 	return (
 		<div className="space-y-8">
@@ -134,8 +157,8 @@ export function TicketsStep() {
 										</TooltipTrigger>
 										<TooltipContent side="left" className="max-w-[280px]">
 											<p className="text-xs">
-												Você poderá alterar isso antes de publicar. Se escolher evento pago, configurará preços e lotes na
-												próxima etapa.
+												Você poderá alterar isso antes de publicar. Se escolher evento pago, configurará preços e lotes
+												na próxima etapa.
 											</p>
 										</TooltipContent>
 									</Tooltip>
@@ -178,7 +201,8 @@ export function TicketsStep() {
 										)}
 									</div>
 									<p className="text-xs text-muted-foreground">
-										Os participantes garantem presença sem custo. Você pode solicitar inscrição prévia para controlar vagas.
+										Os participantes garantem presença sem custo. Você pode solicitar inscrição prévia para controlar
+										vagas.
 									</p>
 								</button>
 
@@ -240,18 +264,36 @@ export function TicketsStep() {
 								</div>
 							</div>
 
-							<TicketList
-								tickets={tickets}
-								isFree={isFree}
-								onAdd={handleAddTicket}
-								onEdit={handleEditTicket}
-								onRemove={handleRemoveTicket}
-								emptyHint={
-									isFree
-										? 'Sem ingressos, a inscrição gratuita é liberada direto na página do evento.'
-										: undefined
-								}
-							/>
+							{manageTicketsHref ? (
+								<div className="rounded-lg border border-dashed bg-muted/40 p-4 text-sm">
+									<p className="text-foreground">
+										{tickets.length === 0
+											? 'Este evento ainda não tem tipos de ingresso.'
+											: `${tickets.length} ${tickets.length === 1 ? 'tipo de ingresso cadastrado' : 'tipos de ingresso cadastrados'}: ${tickets.map((ticket) => ticket.title).join(', ')}.`}
+									</p>
+									<p className="mt-1 text-muted-foreground">
+										Preços, lotes e estoque são gerenciados na página do evento, para não mexer em ingressos já vendidos
+										por engano.
+									</p>
+									<Link
+										href={manageTicketsHref}
+										className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+									>
+										Gerenciar ingressos
+									</Link>
+								</div>
+							) : (
+								<TicketList
+									tickets={tickets}
+									isFree={isFree}
+									onAdd={handleAddTicket}
+									onEdit={handleEditTicket}
+									onRemove={handleRemoveTicket}
+									emptyHint={
+										isFree ? 'Sem ingressos, a inscrição gratuita é liberada direto na página do evento.' : undefined
+									}
+								/>
+							)}
 
 							{form.formState.errors.tickets?.message && (
 								<p className="mt-2 text-sm font-medium text-destructive">{form.formState.errors.tickets.message}</p>
@@ -265,18 +307,14 @@ export function TicketsStep() {
 									<Users className="size-4 text-primary" />
 									Capacidade do evento
 								</h3>
-								<p className="mt-1 text-xs text-muted-foreground">
-									Defina quantas pessoas podem participar do evento.
-								</p>
+								<p className="mt-1 text-xs text-muted-foreground">Defina quantas pessoas podem participar do evento.</p>
 							</div>
 
 							<div className="space-y-4">
 								<div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
 									<div>
 										<p className="text-sm font-medium">Vagas ilimitadas</p>
-										<p className="text-xs text-muted-foreground">
-											Qualquer número de pessoas poderá participar
-										</p>
+										<p className="text-xs text-muted-foreground">Qualquer número de pessoas poderá participar</p>
 									</div>
 									<Switch checked={hasUnlimitedCapacity} onCheckedChange={handleCapacityToggle} />
 								</div>
@@ -313,6 +351,43 @@ export function TicketsStep() {
 								)}
 							</div>
 						</div>
+
+						<FormField
+							control={form.control}
+							name="visibility"
+							render={({ field }) => (
+								<FormItem className="rounded-lg border p-4 space-y-3">
+									<FormLabel>Visibilidade do evento</FormLabel>
+									<FormControl>
+										<RadioGroup
+											value={field.value ?? 'public'}
+											onValueChange={field.onChange}
+											className="grid gap-3 sm:grid-cols-2"
+										>
+											<label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+												<RadioGroupItem value="public" />
+												<span>
+													<span className="block font-medium">Público</span>
+													<span className="text-xs text-muted-foreground">
+														Aparece no catálogo e nas buscas após a publicação.
+													</span>
+												</span>
+											</label>
+											<label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+												<RadioGroupItem value="unlisted" />
+												<span>
+													<span className="block font-medium">Não listado</span>
+													<span className="text-xs text-muted-foreground">
+														Acesso pelo link. Quem receber o link poderá abrir a página e se inscrever.
+													</span>
+												</span>
+											</label>
+										</RadioGroup>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
 
 						{/* Bloco 3: Status inicial */}
 						<div className="rounded-lg border border-dashed p-4">
@@ -369,9 +444,7 @@ export function TicketsStep() {
 												onClick={() => setShowAdvancedStatus(!showAdvancedStatus)}
 												className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted/50"
 											>
-												<span className="text-xs font-medium text-muted-foreground">
-													Outras opções (avançado)
-												</span>
+												<span className="text-xs font-medium text-muted-foreground">Outras opções (avançado)</span>
 												<ChevronDown
 													className={cn(
 														'size-3 text-muted-foreground transition-transform',
@@ -421,15 +494,13 @@ export function TicketsStep() {
 						</div>
 
 						{/* Bloco 4: Opções avançadas (apenas se publicado) */}
-						{isPublished && (
+						{isPublished && !isUnlisted && (
 							<div className="animate-in fade-in-50 slide-in-from-top-2 rounded-lg border bg-primary/5 p-4 duration-200">
 								<div className="mb-4 flex items-start gap-2">
 									<Sparkles className="mt-0.5 size-4 text-primary" />
 									<div>
 										<h3 className="text-sm font-semibold">Opções de destaque</h3>
-										<p className="text-xs text-muted-foreground">
-											Aumente a visibilidade do seu evento publicado.
-										</p>
+										<p className="text-xs text-muted-foreground">Aumente a visibilidade do seu evento publicado.</p>
 									</div>
 								</div>
 
@@ -449,31 +520,6 @@ export function TicketsStep() {
 															Seu evento aparece em destaque para mais pessoas
 														</p>
 														<p className="mt-1 text-[10px] font-medium text-primary">+ visibilidade</p>
-													</div>
-													<FormControl>
-														<Switch checked={field.value} onCheckedChange={field.onChange} />
-													</FormControl>
-												</div>
-												<FormMessage />
-											</FormItem>
-										)}
-									/>
-
-									<FormField
-										control={form.control}
-										name="publish_after_create"
-										render={({ field }) => (
-											<FormItem className="flex flex-col justify-between gap-3 rounded-lg border bg-card p-3">
-												<div className="flex items-start justify-between gap-3">
-													<div className="flex-1">
-														<FormLabel className="flex items-center gap-1.5 text-sm font-medium">
-															<Rocket className="size-3.5" />
-															Publicar automaticamente
-														</FormLabel>
-														<p className="mt-1 text-xs text-muted-foreground">
-															O evento será exibido assim que estiver completo
-														</p>
-														<p className="mt-1 text-[10px] font-medium text-emerald-600">Requer status Publicado</p>
 													</div>
 													<FormControl>
 														<Switch checked={field.value} onCheckedChange={field.onChange} />

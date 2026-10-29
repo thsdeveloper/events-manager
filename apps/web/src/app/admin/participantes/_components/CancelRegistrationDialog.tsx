@@ -14,6 +14,7 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
@@ -42,6 +43,9 @@ export function CancelRegistrationDialog({
 	onSuccess,
 }: CancelRegistrationDialogProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	// O estorno é uma decisão do organizador, não um efeito do cancelamento: um
+	// no-show cancelado não devolve dinheiro; um evento cancelado, sim.
+	const [refund, setRefund] = useState(false);
 
 	const {
 		register,
@@ -54,6 +58,7 @@ export function CancelRegistrationDialog({
 
 	const handleClose = () => {
 		reset();
+		setRefund(false);
 		onOpenChange(false);
 	};
 
@@ -77,7 +82,7 @@ export function CancelRegistrationDialog({
 					'Content-Type': 'application/json',
 				},
 				credentials: 'include',
-				body: JSON.stringify(data),
+				body: JSON.stringify({ ...data, refund: canRefund && refund }),
 			});
 
 			const result = await response.json();
@@ -87,8 +92,11 @@ export function CancelRegistrationDialog({
 			}
 
 			toast({
-				title: 'Inscrição cancelada',
-				description: 'A inscrição foi cancelada com sucesso',
+				title: 'Pedido cancelado',
+				description:
+					canRefund && refund
+						? 'O pedido foi cancelado e o estorno foi solicitado ao provedor de pagamento'
+						: 'O pedido foi cancelado com sucesso',
 				variant: 'success',
 			});
 
@@ -107,7 +115,12 @@ export function CancelRegistrationDialog({
 
 	if (!participant) return null;
 
-	const canCancel = participant.status === 'confirmed' || participant.status === 'pending';
+	// O cancelamento é do pedido inteiro: todos os ingressos daquela compra,
+	// deste tipo, caem juntos. O diálogo recebe um ingresso, mas fala do pedido.
+	const { registration } = participant;
+	const canCancel = registration.status === 'confirmed' || registration.status === 'pending';
+	const canRefund = registration.payment_status === 'paid';
+	const orderTotal = Number(registration.total_amount ?? 0);
 
 	return (
 		<Dialog open={open} onOpenChange={handleClose}>
@@ -118,7 +131,7 @@ export function CancelRegistrationDialog({
 							<AlertTriangle className="size-5 text-red-600 dark:text-red-400" />
 						</div>
 						<div>
-							<DialogTitle>Cancelar Inscrição</DialogTitle>
+							<DialogTitle>Cancelar Pedido</DialogTitle>
 							<DialogDescription>Esta ação não pode ser desfeita</DialogDescription>
 						</div>
 					</div>
@@ -127,43 +140,41 @@ export function CancelRegistrationDialog({
 				{!canCancel ? (
 					<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
 						<p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
-							Esta inscrição não pode ser cancelada
+							Este pedido não pode ser cancelado
 						</p>
 						<p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-							Apenas inscrições com status "Confirmada" ou "Pendente" podem ser canceladas.
+							Apenas pedidos com status "Confirmado" ou "Pendente" podem ser cancelados.
 						</p>
 					</div>
 				) : (
 					<>
 						<div className="space-y-4">
 							<div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-								<h4 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Detalhes da Inscrição</h4>
+								<h4 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Detalhes do Pedido</h4>
 								<dl className="space-y-2 text-sm">
 									<div className="flex justify-between">
-										<dt className="text-gray-600 dark:text-gray-400">Participante:</dt>
-										<dd className="font-medium text-gray-900 dark:text-white">{participant.participant_name}</dd>
+										<dt className="text-gray-600 dark:text-gray-400">Comprado por:</dt>
+										<dd className="font-medium text-gray-900 dark:text-white">{registration.participant_name}</dd>
 									</div>
 									<div className="flex justify-between">
 										<dt className="text-gray-600 dark:text-gray-400">Email:</dt>
-										<dd className="font-medium text-gray-900 dark:text-white">{participant.participant_email}</dd>
+										<dd className="font-medium text-gray-900 dark:text-white">{registration.participant_email}</dd>
 									</div>
 									<div className="flex justify-between">
 										<dt className="text-gray-600 dark:text-gray-400">Evento:</dt>
-										<dd className="font-medium text-gray-900 dark:text-white">{participant.event_id.title}</dd>
+										<dd className="font-medium text-gray-900 dark:text-white">{participant.event.title}</dd>
 									</div>
 									<div className="flex justify-between">
-										<dt className="text-gray-600 dark:text-gray-400">Ingresso:</dt>
+										<dt className="text-gray-600 dark:text-gray-400">Ingressos:</dt>
 										<dd className="font-medium text-gray-900 dark:text-white">
-											{participant.ticket_type_id?.title || 'N/A'}
+											{registration.quantity} × {participant.ticket_type?.title || 'Ingresso'}
 										</dd>
 									</div>
-									{participant.payment_amount && (
+									{orderTotal > 0 && (
 										<div className="flex justify-between border-t border-gray-200 pt-2 dark:border-gray-700">
-											<dt className="text-gray-600 dark:text-gray-400">Valor:</dt>
+											<dt className="text-gray-600 dark:text-gray-400">Valor do pedido:</dt>
 											<dd className="font-medium text-gray-900 dark:text-white">
-												{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-													participant.payment_amount / 100,
-												)}
+												{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(orderTotal)}
 											</dd>
 										</div>
 									)}
@@ -173,8 +184,17 @@ export function CancelRegistrationDialog({
 							<div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
 								<p className="text-sm font-medium text-red-900 dark:text-red-200">Atenção:</p>
 								<ul className="mt-2 list-inside list-disc space-y-1 text-sm text-red-700 dark:text-red-300">
-									<li>O cancelamento não gera reembolso automático</li>
-									<li>O participante não poderá fazer check-in</li>
+									<li>
+										{registration.quantity === 1
+											? 'O ingresso deste pedido será cancelado'
+											: `Todos os ${registration.quantity} ingressos deste pedido serão cancelados, não só este`}
+									</li>
+									<li>
+										{canRefund
+											? 'O reembolso só acontece se você marcar a opção abaixo'
+											: 'O cancelamento não gera reembolso automático'}
+									</li>
+									<li>Nenhum participante do pedido poderá fazer check-in</li>
 									<li>Esta ação é irreversível</li>
 								</ul>
 							</div>
@@ -196,6 +216,24 @@ export function CancelRegistrationDialog({
 										Este motivo ficará registrado no histórico da inscrição
 									</p>
 								</div>
+								{canRefund && (
+									<div className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+										<Checkbox
+											id="refund"
+											checked={refund}
+											onCheckedChange={(checked) => setRefund(checked === true)}
+											disabled={isSubmitting}
+										/>
+										<div className="space-y-1">
+											<Label htmlFor="refund" className="text-sm font-medium">
+												Reembolsar o pagamento pelo provedor
+											</Label>
+											<p className="text-xs text-gray-500 dark:text-gray-400">
+												Estorno integral do valor pago. A confirmação chega pelo provedor e pode levar alguns minutos.
+											</p>
+										</div>
+									</div>
+								)}
 							</form>
 						</div>
 

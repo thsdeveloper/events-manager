@@ -2,7 +2,7 @@ import {
 	getProfileChecklist as getSharedProfileChecklist,
 	getProfileCompletion as getSharedProfileCompletion,
 	type AppUser,
-	type EventRegistration,
+	type NominalTicket,
 	type ProfileChecklistItem as SharedProfileChecklistItem,
 } from '@events-manager/contracts';
 import type { ProfileSection } from '@/lib/profile-sections';
@@ -41,7 +41,8 @@ export interface ProfilePreferences {
 }
 
 export interface TicketSummary {
-	registrations: EventRegistration[];
+	/** Um item por ingresso nominal: o que a pessoa comprou e o que compraram para ela. */
+	tickets: NominalTicket[];
 	isLoading: boolean;
 	hasError: boolean;
 }

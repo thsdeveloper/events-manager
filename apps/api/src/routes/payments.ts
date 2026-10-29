@@ -1,7 +1,12 @@
-import { brDocumentSchema, brPhoneSchema } from '@events-manager/contracts';
-import { httpUrlSchema } from '@events-manager/contracts';
+import {
+	brDocumentSchema,
+	brPhoneSchema,
+	checkoutTicketSelectionSchema,
+	httpUrlSchema,
+} from '@events-manager/contracts';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { CouponService } from '../application/coupons/coupon-service.js';
 import { GetCheckoutStatus } from '../application/payments/get-checkout-status.js';
 import { ManageTicketInventory } from '../application/payments/manage-ticket-inventory.js';
 import type { PaymentGateway } from '../application/payments/payment-gateway.js';
@@ -9,22 +14,28 @@ import { PaymentService, type PaymentWebhookPayload } from '../application/payme
 import { ReconcileCheckouts } from '../application/payments/reconcile-checkouts.js';
 import { ReconcileInstallmentCharges } from '../application/payments/reconcile-installment-charges.js';
 import { EnforceRateLimit } from '../application/security/rate-limit.js';
+import { DeliverTickets } from '../application/tickets/deliver-tickets.js';
 import type { ApiEnv } from '../config/env.js';
+import { createEmailService } from '../infrastructure/email/create-email-service.js';
 import { verifyAbacatePayWebhook } from '../infrastructure/payments/abacatepay-gateway.js';
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
 import { SupabaseCheckoutReconciliationRepository } from '../infrastructure/supabase/checkout-reconciliation-repository.js';
+import { SupabaseCouponRepository } from '../infrastructure/supabase/coupon-repository.js';
 import { SupabaseCheckoutStatusRepository } from '../infrastructure/supabase/checkout-status-repository.js';
 import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
 import { SupabaseInstallmentReconciliationRepository } from '../infrastructure/supabase/installment-reconciliation-repository.js';
 import { SupabasePaymentRepository } from '../infrastructure/supabase/payment-repository.js';
 import { SupabaseRateLimitRepository } from '../infrastructure/supabase/rate-limit-repository.js';
+import { SupabaseTicketDeliveryRepository } from '../infrastructure/supabase/ticket-delivery-repository.js';
 import { SupabaseTicketInventoryRepository } from '../infrastructure/supabase/ticket-inventory-repository.js';
 import { ApiError } from '../shared/errors.js';
 import { requireUser } from './auth-context.js';
 
 const checkoutSchema = z.object({
+	couponCode: z.string().trim().min(1).max(32).optional(),
 	eventId: z.string().uuid(),
-	tickets: z.array(z.object({ ticketId: z.string().uuid(), quantity: z.number().int().positive() })).min(1),
+	paymentMethod: z.enum(['PIX', 'CARD']).optional(),
+	tickets: z.array(checkoutTicketSelectionSchema).min(1),
 	participantInfo: z.object({
 		name: z.string().trim().min(1),
 		email: z.string().email(),
@@ -69,6 +80,8 @@ const webhookPayloadSchema = z
 					.object({
 						id: z.string(),
 						externalId: z.string().optional(),
+						amount: providerAmountSchema.optional(),
+						paidAmount: providerAmountSchema.nullable().optional(),
 						platformFee: providerAmountSchema.optional(),
 						methods: z.array(z.string()).optional(),
 					})
@@ -98,18 +111,29 @@ export async function paymentRoutes(
 	const { env, clients, payments } = options;
 	const auth = createSupabaseAuthService(clients);
 	const inventory = new ManageTicketInventory(new SupabaseTicketInventoryRepository(clients.admin));
+	const checkoutReconciliation = new SupabaseCheckoutReconciliationRepository(clients.admin);
+	const ticketDelivery = new DeliverTickets(
+		new SupabaseTicketDeliveryRepository(clients.admin),
+		createEmailService(env, clients).email,
+		app.log,
+	);
 	const payment = new PaymentService(
-		new SupabasePaymentRepository(clients),
+		new SupabasePaymentRepository(clients, payments.provider),
 		payments,
 		inventory,
-		new GetCheckoutStatus(new SupabaseCheckoutStatusRepository(clients.admin)),
+		new GetCheckoutStatus(
+			new SupabaseCheckoutStatusRepository(clients.admin),
+			{ gateway: payments, reconciliation: checkoutReconciliation },
+			ticketDelivery,
+		),
 		new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin)),
 		env.WEB_URL,
+		undefined,
+		new CouponService(new SupabaseCouponRepository(clients)),
+		env.ABACATEPAY_METHODS,
+		ticketDelivery,
 	);
-	const reconcileCheckouts = new ReconcileCheckouts(
-		payments,
-		new SupabaseCheckoutReconciliationRepository(clients.admin),
-	);
+	const reconcileCheckouts = new ReconcileCheckouts(payments, checkoutReconciliation, ticketDelivery);
 	const reconcileInstallments = new ReconcileInstallmentCharges(
 		payments,
 		new SupabaseInstallmentReconciliationRepository(clients.admin),
@@ -148,6 +172,12 @@ export async function paymentRoutes(
 			if (reconciliationTimer) clearInterval(reconciliationTimer);
 		});
 	}
+
+	// Público: o front decide se oferece cartão antes de a pessoa preencher tudo.
+	// O modo simulado representa uma loja com tudo habilitado.
+	app.get('/api/payments/methods', async () => ({
+		methods: payments.provider === 'mock' ? ['PIX', 'CARD'] : env.ABACATEPAY_METHODS,
+	}));
 
 	app.get('/api/payments/checkout/status', async (request) => {
 		const context = await requireUser(request, auth);

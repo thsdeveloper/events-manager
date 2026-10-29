@@ -4,10 +4,13 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { AdminService } from '../application/admin/admin-service.js';
 import { GetOrganizerDashboard } from '../application/dashboard/get-organizer-dashboard.js';
+import type { PaymentGateway } from '../application/payments/payment-gateway.js';
+import { RefundRegistration } from '../application/payments/refund-registration.js';
 import { SupabaseAdminRepository } from '../infrastructure/supabase/admin-repository.js';
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
 import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
 import { SupabaseOrganizerDashboardRepository } from '../infrastructure/supabase/organizer-dashboard-repository.js';
+import { SupabasePaymentRepository } from '../infrastructure/supabase/payment-repository.js';
 import { requireOrganizer } from './auth-context.js';
 
 const ticketQuery = z.object({
@@ -36,10 +39,16 @@ const participantInput = z.object({
 	notes: z.string().nullable().optional(),
 });
 
-export async function adminRoutes(app: FastifyInstance, options: { clients: SupabaseClients }) {
-	const { clients } = options;
+export async function adminRoutes(
+	app: FastifyInstance,
+	options: { clients: SupabaseClients; payments?: PaymentGateway },
+) {
+	const { clients, payments } = options;
 	const auth = createSupabaseAuthService(clients);
-	const admin = new AdminService(new SupabaseAdminRepository(clients));
+	const admin = new AdminService(
+		new SupabaseAdminRepository(clients),
+		payments ? new RefundRegistration(payments, new SupabasePaymentRepository(clients, payments.provider)) : undefined,
+	);
 	const dashboard = new GetOrganizerDashboard(new SupabaseOrganizerDashboardRepository(clients.admin));
 
 	app.get('/api/admin/dashboard', async (request) => {
@@ -131,7 +140,9 @@ export async function adminRoutes(app: FastifyInstance, options: { clients: Supa
 	app.post('/api/admin/participantes/:id/cancel', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		const { reason } = z.object({ reason: z.string().trim().min(3) }).parse(request.body);
-		return admin.cancelParticipant(context.organizer.id, id, reason);
+		const { reason, refund } = z
+			.object({ reason: z.string().trim().min(3), refund: z.boolean().optional() })
+			.parse(request.body);
+		return admin.cancelParticipant(context.organizer.id, id, reason, { refund });
 	});
 }

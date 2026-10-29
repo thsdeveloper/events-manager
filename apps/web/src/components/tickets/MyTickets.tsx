@@ -92,7 +92,7 @@ export default function MyTickets({ registrations }: MyTicketsProps) {
 						month: 'long',
 						day: 'numeric',
 						hour: '2-digit',
-						minute: '2-digit'
+						minute: '2-digit',
 					})}</div>
 					${selectedTicket.event_id.location ? `<div class="info"><strong>Local:</strong> ${selectedTicket.event_id.location}</div>` : ''}
 					<div class="info"><strong>Tipo:</strong> ${selectedTicket.ticket_type_id.title}</div>
@@ -176,7 +176,9 @@ export default function MyTickets({ registrations }: MyTicketsProps) {
 								)}
 								<div className="flex items-center gap-2">
 									<Ticket className="size-4" />
-									<span>{registration.ticket_type_id.title} (x{registration.quantity})</span>
+									<span>
+										{registration.ticket_type_id.title} (x{registration.quantity})
+									</span>
 								</div>
 							</div>
 							<div className="mb-3 rounded bg-muted p-2 text-center font-mono text-sm font-semibold">
@@ -212,7 +214,7 @@ export default function MyTickets({ registrations }: MyTicketsProps) {
 									month: 'long',
 									day: 'numeric',
 									hour: '2-digit',
-									minute: '2-digit'
+									minute: '2-digit',
 								})}
 							</p>
 						</div>
@@ -240,9 +242,7 @@ export default function MyTickets({ registrations }: MyTicketsProps) {
 							<div className="mb-4 text-6xl font-mono font-bold tracking-wider text-purple-900">
 								{selectedTicket.ticket_code}
 							</div>
-							<p className="text-sm text-purple-700">
-								Apresente este código na entrada do evento
-							</p>
+							<p className="text-sm text-purple-700">Apresente este código na entrada do evento</p>
 						</div>
 
 						<div className="flex gap-3">
@@ -253,10 +253,7 @@ export default function MyTickets({ registrations }: MyTicketsProps) {
 								<Download className="size-4" />
 								Imprimir Ingresso
 							</button>
-							<button
-								onClick={() => setSelectedTicket(null)}
-								className="rounded-lg border px-4 py-3 hover:bg-muted"
-							>
+							<button onClick={() => setSelectedTicket(null)} className="rounded-lg border px-4 py-3 hover:bg-muted">
 								Fechar
 							</button>
 						</div>

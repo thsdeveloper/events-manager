@@ -22,6 +22,10 @@ const organizerInput = z.object({
 	logo: z.string().uuid().optional(),
 });
 
+function stringOrNull(value: unknown) {
+	return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
 const payoutInput = z.object({
 	payout_pix_key: z.string().trim().min(3),
 	payout_pix_key_type: z.enum(['CPF', 'CNPJ', 'PHONE', 'EMAIL', 'RANDOM']),
@@ -45,8 +49,15 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 		const context = await requireUser(request, auth);
 		const profile = await auth.requireCompleteProfile(context.user);
 		const input = organizerSignupSchema.parse(request.body);
+		// Pessoa física: nome, e-mail, telefone e CPF vêm do perfil validado, nunca do corpo do pedido.
 		const organizer = await service.create(context.user.id, input, initialStatus, {
-			profileDocument: typeof profile.document === 'string' ? profile.document : null,
+			profile: {
+				document: stringOrNull(profile.document),
+				email: stringOrNull(profile.email) ?? context.user.email ?? null,
+				first_name: stringOrNull(profile.first_name),
+				last_name: stringOrNull(profile.last_name),
+				phone: stringOrNull(profile.phone),
+			},
 		});
 		return reply.code(201).send({ success: true, organizer });
 	});

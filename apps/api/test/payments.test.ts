@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+	applyDiscountToPlan,
 	buildCheckoutPlan,
 	CheckoutRuleViolation,
 	type CheckoutTicketSnapshot,
@@ -204,6 +205,8 @@ describe('checkout status', () => {
 		paymentStatus: 'pending',
 		totalAmount: 100,
 		ticketCode: 'EVT-123',
+		receiptUrl: null,
+		tickets: [],
 		event: {
 			id: '00000000-0000-4000-8000-000000000030',
 			title: 'Evento',
@@ -245,6 +248,34 @@ describe('AbacatePay webhook security', () => {
 });
 
 describe('AbacatePay requests', () => {
+	it('surfaces the provider refusal so the operator learns why the checkout failed', async () => {
+		// "CARD is not available for this store" só aparece na resposta se o
+		// erro pedir para expor o detalhe; mascarado, vira um 502 sem pista.
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: false,
+				json: async () => ({ data: null, error: 'CARD is not available for this store', success: false }),
+			}),
+		);
+
+		await expect(
+			new AbacatePayGateway('test-key').createCheckout({
+				externalId: 'group-1',
+				items: [{ productId: 'prod_1', quantity: 1 }],
+				methods: ['PIX', 'CARD'],
+				returnUrl: 'https://events.local/cancel',
+				completionUrl: 'https://events.local/success',
+				metadata: {},
+			}),
+		).rejects.toMatchObject({
+			statusCode: 502,
+			code: 'PAYMENT_PROVIDER_ERROR',
+			message: 'CARD is not available for this store',
+			exposeDetail: true,
+		});
+	});
+
 	it('sends the required PIX method for transparent charges', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
@@ -267,6 +298,43 @@ describe('AbacatePay requests', () => {
 
 		const request = fetchMock.mock.calls[0][1] as RequestInit;
 		expect(JSON.parse(String(request.body))).toMatchObject({ method: 'PIX' });
+	});
+
+	it('omits the customer from a PIX charge when the buyer gave no tax id', async () => {
+		// O provedor exige name e taxId juntos quando `customer` é enviado (422 sem
+		// taxId). Comprador sem CPF paga do mesmo jeito: a cobrança vai sem cliente.
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({
+				data: { brCode: 'pix-code', brCodeBase64: null, expiresAt: null, id: 'pix-1' },
+				error: null,
+				success: true,
+			}),
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const gateway = new AbacatePayGateway('test-key');
+		const charge = {
+			externalId: 'installment-1',
+			amountInCents: 1000,
+			description: 'Parcela',
+			expiresInSeconds: 3600,
+			metadata: {},
+		};
+
+		await gateway.createPixCharge({ ...charge, customer: { email: 'pessoa@example.com', name: 'Pessoa' } });
+		await gateway.createPixCharge({
+			...charge,
+			customer: { email: 'pessoa@example.com', name: 'Pessoa', taxId: '390.533.447-05', cellphone: '(11) 99999-9999' },
+		});
+
+		const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+		expect(bodies[0].data).not.toHaveProperty('customer');
+		expect(bodies[1].data.customer).toEqual({
+			email: 'pessoa@example.com',
+			name: 'Pessoa',
+			taxId: '390.533.447-05',
+			cellphone: '(11) 99999-9999',
+		});
 	});
 
 	it('reads and validates a provider checkout status', async () => {
@@ -309,6 +377,117 @@ describe('AbacatePay requests', () => {
 		expect(charge).toMatchObject({ id: 'pix_1', status: 'EXPIRED' });
 		expect(fetchMock.mock.calls[0][0]).toContain('/transparents/check?id=pix_1');
 	});
+
+	it('registers a customer and links the hosted checkout to it', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ data: { id: 'cust_1', email: 'ana@events.local' }, error: null, success: true }),
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ data: { id: 'bill_1', url: 'https://pay', amount: 1000 }, error: null, success: true }),
+			});
+		vi.stubGlobal('fetch', fetchMock);
+		const gateway = new AbacatePayGateway('test-key');
+
+		const customer = await gateway.createCustomer({ name: 'Ana', email: 'ana@events.local', taxId: '390.533.447-05' });
+		await gateway.createCheckout({
+			externalId: 'group-1',
+			items: [{ productId: 'prod_1', quantity: 1 }],
+			methods: ['PIX'],
+			returnUrl: 'https://events.local/cancel',
+			completionUrl: 'https://events.local/success',
+			metadata: {},
+			customerId: customer.id,
+		});
+
+		expect(customer).toEqual({ id: 'cust_1' });
+		expect(fetchMock.mock.calls[0][0]).toContain('/customers/create');
+		expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+			name: 'Ana',
+			email: 'ana@events.local',
+			taxId: '390.533.447-05',
+		});
+		expect(JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body))).toMatchObject({
+			customerId: 'cust_1',
+		});
+	});
+
+	it('tells the card page how many installments it may offer', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({ data: { id: 'bill_1', url: 'https://pay', amount: 1000 }, error: null, success: true }),
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const base = {
+			externalId: 'group-1',
+			items: [{ productId: 'prod_1', quantity: 1 }],
+			returnUrl: 'https://events.local/cancel',
+			completionUrl: 'https://events.local/success',
+			metadata: {},
+		};
+		const gateway = new AbacatePayGateway('test-key');
+
+		await gateway.createCheckout({ ...base, methods: ['CARD'], cardMaxInstallments: 6 });
+		await gateway.createCheckout({ ...base, methods: ['PIX'] });
+
+		const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+		expect(bodies[0]).toMatchObject({ methods: ['CARD'], card: { maxInstallments: 6 } });
+		expect(bodies[1]).not.toHaveProperty('card');
+	});
+
+	it('requests a full refund of a hosted checkout and returns the provider refund id', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({ data: { refundPublicId: 'tran_refund_1' }, error: null, success: true }),
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const refund = await new AbacatePayGateway('test-key').refundCheckout('bill_1', 'Cancelado pelo organizador');
+
+		expect(refund).toEqual({ refundId: 'tran_refund_1' });
+		expect(fetchMock.mock.calls[0][0]).toContain('/checkouts/refund');
+		expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+			id: 'bill_1',
+			reason: 'Cancelado pelo organizador',
+		});
+	});
+
+	it('requests a full refund of a transparent PIX charge', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({ data: { refundPublicId: 'tran_refund_2' }, error: null, success: true }),
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const refund = await new AbacatePayGateway('test-key').refundPixCharge('pix_char_1');
+
+		expect(refund).toEqual({ refundId: 'tran_refund_2' });
+		expect(fetchMock.mock.calls[0][0]).toContain('/transparents/refund');
+		expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({ id: 'pix_char_1' });
+	});
+
+	it.each([
+		{ provider: 'REFUNDED', local: 'CANCELLED' },
+		{ provider: 'FAILED', local: 'CANCELLED' },
+		{ provider: 'UNDER_DISPUTE', local: 'PENDING' },
+		{ provider: 'APPROVED', local: 'PENDING' },
+		{ provider: 'REDEEMED', local: 'PENDING' },
+	])('maps the documented PIX status $provider to $local instead of failing the batch', async ({ provider, local }) => {
+		// A doc lista mais estados do que os quatro que a reconciliação trata; um
+		// estado inesperado não pode travar o lote inteiro numa única cobrança.
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: async () => ({ data: { id: 'pix_1', status: provider, expiresAt: null }, error: null, success: true }),
+			}),
+		);
+
+		await expect(new AbacatePayGateway('test-key').getPixCharge('pix_1')).resolves.toMatchObject({ status: local });
+	});
 });
 
 describe('checkout reconciliation', () => {
@@ -329,6 +508,7 @@ describe('checkout reconciliation', () => {
 			status: id.endsWith('paid') ? 'PAID' : id.endsWith('expired') ? 'EXPIRED' : 'PENDING',
 			amountInCents: 0,
 			paidAmountInCents: null,
+			receiptUrl: null,
 		}));
 
 		const result = await new ReconcileCheckouts(gateway, repository).execute({
@@ -337,7 +517,7 @@ describe('checkout reconciliation', () => {
 		});
 
 		expect(result).toMatchObject({ claimed: 3, paid: 1, cancelled: 1, pending: 1, failed: [] });
-		expect(repository.settlePaid).toHaveBeenCalledWith(candidates[0]);
+		expect(repository.settlePaid).toHaveBeenCalledWith(candidates[0], null);
 		expect(repository.cancel).toHaveBeenCalledWith(candidates[1], 'EXPIRED');
 	});
 
@@ -358,6 +538,7 @@ describe('checkout reconciliation', () => {
 			status: 'PAID',
 			amountInCents: 0,
 			paidAmountInCents: 0,
+			receiptUrl: null,
 		});
 
 		const result = await new ReconcileCheckouts(gateway, repository).execute({
@@ -412,5 +593,65 @@ describe('mock payment gateway', () => {
 		});
 		expect(checkout.id).toBe('mock_checkout_order-1');
 		expect(checkout.url).toBe('http://localhost/success');
+	});
+});
+
+/**
+ * O cupom abate um valor do carrinho inteiro, mas o checkout cria uma inscrição
+ * por ingresso. O abatimento precisa ser repartido entre os itens sem que a
+ * soma perca — ou ganhe — um centavo no arredondamento.
+ */
+describe('applyDiscountToPlan', () => {
+	const planOf = (...totals: number[]) =>
+		totals.map((totalAmount, index) => ({
+			baseAmount: totalAmount,
+			platformFee: 0,
+			quantity: 1,
+			serviceFee: 0,
+			ticket: { id: `t-${index}` },
+			totalAmount,
+		})) as unknown as Parameters<typeof applyDiscountToPlan>[0];
+
+	const sum = (plan: ReturnType<typeof applyDiscountToPlan>) =>
+		Math.round(plan.reduce((total, item) => total + item.totalAmount, 0) * 100) / 100;
+
+	it('leaves the plan untouched when there is no coupon', () => {
+		expect(applyDiscountToPlan(planOf(100, 50), 0)).toMatchObject([{ totalAmount: 100 }, { totalAmount: 50 }]);
+	});
+
+	it('splits the discount in proportion to each item', () => {
+		const discounted = applyDiscountToPlan(planOf(100, 50), 30);
+
+		expect(discounted.map((item) => item.totalAmount)).toEqual([80, 40]);
+	});
+
+	it('keeps the sum exact when the split does not divide evenly', () => {
+		const discounted = applyDiscountToPlan(planOf(33.33, 33.33, 33.34), 10);
+
+		expect(sum(discounted)).toBe(90);
+	});
+
+	it('zeroes the plan when the discount covers the whole cart', () => {
+		const discounted = applyDiscountToPlan(planOf(100, 50), 150);
+
+		expect(sum(discounted)).toBe(0);
+		expect(discounted.every((item) => item.totalAmount === 0)).toBe(true);
+	});
+
+	it('never turns an item into a negative charge', () => {
+		const discounted = applyDiscountToPlan(planOf(10, 90), 95);
+
+		expect(discounted.every((item) => item.totalAmount >= 0)).toBe(true);
+		expect(sum(discounted)).toBe(5);
+	});
+
+	it('records on each item how much of the discount it absorbed', () => {
+		const discounted = applyDiscountToPlan(planOf(100, 50), 30);
+
+		expect(discounted.map((item) => item.discount)).toEqual([20, 10]);
+	});
+
+	it('does nothing to a cart that is already free', () => {
+		expect(applyDiscountToPlan(planOf(0, 0), 25)).toMatchObject([{ totalAmount: 0 }, { totalAmount: 0 }]);
 	});
 });

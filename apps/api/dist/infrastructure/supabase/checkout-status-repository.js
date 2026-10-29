@@ -4,6 +4,8 @@ const checkoutStatusSelection = `
   payment_status,
   total_amount,
   ticket_code,
+  receipt_url,
+  provider_checkout_id,
   event_id:events!inner(id,title,slug)
 `;
 export class SupabaseCheckoutStatusRepository {
@@ -27,6 +29,8 @@ export class SupabaseCheckoutStatusRepository {
                 paymentStatus: registration.payment_status,
                 totalAmount: registration.total_amount === null ? null : Number(registration.total_amount),
                 ticketCode: registration.ticket_code,
+                receiptUrl: registration.receipt_url ?? null,
+                providerCheckoutId: registration.provider_checkout_id ?? null,
                 event,
             };
         });

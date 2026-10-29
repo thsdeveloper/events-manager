@@ -138,6 +138,8 @@ export const updateProfileSchema = z.object({
 	current_password: z.string().min(1).optional(),
 });
 
+export const eventVisibilitySchema = z.enum(['public', 'unlisted']);
+
 export const eventStatusSchema = z.enum(['published', 'draft', 'cancelled', 'archived']);
 
 function hasHttpProtocol(value: string) {
@@ -150,7 +152,10 @@ function hasHttpProtocol(value: string) {
 	}
 }
 
-export const httpUrlSchema = z.string().url('Informe uma URL válida.').refine(hasHttpProtocol, 'Use uma URL HTTP ou HTTPS.');
+export const httpUrlSchema = z
+	.string()
+	.url('Informe uma URL válida.')
+	.refine(hasHttpProtocol, 'Use uma URL HTTP ou HTTPS.');
 
 const isoDateTimeSchema = z
 	.string()
@@ -183,6 +188,7 @@ const eventFieldsSchema = z.object({
 	featured: z.boolean().optional(),
 	tags: z.array(z.string()).optional(),
 	status: eventStatusSchema.optional(),
+	visibility: eventVisibilitySchema.optional(),
 });
 
 function addDateOrderIssue(
@@ -231,7 +237,7 @@ const ticketFieldsSchema = z.object({
 	title: z.string().trim().min(1),
 	description: z.string().nullable().optional(),
 	quantity: z.number().int().positive(),
-	price: z.number().nonnegative(),
+	price: z.number().finite().nonnegative(),
 	service_fee_type: z.enum(['absorbed', 'passed_to_buyer']),
 	status: z.enum(['active', 'sold_out', 'inactive']).optional(),
 	visibility: z.enum(['public', 'invited_only', 'manual']).optional(),
@@ -241,10 +247,10 @@ const ticketFieldsSchema = z.object({
 	max_quantity_per_purchase: z.number().int().positive().optional(),
 	allow_installments: z.boolean().optional(),
 	max_installments: z.number().int().min(2).max(12).nullable().optional(),
-	min_amount_for_installments: z.number().nonnegative().nullable().optional(),
+	min_amount_for_installments: z.number().finite().nonnegative().nullable().optional(),
 });
 
-export const ticketInputSchema = ticketFieldsSchema.superRefine((ticket, context) => {
+function addTicketIssues(ticket: Omit<z.infer<typeof ticketFieldsSchema>, 'event_id'>, context: z.RefinementCtx) {
 	addDateOrderIssue(context, ticket.sale_start_date, ticket.sale_end_date, 'sale_end_date');
 	if (
 		ticket.min_quantity_per_purchase !== undefined &&
@@ -264,12 +270,14 @@ export const ticketInputSchema = ticketFieldsSchema.superRefine((ticket, context
 			path: ['max_installments'],
 		});
 	}
-});
+}
+
+export const ticketInputSchema = ticketFieldsSchema.superRefine(addTicketIssues);
 
 export const ticketPatchSchema = ticketFieldsSchema.partial();
 
 /** A ticket described before its event exists, so it carries no event_id yet. */
-export const eventTicketDraftSchema = ticketFieldsSchema.omit({ event_id: true });
+export const eventTicketDraftSchema = ticketFieldsSchema.omit({ event_id: true }).superRefine(addTicketIssues);
 
 /**
  * Creation payload. Tickets travel with the event because a paid event without
@@ -334,11 +342,27 @@ export const checkoutStatusSchema = z.object({
 			paymentStatus: z.string().nullable(),
 			totalAmount: z.number().nonnegative().nullable(),
 			ticketCode: z.string().nullable(),
+			/** Comprovante emitido pelo provedor depois do pagamento. */
+			receiptUrl: z.string().url().nullable().default(null),
 			event: z.object({
 				id: z.string().uuid(),
 				title: z.string(),
 				slug: z.string(),
 			}),
+			/** Unidades nominais do pedido, na ordem de compra. */
+			tickets: z
+				.array(
+					z.object({
+						id: z.string().uuid(),
+						sequence: z.number().int().positive(),
+						ticketCode: z.string(),
+						attendeeName: z.string().nullable(),
+						attendeeEmail: z.string().nullable(),
+						isBuyer: z.boolean(),
+						ticketType: z.string().nullable(),
+					}),
+				)
+				.default([]),
 		}),
 	),
 });
@@ -396,10 +420,20 @@ export const cnpjSchema = z
 	.transform(onlyDigits)
 	.refine((value) => value.length === 14 && isValidCNPJ(value), 'Informe um CNPJ válido.');
 
+/**
+ * Pessoa física vende com os dados já validados no perfil (nome, e-mail,
+ * telefone e CPF): o cliente não os envia e, se enviar, são descartados. A
+ * API lê do perfil. Empresa informa os dados da organização e o CNPJ.
+ */
+const organizerSignupOptional = {
+	description: organizerSignupBase.description,
+	website: organizerSignupBase.website,
+	accept_terms: organizerSignupBase.accept_terms,
+};
+
 export const organizerSignupSchema = z.discriminatedUnion('account_type', [
-	z.object({ account_type: z.literal('individual'), ...organizerSignupBase }),
+	z.object({ account_type: z.literal('individual'), ...organizerSignupOptional }),
 	z.object({ account_type: z.literal('company'), ...organizerSignupBase, document: cnpjSchema }),
 ]);
 export type OrganizerSignupInput = z.infer<typeof organizerSignupSchema>;
 export type OrganizerAccountType = OrganizerSignupInput['account_type'];
-

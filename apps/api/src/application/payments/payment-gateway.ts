@@ -20,6 +20,21 @@ export interface CreateCheckoutInput {
 	returnUrl: string;
 	completionUrl: string;
 	metadata: Record<string, string>;
+	/** Cliente já cadastrado no provedor; a página hospedada chega preenchida. */
+	customerId?: string;
+	/** Parcelas que a página hospedada pode oferecer no cartão (2 a 12). */
+	cardMaxInstallments?: number;
+}
+
+export interface CreateCustomerInput {
+	name: string;
+	email: string;
+	taxId?: string;
+	cellphone?: string;
+}
+
+export interface PaymentCustomer {
+	id: string;
 }
 
 export interface PaymentCheckout {
@@ -36,6 +51,8 @@ export interface PaymentCheckoutState {
 	status: PaymentCheckoutStatus;
 	amountInCents: number;
 	paidAmountInCents: number | null;
+	/** Comprovante do provedor; preenchido depois do pagamento. */
+	receiptUrl: string | null;
 }
 
 export interface CreatePixInput {
@@ -66,11 +83,21 @@ export interface PixChargeState {
 	expiresAt: string | null;
 }
 
+export interface PaymentRefund {
+	refundId: string;
+}
+
 export interface PaymentGateway {
 	readonly provider: PaymentProvider;
 	createProduct(input: CreateProductInput): Promise<PaymentProduct>;
+	/** Cria ou devolve o cliente existente (o provedor deduplica por CPF/CNPJ). */
+	createCustomer(input: CreateCustomerInput): Promise<PaymentCustomer>;
 	createCheckout(input: CreateCheckoutInput): Promise<PaymentCheckout>;
 	getCheckout(checkoutId: string): Promise<PaymentCheckoutState>;
+	/** Reembolso integral de um checkout hospedado pago; o provedor não parcela estornos. */
+	refundCheckout(checkoutId: string, reason?: string): Promise<PaymentRefund>;
+	/** Reembolso integral de uma cobrança PIX transparente paga (uma parcela). */
+	refundPixCharge(chargeId: string, reason?: string): Promise<PaymentRefund>;
 	createPixCharge(input: {
 		externalId: string;
 		amountInCents: number;

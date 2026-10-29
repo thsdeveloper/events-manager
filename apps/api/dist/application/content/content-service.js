@@ -1,4 +1,4 @@
-import { sanitizeHtml } from '@events-manager/contracts';
+import { sanitizeHtml, } from '@events-manager/contracts';
 import { verifyPreviewToken } from '../cms/preview-token.js';
 function isVisible(published_at, seo, now) {
     if (seo?.no_index)
@@ -25,6 +25,9 @@ export class ContentService {
     }
     getSite() {
         return this.repository.getSite();
+    }
+    getFees() {
+        return this.repository.getFees();
     }
     async getPage(permalink, postPage = 1, previewToken) {
         const now = this.now();
@@ -79,7 +82,12 @@ export class ContentService {
             })),
             posts: posts
                 .filter((post) => isVisible(post.published_at, post.seo, now))
-                .map(({ slug, published_at, date_updated, seo }) => ({ slug, published_at, date_updated, ...sitemapHints(seo) })),
+                .map(({ slug, published_at, date_updated, seo }) => ({
+                slug,
+                published_at,
+                date_updated,
+                ...sitemapHints(seo),
+            })),
             events,
         };
     }

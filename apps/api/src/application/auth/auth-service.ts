@@ -122,7 +122,6 @@ export interface AuthRepository {
 	findActiveOrganizer(userId: string, preferredId?: string): Promise<OrganizerAuthorization | null>;
 	listOrganizers(userId: string): Promise<OrganizerAuthorization[]>;
 	rememberActiveOrganizer(userId: string, organizerId: string): Promise<void>;
-	findOwnedRegistration(organizerId: string, registrationId: string): Promise<unknown | null>;
 	findSuperAdminProfile(userId: string): Promise<Record<string, unknown> | null>;
 	getIdentity(accessToken: string): Promise<AuthIdentity | null>;
 	login(email: string, password: string): Promise<AuthResult>;
@@ -489,13 +488,5 @@ export class AuthService {
 		if (!(await this.repository.assertOrganizerOwnsEvent(organizerId, eventId))) {
 			throw new ApiError('Evento não encontrado ou sem permissão.', 404, 'EVENT_NOT_FOUND');
 		}
-	}
-
-	async getOwnedRegistration(organizerId: string, registrationId: string) {
-		const registration = await this.repository.findOwnedRegistration(organizerId, registrationId);
-		if (!registration) {
-			throw new ApiError('Inscrição não encontrada ou sem permissão.', 404, 'REGISTRATION_NOT_FOUND');
-		}
-		return registration;
 	}
 }

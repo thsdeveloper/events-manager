@@ -14,18 +14,26 @@ export class SupabaseCheckoutReconciliationRepository implements CheckoutReconci
 			target_batch_size: input.batchSize,
 		});
 		if (error) throw error;
-		return (data ?? []).map((row): CheckoutReconciliationCandidate => ({
-			checkoutId: row.checkout_id,
-			registrationIds: row.registration_ids,
-		}));
+		return (data ?? []).map(
+			(row): CheckoutReconciliationCandidate => ({
+				checkoutId: row.checkout_id,
+				registrationIds: row.registration_ids,
+			}),
+		);
 	}
 
-	async settlePaid(candidate: CheckoutReconciliationCandidate) {
+	async settlePaid(candidate: CheckoutReconciliationCandidate, receiptUrl: string | null = null) {
 		const { error } = await this.database.rpc('settle_reconciled_checkout', {
 			target_checkout_id: candidate.checkoutId,
 			target_registrations: candidate.registrationIds,
 		});
 		if (error) throw error;
+		if (!receiptUrl) return;
+		const receipt = await this.database
+			.from('event_registrations')
+			.update({ receipt_url: receiptUrl })
+			.in('id', candidate.registrationIds);
+		if (receipt.error) throw receipt.error;
 	}
 
 	async cancel(candidate: CheckoutReconciliationCandidate, providerStatus: 'EXPIRED' | 'CANCELLED' | 'REFUNDED') {

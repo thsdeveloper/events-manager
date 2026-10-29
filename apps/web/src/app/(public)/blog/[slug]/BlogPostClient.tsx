@@ -42,7 +42,7 @@ export default function BlogPostClient({ post, relatedPosts, author, authorName,
 							<div className="flex items-center space-x-4">
 								{author.avatar && (
 									<MediaImage
-										uuid={typeof author.avatar === 'string' ? author.avatar : author.avatar.id}
+										uuid={author.avatar}
 										alt={authorName || 'author avatar'}
 										className="rounded-full object-cover size-[48px]"
 										width={48}

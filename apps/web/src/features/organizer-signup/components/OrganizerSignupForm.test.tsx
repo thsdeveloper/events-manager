@@ -32,7 +32,7 @@ function lastBody(fetchMock: ReturnType<typeof mockFetch>) {
 }
 
 describe('OrganizerSignupForm', () => {
-	it('starts as an individual with the verified CPF locked and the profile data prefilled', () => {
+	it('starts as an individual with the profile data prefilled and locked: name, e-mail, phone and CPF come from the verified profile', () => {
 		mockFetch([]);
 		renderWithProviders(<OrganizerSignupForm user={user} onSuccess={vi.fn()} />);
 
@@ -40,26 +40,34 @@ describe('OrganizerSignupForm', () => {
 		expect(screen.getByText('529.982.247-25')).toBeInTheDocument();
 		expect(screen.getByText(/uma conta só vende com o próprio cpf/i)).toBeInTheDocument();
 		expect(screen.queryByLabelText(/^cnpj/i)).not.toBeInTheDocument();
-		expect(screen.getByLabelText(/nome da organização ou marca/i)).toHaveValue('Ana Silva');
-		expect(screen.getByLabelText(/e-mail de contato/i)).toHaveValue('ana@example.com');
-		expect(screen.getByLabelText(/telefone com ddd/i)).toHaveValue('(11) 99999-0000');
+
+		const name = screen.getByLabelText(/^nome$/i);
+		const email = screen.getByLabelText(/^seu e-mail$/i);
+		const phone = screen.getByLabelText(/^seu telefone$/i);
+		expect(name).toHaveValue('Ana Silva');
+		expect(email).toHaveValue('ana@example.com');
+		expect(phone).toHaveValue('(11) 99999-0000');
+		expect(name).toBeDisabled();
+		expect(email).toBeDisabled();
+		expect(phone).toBeDisabled();
+		expect(screen.queryByLabelText(/nome da organização ou marca/i)).not.toBeInTheDocument();
+		// The way to change them is the profile, not this form.
+		expect(screen.getByRole('link', { name: /editar perfil/i })).toHaveAttribute('href', '/perfil?section=personal');
 	});
 
-	it('sends an individual using the profile CPF, without a document in the payload', async () => {
+	it('sends an individual with only the optional texts: the contact data and the CPF are read from the profile by the API', async () => {
 		const onSuccess = vi.fn();
 		const fetchMock = mockFetch([['/api/organizer/request', () => jsonResponse({ success: true }, { status: 201 })]]);
 		const { user: person } = renderWithProviders(<OrganizerSignupForm user={user} onSuccess={onSuccess} />);
 
+		await person.type(screen.getByLabelText(/sobre seus eventos/i), 'Shows e festivais.');
 		await person.click(screen.getByRole('checkbox', { name: /confirmo/i }));
 		await person.click(screen.getByRole('button', { name: /criar conta de organizador/i }));
 
 		await waitFor(() => expect(onSuccess).toHaveBeenCalled());
 		expect(lastBody(fetchMock)).toEqual({
 			account_type: 'individual',
-			name: 'Ana Silva',
-			email: 'ana@example.com',
-			phone: '11999990000',
-			description: null,
+			description: 'Shows e festivais.',
 			website: null,
 			accept_terms: true,
 		});
@@ -73,7 +81,10 @@ describe('OrganizerSignupForm', () => {
 
 		expect(screen.getByLabelText(/^cnpj/i)).toHaveValue('');
 		expect(screen.getByLabelText(/nome da organização ou marca/i)).toHaveValue('');
+		expect(screen.getByLabelText(/nome da organização ou marca/i)).toBeEnabled();
 		expect(screen.getByLabelText(/e-mail de contato/i)).toHaveValue('ana@example.com');
+		expect(screen.getByLabelText(/e-mail de contato/i)).toBeEnabled();
+		expect(screen.getByLabelText(/telefone com ddd/i)).toBeEnabled();
 		expect(screen.queryByText('529.982.247-25')).not.toBeInTheDocument();
 	});
 

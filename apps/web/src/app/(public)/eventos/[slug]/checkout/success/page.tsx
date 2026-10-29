@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckoutRegistrationList } from '@/features/checkout/components/CheckoutRegistrationList';
 import { authenticatedBackendFetch } from '@/lib/backend-auth';
 import { requireAuth } from '@/lib/auth/server-auth';
 
@@ -36,7 +37,8 @@ const STATUS_CONTENT = {
 		title: 'Compra confirmada',
 	},
 	pending: {
-		description: 'O provedor ainda está processando o pagamento. Esta página pode ser atualizada com segurança.',
+		description:
+			'Ainda não recebemos a confirmação do provedor. Se você já pagou, clique em "Atualizar status": a confirmação é conferida na hora.',
 		icon: Clock3,
 		iconClass: 'bg-amber-100 text-amber-700',
 		title: 'Pagamento em processamento',
@@ -79,24 +81,7 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Chec
 					<CardDescription>{content.description}</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
-					<div className="space-y-3 rounded-lg bg-muted p-5">
-						{checkout.registrations.map((registration) => (
-							<div
-								key={registration.id}
-								className="flex items-start justify-between gap-4 rounded-md bg-background p-4"
-							>
-								<div>
-									<p className="font-medium">{registration.event.title}</p>
-									<p className="mt-1 text-sm text-muted-foreground">
-										Status: {registration.paymentStatus ?? registration.status}
-									</p>
-								</div>
-								{registration.ticketCode ? (
-									<code className="rounded bg-muted px-2 py-1 text-xs">{registration.ticketCode}</code>
-								) : null}
-							</div>
-						))}
-					</div>
+					<CheckoutRegistrationList registrations={checkout.registrations} />
 
 					{checkout.status === 'pending' ? (
 						<Button asChild variant="outline" className="w-full">

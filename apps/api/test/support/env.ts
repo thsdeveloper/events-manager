@@ -18,6 +18,7 @@ export const TEST_ENV: ApiEnv = Object.freeze({
 	SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
 	COOKIE_SECRET: 'test-cookie-secret-value',
 	ABACATEPAY_BASE_URL: 'https://api.abacatepay.com/v2',
+	ABACATEPAY_METHODS: ['PIX'],
 	PAYMENTS_MODE: 'mock',
 	PAYMENT_RECONCILIATION_INTERVAL_SECONDS: 60,
 	PAYMENT_RECONCILIATION_MIN_AGE_MINUTES: 20,

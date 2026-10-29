@@ -3,6 +3,9 @@ export class MockPaymentGateway {
     async createProduct(input) {
         return { id: `mock_product_${input.externalId}`, externalId: input.externalId };
     }
+    async createCustomer(input) {
+        return { id: `mock_customer_${input.email}` };
+    }
     async createCheckout(input) {
         return { id: `mock_checkout_${input.externalId}`, url: input.completionUrl, amountInCents: 0 };
     }
@@ -13,7 +16,14 @@ export class MockPaymentGateway {
             status: 'PAID',
             amountInCents: 0,
             paidAmountInCents: 0,
+            receiptUrl: null,
         };
+    }
+    async refundCheckout(checkoutId) {
+        return { refundId: `mock_refund_${checkoutId}` };
+    }
+    async refundPixCharge(chargeId) {
+        return { refundId: `mock_refund_${chargeId}` };
     }
     async createPixCharge(input) {
         return {

@@ -33,4 +33,12 @@ describe('RichTextEditor', () => {
 		await waitFor(() => expect(onChange).toHaveBeenLastCalledWith('<p><strong>Olá</strong></p>'));
 		expect(screen.getByRole('button', { name: /negrito/i })).toHaveAttribute('aria-pressed', 'true');
 	});
+
+	it('hides the image tool when the caller has no media library to offer', async () => {
+		renderWithProviders(<RichTextEditor value="<p>Olá</p>" onChange={vi.fn()} allowImages={false} />);
+
+		await screen.findByRole('textbox', { name: /conteúdo/i });
+		expect(screen.queryByRole('button', { name: /inserir imagem/i })).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /inserir link/i })).toBeInTheDocument();
+	});
 });

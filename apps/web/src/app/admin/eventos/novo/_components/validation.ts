@@ -1,6 +1,8 @@
 'use client';
 
 import { z } from 'zod';
+import { eventVisibilitySchema } from '@events-manager/contracts';
+import { htmlToPlainText } from '@/components/ui/Text';
 
 export const basicInfoSchema = z.object({
 	title: z
@@ -17,10 +19,11 @@ export const coverImageSchema = z.object({
 });
 
 export const detailsSchema = z.object({
+	// HTML do editor: o mínimo vale para o texto visível, não para as tags.
 	description: z
 		.string({ required_error: 'Descreva seu evento' })
 		.trim()
-		.min(80, 'Descreva seu evento com pelo menos 80 caracteres'),
+		.refine((value) => htmlToPlainText(value).length >= 80, 'Descreva seu evento com pelo menos 80 caracteres'),
 	tags: z
 		.array(
 			z.string().trim().min(2, 'Tags precisam ter pelo menos 2 caracteres').max(24, 'Tags podem ter até 24 caracteres'),
@@ -44,7 +47,7 @@ export const scheduleSchema = scheduleFields
 				return false;
 			}
 
-			return new Date(data.end_date).getTime() >= new Date(data.start_date).getTime();
+			return new Date(data.end_date).getTime() > new Date(data.start_date).getTime();
 		},
 		{
 			path: ['end_date'],
@@ -57,7 +60,7 @@ export const scheduleSchema = scheduleFields
 				return true;
 			}
 
-			return new Date(data.registration_end).getTime() >= new Date(data.registration_start).getTime();
+			return new Date(data.registration_end).getTime() > new Date(data.registration_start).getTime();
 		},
 		{
 			path: ['registration_end'],
@@ -164,6 +167,7 @@ const ticketsFields = z.object({
 		.optional()
 		.default(null),
 	status: z.enum(['draft', 'published', 'cancelled', 'archived']),
+	visibility: eventVisibilitySchema.default('public'),
 	featured: z.boolean(),
 	publish_after_create: z.boolean(),
 });

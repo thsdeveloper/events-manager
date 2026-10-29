@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { formatCurrency, formatDateTime, formatInteger } from '@/lib/formatters';
+import { emptyIllustrations } from '@/lib/illustrations';
 
 const statusLabels: Record<OrganizerDashboard['recentEvents'][number]['status'], string> = {
 	archived: 'Arquivado',
@@ -127,6 +128,7 @@ export function OrganizerDashboardOverview({ dashboard }: { dashboard: Organizer
 								}
 								description="Quando você publicar eventos, os principais números aparecerão automaticamente nesta visão geral."
 								icon={<CalendarDays aria-hidden="true" className="size-6" />}
+								illustration={emptyIllustrations.overview}
 								title="Sua agenda começa aqui"
 							/>
 						)}

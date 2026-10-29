@@ -208,6 +208,7 @@ export class SupabaseContentRepository implements ContentRepository {
 				.from('events')
 				.select('id,title,slug,short_description')
 				.eq('status', 'published')
+				.eq('visibility', 'public')
 				.ilike('title', pattern)
 				.limit(10),
 		]);
@@ -219,7 +220,11 @@ export class SupabaseContentRepository implements ContentRepository {
 		const [pages, posts, events] = await Promise.all([
 			this.database.from('pages').select('permalink,published_at,date_updated,seo').eq('status', 'published'),
 			this.database.from('posts').select('slug,published_at,date_updated,seo').eq('status', 'published'),
-			this.database.from('events').select('slug,start_date,date_updated').eq('status', 'published'),
+			this.database
+				.from('events')
+				.select('slug,start_date,date_updated')
+				.eq('status', 'published')
+				.eq('visibility', 'public'),
 		]);
 		for (const result of [pages, posts, events]) if (result.error) throw result.error;
 		return { pages: pages.data ?? [], posts: posts.data ?? [], events: events.data ?? [] };
@@ -302,6 +307,7 @@ export class SupabaseContentRepository implements ContentRepository {
 					'id,title,slug,short_description,cover_image:media_files(*),start_date,end_date,location_name,location_address,event_type,is_free,featured',
 				)
 				.eq('status', 'published')
+				.eq('visibility', 'public')
 				.order('start_date')
 				.limit(data.max_items ?? 10);
 			if (data.filter_featured) query = query.eq('featured', true);

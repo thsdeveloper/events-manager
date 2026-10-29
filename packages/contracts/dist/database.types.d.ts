@@ -630,6 +630,100 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            event_coupons: {
+                Row: {
+                    code: string;
+                    date_created: string;
+                    date_updated: string;
+                    description: string | null;
+                    discount_type: string;
+                    discount_value: number;
+                    event_id: string;
+                    expires_at: string | null;
+                    id: string;
+                    max_uses: number | null;
+                    starts_at: string | null;
+                    status: string;
+                    uses: number;
+                };
+                Insert: {
+                    code: string;
+                    date_created?: string;
+                    date_updated?: string;
+                    description?: string | null;
+                    discount_type: string;
+                    discount_value: number;
+                    event_id: string;
+                    expires_at?: string | null;
+                    id?: string;
+                    max_uses?: number | null;
+                    starts_at?: string | null;
+                    status?: string;
+                    uses?: number;
+                };
+                Update: {
+                    code?: string;
+                    date_created?: string;
+                    date_updated?: string;
+                    description?: string | null;
+                    discount_type?: string;
+                    discount_value?: number;
+                    event_id?: string;
+                    expires_at?: string | null;
+                    id?: string;
+                    max_uses?: number | null;
+                    starts_at?: string | null;
+                    status?: string;
+                    uses?: number;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: "event_coupons_event_id_fkey";
+                        columns: ["event_id"];
+                        isOneToOne: false;
+                        referencedRelation: "events";
+                        referencedColumns: ["id"];
+                    }
+                ];
+            };
+            event_pages: {
+                Row: {
+                    date_created: string;
+                    date_updated: string;
+                    draft: Json;
+                    enabled: boolean;
+                    event_id: string;
+                    published: Json | null;
+                    published_at: string | null;
+                };
+                Insert: {
+                    date_created?: string;
+                    date_updated?: string;
+                    draft: Json;
+                    enabled?: boolean;
+                    event_id: string;
+                    published?: Json | null;
+                    published_at?: string | null;
+                };
+                Update: {
+                    date_created?: string;
+                    date_updated?: string;
+                    draft?: Json;
+                    enabled?: boolean;
+                    event_id?: string;
+                    published?: Json | null;
+                    published_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: "event_pages_event_id_fkey";
+                        columns: ["event_id"];
+                        isOneToOne: true;
+                        referencedRelation: "events";
+                        referencedColumns: ["id"];
+                    }
+                ];
+            };
             event_registrations: {
                 Row: {
                     additional_info: Json;
@@ -659,6 +753,7 @@ export type Database = {
                     provider_refund_id: string | null;
                     provider_transaction_id: string | null;
                     quantity: number;
+                    receipt_url: string | null;
                     reconciliation_checked_at: string | null;
                     service_fee: number | null;
                     sort: number | null;
@@ -698,6 +793,7 @@ export type Database = {
                     provider_refund_id?: string | null;
                     provider_transaction_id?: string | null;
                     quantity?: number;
+                    receipt_url?: string | null;
                     reconciliation_checked_at?: string | null;
                     service_fee?: number | null;
                     sort?: number | null;
@@ -737,6 +833,7 @@ export type Database = {
                     provider_refund_id?: string | null;
                     provider_transaction_id?: string | null;
                     quantity?: number;
+                    receipt_url?: string | null;
                     reconciliation_checked_at?: string | null;
                     service_fee?: number | null;
                     sort?: number | null;
@@ -878,6 +975,7 @@ export type Database = {
                     title: string;
                     user_created: string | null;
                     user_updated: string | null;
+                    visibility: string;
                 };
                 Insert: {
                     category_id?: string | null;
@@ -908,6 +1006,7 @@ export type Database = {
                     title: string;
                     user_created?: string | null;
                     user_updated?: string | null;
+                    visibility?: string;
                 };
                 Update: {
                     category_id?: string | null;
@@ -938,6 +1037,7 @@ export type Database = {
                     title?: string;
                     user_created?: string | null;
                     user_updated?: string | null;
+                    visibility?: string;
                 };
                 Relationships: [
                     {
@@ -1624,6 +1724,24 @@ export type Database = {
                     }
                 ];
             };
+            payment_webhook_events: {
+                Row: {
+                    event: string;
+                    id: string;
+                    processed_at: string;
+                };
+                Insert: {
+                    event: string;
+                    id: string;
+                    processed_at?: string;
+                };
+                Update: {
+                    event?: string;
+                    id?: string;
+                    processed_at?: string;
+                };
+                Relationships: [];
+            };
             posts: {
                 Row: {
                     author: string | null;
@@ -1835,6 +1953,94 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            registration_tickets: {
+                Row: {
+                    attendee_document: string | null;
+                    attendee_email: string | null;
+                    attendee_name: string | null;
+                    attendee_phone: string | null;
+                    check_in_date: string | null;
+                    date_created: string;
+                    date_updated: string;
+                    discount: number;
+                    event_id: string;
+                    id: string;
+                    is_buyer: boolean;
+                    named_at: string | null;
+                    registration_id: string;
+                    sequence: number;
+                    service_fee: number;
+                    ticket_code: string;
+                    ticket_type_id: string | null;
+                    total_amount: number;
+                    unit_price: number;
+                };
+                Insert: {
+                    attendee_document?: string | null;
+                    attendee_email?: string | null;
+                    attendee_name?: string | null;
+                    attendee_phone?: string | null;
+                    check_in_date?: string | null;
+                    date_created?: string;
+                    date_updated?: string;
+                    discount?: number;
+                    event_id: string;
+                    id?: string;
+                    is_buyer?: boolean;
+                    named_at?: string | null;
+                    registration_id: string;
+                    sequence: number;
+                    service_fee?: number;
+                    ticket_code: string;
+                    ticket_type_id?: string | null;
+                    total_amount?: number;
+                    unit_price?: number;
+                };
+                Update: {
+                    attendee_document?: string | null;
+                    attendee_email?: string | null;
+                    attendee_name?: string | null;
+                    attendee_phone?: string | null;
+                    check_in_date?: string | null;
+                    date_created?: string;
+                    date_updated?: string;
+                    discount?: number;
+                    event_id?: string;
+                    id?: string;
+                    is_buyer?: boolean;
+                    named_at?: string | null;
+                    registration_id?: string;
+                    sequence?: number;
+                    service_fee?: number;
+                    ticket_code?: string;
+                    ticket_type_id?: string | null;
+                    total_amount?: number;
+                    unit_price?: number;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: "registration_tickets_event_id_fkey";
+                        columns: ["event_id"];
+                        isOneToOne: false;
+                        referencedRelation: "events";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "registration_tickets_registration_id_fkey";
+                        columns: ["registration_id"];
+                        isOneToOne: false;
+                        referencedRelation: "event_registrations";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "registration_tickets_ticket_type_id_fkey";
+                        columns: ["ticket_type_id"];
+                        isOneToOne: false;
+                        referencedRelation: "event_tickets";
+                        referencedColumns: ["id"];
+                    }
+                ];
+            };
             site_settings: {
                 Row: {
                     accent_color: string;
@@ -1932,6 +2138,41 @@ export type Database = {
                     uf?: string;
                 };
                 Relationships: [];
+            };
+            ticket_provider_products: {
+                Row: {
+                    date_created: string;
+                    id: string;
+                    provider: string;
+                    provider_product_id: string;
+                    ticket_id: string;
+                    unit_price_cents: number;
+                };
+                Insert: {
+                    date_created?: string;
+                    id?: string;
+                    provider: string;
+                    provider_product_id: string;
+                    ticket_id: string;
+                    unit_price_cents: number;
+                };
+                Update: {
+                    date_created?: string;
+                    id?: string;
+                    provider?: string;
+                    provider_product_id?: string;
+                    ticket_id?: string;
+                    unit_price_cents?: number;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: "ticket_provider_products_ticket_id_fkey";
+                        columns: ["ticket_id"];
+                        isOneToOne: false;
+                        referencedRelation: "event_tickets";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
         };
         Views: {

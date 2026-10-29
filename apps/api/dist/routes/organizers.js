@@ -1,5 +1,4 @@
-import { brDocumentSchema, brPhoneSchema } from '@events-manager/contracts';
-import { httpUrlSchema } from '@events-manager/contracts';
+import { brDocumentSchema, brPhoneSchema, httpUrlSchema, organizerSignupSchema } from '@events-manager/contracts';
 import { z } from 'zod';
 import { MediaService } from '../application/media/media-service.js';
 import { OrganizerService } from '../application/organizers/organizer-service.js';
@@ -18,6 +17,9 @@ const organizerInput = z.object({
     document: brDocumentSchema.nullable().optional(),
     logo: z.string().uuid().optional(),
 });
+function stringOrNull(value) {
+    return typeof value === 'string' && value.length > 0 ? value : null;
+}
 const payoutInput = z.object({
     payout_pix_key: z.string().trim().min(3),
     payout_pix_key_type: z.enum(['CPF', 'CNPJ', 'PHONE', 'EMAIL', 'RANDOM']),
@@ -36,18 +38,18 @@ export async function organizerRoutes(app, options) {
     });
     app.post('/api/organizer/request', async (request, reply) => {
         const context = await requireUser(request, auth);
-        await auth.requireCompleteProfile(context.user);
-        const input = organizerInput
-            .extend({ name: z.string().trim().min(2), description: z.string().trim().min(10) })
-            .parse(request.body);
-        const organizer = await service.create(context.user.id, input, initialStatus);
-        return reply.code(201).send({ success: true, organizer });
-    });
-    app.post('/api/organizer/profile', async (request, reply) => {
-        const context = await requireUser(request, auth);
-        await auth.requireCompleteProfile(context.user);
-        const input = organizerInput.extend({ name: z.string().trim().min(2) }).parse(request.body);
-        const organizer = await service.create(context.user.id, input, initialStatus);
+        const profile = await auth.requireCompleteProfile(context.user);
+        const input = organizerSignupSchema.parse(request.body);
+        // Pessoa física: nome, e-mail, telefone e CPF vêm do perfil validado, nunca do corpo do pedido.
+        const organizer = await service.create(context.user.id, input, initialStatus, {
+            profile: {
+                document: stringOrNull(profile.document),
+                email: stringOrNull(profile.email) ?? context.user.email ?? null,
+                first_name: stringOrNull(profile.first_name),
+                last_name: stringOrNull(profile.last_name),
+                phone: stringOrNull(profile.phone),
+            },
+        });
         return reply.code(201).send({ success: true, organizer });
     });
     app.patch('/api/organizer/profile', async (request) => {

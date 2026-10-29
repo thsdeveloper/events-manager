@@ -75,6 +75,7 @@ export class SupabaseEventRepository {
         const { data, error } = await this.clients.admin
             .from('event_categories')
             .select('id,sort,name,slug,description,icon,color')
+            .order('sort', { ascending: true, nullsFirst: false })
             .order('name');
         if (error)
             throw error;

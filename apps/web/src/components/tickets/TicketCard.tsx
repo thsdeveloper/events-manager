@@ -4,15 +4,17 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import QRCode from 'qrcode';
-import { Calendar, MapPin, Ticket, Clock, CheckCircle2, XCircle, Eye } from 'lucide-react';
+import { Calendar, MapPin, Ticket, Clock, CheckCircle2, XCircle, Eye, User, UserRoundPen } from 'lucide-react';
 import { format, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { EventRegistration } from '@events-manager/contracts';
+import type { NominalTicket } from '@events-manager/contracts';
 import { getMediaAssetUrl } from '@/lib/media';
 
 interface TicketCardProps {
-	registration: EventRegistration;
-	onViewDetails: (registration: EventRegistration) => void;
+	ticket: NominalTicket;
+	onViewDetails: (ticket: NominalTicket) => void;
+	/** Quem comprou nomeia ou corrige o participante; ausente quando não pode. */
+	onChangeAttendee?: (ticket: NominalTicket) => void;
 	/**
 	 * `list` renders a short horizontal row. Both views used to share the tall
 	 * card, which made "list" just a single stacked column of the same block.
@@ -27,48 +29,51 @@ const STATUS_STYLES = {
 	confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
 } as const;
 
-export function TicketCard({ registration, onViewDetails, variant = 'grid' }: TicketCardProps) {
+/** Como o participante aparece no cartão e no modal. */
+export function describeAttendee(ticket: NominalTicket) {
+	const name = ticket.attendee_name ?? 'Participante a informar';
+	const boughtBy =
+		ticket.attendee_name && !ticket.is_buyer ? `Comprado por ${ticket.registration.participant_name}` : null;
+	const changeLabel = ticket.attendee_name ? 'Alterar participante' : 'Informar participante';
+
+	return { name, boughtBy, changeLabel, isPending: !ticket.attendee_name };
+}
+
+export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 'grid' }: TicketCardProps) {
 	const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
 	useEffect(() => {
-		if (registration.ticket_code) {
-			QRCode.toDataURL(registration.ticket_code, {
-				width: 300,
-				margin: 1,
-				color: { dark: '#6366F1', light: '#FFFFFF' },
-			})
-				.then(setQrCodeUrl)
-				.catch(console.error);
-		}
-	}, [registration.ticket_code]);
+		QRCode.toDataURL(ticket.ticket_code, {
+			width: 300,
+			margin: 1,
+			color: { dark: '#6366F1', light: '#FFFFFF' },
+		})
+			.then(setQrCodeUrl)
+			.catch(console.error);
+	}, [ticket.ticket_code]);
 
-	const event = registration.event_id;
-	const eventDate =
-		event && typeof event === 'object' && 'start_date' in event ? new Date(event.start_date as string) : null;
+	const event = ticket.event;
+	const eventDate = event.start_date ? new Date(event.start_date) : null;
 
 	const isEventPast = eventDate ? isPast(eventDate) : false;
-	const isCheckedIn = registration.check_in_date !== null;
+	const isCheckedIn = ticket.check_in_date !== null;
 
 	const status = isCheckedIn
 		? { tone: STATUS_STYLES.checkedIn, icon: CheckCircle2, label: 'Check-in' }
-		: registration.status === 'cancelled'
+		: ticket.registration.status === 'cancelled'
 			? { tone: STATUS_STYLES.cancelled, icon: XCircle, label: 'Cancelado' }
 			: isEventPast
 				? { tone: STATUS_STYLES.past, icon: Clock, label: 'Finalizado' }
 				: { tone: STATUS_STYLES.confirmed, icon: CheckCircle2, label: 'Confirmado' };
 	const StatusIcon = status.icon;
 
-	const coverImage = event && typeof event === 'object' && 'cover_image' in event ? event.cover_image : null;
-	const eventTitle = event && typeof event === 'object' && 'title' in event ? event.title : 'Evento';
-	const eventSlug = event && typeof event === 'object' && 'slug' in event ? event.slug : '';
-	const locationName =
-		event && typeof event === 'object' && 'location_name' in event ? event.location_name : null;
-	const ticketTitle =
-		registration.ticket_type_id &&
-		typeof registration.ticket_type_id === 'object' &&
-		'title' in registration.ticket_type_id
-			? registration.ticket_type_id.title
-			: 'Ingresso';
+	const coverImage = event.cover_image;
+	const eventTitle = event.title;
+	const eventSlug = event.slug;
+	const locationName = event.location_name;
+	const ticketTitle = ticket.ticket_type?.title ?? 'Ingresso';
+	const attendee = describeAttendee(ticket);
+	const canChangeAttendee = Boolean(onChangeAttendee && ticket.can_edit_attendee);
 
 	const statusBadge = (
 		<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.tone}`}>
@@ -80,7 +85,7 @@ export function TicketCard({ registration, onViewDetails, variant = 'grid' }: Ti
 	const cover = (
 		<>
 			{coverImage ? (
-				<Image src={getMediaAssetUrl(coverImage as string)} alt={eventTitle as string} fill className="object-cover" />
+				<Image src={getMediaAssetUrl(coverImage)} alt={eventTitle} fill className="object-cover" />
 			) : (
 				<div className="flex size-full items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
 					<Ticket className="size-8 text-white/60" />
@@ -117,17 +122,37 @@ export function TicketCard({ registration, onViewDetails, variant = 'grid' }: Ti
 								<span className="truncate">{locationName}</span>
 							</span>
 						)}
-						<span className="font-mono">{registration.ticket_code}</span>
+						<span className="font-mono">{ticket.ticket_code}</span>
+					</div>
+					<div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
+						<span
+							className={`flex items-center gap-1 ${attendee.isPending ? 'text-amber-700 dark:text-amber-300' : 'text-slate-700 dark:text-slate-200'}`}
+						>
+							<User className="size-3.5 shrink-0" />
+							{attendee.name}
+						</span>
+						{attendee.boughtBy ? <span className="text-slate-500 dark:text-slate-400">{attendee.boughtBy}</span> : null}
 					</div>
 				</div>
 
-				<button
-					type="button"
-					onClick={() => onViewDetails(registration)}
-					className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-				>
-					Detalhes
-				</button>
+				<div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
+					{canChangeAttendee ? (
+						<button
+							type="button"
+							onClick={() => onChangeAttendee?.(ticket)}
+							className="rounded-lg border border-violet-200 px-3 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950"
+						>
+							{attendee.changeLabel}
+						</button>
+					) : null}
+					<button
+						type="button"
+						onClick={() => onViewDetails(ticket)}
+						className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+					>
+						Detalhes
+					</button>
+				</div>
 			</div>
 		);
 	}
@@ -137,9 +162,9 @@ export function TicketCard({ registration, onViewDetails, variant = 'grid' }: Ti
 			<div className="relative h-24 w-full shrink-0 overflow-hidden">
 				{cover}
 				<div className="absolute right-2 top-2">{statusBadge}</div>
-				{registration.quantity && registration.quantity > 1 && (
+				{ticket.registration.quantity > 1 && (
 					<div className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
-						{registration.quantity}x
+						{ticket.sequence} de {ticket.registration.quantity}
 					</div>
 				)}
 			</div>
@@ -168,6 +193,15 @@ export function TicketCard({ registration, onViewDetails, variant = 'grid' }: Ti
 						<Ticket className="size-3.5 shrink-0 text-violet-500" />
 						<span className="truncate">{ticketTitle}</span>
 					</div>
+					<div className="flex items-center gap-1.5">
+						<User className="size-3.5 shrink-0 text-violet-500" />
+						<span
+							className={`truncate ${attendee.isPending ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-slate-700 dark:text-slate-200'}`}
+						>
+							{attendee.name}
+						</span>
+					</div>
+					{attendee.boughtBy ? <p className="pl-5 text-[11px]">{attendee.boughtBy}</p> : null}
 				</div>
 
 				{/* QR beside the code rather than centred above it: at this size it is a
@@ -179,19 +213,31 @@ export function TicketCard({ registration, onViewDetails, variant = 'grid' }: Ti
 					<div className="min-w-0">
 						<p className="text-[10px] uppercase tracking-wide text-slate-400">Código</p>
 						<p className="truncate font-mono text-xs font-semibold text-slate-900 dark:text-slate-100">
-							{registration.ticket_code}
+							{ticket.ticket_code}
 						</p>
 					</div>
 				</div>
 
-				<button
-					type="button"
-					onClick={() => onViewDetails(registration)}
-					className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-700"
-				>
-					<Eye className="size-3.5" />
-					Ver detalhes
-				</button>
+				<div className="mt-3 flex gap-2">
+					{canChangeAttendee ? (
+						<button
+							type="button"
+							onClick={() => onChangeAttendee?.(ticket)}
+							className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-violet-200 px-3 py-2 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950"
+						>
+							<UserRoundPen className="size-3.5" />
+							{attendee.changeLabel}
+						</button>
+					) : null}
+					<button
+						type="button"
+						onClick={() => onViewDetails(ticket)}
+						className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-700"
+					>
+						<Eye className="size-3.5" />
+						Ver detalhes
+					</button>
+				</div>
 			</div>
 		</div>
 	);

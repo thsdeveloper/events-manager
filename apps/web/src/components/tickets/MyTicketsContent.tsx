@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
 	Search,
@@ -16,15 +16,17 @@ import {
 	type LucideIcon,
 } from 'lucide-react';
 import { isPast, isFuture } from 'date-fns';
-import type { EventRegistration } from '@events-manager/contracts';
+import type { NominalTicket } from '@events-manager/contracts';
 import { AccountEmptyState } from '@/components/account/AccountEmptyState';
+import { NameAttendeeDialog } from '@/features/tickets/components/NameAttendeeDialog';
 import { Ticket as AnimatedTicket } from '@/components/animate-ui/icons/ticket';
 import { Button } from '@/components/ui/button';
 import { TicketCard } from './TicketCard';
 import { TicketDetailsModal } from './TicketDetailsModal';
+import { emptyIllustrations } from '@/lib/illustrations';
 
 interface MyTicketsContentProps {
-	registrations: EventRegistration[];
+	tickets: NominalTicket[];
 }
 
 type TabType = 'upcoming' | 'past' | 'cancelled' | 'all';
@@ -56,7 +58,7 @@ function StatCard({
 	value: string;
 }) {
 	return (
-		<div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900">
+		<li className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900">
 			<span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${STAT_TONES[tone]}`}>
 				<Icon className="size-4" />
 			</span>
@@ -64,47 +66,59 @@ function StatCard({
 				<p className="truncate text-xs text-slate-500 dark:text-slate-400">{label}</p>
 				<p className="truncate text-base font-semibold text-slate-950 dark:text-white">{value}</p>
 			</div>
-		</div>
+		</li>
 	);
 }
 
-export function MyTicketsContent({ registrations }: MyTicketsContentProps) {
+/** A pessoa pagou por este ingresso: ele é dela ou ela pode nomear quem vai. */
+function boughtByMe(ticket: NominalTicket) {
+	return Boolean(ticket.can_edit_attendee || ticket.is_buyer);
+}
+
+export function MyTicketsContent({ tickets: initialTickets }: MyTicketsContentProps) {
 	const [selectedTab, setSelectedTab] = useState<TabType>('upcoming');
 	const [searchQuery, setSearchQuery] = useState('');
 	const [viewMode, setViewMode] = useState<ViewMode>('grid');
-	const [selectedTicket, setSelectedTicket] = useState<EventRegistration | null>(null);
+	const [selectedTicket, setSelectedTicket] = useState<NominalTicket | null>(null);
+	const [editingTicket, setEditingTicket] = useState<NominalTicket | null>(null);
+	// Cópia local: nomear um participante troca o ingresso no lugar, sem recarregar.
+	const [tickets, setTickets] = useState(initialTickets);
+	useEffect(() => setTickets(initialTickets), [initialTickets]);
+
+	const handleAttendeeSaved = (updated: NominalTicket) => {
+		setTickets((current) => current.map((ticket) => (ticket.id === updated.id ? updated : ticket)));
+		setSelectedTicket((current) => (current?.id === updated.id ? updated : current));
+		setEditingTicket(null);
+	};
 
 	// Categorize tickets
 	const categorizedTickets = useMemo(() => {
-		const upcoming: EventRegistration[] = [];
-		const past: EventRegistration[] = [];
-		const cancelled: EventRegistration[] = [];
+		const upcoming: NominalTicket[] = [];
+		const past: NominalTicket[] = [];
+		const cancelled: NominalTicket[] = [];
 
-		registrations.forEach((reg) => {
-			if (reg.status === 'cancelled') {
-				cancelled.push(reg);
-				
-return;
+		tickets.forEach((ticket) => {
+			if (ticket.registration.status === 'cancelled') {
+				cancelled.push(ticket);
+
+				return;
 			}
 
-			const event = reg.event_id;
-			const eventDate = event && typeof event === 'object' && 'start_date' in event
-				? new Date(event.start_date as string)
-				: null;
+			const eventDate = ticket.event.start_date ? new Date(ticket.event.start_date) : null;
 
 			if (eventDate) {
 				if (isFuture(eventDate)) {
-					upcoming.push(reg);
+					upcoming.push(ticket);
 				} else {
-					past.push(reg);
+					past.push(ticket);
 				}
 			} else {
-				upcoming.push(reg); // Default to upcoming if no date
+				upcoming.push(ticket); // Default to upcoming if no date
 			}
 		});
 
-		return { upcoming, past, cancelled, all: registrations };
-	}, [registrations]);
+		return { upcoming, past, cancelled, all: tickets };
+	}, [tickets]);
 
 	// Filter tickets based on search
 	const filteredTickets = useMemo(() => {
@@ -113,34 +127,31 @@ return;
 		if (!searchQuery.trim()) return tickets;
 
 		const query = searchQuery.toLowerCase();
-		
-return tickets.filter((reg) => {
-			const event = reg.event_id;
-			const eventTitle = event && typeof event === 'object' && 'title' in event
-				? event.title
-				: '';
-			const ticketCode = reg.ticket_code || '';
-			const ticketType = reg.ticket_type_id && typeof reg.ticket_type_id === 'object' && 'title' in reg.ticket_type_id
-				? reg.ticket_type_id.title
-				: '';
+
+		return tickets.filter((ticket) => {
+			const eventTitle = ticket.event.title ?? '';
+			const ticketType = ticket.ticket_type?.title ?? '';
+			const attendee = ticket.attendee_name ?? '';
 
 			return (
-				eventTitle?.toString().toLowerCase().includes(query) ||
-				ticketCode.toLowerCase().includes(query) ||
-				ticketType?.toString().toLowerCase().includes(query)
+				eventTitle.toLowerCase().includes(query) ||
+				ticket.ticket_code.toLowerCase().includes(query) ||
+				ticketType.toLowerCase().includes(query) ||
+				attendee.toLowerCase().includes(query)
 			);
 		});
 	}, [categorizedTickets, selectedTab, searchQuery]);
 
-	// Calculate stats
+	// Calculate stats. "Investido" soma só o que a pessoa pagou: um ingresso
+	// comprado por outra pessoa em nome dela conta como ingresso, não como gasto.
 	const stats = useMemo(() => {
-		const totalTickets = registrations.reduce((sum, reg) => sum + (reg.quantity || 1), 0);
-		const totalSpent = registrations.reduce((sum, reg) => sum + Number(reg.total_amount || 0), 0);
+		const totalTickets = tickets.length;
+		const totalSpent = tickets.filter(boughtByMe).reduce((sum, ticket) => sum + Number(ticket.total_amount || 0), 0);
 		const upcomingEvents = categorizedTickets.upcoming.length;
-		const checkedIn = registrations.filter((reg) => reg.check_in_date !== null).length;
+		const checkedIn = tickets.filter((ticket) => ticket.check_in_date !== null).length;
 
 		return { totalTickets, totalSpent, upcomingEvents, checkedIn };
-	}, [registrations, categorizedTickets]);
+	}, [tickets, categorizedTickets]);
 
 	const tabs: { key: TabType; label: string; icon: React.ElementType; count: number }[] = [
 		{
@@ -165,15 +176,16 @@ return tickets.filter((reg) => {
 			key: 'all',
 			label: 'Todos',
 			icon: LayoutGrid,
-			count: registrations.length,
+			count: tickets.length,
 		},
 	];
 
 	// Same empty state as the other account sections (see AccountEmptyState).
-	if (registrations.length === 0) {
+	if (tickets.length === 0) {
 		return (
 			<AccountEmptyState
 				icon={<AnimatedTicket />}
+				illustration={emptyIllustrations.tickets}
 				title="Nenhum ingresso por aqui"
 				description="Quando você comprar um ingresso, ele aparecerá nesta área com o código, a data e o local do evento."
 				action={
@@ -191,12 +203,12 @@ return tickets.filter((reg) => {
 	return (
 		<div className="space-y-4">
 			{/* Stats — compact row: these are context, not the subject of the page. */}
-			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+			<ul aria-label="Resumo dos ingressos" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 				<StatCard icon={Ticket} tone="indigo" label="Ingressos" value={String(stats.totalTickets)} />
 				<StatCard icon={Calendar} tone="violet" label="Próximos" value={String(stats.upcomingEvents)} />
 				<StatCard icon={CheckCircle2} tone="emerald" label="Check-ins" value={String(stats.checkedIn)} />
 				<StatCard icon={TrendingUp} tone="amber" label="Investido" value={currency.format(stats.totalSpent)} />
-			</div>
+			</ul>
 
 			{/* Search and Filters */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -233,8 +245,8 @@ return tickets.filter((reg) => {
 			<div className="flex gap-2 overflow-x-auto pb-1">
 				{tabs.map((tab) => {
 					const Icon = tab.icon;
-					
-return (
+
+					return (
 						<button
 							key={tab.key}
 							onClick={() => setSelectedTab(tab.key)}
@@ -256,19 +268,16 @@ return (
 			{filteredTickets.length === 0 ? (
 				<div className="py-16 text-center">
 					<Search className="mx-auto mb-4 size-12 text-gray-400" />
-					<p className="text-gray-600 dark:text-gray-400">
-						Nenhum ingresso encontrado com os filtros aplicados.
-					</p>
+					<p className="text-gray-600 dark:text-gray-400">Nenhum ingresso encontrado com os filtros aplicados.</p>
 				</div>
 			) : (
-				<div
-					className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-2'}
-				>
-					{filteredTickets.map((registration) => (
+				<div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-2'}>
+					{filteredTickets.map((ticket) => (
 						<TicketCard
-							key={registration.id}
-							registration={registration}
+							key={ticket.id}
+							ticket={ticket}
 							onViewDetails={setSelectedTicket}
+							onChangeAttendee={setEditingTicket}
 							variant={viewMode}
 						/>
 					))}
@@ -278,8 +287,17 @@ return (
 			{/* Details Modal */}
 			{selectedTicket && (
 				<TicketDetailsModal
-					registration={selectedTicket}
+					ticket={selectedTicket}
 					onClose={() => setSelectedTicket(null)}
+					onChangeAttendee={setEditingTicket}
+				/>
+			)}
+
+			{editingTicket && (
+				<NameAttendeeDialog
+					ticket={editingTicket}
+					onClose={() => setEditingTicket(null)}
+					onSaved={handleAttendeeSaved}
 				/>
 			)}
 		</div>

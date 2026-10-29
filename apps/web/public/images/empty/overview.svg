@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" viewBox="0 0 750 750" width="750" height="750"><defs><clipPath id="assetClipPath_ZNfKa3Gt"><path d="m0 0 h 573.156 v 412.233 h -573.156 v -412.233 z" id="path_FY32z05-" fill="#ffffff" /></clipPath><clipPath id="assetClipPath_Vn7jnWaR"><path d="m0 0 h 432.617 v 578.03 h -432.617 v -578.03 z" id="path_i_eVMp3o" fill="#ffffff" /></clipPath><clipPath id="assetClipPath_XzhIARs-"><path d="m0 0 h 428.921 v 491.628 h -428.921 v -491.628 z" id="path_97Y_QD9l" fill="#ffffff" /></clipPath></defs><g transform="translate(88 318)" data-asset-index="0"><g clip-path="url(#assetClipPath_ZNfKa3Gt)" transform="scale(0.9997278227917008 1.0018605982539002)" data-asset-index="0"><defs>
+    <linearGradient id="linearGradient_54-bao0I" x1="1.5" y1="288.229" x2="571.656" y2="288.229" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFD74C" />
+      <stop offset="1" stop-color="#E0B122" />
+    </linearGradient>
+    <linearGradient id="linearGradient_6ol0LAPg" x1="1.809" y1="166.537" x2="571.656" y2="166.537" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF0C2" />
+      <stop offset="1" stop-color="#FFD74C" />
+    </linearGradient>
+  </defs><g id="eQ52KllLusoTr8dPmuFXm">
+    <path d="M571.656,167.35l-.309,79.158c-.119,41.966-27.699,83.868-82.795,115.886-110.905,64.451-291.313,64.452-402.943.002C29.435,329.964,1.38,287.391,1.5,244.882l.309-79.158c-.121,42.508,27.935,85.082,84.109,117.514,111.63,64.45,292.038,64.449,402.943-.002,55.096-32.018,82.676-73.92,82.795-115.886" fill="url(#linearGradient_54-bao0I)" id="kY05PrN_A9lSYOKxZg7i" />
+    <path d="M287.349,412.134c-73.235,0-146.556-16.146-202.49-48.439C30.01,332.027-.127,289.831,0,244.879l.309-79.16c.003-.826.674-1.494,1.5-1.494h.005c.828.003,1.498.676,1.495,1.504v.005c-.12,43.829,29.483,85.101,83.359,116.206,111.04,64.108,291.125,64.108,401.439,0,52.703-30.628,81.833-71.241,82.047-114.384v-.211c.004-.826.675-1.494,1.501-1.494h.005c.828.003,1.498.676,1.495,1.504v.009c0,.065,0,.132,0,.197l-.308,78.953c-.126,44.328-29.795,85.943-83.541,117.177-55.572,32.295-128.722,48.443-201.957,48.443ZM3.215,189.947l-.214,54.941c-.125,43.83,29.479,85.102,83.358,116.208,111.04,64.108,291.124,64.11,401.439,0,52.788-30.676,81.926-71.373,82.049-114.593l.214-54.768c-8.889,35.054-36.688,67.367-80.446,92.797-111.143,64.59-292.577,64.592-404.446.004C40.302,258.633,11.972,225.687,3.215,189.947Z" fill="#071838" id="bFLm2ElP6k0chmMFEan3J" />
+  </g><g id="NDelJWV7iOZ5WQNlskNyM">
+    <path d="M487.548,49.837c111.63,64.45,112.218,168.949,1.314,233.399-110.905,64.451-291.313,64.452-402.943.002-111.63-64.45-112.219-168.948-1.314-233.399,110.904-64.451,291.313-64.452,402.943-.002Z" fill="url(#linearGradient_6ol0LAPg)" id="VxKp7mUXiewDfrRQm_-q" />
+    <path d="M287.659,332.977c-73.235,0-146.556-16.146-202.49-48.439C30.51,252.979.373,210.931.31,166.135c-.063-44.487,29.606-86.249,83.542-117.593,111.144-64.59,292.578-64.592,404.446-.004,54.658,31.557,84.795,73.605,84.859,118.4.063,44.488-29.605,86.25-83.541,117.595-55.572,32.295-128.721,48.442-201.957,48.443ZM285.807,3.055c-72.69,0-145.291,16.026-200.448,48.081C32.387,81.919,3.249,122.758,3.31,166.131c.062,43.68,29.666,84.809,83.359,115.809,111.04,64.108,291.125,64.108,401.439,0,52.972-30.784,82.11-71.624,82.049-114.997-.062-43.68-29.666-84.808-83.359-115.807h0C431.278,19.081,358.497,3.055,285.807,3.055Z" fill="#071838" id="NSvZrUVJEFs7oZTdBuXUw" />
+  </g></g></g><g transform="translate(188 50)" data-asset-index="1"><g clip-path="url(#assetClipPath_Vn7jnWaR)" transform="scale(1.0008853096387798 0.9999480995796066)" data-asset-index="1"><path d="M414.183,569.097c-.251,0-.505-.062-.738-.194L11.458,341.364c-.47-.267-.761-.766-.761-1.306V21.182c0-.828.672-1.5,1.5-1.5s1.5.672,1.5,1.5v318.002l401.227,227.107c.721.408.975,1.323.566,2.045-.276.487-.784.761-1.307.761Z" fill="#071838" id="dVbE8VwC-oBpKWbECtksT" /><polygon points="12.197 0 0 29.848 12.197 22.765 24.39 29.848 12.197 0" fill="#071838" id="LvpfUKmbaoYBOumIVYhyg" /><polygon points="432.618 578.03 400.634 573.941 412.806 566.816 412.649 552.716 432.618 578.03" fill="#071838" id="aJnB5ppEy1YUVNt3Qx5DG" /></g></g><g transform="translate(128 137)" data-asset-index="2"><g clip-path="url(#assetClipPath_XzhIARs-)" transform="scale(1.000184183101317 0.9987226114053716)" data-asset-index="2"><defs>
+    <linearGradient id="linearGradient_0Mx-5j4c" data-name="Безымянный градиент 118" x1="104.449" y1="246.306" x2="225.714" y2="-17.445" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D62978" />
+      <stop offset="1" stop-color="#FF92C4" />
+    </linearGradient>
+    <linearGradient id="linearGradient_7PSg2xAL" data-name="Безымянный градиент 118" x1="22.668" y1="208.706" x2="143.933" y2="-55.045" xlink:href="#linearGradient_0Mx-5j4c" />
+    <linearGradient id="linearGradient_u2J5oFeE" data-name="Безымянный градиент 30" x1="12.97" y1="336.26" x2="76.634" y2="72.51" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF92C4" />
+      <stop offset="1" stop-color="#D62978" />
+    </linearGradient>
+    <linearGradient id="linearGradient_QqulHCQV" data-name="Безымянный градиент 24" x1="162.447" y1="391.82" x2="429.735" y2="-64.142" gradientUnits="userSpaceOnUse">
+      <stop offset=".25" stop-color="#6B79B2" />
+      <stop offset=".964" stop-color="#E9ECFF" />
+    </linearGradient>
+    <linearGradient id="linearGradient_bDFA21VI" data-name="Безымянный градиент 24" x1="50.915" y1="326.439" x2="257.065" y2="-25.228" xlink:href="#linearGradient_QqulHCQV" />
+    <linearGradient id="linearGradient_VH7yoB_6" data-name="Безымянный градиент 61" x1="34.203" y1="260.268" x2="298.97" y2="199.686" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9FBAFC" />
+      <stop offset="1" stop-color="#E9ECFF" />
+    </linearGradient>
+    <linearGradient id="linearGradient__vb9FLzW" data-name="Новый образец градиента 2" x1="341.045" y1="417.52" x2="471.405" y2="47.663" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#189960" />
+      <stop offset=".997" stop-color="#34C488" />
+    </linearGradient>
+    <linearGradient id="linearGradient_ig4K1vVo" data-name="Безымянный градиент 46" x1="233.682" y1="379.679" x2="364.042" y2="9.822" gradientUnits="userSpaceOnUse">
+      <stop offset=".041" stop-color="#189960" />
+      <stop offset=".434" stop-color="#34C488" />
+      <stop offset="1" stop-color="#8FE2BE" />
+    </linearGradient>
+    <linearGradient id="linearGradient_AHsuxnZX" data-name="Новый образец градиента 2" x1="107.655" y1="265.488" x2="396.4" y2="265.488" xlink:href="#linearGradient__vb9FLzW" />
+  </defs><g id="o-OeBy1xkl-h-HHOmTacS">
+    <g id="Yii8rSUkxnxjdKnNPY6wd">
+      <polygon points="86.303 132.264 154.011 92.916 153.443 293.254 85.735 332.602 86.303 132.264" fill="url(#linearGradient_0Mx-5j4c)" id="cjaw9KiqLKIY1qXL69Vn" />
+      <path d="M85.734,334.102c-.259,0-.518-.067-.75-.201-.466-.269-.752-.766-.75-1.303l.568-200.339c.002-.533.285-1.025.746-1.293l67.708-39.348c.465-.271,1.037-.271,1.504-.002.466.269.752.766.75,1.303l-.568,200.339c-.002.533-.285,1.025-.746,1.293l-67.708,39.348c-.233.136-.493.203-.754.203ZM87.801,133.128l-.559,196.863,64.703-37.601.558-196.863-64.702,37.601Z" fill="#071838" id="OUkNcU3nCg6PjPXI2sARZ" />
+    </g>
+    <g id="wdma4HWUTVRBlX5ojzM7q">
+      <polygon points="2.068 83.631 69.776 44.283 154.011 92.916 86.303 132.264 2.068 83.631" fill="url(#linearGradient_7PSg2xAL)" id="BxZ4OsdtqWEJx3xQMOM_" />
+      <path d="M86.303,133.763c-.259,0-.518-.067-.75-.201L1.318,84.929c-.464-.268-.749-.762-.75-1.297s.283-1.03.746-1.299l67.708-39.348c.465-.271,1.037-.271,1.504-.002l84.234,48.633c.464.268.749.762.75,1.297s-.283,1.03-.746,1.299l-67.708,39.348c-.233.136-.493.203-.754.203ZM5.061,83.627l81.239,46.903,64.719-37.61-81.239-46.903L5.061,83.627Z" fill="#071838" id="VCuIX71IRTiSeeZhUxONr" />
+    </g>
+    <g id="eDeUvXtvRvs-i_CtNPa4d">
+      <polygon points="86.303 132.264 85.735 332.602 1.5 283.969 2.068 83.631 86.303 132.264" fill="url(#linearGradient_u2J5oFeE)" id="jotjxpWlnNi6sJy4-v-ix" />
+      <path d="M85.734,334.102c-.259,0-.518-.067-.75-.201L.75,285.267c-.466-.269-.752-.766-.75-1.303L.568,83.627c.002-.535.288-1.029.752-1.296.465-.268,1.035-.265,1.498,0l84.234,48.633c.466.269.752.766.75,1.303l-.568,200.339c-.002.535-.288,1.029-.752,1.296-.231.134-.49.2-.748.2ZM3.003,283.104l81.239,46.904.558-196.881L3.561,86.224l-.558,196.88Z" fill="#071838" id="HS6uiI8BeCJE17J_bRLz5" />
+    </g>
+  </g><g id="OGBcXu73wvTSQHgcIYgu0">
+    <g id="JTEvG-Z1FdAUOXxsOO2Rg">
+      <polygon points="223.065 90.859 290.773 51.511 289.864 372.017 222.156 411.365 223.065 90.859" fill="url(#linearGradient_QqulHCQV)" id="xIAgRzcZptgB5xqEo0S4g" />
+      <path d="M222.156,412.865c-.259,0-.518-.067-.75-.201-.466-.269-.752-.766-.75-1.303l.908-320.506c.002-.533.285-1.025.746-1.293l67.708-39.348c.465-.271,1.037-.271,1.504-.002.466.269.752.766.75,1.303l-.908,320.506c-.002.533-.285,1.025-.746,1.293l-67.708,39.348c-.233.136-.493.203-.754.203ZM224.562,91.723l-.898,317.03,64.703-37.601.897-317.03-64.702,37.601Z" fill="#071838" id="C1Z0Fp1RGR78pZKmNv-P1" />
+    </g>
+    <g id="lSfhZkcrwZ4pbKb_xuvQ">
+      <polygon points="138.83 42.226 206.538 2.878 290.773 51.511 223.065 90.859 138.83 42.226" fill="url(#linearGradient_bDFA21VI)" id="icO6kzgv3mWaF69UjoLUo" />
+      <path d="M223.064,92.359c-.259,0-.518-.067-.75-.201l-84.234-48.634c-.464-.268-.749-.762-.75-1.297s.283-1.03.746-1.299L205.784,1.581c.466-.271,1.038-.271,1.504-.002l84.234,48.634c.464.268.749.762.75,1.297s-.283,1.03-.746,1.299l-67.708,39.348c-.233.136-.493.203-.754.203ZM141.822,42.221l81.239,46.904,64.719-37.61L206.541,4.611l-64.719,37.61Z" fill="#071838" id="PGtulLRQd-_chfid1fMlu" />
+    </g>
+    <g id="a5VjOy9aC0ELb6ycmJsyK">
+      <polygon points="223.065 90.859 222.156 411.365 137.921 362.732 138.83 42.226 223.065 90.859" fill="url(#linearGradient_VH7yoB_6)" id="zkKX4ZBcDUoFUiN1QPP3v" />
+      <path d="M222.156,412.865c-.259,0-.518-.067-.75-.201l-84.235-48.633c-.466-.269-.752-.766-.75-1.303l.909-320.507c.002-.535.288-1.029.752-1.296.465-.268,1.035-.266,1.498,0l84.234,48.634c.466.269.752.766.75,1.303l-.908,320.506c-.002.535-.288,1.029-.752,1.296-.231.134-.49.2-.748.2ZM139.424,361.868l81.24,46.903.897-317.048-81.239-46.904-.898,317.049Z" fill="#071838" id="ZujRjd_-Q9V7vdm3dUszW" />
+    </g>
+  </g><g id="EP5Z9Ic4x-u9HnRgkU44w">
+    <g id="F6eUFroibbInjqu9Azn68">
+      <polygon points="359.713 89.451 427.421 50.103 426.285 450.78 358.577 490.128 359.713 89.451" fill="url(#linearGradient__vb9FLzW)" id="Y7PhwCsudVfjrkOnoQ9q1" />
+      <path d="M358.577,491.628c-.259,0-.518-.067-.75-.201-.466-.269-.752-.766-.75-1.303l1.136-400.677c.002-.533.285-1.025.746-1.293l67.708-39.348c.465-.271,1.037-.271,1.504-.002.466.269.752.766.75,1.303l-1.136,400.677c-.002.533-.285,1.025-.746,1.293l-67.708,39.348c-.233.136-.493.203-.754.203ZM361.211,90.315l-1.126,397.201,64.702-37.601,1.126-397.201-64.702,37.601Z" fill="#071838" id="fXN_GXOdnbwDMAkUBCafl" />
+    </g>
+    <g id="JOQRseTFVrVQvwa9LKUkS">
+      <polygon points="275.53 40.848 343.238 1.5 427.421 50.103 359.713 89.451 275.53 40.848" fill="url(#linearGradient_ig4K1vVo)" id="DOmtRN2MvGTucmNPbBgk" />
+      <path d="M359.713,90.951c-.259,0-.518-.067-.75-.201l-84.184-48.604c-.464-.268-.749-.762-.75-1.297s.283-1.03.746-1.299L342.483.203c.465-.271,1.037-.271,1.504-.002l84.184,48.604c.464.268.749.762.75,1.297s-.283,1.03-.746,1.299l-67.708,39.348c-.233.136-.493.203-.754.203ZM278.521,40.844l81.188,46.874,64.719-37.61L343.24,3.233l-64.719,37.61Z" fill="#071838" id="gczrHBoRtk1kHl2MMcNze" />
+    </g>
+    <g id="JAPiOaXQlQm1nYsurypgK">
+      <polygon points="359.713 89.451 358.577 490.128 274.394 441.524 275.53 40.848 359.713 89.451" fill="url(#linearGradient_AHsuxnZX)" id="WTdx-jHBaTveNxCCKRgOA" />
+      <path d="M358.577,491.628c-.259,0-.518-.067-.75-.201l-84.184-48.604c-.466-.269-.752-.766-.75-1.303l1.136-400.677c.002-.535.288-1.029.752-1.296.465-.268,1.035-.266,1.498,0l84.184,48.604c.466.269.752.766.75,1.303l-1.136,400.677c-.002.535-.288,1.029-.752,1.296-.231.134-.49.2-.748.2ZM275.896,440.66l81.188,46.874,1.125-397.219-81.188-46.874-1.125,397.219Z" fill="#071838" id="pQV_lXb2PtYPOFahArXp" />
+    </g>
+  </g></g></g></svg>
