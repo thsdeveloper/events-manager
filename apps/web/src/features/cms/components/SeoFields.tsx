@@ -1,12 +1,12 @@
 'use client';
 
-import { useId } from 'react';
-import type { CmsSeo } from '@events-manager/contracts';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import type { CmsSeo } from '@events-manager/contracts';
+import { useId } from 'react';
 import type { FieldErrors } from '../api/client';
 import { firstError } from '../lib/validation';
 import type { CmsMedia } from '../types';
@@ -53,12 +53,12 @@ export function SeoFields({ value, onChange, url, fallbackTitle, ogImage, onOgIm
 
 	return (
 		<div className="space-y-5">
-			<section aria-label="Pré-visualização na busca" className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-				<p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Como aparece no Google</p>
-				<div className="mt-3 rounded-lg bg-white p-4 shadow-sm">
+			<section aria-label="Pré-visualização na busca" className="rounded-lg border border-border bg-muted/40 p-4">
+				<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Como aparece no Google</p>
+				<div className="mt-3 rounded-lg bg-card p-4 shadow-sm">
 					<p className="truncate text-xs text-emerald-700">{url}</p>
 					<p className="mt-1 truncate text-lg text-blue-700">{previewTitle}</p>
-					<p className="mt-1 line-clamp-2 text-sm text-slate-600">{previewDescription}</p>
+					<p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{previewDescription}</p>
 				</div>
 			</section>
 
@@ -122,22 +122,22 @@ export function SeoFields({ value, onChange, url, fallbackTitle, ogImage, onOgIm
 			</Field>
 
 			<div className="grid gap-3 sm:grid-cols-2">
-				<label className="flex items-center gap-2 text-sm">
+				<Label className="flex items-center gap-2 text-sm">
 					<Checkbox
 						checked={seo.no_index}
 						onCheckedChange={(checked) => update({ no_index: checked === true })}
 						aria-label="Não indexar (noindex)"
 					/>
 					Não indexar (noindex)
-				</label>
-				<label className="flex items-center gap-2 text-sm">
+				</Label>
+				<Label className="flex items-center gap-2 text-sm">
 					<Checkbox
 						checked={seo.no_follow}
 						onCheckedChange={(checked) => update({ no_follow: checked === true })}
 						aria-label="Não seguir links (nofollow)"
 					/>
 					Não seguir links (nofollow)
-				</label>
+				</Label>
 			</div>
 
 			<div className="grid gap-4 sm:grid-cols-2">

@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { useFormContext } from 'react-hook-form';
-import { Info, Tag } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { EventCategory } from '@events-manager/contracts';
-import type { EventWizardFormValues } from '../types';
-import { CategoryCard } from '../CategoryCard';
 import { cn } from '@/lib/utils';
+import type { EventCategory } from '@events-manager/contracts';
+import { Info, Tag } from 'lucide-react';
+import { useState } from 'react';
+import { useFormContext } from 'react-hook-form';
+import { CategoryCard } from '../CategoryCard';
+import type { EventWizardFormValues } from '../types';
 
 interface BasicInfoStepProps {
 	categories: EventCategory[];
@@ -40,7 +41,7 @@ export function BasicInfoStep({ categories }: BasicInfoStepProps) {
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-lg border bg-card p-6 shadow-sm">
+			<Card className="rounded-lg border bg-card p-6 shadow-sm">
 				<div className="flex flex-col gap-2">
 					{/* Header padrão */}
 					<div className="flex items-start justify-between gap-4">
@@ -129,7 +130,7 @@ export function BasicInfoStep({ categories }: BasicInfoStepProps) {
 										</p>
 									</div>
 								) : (
-									categories.map(category => (
+									categories.map((category) => (
 										<CategoryCard
 											key={category.id}
 											id={String(category.id)}
@@ -204,7 +205,7 @@ export function BasicInfoStep({ categories }: BasicInfoStepProps) {
 						/>
 					</div>
 				</div>
-			</div>
+			</Card>
 		</div>
 	);
 }

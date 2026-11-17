@@ -1,12 +1,12 @@
 'use client';
 
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
-import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { useId } from 'react';
 import { errorsUnder, firstError } from '../../lib/validation';
 import type { CmsPricingItem } from '../../types';
 import { ButtonFields, buttonFromRow, buttonToPayload, emptyButton, type ButtonState } from '../ButtonEditor';
@@ -58,7 +58,7 @@ function CardFields({
 	const name = `Plano ${index + 1}`;
 
 	return (
-		<fieldset aria-label={name} className="space-y-3 rounded-lg border border-slate-200 p-4">
+		<fieldset aria-label={name} className="space-y-3 rounded-lg border border-border p-4">
 			<div className="flex items-center justify-between gap-2">
 				<legend className="text-sm font-semibold">{name}</legend>
 				<div className="flex items-center gap-1">
@@ -124,13 +124,13 @@ function CardFields({
 						onChange={(event) => update({ badge: event.target.value })}
 					/>
 				</Field>
-				<label className="flex items-center gap-2 self-end pb-2 text-sm">
+				<Label className="flex items-center gap-2 self-end pb-2 text-sm">
 					<Checkbox
 						checked={card.is_highlighted}
 						onCheckedChange={(checked) => update({ is_highlighted: checked === true })}
 					/>
 					Destacar este plano
-				</label>
+				</Label>
 			</div>
 			<Field id={`${id}-description`} label="Descrição" error={firstError(errors, `${prefix}.description`)}>
 				<Textarea

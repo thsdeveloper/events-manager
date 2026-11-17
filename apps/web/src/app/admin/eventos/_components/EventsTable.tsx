@@ -1,10 +1,8 @@
 'use client';
 
-import * as React from 'react';
-import { Table } from '@tanstack/react-table';
-import { Filter, X } from 'lucide-react';
-import { DataTable } from '@/components/ui/data-table';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -13,6 +11,10 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Table } from '@tanstack/react-table';
+import { Filter, X } from 'lucide-react';
+import * as React from 'react';
 import { EventWithStats, getEventsColumns } from './EventsColumns';
 
 interface EventsTableProps {
@@ -30,11 +32,11 @@ export function EventsTable({ data, onEventDeleted }: EventsTableProps) {
 
 		return (
 			<div className="flex flex-1 flex-wrap items-center gap-2">
-				<input
+				<Input
 					placeholder="Buscar eventos..."
 					value={(table.getColumn('title')?.getFilterValue() as string) ?? ''}
 					onChange={(event) => table.getColumn('title')?.setFilterValue(event.target.value)}
-					className="h-10 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+					className="h-10 w-full max-w-sm text-sm"
 				/>
 
 				{/* Status Filter */}
@@ -46,9 +48,12 @@ export function EventsTable({ data, onEventDeleted }: EventsTableProps) {
 								Status
 								{(statusFilter.getFilterValue() as string[])?.length > 0 && (
 									<div className="ml-2 flex items-center gap-1">
-										<div className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+										<Badge
+											variant="secondary"
+											className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground"
+										>
 											{(statusFilter.getFilterValue() as string[]).length}
-										</div>
+										</Badge>
 									</div>
 								)}
 							</Button>
@@ -95,9 +100,12 @@ export function EventsTable({ data, onEventDeleted }: EventsTableProps) {
 								Tipo
 								{(typeFilter.getFilterValue() as string[])?.length > 0 && (
 									<div className="ml-2 flex items-center gap-1">
-										<div className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+										<Badge
+											variant="secondary"
+											className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground"
+										>
 											{(typeFilter.getFilterValue() as string[]).length}
-										</div>
+										</Badge>
 									</div>
 								)}
 							</Button>
@@ -143,9 +151,12 @@ export function EventsTable({ data, onEventDeleted }: EventsTableProps) {
 								Gratuito
 								{freeFilter.getFilterValue() !== undefined && (
 									<div className="ml-2 flex items-center gap-1">
-										<div className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+										<Badge
+											variant="secondary"
+											className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground"
+										>
 											1
-										</div>
+										</Badge>
 									</div>
 								)}
 							</Button>
@@ -174,9 +185,12 @@ export function EventsTable({ data, onEventDeleted }: EventsTableProps) {
 								Destaque
 								{featuredFilter.getFilterValue() !== undefined && (
 									<div className="ml-2 flex items-center gap-1">
-										<div className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+										<Badge
+											variant="secondary"
+											className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground"
+										>
 											1
-										</div>
+										</Badge>
 									</div>
 								)}
 							</Button>

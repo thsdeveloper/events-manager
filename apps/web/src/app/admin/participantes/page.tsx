@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Loader2 } from 'lucide-react';
-import { ParticipantsTable } from './_components/ParticipantsTable';
-import { MetricsCards } from './_components/MetricsCards';
-import { SearchBar } from './_components/SearchBar';
-import { ParticipantFilters } from './_components/ParticipantFilters';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActiveFilterBadges } from './_components/ActiveFilterBadges';
 import { ExportButton } from './_components/ExportButton';
-import type { ParticipantsResponse, ParticipantFilters as Filters } from './_lib/types';
+import { MetricsCards } from './_components/MetricsCards';
+import { ParticipantFilters } from './_components/ParticipantFilters';
+import { ParticipantsTable } from './_components/ParticipantsTable';
+import { SearchBar } from './_components/SearchBar';
+import type { ParticipantFilters as Filters, ParticipantsResponse } from './_lib/types';
 
 export default function ParticipantesPage() {
 	const [data, setData] = useState<ParticipantsResponse | null>(null);
@@ -204,10 +206,8 @@ export default function ParticipantesPage() {
 	if (isRedirecting) {
 		return (
 			<div className="flex min-h-[400px] flex-col items-center justify-center gap-3 text-center">
-				<Loader2 className="size-6 animate-spin text-gray-500 dark:text-gray-400" />
-				<p className="text-sm text-gray-600 dark:text-gray-300">
-					{redirectMessage ?? 'Redirecionando para o login...'}
-				</p>
+				<Loader2 className="size-6 animate-spin text-muted-foreground " />
+				<p className="text-sm text-muted-foreground ">{redirectMessage ?? 'Redirecionando para o login...'}</p>
 			</div>
 		);
 	}
@@ -216,14 +216,18 @@ export default function ParticipantesPage() {
 		<div className="space-y-6">
 			{/* Header */}
 			<div className="flex items-center gap-4">
-				<Link href="/admin" className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700">
-					<ArrowLeft className="size-5" />
-				</Link>
+				<Button asChild variant="ghost" size="icon">
+					<Link
+						aria-label="Voltar"
+						href="/admin"
+						className="rounded-lg p-2 transition-colors hover:bg-muted dark:hover:bg-gray-700"
+					>
+						<ArrowLeft className="size-5" />
+					</Link>
+				</Button>
 				<div>
-					<h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gerenciar Participantes</h1>
-					<p className="mt-1 text-gray-600 dark:text-gray-400">
-						Visualize e gerencie todos os participantes dos seus eventos
-					</p>
+					<h1 className="text-3xl font-bold text-foreground ">Gerenciar Participantes</h1>
+					<p className="mt-1 text-muted-foreground ">Visualize e gerencie todos os participantes dos seus eventos</p>
 				</div>
 			</div>
 
@@ -269,7 +273,7 @@ export default function ParticipantesPage() {
 
 			{/* Table */}
 			{!error && (
-				<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+				<Card className="rounded-lg border border-border bg-card p-6  ">
 					<ParticipantsTable
 						data={data?.data || []}
 						isLoading={isLoading}
@@ -278,7 +282,7 @@ export default function ParticipantesPage() {
 						onPageChange={setCurrentPage}
 						onDataRefresh={handleDataRefresh}
 					/>
-				</div>
+				</Card>
 			)}
 		</div>
 	);

@@ -1,19 +1,20 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarClock, CreditCard, Eye, Save, Tag, Users } from 'lucide-react';
-import { useCallback, useEffect, useId, useMemo } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { CalendarClock, CreditCard, Eye, Save, Tag, Users } from 'lucide-react';
+import { useCallback, useEffect, useId, useMemo } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { z } from 'zod';
 import { useFeeConfig } from '../api/useFeeConfig';
 import type { TicketDraft } from '../types';
 import { TicketFeeSummary } from './TicketFeeSummary';
@@ -22,7 +23,11 @@ const ticketFormSchema = z
 	.object({
 		title: z.string().trim().min(1, 'Informe o nome do ingresso').max(255, 'Máximo de 255 caracteres'),
 		description: z.string().max(500, 'Máximo de 500 caracteres').optional(),
-		quantity: z.coerce.number().int('Use um número inteiro').min(1, 'Mínimo de 1').max(1_000_000, 'Quantidade alta demais'),
+		quantity: z.coerce
+			.number()
+			.int('Use um número inteiro')
+			.min(1, 'Mínimo de 1')
+			.max(1_000_000, 'Quantidade alta demais'),
 		price: z.coerce.number().min(0, 'O valor não pode ser negativo'),
 		service_fee_type: z.enum(['absorbed', 'passed_to_buyer']),
 		visibility: z.enum(['public', 'invited_only', 'manual']),
@@ -198,11 +203,7 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 				</SheetHeader>
 
 				<Form {...form}>
-					<form
-						id={formId}
-						onSubmit={form.handleSubmit(submit)}
-						className="flex-1 space-y-8 overflow-y-auto p-6"
-					>
+					<form id={formId} onSubmit={form.handleSubmit(submit)} className="flex-1 space-y-8 overflow-y-auto p-6">
 						<section className="space-y-4">
 							<h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
 								<Tag className="size-4 text-muted-foreground" />
@@ -280,8 +281,8 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 															label: 'Você absorve a taxa',
 															hint: 'O preço anunciado é o final, e a taxa sai do seu repasse.',
 														},
-													].map(option => (
-														<label
+													].map((option) => (
+														<Label
 															key={option.value}
 															className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
 																field.value === option.value
@@ -294,7 +295,7 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 																<span className="block text-sm font-medium">{option.label}</span>
 																<span className="block text-xs text-muted-foreground">{option.hint}</span>
 															</span>
-														</label>
+														</Label>
 													))}
 												</RadioGroup>
 											</FormControl>

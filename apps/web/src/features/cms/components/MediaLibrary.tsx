@@ -1,8 +1,5 @@
 'use client';
 
-import { FileText, Images, Pencil, Save, Trash2, Upload } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useId, useState } from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -19,6 +16,9 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { FileText, Images, Pencil, Save, Trash2, Upload } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useId, useState } from 'react';
 import { revalidateCmsContent } from '../api/actions';
 import { cmsRequest, describeError } from '../api/client';
 import { formatDateTime } from '../lib/dates';
@@ -77,7 +77,7 @@ function MediaDetailsSheet({
 				<form id={id} onSubmit={submit} className="flex-1 space-y-5 overflow-y-auto p-6">
 					{media && <MediaThumb media={media} className="h-48 w-full rounded-lg" />}
 					{media && (
-						<dl className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+						<dl className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
 							<dt>Tipo</dt>
 							<dd>{media.type ?? '—'}</dd>
 							<dt>Tamanho</dt>
@@ -162,12 +162,12 @@ export function MediaLibrary({ media }: { media: CmsMedia[] }) {
 			</div>
 
 			{media.length === 0 ? (
-				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-slate-50 px-6 py-12 text-center">
-					<div className="flex size-12 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted/40 px-6 py-12 text-center">
+					<div className="flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary">
 						<Images className="size-6" />
 					</div>
-					<p className="font-medium text-slate-950">Nenhum arquivo encontrado</p>
-					<p className="text-sm text-slate-500">Envie imagens e PDFs para usar nas páginas e posts.</p>
+					<p className="font-medium text-foreground">Nenhum arquivo encontrado</p>
+					<p className="text-sm text-muted-foreground">Envie imagens e PDFs para usar nas páginas e posts.</p>
 				</div>
 			) : (
 				<ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
@@ -177,12 +177,12 @@ export function MediaLibrary({ media }: { media: CmsMedia[] }) {
 						return (
 							<li
 								key={file.id}
-								className="group flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+								className="group flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm"
 							>
 								{isImageMedia(file) ? (
 									<MediaThumb media={file} className="aspect-square w-full" />
 								) : (
-									<div className="flex aspect-square w-full flex-col items-center justify-center gap-2 bg-slate-100 text-slate-500">
+									<div className="flex aspect-square w-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground">
 										<FileText className="size-8" />
 										<span className="text-xs font-semibold uppercase">
 											{file.type === 'application/pdf' ? 'PDF' : 'Arquivo'}
@@ -190,10 +190,10 @@ export function MediaLibrary({ media }: { media: CmsMedia[] }) {
 									</div>
 								)}
 								<div className="space-y-1 p-3">
-									<p className="truncate text-sm font-medium text-slate-950" title={label}>
+									<p className="truncate text-sm font-medium text-foreground" title={label}>
 										{label}
 									</p>
-									<p className="text-xs text-slate-500">
+									<p className="text-xs text-muted-foreground">
 										{formatFileSize(file.filesize)} · {formatDateTime(file.date_created)}
 									</p>
 									<div className="flex items-center justify-end gap-1 pt-1">

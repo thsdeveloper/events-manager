@@ -1,9 +1,5 @@
 'use client';
 
-import { ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown, Eye, MoreHorizontal, Pencil } from 'lucide-react';
-import Link from 'next/link';
-import { Event } from '@events-manager/contracts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +11,10 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { Event } from '@events-manager/contracts';
+import { ColumnDef } from '@tanstack/react-table';
+import { ArrowUpDown, Eye, MoreHorizontal, Pencil } from 'lucide-react';
+import Link from 'next/link';
 import { DeleteEventDialog } from './DeleteEventDialog';
 
 export type EventWithStats = {
@@ -26,8 +26,8 @@ const formatDate = (dateString: string | null | undefined) => {
 	if (!dateString) return 'Não definida';
 
 	const date = new Date(dateString);
-	
-return date.toLocaleDateString('pt-BR', {
+
+	return date.toLocaleDateString('pt-BR', {
 		day: '2-digit',
 		month: '2-digit',
 		year: 'numeric',
@@ -38,8 +38,8 @@ const formatDateTime = (dateString: string | null | undefined) => {
 	if (!dateString) return 'Não definida';
 
 	const date = new Date(dateString);
-	
-return date.toLocaleDateString('pt-BR', {
+
+	return date.toLocaleDateString('pt-BR', {
 		day: '2-digit',
 		month: '2-digit',
 		year: 'numeric',
@@ -98,12 +98,9 @@ export const getEventsColumns = (onEventDeleted?: () => void): ColumnDef<EventWi
 		cell: ({ row }) => {
 			const event = row.original.event;
 
-return (
+			return (
 				<div className="min-w-[200px]">
-					<Link
-						href={`/admin/eventos/${event.id}`}
-						className="font-medium hover:text-primary hover:underline"
-					>
+					<Link href={`/admin/eventos/${event.id}`} className="font-medium hover:text-primary hover:underline">
 						{event.title}
 					</Link>
 					{event.short_description && (
@@ -202,7 +199,7 @@ return (
 					Sim
 				</Badge>
 			) : (
-				<Badge variant="outline" className="border-gray-300 bg-gray-500/10 text-gray-600">
+				<Badge variant="outline" className="border-input bg-gray-500/10 text-muted-foreground">
 					Não
 				</Badge>
 			);

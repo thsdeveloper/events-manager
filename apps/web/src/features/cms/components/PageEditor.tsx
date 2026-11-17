@@ -1,10 +1,6 @@
 'use client';
 
-import { cmsPageInputSchema, type CmsContentStatus, type CmsSeo } from '@events-manager/contracts';
-import { ExternalLink, Eye, Save, Trash2 } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useId, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -18,6 +14,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { cmsPageInputSchema, type CmsContentStatus, type CmsSeo } from '@events-manager/contracts';
+import { ExternalLink, Eye, Save, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useId, useState } from 'react';
 import { revalidateCmsContent } from '../api/actions';
 import { CmsRequestError, cmsRequest, describeError, type FieldErrors } from '../api/client';
 import { formatDateTime } from '../lib/dates';
@@ -107,9 +108,9 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 		<div className="space-y-6">
 			<header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div className="min-w-0">
-					<p className="text-sm font-semibold text-violet-700">Páginas</p>
+					<p className="text-sm font-semibold text-primary">Páginas</p>
 					<h1 className="mt-1 truncate text-3xl font-bold tracking-tight">{page.title}</h1>
-					<div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+					<div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 						<StatusBadge status={page.status} publishedAt={page.published_at} />
 						<span>Atualizada em {formatDateTime(page.date_updated ?? page.date_created)}</span>
 					</div>
@@ -135,9 +136,9 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 			</header>
 
 			{formError && (
-				<p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-					{formError}
-				</p>
+				<Alert variant="destructive">
+					<AlertDescription>{formError}</AlertDescription>
+				</Alert>
 			)}
 
 			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -199,7 +200,7 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 							<Trash2 className="mr-2 size-4" />
 							Excluir página
 						</Button>
-						<p className="text-xs text-slate-500">
+						<p className="text-xs text-muted-foreground">
 							{isHome
 								? 'A página inicial não pode ser excluída: ela responde na raiz do site. Edite os blocos ou deixe-a como rascunho.'
 								: 'Os blocos são apagados junto. Links de menu que apontam para ela ficam sem destino.'}

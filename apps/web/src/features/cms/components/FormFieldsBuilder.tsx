@@ -1,14 +1,14 @@
 'use client';
 
-import { CMS_FORM_FIELD_TYPES, slugify } from '@events-manager/contracts';
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
-import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { CMS_FORM_FIELD_TYPES, slugify } from '@events-manager/contracts';
+import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { useId } from 'react';
 import type { FieldErrors } from '../api/client';
 import { errorsUnder, firstError } from '../lib/validation';
 import type { CmsFormFieldRow } from '../types';
@@ -142,11 +142,11 @@ function FieldCard({
 	const update = (patch: Partial<FormFieldState>) => onChange({ ...field, ...patch });
 
 	return (
-		<fieldset aria-label={name} className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+		<fieldset aria-label={name} className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm">
 			<div className="flex items-center justify-between gap-2">
-				<legend className="text-sm font-semibold text-slate-700">
+				<legend className="text-sm font-semibold text-foreground">
 					{name}
-					{field.label && <span className="ml-2 font-normal text-slate-500">— {field.label}</span>}
+					{field.label && <span className="ml-2 font-normal text-muted-foreground">— {field.label}</span>}
 				</legend>
 				<div className="flex items-center gap-1">
 					<Button
@@ -264,10 +264,10 @@ function FieldCard({
 						onChange={(event) => update({ validation: event.target.value })}
 					/>
 				</Field>
-				<label className="flex items-center gap-2 self-end pb-2 text-sm">
+				<Label className="flex items-center gap-2 self-end pb-2 text-sm">
 					<Checkbox checked={field.required} onCheckedChange={(checked) => update({ required: checked === true })} />
 					Obrigatório
-				</label>
+				</Label>
 			</div>
 			{CHOICE_TYPES.has(field.type) && (
 				<Field
@@ -306,7 +306,7 @@ export function FormFieldsBuilder({ value, onChange, errors }: FormFieldsBuilder
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
-				<p className="text-sm text-slate-600">
+				<p className="text-sm text-muted-foreground">
 					{value.length} {value.length === 1 ? 'campo' : 'campos'} (máximo 40)
 				</p>
 				<Button
@@ -321,7 +321,7 @@ export function FormFieldsBuilder({ value, onChange, errors }: FormFieldsBuilder
 			</div>
 			<FieldError message={firstError(errors, 'fields')} />
 			{value.length === 0 && (
-				<p className="rounded-lg border border-dashed bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+				<p className="rounded-lg border border-dashed bg-muted/40 px-6 py-10 text-center text-sm text-muted-foreground">
 					Sem campos, o formulário não tem o que enviar.
 				</p>
 			)}

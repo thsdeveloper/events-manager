@@ -1,9 +1,6 @@
 'use client';
 
-import { cmsFormInputSchema } from '@events-manager/contracts';
-import { Save, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useId, useState, type ReactNode } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -22,6 +19,10 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { cmsFormInputSchema } from '@events-manager/contracts';
+import { Save, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useId, useState, type ReactNode } from 'react';
 import { revalidateCmsContent } from '../api/actions';
 import { CmsRequestError, cmsRequest, describeError, type FieldErrors } from '../api/client';
 import { validateWith } from '../lib/validation';
@@ -111,9 +112,11 @@ export function FormEditor({ form, submissions, initialTab = 'campos' }: FormEdi
 		<div className="space-y-6">
 			<header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div className="min-w-0">
-					<p className="text-sm font-semibold text-violet-700">Formulários</p>
+					<p className="text-sm font-semibold text-primary">Formulários</p>
 					<h1 className="mt-1 truncate text-3xl font-bold tracking-tight">{form ? form.title : 'Novo formulário'}</h1>
-					<p className="mt-2 text-sm text-slate-600">Use o bloco “Formulário” em uma página para exibi-lo no site.</p>
+					<p className="mt-2 text-sm text-muted-foreground">
+						Use o bloco “Formulário” em uma página para exibi-lo no site.
+					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
 					{form && (
@@ -130,9 +133,9 @@ export function FormEditor({ form, submissions, initialTab = 'campos' }: FormEdi
 			</header>
 
 			{formError && (
-				<p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-					{formError}
-				</p>
+				<Alert variant="destructive">
+					<AlertDescription>{formError}</AlertDescription>
+				</Alert>
 			)}
 
 			<Tabs defaultValue={form ? initialTab : 'campos'}>
@@ -199,13 +202,15 @@ export function FormEditor({ form, submissions, initialTab = 'campos' }: FormEdi
 								</Field>
 							)}
 						</div>
-						<label className="flex items-center gap-3 text-sm">
+						<Label className="flex items-center gap-3 text-sm">
 							<Switch checked={isActive} onCheckedChange={setIsActive} aria-label="Formulário ativo" />
 							<span>
 								<span className="font-medium">{isActive ? 'Ativo' : 'Inativo'}</span>
-								<span className="block text-xs text-slate-500">Um formulário inativo não aceita envios no site.</span>
+								<span className="block text-xs text-muted-foreground">
+									Um formulário inativo não aceita envios no site.
+								</span>
 							</span>
-						</label>
+						</Label>
 					</SectionCard>
 					<SectionCard
 						title="Campos"

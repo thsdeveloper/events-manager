@@ -1,7 +1,7 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Loader2, Cloud, CloudOff } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Check, Cloud, CloudOff, Loader2 } from 'lucide-react';
 
 interface AutoSaveIndicatorProps {
 	status: 'idle' | 'saving' | 'saved' | 'error';
@@ -32,9 +32,7 @@ export function AutoSaveIndicator({ status, lastSaved }: AutoSaveIndicatorProps)
 				{status === 'saving' && (
 					<>
 						<Loader2 className="size-4 animate-spin text-blue-600 dark:text-blue-400" />
-						<span className="text-blue-600 dark:text-blue-400 font-medium">
-							Salvando...
-						</span>
+						<span className="text-blue-600 dark:text-blue-400 font-medium">Salvando...</span>
 					</>
 				)}
 
@@ -50,18 +48,14 @@ export function AutoSaveIndicator({ status, lastSaved }: AutoSaveIndicatorProps)
 				{status === 'error' && (
 					<>
 						<CloudOff className="size-4 text-red-600 dark:text-red-400" />
-						<span className="text-red-600 dark:text-red-400 font-medium">
-							Erro ao salvar
-						</span>
+						<span className="text-red-600 dark:text-red-400 font-medium">Erro ao salvar</span>
 					</>
 				)}
 
 				{status === 'idle' && (
 					<>
-						<Cloud className="size-4 text-gray-400 dark:text-gray-500" />
-						<span className="text-gray-500 dark:text-gray-400">
-							{lastSaved ? `Salvo ${getTimeAgo(lastSaved)}` : 'Não salvo'}
-						</span>
+						<Cloud className="size-4 text-muted-foreground " />
+						<span className="text-muted-foreground ">{lastSaved ? `Salvo ${getTimeAgo(lastSaved)}` : 'Não salvo'}</span>
 					</>
 				)}
 			</motion.div>

@@ -1,10 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Pencil } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
 	Dialog,
 	DialogContent,
@@ -13,15 +9,19 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DocumentInput, PhoneInput } from '@/components/ui/masked-inputs';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { isValidEmail, isValidBrazilianPhone } from '../_lib/utils';
-import { DocumentInput, PhoneInput } from '@/components/ui/masked-inputs';
 import { isValidDocument } from '@/lib/br-documents';
-import type { ParticipantRow, EditParticipantData } from '../_lib/types';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Pencil } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { z } from 'zod';
+import type { ParticipantRow } from '../_lib/types';
+import { isValidBrazilianPhone, isValidEmail } from '../_lib/utils';
 
 // Schema de validação com Zod
 const editParticipantSchema = z.object({
@@ -178,7 +178,6 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 							)}
 						/>
 						{errors.participant_phone && <p className="text-sm text-rose-600">{errors.participant_phone.message}</p>}
-						
 					</div>
 
 					{/* Documento */}
@@ -214,7 +213,7 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 							rows={3}
 						/>
 						{errors.notes && <p className="text-sm text-rose-600">{errors.notes.message}</p>}
-						<p className="text-xs text-gray-500">
+						<p className="text-xs text-muted-foreground">
 							Estas observações são internas e não serão compartilhadas com o participante
 						</p>
 					</div>

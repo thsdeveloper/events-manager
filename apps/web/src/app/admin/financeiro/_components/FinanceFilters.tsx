@@ -1,18 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { CalendarRange, Filter, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/useDebounce';
+import { CalendarRange, Filter, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export type RangeOption = '30d' | '90d' | 'year' | 'custom';
 export type StatusOption = 'all' | 'succeeded' | 'pending' | 'failed' | 'refunded';
@@ -71,10 +65,10 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 	return (
 		<form
 			onSubmit={handleSubmit}
-			className="grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-slate-900 md:grid-cols-2 lg:grid-cols-4"
+			className="grid grid-cols-1 gap-4 rounded-lg border border-border bg-card p-4 shadow-sm   md:grid-cols-2 lg:grid-cols-4"
 		>
 			<div className="flex flex-col gap-2">
-				<Label htmlFor="range" className="text-xs font-semibold uppercase text-gray-500">
+				<Label htmlFor="range" className="text-xs font-semibold uppercase text-muted-foreground">
 					Período
 				</Label>
 				<Select
@@ -86,7 +80,7 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 						}))
 					}
 				>
-					<SelectTrigger id="range" className="bg-white dark:bg-slate-900">
+					<SelectTrigger id="range" className="bg-card ">
 						<SelectValue placeholder="Selecione o período" />
 					</SelectTrigger>
 					<SelectContent>
@@ -99,7 +93,7 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 			</div>
 
 			<div className="flex flex-col gap-2">
-				<Label htmlFor="status" className="text-xs font-semibold uppercase text-gray-500">
+				<Label htmlFor="status" className="text-xs font-semibold uppercase text-muted-foreground">
 					Status
 				</Label>
 				<Select
@@ -111,7 +105,7 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 						}))
 					}
 				>
-					<SelectTrigger id="status" className="bg-white dark:bg-slate-900">
+					<SelectTrigger id="status" className="bg-card ">
 						<SelectValue placeholder="Todos os status" />
 					</SelectTrigger>
 					<SelectContent>
@@ -125,7 +119,7 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 			</div>
 
 			<div className="flex flex-col gap-2">
-				<Label htmlFor="event" className="text-xs font-semibold uppercase text-gray-500">
+				<Label htmlFor="event" className="text-xs font-semibold uppercase text-muted-foreground">
 					Eventos
 				</Label>
 				<Select
@@ -137,7 +131,7 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 						}))
 					}
 				>
-					<SelectTrigger id="event" className="bg-white dark:bg-slate-900">
+					<SelectTrigger id="event" className="bg-card ">
 						<SelectValue placeholder="Todos os eventos" />
 					</SelectTrigger>
 					<SelectContent>
@@ -152,7 +146,7 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 			</div>
 
 			<div className="flex flex-col gap-2">
-				<Label htmlFor="search" className="text-xs font-semibold uppercase text-gray-500">
+				<Label htmlFor="search" className="text-xs font-semibold uppercase text-muted-foreground">
 					Busca
 				</Label>
 				<Input
@@ -160,18 +154,18 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 					value={searchInput}
 					onChange={(event) => setSearchInput(event.target.value)}
 					placeholder="Nome, email ou ID AbacatePay"
-					className="bg-white dark:bg-slate-900"
+					className="bg-card "
 				/>
 			</div>
 
 			{draft.range === 'custom' && (
 				<>
 					<div className="flex flex-col gap-2">
-						<Label htmlFor="date-from" className="text-xs font-semibold uppercase text-gray-500">
+						<Label htmlFor="date-from" className="text-xs font-semibold uppercase text-muted-foreground">
 							Data inicial
 						</Label>
 						<div className="relative">
-							<CalendarRange className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+							<CalendarRange className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								id="date-from"
 								type="date"
@@ -188,11 +182,11 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 					</div>
 
 					<div className="flex flex-col gap-2">
-						<Label htmlFor="date-to" className="text-xs font-semibold uppercase text-gray-500">
+						<Label htmlFor="date-to" className="text-xs font-semibold uppercase text-muted-foreground">
 							Data final
 						</Label>
 						<div className="relative">
-							<CalendarRange className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+							<CalendarRange className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								id="date-to"
 								type="date"
@@ -215,12 +209,7 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 					<Filter className="mr-2 size-4" />
 					Aplicar filtros
 				</Button>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={handleReset}
-					className="flex-1 md:flex-none md:px-4"
-				>
+				<Button type="button" variant="outline" onClick={handleReset} className="flex-1 md:flex-none md:px-4">
 					<XCircle className="mr-2 size-4" />
 					Limpar
 				</Button>

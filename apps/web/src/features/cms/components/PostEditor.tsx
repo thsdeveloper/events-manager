@@ -1,10 +1,6 @@
 'use client';
 
-import { cmsPostInputSchema, slugify, type CmsContentStatus, type CmsSeo } from '@events-manager/contracts';
-import { ExternalLink, Save, Trash2 } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useId, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -20,6 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { cmsPostInputSchema, slugify, type CmsContentStatus, type CmsSeo } from '@events-manager/contracts';
+import { ExternalLink, Save, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useId, useState } from 'react';
 import { revalidateCmsContent } from '../api/actions';
 import { CmsRequestError, cmsRequest, describeError, type FieldErrors } from '../api/client';
 import { formatDateTime } from '../lib/dates';
@@ -121,10 +122,10 @@ export function PostEditor({ post, siteUrl }: PostEditorProps) {
 		<div className="space-y-6">
 			<header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div className="min-w-0">
-					<p className="text-sm font-semibold text-violet-700">Blog</p>
+					<p className="text-sm font-semibold text-primary">Blog</p>
 					<h1 className="mt-1 truncate text-3xl font-bold tracking-tight">{post ? post.title : 'Novo post'}</h1>
 					{post && (
-						<div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+						<div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 							<StatusBadge status={post.status} publishedAt={post.published_at} />
 							<span>Atualizado em {formatDateTime(post.date_updated ?? post.date_created)}</span>
 						</div>
@@ -147,9 +148,9 @@ export function PostEditor({ post, siteUrl }: PostEditorProps) {
 			</header>
 
 			{formError && (
-				<p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-					{formError}
-				</p>
+				<Alert variant="destructive">
+					<AlertDescription>{formError}</AlertDescription>
+				</Alert>
 			)}
 
 			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -237,7 +238,7 @@ export function PostEditor({ post, siteUrl }: PostEditorProps) {
 								<Trash2 className="mr-2 size-4" />
 								Excluir post
 							</Button>
-							<p className="text-xs text-slate-500">O post sai do blog e do sitemap imediatamente.</p>
+							<p className="text-xs text-muted-foreground">O post sai do blog e do sitemap imediatamente.</p>
 						</SectionCard>
 					)}
 				</aside>

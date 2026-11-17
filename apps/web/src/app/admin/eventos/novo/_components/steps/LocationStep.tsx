@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback } from 'react';
-import { MapPin, MonitorSmartphone, Users } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
+import { EventLocationPicker, type PickedLocation } from '@/components/map/EventLocationPicker';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { EventLocationPicker, type PickedLocation } from '@/components/map/EventLocationPicker';
 import { cn } from '@/lib/utils';
+import { MapPin, MonitorSmartphone, Users } from 'lucide-react';
+import { useCallback } from 'react';
+import { useFormContext } from 'react-hook-form';
 import type { EventWizardFormValues } from '../types';
 
 const EVENT_TYPE_OPTIONS = [
@@ -35,8 +37,7 @@ export function LocationStep() {
 	const eventType = form.watch('event_type');
 	const latitude = form.watch('latitude');
 	const longitude = form.watch('longitude');
-	const position =
-		typeof latitude === 'number' && typeof longitude === 'number' ? { latitude, longitude } : null;
+	const position = typeof latitude === 'number' && typeof longitude === 'number' ? { latitude, longitude } : null;
 
 	const handlePick = useCallback(
 		(location: PickedLocation) => {
@@ -63,7 +64,7 @@ export function LocationStep() {
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-lg border bg-card p-6 shadow-sm">
+			<Card className="rounded-lg border bg-card p-6 shadow-sm">
 				<div className="flex flex-col gap-2">
 					<div className="flex items-start justify-between gap-4">
 						<div>
@@ -75,130 +76,130 @@ export function LocationStep() {
 					</div>
 
 					<div className="mt-6 space-y-6">
-					<div>
-						<h3 className="text-sm font-medium">Formato do evento</h3>
-						<div className="mt-4 grid gap-3 md:grid-cols-3">
-							{EVENT_TYPE_OPTIONS.map(option => {
-								const Icon = option.icon;
-								const isActive = eventType === option.id;
+						<div>
+							<h3 className="text-sm font-medium">Formato do evento</h3>
+							<div className="mt-4 grid gap-3 md:grid-cols-3">
+								{EVENT_TYPE_OPTIONS.map((option) => {
+									const Icon = option.icon;
+									const isActive = eventType === option.id;
 
-								return (
-									<button
-										type="button"
-										key={option.id}
-										onClick={() =>
-											form.setValue('event_type', option.id, { shouldDirty: true, shouldValidate: true })
-										}
-										className={cn(
-											'flex h-full flex-col gap-3 rounded-lg border p-4 text-left transition-all',
-											isActive
-												? 'border-primary bg-primary/10 shadow-sm'
-												: 'border-border hover:border-primary/40 hover:bg-muted',
-										)}
-									>
-										<div className="flex items-center gap-3">
-											<span className={cn('rounded-full p-2', isActive ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-												<Icon className="size-4" />
-											</span>
-											<span className="font-medium">{option.title}</span>
-										</div>
-										<p className="text-xs text-muted-foreground">{option.description}</p>
-									</button>
-								);
-							})}
+									return (
+										<Button
+											variant="ghost"
+											type="button"
+											key={option.id}
+											onClick={() =>
+												form.setValue('event_type', option.id, { shouldDirty: true, shouldValidate: true })
+											}
+											className={cn(
+												'flex h-full flex-col gap-3 rounded-lg border p-4 text-left transition-all',
+												isActive
+													? 'border-primary bg-primary/10 shadow-sm'
+													: 'border-border hover:border-primary/40 hover:bg-muted',
+											)}
+										>
+											<div className="flex items-center gap-3">
+												<span
+													className={cn(
+														'rounded-full p-2',
+														isActive ? 'bg-primary text-primary-foreground' : 'bg-muted',
+													)}
+												>
+													<Icon className="size-4" />
+												</span>
+												<span className="font-medium">{option.title}</span>
+											</div>
+											<p className="text-xs text-muted-foreground">{option.description}</p>
+										</Button>
+									);
+								})}
+							</div>
+							{form.formState.errors.event_type?.message && (
+								<p className="mt-2 text-sm font-medium text-destructive">{form.formState.errors.event_type.message}</p>
+							)}
 						</div>
-						{form.formState.errors.event_type?.message && (
-							<p className="mt-2 text-sm font-medium text-destructive">
-								{form.formState.errors.event_type.message}
-							</p>
+
+						{(eventType === 'in_person' || eventType === 'hybrid') && (
+							<div className="rounded-lg border border-dashed p-4">
+								<h3 className="text-sm font-medium">Detalhes do local</h3>
+								<p className="text-xs text-muted-foreground">
+									Capriche nas informações para facilitar a chegada dos participantes.
+								</p>
+
+								<div className="mt-4 grid gap-4 sm:grid-cols-2">
+									<FormField
+										control={form.control}
+										name="location_name"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Nome do local</FormLabel>
+												<FormControl>
+													<Input {...field} placeholder="Ex: Hub Inovação Paulista" />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="location_address"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Endereço completo</FormLabel>
+												<FormControl>
+													<Input {...field} placeholder="Rua, número, bairro, cidade e estado" autoComplete="off" />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
+
+								<div className="mt-6">
+									<h4 className="text-sm font-medium">Ponto exato no mapa</h4>
+									<p className="mb-3 text-xs text-muted-foreground">
+										Busque o endereço ou clique no mapa para posicionar o pino. Arraste-o para ajustar com precisão.
+									</p>
+									<EventLocationPicker position={position} onPick={handlePick} onClear={handleClear} />
+									{form.formState.errors.latitude?.message && (
+										<p className="mt-2 text-sm font-medium text-destructive">
+											{form.formState.errors.latitude.message}
+										</p>
+									)}
+								</div>
+
+								<p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+									Dica: adicione pontos de referência ou instruções especiais se necessário.
+								</p>
+							</div>
+						)}
+
+						{(eventType === 'online' || eventType === 'hybrid') && (
+							<div className="rounded-lg border border-dashed p-4">
+								<h3 className="text-sm font-medium">Transmissão online</h3>
+								<p className="text-xs text-muted-foreground">
+									Informe a URL e, se quiser, o nome da plataforma. Enviaremos somente para inscritos confirmados.
+								</p>
+
+								<FormField
+									control={form.control}
+									name="online_url"
+									render={({ field }) => (
+										<FormItem className="mt-4">
+											<FormLabel>Link de acesso</FormLabel>
+											<FormControl>
+												<Input {...field} placeholder="https://meet.google.com/xxx-xxxx-xxx" />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
 						)}
 					</div>
-
-					{(eventType === 'in_person' || eventType === 'hybrid') && (
-						<div className="rounded-lg border border-dashed p-4">
-							<h3 className="text-sm font-medium">Detalhes do local</h3>
-							<p className="text-xs text-muted-foreground">
-								Capriche nas informações para facilitar a chegada dos participantes.
-							</p>
-
-							<div className="mt-4 grid gap-4 sm:grid-cols-2">
-								<FormField
-									control={form.control}
-									name="location_name"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Nome do local</FormLabel>
-											<FormControl>
-												<Input {...field} placeholder="Ex: Hub Inovação Paulista" />
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-
-								<FormField
-									control={form.control}
-									name="location_address"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Endereço completo</FormLabel>
-											<FormControl>
-												<Input
-													{...field}
-													placeholder="Rua, número, bairro, cidade e estado"
-													autoComplete="off"
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							</div>
-
-							<div className="mt-6">
-								<h4 className="text-sm font-medium">Ponto exato no mapa</h4>
-								<p className="mb-3 text-xs text-muted-foreground">
-									Busque o endereço ou clique no mapa para posicionar o pino. Arraste-o para ajustar com precisão.
-								</p>
-								<EventLocationPicker position={position} onPick={handlePick} onClear={handleClear} />
-								{form.formState.errors.latitude?.message && (
-									<p className="mt-2 text-sm font-medium text-destructive">
-										{form.formState.errors.latitude.message}
-									</p>
-								)}
-							</div>
-
-							<p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-								Dica: adicione pontos de referência ou instruções especiais se necessário.
-							</p>
-						</div>
-					)}
-
-					{(eventType === 'online' || eventType === 'hybrid') && (
-						<div className="rounded-lg border border-dashed p-4">
-							<h3 className="text-sm font-medium">Transmissão online</h3>
-							<p className="text-xs text-muted-foreground">
-								Informe a URL e, se quiser, o nome da plataforma. Enviaremos somente para inscritos confirmados.
-							</p>
-
-							<FormField
-								control={form.control}
-								name="online_url"
-								render={({ field }) => (
-									<FormItem className="mt-4">
-										<FormLabel>Link de acesso</FormLabel>
-										<FormControl>
-											<Input {...field} placeholder="https://meet.google.com/xxx-xxxx-xxx" />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>
-					)}
-					</div>
 				</div>
-			</div>
+			</Card>
 		</div>
 	);
 }

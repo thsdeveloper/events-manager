@@ -1,17 +1,34 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { Sparkles, Ticket, DollarSign, Users, Info, ChevronDown, FileEdit, Globe, Ban, Archive, Rocket, Check, BadgeDollarSign } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
 import { TicketFormSheet } from '@/features/tickets/components/TicketFormSheet';
 import { TicketList } from '@/features/tickets/components/TicketList';
 import { ticketKey, type TicketDraft } from '@/features/tickets/types';
+import { cn } from '@/lib/utils';
+import {
+	Archive,
+	BadgeDollarSign,
+	Ban,
+	Check,
+	ChevronDown,
+	DollarSign,
+	FileEdit,
+	Globe,
+	Info,
+	Rocket,
+	Sparkles,
+	Ticket,
+	Users,
+} from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useFormContext } from 'react-hook-form';
 import type { EventWizardFormValues } from '../types';
 
 const MAIN_STATUS_OPTIONS = [
@@ -50,9 +67,7 @@ export function TicketsStep() {
 	const maxAttendees = form.watch('max_attendees');
 	const status = form.watch('status');
 	const [hasUnlimitedCapacity, setHasUnlimitedCapacity] = useState(!maxAttendees);
-	const [showAdvancedStatus, setShowAdvancedStatus] = useState(
-		status === 'cancelled' || status === 'archived',
-	);
+	const [showAdvancedStatus, setShowAdvancedStatus] = useState(status === 'cancelled' || status === 'archived');
 
 	// Tickets live in the wizard form because the event has no id yet — they are
 	// sent together with it and persisted by the API in one atomic call.
@@ -76,14 +91,16 @@ export function TicketsStep() {
 	}, []);
 
 	const handleRemoveTicket = useCallback(
-		(ticket: TicketDraft) => writeTickets(tickets.filter(item => ticketKey(item) !== ticketKey(ticket))),
+		(ticket: TicketDraft) => writeTickets(tickets.filter((item) => ticketKey(item) !== ticketKey(ticket))),
 		[tickets, writeTickets],
 	);
 
 	const handleTicketSaved = useCallback(
 		(saved: TicketDraft) => {
-			const exists = tickets.some(item => ticketKey(item) === ticketKey(saved));
-			writeTickets(exists ? tickets.map(item => (ticketKey(item) === ticketKey(saved) ? saved : item)) : [...tickets, saved]);
+			const exists = tickets.some((item) => ticketKey(item) === ticketKey(saved));
+			writeTickets(
+				exists ? tickets.map((item) => (ticketKey(item) === ticketKey(saved) ? saved : item)) : [...tickets, saved],
+			);
 			setEditingTicket(null);
 		},
 		[tickets, writeTickets],
@@ -100,7 +117,7 @@ export function TicketsStep() {
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-lg border bg-card p-6 shadow-sm">
+			<Card className="rounded-lg border bg-card p-6 shadow-sm">
 				<div className="flex flex-col gap-2">
 					<div className="flex items-start justify-between gap-4">
 						<div>
@@ -114,7 +131,7 @@ export function TicketsStep() {
 
 					<div className="mt-6 space-y-6">
 						{/* Bloco 1: Tipo de ingresso */}
-						<div className="rounded-lg border bg-card p-4">
+						<Card className="rounded-lg border bg-card p-4">
 							<div className="mb-4 flex items-start justify-between gap-4">
 								<div>
 									<h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -128,14 +145,20 @@ export function TicketsStep() {
 								<TooltipProvider delayDuration={200}>
 									<Tooltip>
 										<TooltipTrigger asChild>
-											<button type="button" className="text-muted-foreground hover:text-foreground">
+											<Button
+												variant="ghost"
+												type="button"
+												size="icon"
+												aria-label="Sobre os tipos de ingresso"
+												className="size-8 text-muted-foreground"
+											>
 												<Info className="size-4" />
-											</button>
+											</Button>
 										</TooltipTrigger>
 										<TooltipContent side="left" className="max-w-[280px]">
 											<p className="text-xs">
-												Você poderá alterar isso antes de publicar. Se escolher evento pago, configurará preços e lotes na
-												próxima etapa.
+												Você poderá alterar isso antes de publicar. Se escolher evento pago, configurará preços e lotes
+												na próxima etapa.
 											</p>
 										</TooltipContent>
 									</Tooltip>
@@ -143,7 +166,8 @@ export function TicketsStep() {
 							</div>
 
 							<div className="grid gap-4 md:grid-cols-2">
-								<button
+								<Button
+									variant="ghost"
 									type="button"
 									onClick={() => form.setValue('is_free', true, { shouldDirty: true, shouldValidate: true })}
 									className={cn(
@@ -178,11 +202,13 @@ export function TicketsStep() {
 										)}
 									</div>
 									<p className="text-xs text-muted-foreground">
-										Os participantes garantem presença sem custo. Você pode solicitar inscrição prévia para controlar vagas.
+										Os participantes garantem presença sem custo. Você pode solicitar inscrição prévia para controlar
+										vagas.
 									</p>
-								</button>
+								</Button>
 
-								<button
+								<Button
+									variant="ghost"
 									type="button"
 									onClick={() => form.setValue('is_free', false, { shouldDirty: true, shouldValidate: true })}
 									className={cn(
@@ -219,12 +245,12 @@ export function TicketsStep() {
 									<p className="text-xs text-muted-foreground">
 										Defina os tipos de ingresso abaixo. Mostramos quanto o comprador paga e quanto você recebe.
 									</p>
-								</button>
+								</Button>
 							</div>
-						</div>
+						</Card>
 
 						{/* Bloco: tipos de ingresso */}
-						<div className="rounded-lg border bg-card p-4">
+						<Card className="rounded-lg border bg-card p-4">
 							<div className="mb-4 flex items-start justify-between gap-4">
 								<div>
 									<h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -247,36 +273,30 @@ export function TicketsStep() {
 								onEdit={handleEditTicket}
 								onRemove={handleRemoveTicket}
 								emptyHint={
-									isFree
-										? 'Sem ingressos, a inscrição gratuita é liberada direto na página do evento.'
-										: undefined
+									isFree ? 'Sem ingressos, a inscrição gratuita é liberada direto na página do evento.' : undefined
 								}
 							/>
 
 							{form.formState.errors.tickets?.message && (
 								<p className="mt-2 text-sm font-medium text-destructive">{form.formState.errors.tickets.message}</p>
 							)}
-						</div>
+						</Card>
 
 						{/* Bloco 2: Capacidade */}
-						<div className="rounded-lg border bg-card p-4">
+						<Card className="rounded-lg border bg-card p-4">
 							<div className="mb-4">
 								<h3 className="flex items-center gap-2 text-sm font-semibold">
 									<Users className="size-4 text-primary" />
 									Capacidade do evento
 								</h3>
-								<p className="mt-1 text-xs text-muted-foreground">
-									Defina quantas pessoas podem participar do evento.
-								</p>
+								<p className="mt-1 text-xs text-muted-foreground">Defina quantas pessoas podem participar do evento.</p>
 							</div>
 
 							<div className="space-y-4">
 								<div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
 									<div>
 										<p className="text-sm font-medium">Vagas ilimitadas</p>
-										<p className="text-xs text-muted-foreground">
-											Qualquer número de pessoas poderá participar
-										</p>
+										<p className="text-xs text-muted-foreground">Qualquer número de pessoas poderá participar</p>
 									</div>
 									<Switch checked={hasUnlimitedCapacity} onCheckedChange={handleCapacityToggle} />
 								</div>
@@ -312,7 +332,7 @@ export function TicketsStep() {
 									/>
 								)}
 							</div>
-						</div>
+						</Card>
 
 						{/* Bloco 3: Status inicial */}
 						<div className="rounded-lg border border-dashed p-4">
@@ -338,7 +358,7 @@ export function TicketsStep() {
 													const Icon = option.icon;
 
 													return (
-														<label
+														<Label
 															key={option.value}
 															className={cn(
 																'flex cursor-pointer items-start gap-3 rounded-lg border-2 p-3 transition-all',
@@ -355,7 +375,7 @@ export function TicketsStep() {
 																</div>
 																<p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
 															</div>
-														</label>
+														</Label>
 													);
 												})}
 											</RadioGroup>
@@ -364,21 +384,20 @@ export function TicketsStep() {
 
 										{/* Opções avançadas (colapsável) */}
 										<div className="rounded-lg border">
-											<button
+											<Button
+												variant="ghost"
 												type="button"
 												onClick={() => setShowAdvancedStatus(!showAdvancedStatus)}
-												className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted/50"
+												className="h-auto whitespace-normal flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted/50"
 											>
-												<span className="text-xs font-medium text-muted-foreground">
-													Outras opções (avançado)
-												</span>
+												<span className="text-xs font-medium text-muted-foreground">Outras opções (avançado)</span>
 												<ChevronDown
 													className={cn(
 														'size-3 text-muted-foreground transition-transform',
 														showAdvancedStatus && 'rotate-180',
 													)}
 												/>
-											</button>
+											</Button>
 
 											{showAdvancedStatus && (
 												<div className="border-t p-3">
@@ -391,7 +410,7 @@ export function TicketsStep() {
 															const Icon = option.icon;
 
 															return (
-																<label
+																<Label
 																	key={option.value}
 																	className={cn(
 																		'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-all',
@@ -408,7 +427,7 @@ export function TicketsStep() {
 																		</div>
 																		<p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
 																	</div>
-																</label>
+																</Label>
 															);
 														})}
 													</RadioGroup>
@@ -427,9 +446,7 @@ export function TicketsStep() {
 									<Sparkles className="mt-0.5 size-4 text-primary" />
 									<div>
 										<h3 className="text-sm font-semibold">Opções de destaque</h3>
-										<p className="text-xs text-muted-foreground">
-											Aumente a visibilidade do seu evento publicado.
-										</p>
+										<p className="text-xs text-muted-foreground">Aumente a visibilidade do seu evento publicado.</p>
 									</div>
 								</div>
 
@@ -488,7 +505,7 @@ export function TicketsStep() {
 						)}
 					</div>
 				</div>
-			</div>
+			</Card>
 
 			{/* eventId is null: the event does not exist yet, so the sheet hands the
 			    ticket back to the form instead of posting it. */}

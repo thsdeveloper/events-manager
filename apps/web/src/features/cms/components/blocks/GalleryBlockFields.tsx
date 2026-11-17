@@ -1,10 +1,10 @@
 'use client';
 
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
-import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { useId, useState } from 'react';
 import { mediaLabel } from '../../lib/media';
 import { firstError } from '../../lib/validation';
 import type { CmsGalleryItem, CmsMedia } from '../../types';
@@ -73,7 +73,7 @@ function GalleryFields({ value, onChange, errors }: BlockFieldsProps<GalleryStat
 					</Button>
 				</div>
 				{value.items.length === 0 ? (
-					<p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+					<p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-muted-foreground">
 						Nenhuma imagem na galeria.
 					</p>
 				) : (
@@ -81,10 +81,10 @@ function GalleryFields({ value, onChange, errors }: BlockFieldsProps<GalleryStat
 						{value.items.map((item, index) => (
 							<li
 								key={item.id ?? `${item.file.id}-${index}`}
-								className="space-y-1 rounded-lg border border-slate-200 p-1.5"
+								className="space-y-1 rounded-lg border border-border p-1.5"
 							>
 								<MediaThumb media={item.file} className="aspect-square w-full rounded" />
-								<p className="truncate px-1 text-xs text-slate-600">{mediaLabel(item.file)}</p>
+								<p className="truncate px-1 text-xs text-muted-foreground">{mediaLabel(item.file)}</p>
 								<div className="flex items-center justify-end gap-0.5">
 									<Button
 										type="button"

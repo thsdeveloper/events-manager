@@ -1,9 +1,5 @@
 'use client';
 
-import type { CmsBlockCollection } from '@events-manager/contracts';
-import { ArrowDown, ArrowUp, Eye, EyeOff, Moon, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -18,6 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import type { CmsBlockCollection } from '@events-manager/contracts';
+import { ArrowDown, ArrowUp, Eye, EyeOff, Moon, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { revalidateCmsContent } from '../api/actions';
 import { cmsRequest, describeError } from '../api/client';
 import { BLOCK_TYPES, blockSummary, blockTypeMeta } from '../lib/blocks';
@@ -87,7 +87,7 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-4">
-				<p className="text-sm text-slate-600">
+				<p className="text-sm text-muted-foreground">
 					{blocks.length === 0
 						? 'A página ainda não tem blocos.'
 						: `${blocks.length} ${blocks.length === 1 ? 'bloco' : 'blocos'} na ordem em que aparecem no site.`}
@@ -99,9 +99,9 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 			</div>
 
 			{blocks.length === 0 ? (
-				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-slate-50 px-6 py-12 text-center">
-					<p className="font-medium text-slate-950">Comece adicionando um bloco</p>
-					<p className="text-sm text-slate-500">Hero, texto, galeria, planos, posts, eventos ou formulário.</p>
+				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted/40 px-6 py-12 text-center">
+					<p className="font-medium text-foreground">Comece adicionando um bloco</p>
+					<p className="text-sm text-muted-foreground">Hero, texto, galeria, planos, posts, eventos ou formulário.</p>
 				</div>
 			) : (
 				<ol className="space-y-2">
@@ -114,7 +114,7 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 							<li
 								key={block.id}
 								className={cn(
-									'flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-violet-300',
+									'flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm transition-colors hover:border-violet-300',
 									block.hide_block && 'opacity-60',
 									busy && 'pointer-events-none opacity-50',
 								)}
@@ -144,17 +144,17 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 								<div
 									className={cn(
 										'flex size-10 shrink-0 items-center justify-center rounded-lg',
-										block.background === 'dark' ? 'bg-slate-900 text-white' : 'bg-violet-50 text-violet-700',
+										block.background === 'dark' ? 'bg-slate-900 text-white' : 'bg-primary/10 text-primary',
 									)}
 								>
 									<Icon className="size-5" />
 								</div>
 								<div className="min-w-0 flex-1">
-									<p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+									<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 										{index + 1}. {meta.label}
 										{block.hide_block && <span className="ml-2 normal-case text-amber-600">oculto</span>}
 									</p>
-									<p className="truncate font-medium text-slate-950">{blockSummary(block)}</p>
+									<p className="truncate font-medium text-foreground">{blockSummary(block)}</p>
 								</div>
 								<div className="flex items-center gap-1">
 									<Button
@@ -214,22 +214,23 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 
 							return (
 								<li key={type.collection}>
-									<button
+									<Button
+										variant="ghost"
 										type="button"
 										onClick={() => {
 											setPickerOpen(false);
 											setSheet({ collection: type.collection, block: null });
 										}}
-										className="flex w-full items-start gap-3 rounded-lg border border-slate-200 p-3 text-left transition hover:border-violet-400 hover:bg-violet-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+										className="h-auto whitespace-normal flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left transition hover:border-violet-400 hover:bg-primary/10/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
 									>
-										<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+										<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
 											<Icon className="size-4" />
 										</span>
 										<span>
-											<span className="block font-medium text-slate-950">{type.label}</span>
-											<span className="block text-xs text-slate-500">{type.description}</span>
+											<span className="block font-medium text-foreground">{type.label}</span>
+											<span className="block text-xs text-muted-foreground">{type.description}</span>
 										</span>
-									</button>
+									</Button>
 								</li>
 							);
 						})}

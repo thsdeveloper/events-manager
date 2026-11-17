@@ -1,12 +1,13 @@
 'use client';
 
-import { forwardRef } from 'react';
-import { Wand2 } from 'lucide-react';
 import ImageUpload from '@/components/admin/ImageUpload';
-import type { EventWizardFormValues } from '../types';
-import { useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { Wand2 } from 'lucide-react';
+import { forwardRef } from 'react';
+import { useFormContext } from 'react-hook-form';
+import type { EventWizardFormValues } from '../types';
 
 interface CoverImageStepProps {
 	onChangeCoverImage: (value: string | null) => void;
@@ -19,14 +20,7 @@ interface CoverImageStepProps {
 
 export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 	(
-		{
-			onChangeCoverImage,
-			onCoverFileSelected,
-			pendingPreviewUrl,
-			onGenerateCoverImage,
-			isGeneratingImage,
-			aiError,
-		},
+		{ onChangeCoverImage, onCoverFileSelected, pendingPreviewUrl, onGenerateCoverImage, isGeneratingImage, aiError },
 		ref,
 	) => {
 		const form = useFormContext<EventWizardFormValues>();
@@ -34,7 +28,7 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 
 		return (
 			<div ref={ref} className="space-y-8">
-				<div className="rounded-lg border bg-card p-6 shadow-sm">
+				<Card className="rounded-lg border bg-card p-6 shadow-sm">
 					<div className="flex flex-col gap-2">
 						<div className="flex items-start justify-between gap-4">
 							<div>
@@ -51,7 +45,7 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 								onFileSelected={onCoverFileSelected}
 								pendingPreviewUrl={pendingPreviewUrl}
 								value={form.watch('cover_image')}
-								onChange={value => {
+								onChange={(value) => {
 									onChangeCoverImage(value);
 									if (value) {
 										form.setValue('cover_image', value, { shouldValidate: true });
@@ -89,7 +83,8 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 										Geração inteligente
 									</p>
 									<p className="mt-1 text-xs text-muted-foreground">
-										Geramos uma capa automaticamente com base no título e na descrição do evento. Ajuste depois se quiser.
+										Geramos uma capa automaticamente com base no título e na descrição do evento. Ajuste depois se
+										quiser.
 									</p>
 									<Button
 										type="button"
@@ -106,7 +101,7 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 							</div>
 						</div>
 					</div>
-				</div>
+				</Card>
 			</div>
 		);
 	},

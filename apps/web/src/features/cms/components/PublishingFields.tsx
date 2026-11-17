@@ -1,10 +1,10 @@
 'use client';
 
-import type { CmsContentStatus } from '@events-manager/contracts';
-import { useId } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { CmsContentStatus } from '@events-manager/contracts';
+import { useId } from 'react';
 import { fromDateTimeLocal, toDateTimeLocal } from '../lib/dates';
 import { STATUS_OPTIONS } from '../lib/status';
 import { Field } from './FormPrimitives';
@@ -44,7 +44,7 @@ export function PublishingFields({
 						))}
 					</SelectContent>
 				</Select>
-				{current && <p className="text-xs text-slate-500">{current.description}</p>}
+				{current && <p className="text-xs text-muted-foreground">{current.description}</p>}
 			</div>
 			<Field
 				id={`${id}-published-at`}

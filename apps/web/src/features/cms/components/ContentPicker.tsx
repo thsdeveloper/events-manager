@@ -1,9 +1,11 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Loader2, Search, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { useDebounce } from '@/hooks/useDebounce';
 import { cmsRequest, describeError } from '../api/client';
 import type { CmsPageRow, CmsPaginated, CmsPostListRow } from '../types';
 
@@ -65,19 +67,20 @@ export function ContentPicker({ kind, value, onChange, label, error }: ContentPi
 		return (
 			<div className="space-y-1.5">
 				<span className="text-sm font-medium">{label ?? `Escolher ${noun}`}</span>
-				<div className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+				<div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
 					<span className="min-w-0 truncate">
-						<span className="font-medium text-slate-900">{value.title}</span>
-						{value.path && <span className="ml-2 text-xs text-slate-500">{value.path}</span>}
+						<span className="font-medium text-foreground">{value.title}</span>
+						{value.path && <span className="ml-2 text-xs text-muted-foreground">{value.path}</span>}
 					</span>
-					<button
+					<Button
+						variant="ghost"
 						type="button"
 						onClick={() => onChange(null)}
 						aria-label={`Trocar ${noun}`}
-						className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+						className="h-auto whitespace-normal rounded p-1 text-muted-foreground hover:bg-slate-200 hover:text-foreground"
 					>
 						<X className="size-4" />
-					</button>
+					</Button>
 				</div>
 				{error && (
 					<p className="text-xs text-red-600" role="alert">
@@ -90,11 +93,11 @@ export function ContentPicker({ kind, value, onChange, label, error }: ContentPi
 
 	return (
 		<div className="space-y-1.5">
-			<label htmlFor={id} className="text-sm font-medium">
+			<Label htmlFor={id} className="text-sm font-medium">
 				{label ?? `Escolher ${noun}`}
-			</label>
+			</Label>
 			<div className="relative">
-				<Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+				<Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 				<Input
 					id={id}
 					value={search}
@@ -107,32 +110,33 @@ export function ContentPicker({ kind, value, onChange, label, error }: ContentPi
 			</div>
 			{open && (
 				<ul
-					className="max-h-48 overflow-y-auto rounded-md border border-slate-200 bg-white text-sm shadow-sm"
+					className="max-h-48 overflow-y-auto rounded-md border border-border bg-card text-sm shadow-sm"
 					aria-label={`Resultados de ${noun}`}
 				>
 					{loading && (
-						<li className="flex items-center gap-2 px-3 py-2 text-slate-500">
+						<li className="flex items-center gap-2 px-3 py-2 text-muted-foreground">
 							<Loader2 className="size-4 animate-spin" /> Buscando…
 						</li>
 					)}
 					{failure && <li className="px-3 py-2 text-red-600">{failure}</li>}
 					{!loading && !failure && options.length === 0 && (
-						<li className="px-3 py-2 text-slate-500">Nenhum resultado.</li>
+						<li className="px-3 py-2 text-muted-foreground">Nenhum resultado.</li>
 					)}
 					{options.map((option) => (
 						<li key={option.id}>
-							<button
+							<Button
+								variant="ghost"
 								type="button"
 								onClick={() => {
 									onChange(option);
 									setOpen(false);
 									setSearch('');
 								}}
-								className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-violet-50"
+								className="h-auto whitespace-normal flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-primary/10"
 							>
-								<span className="truncate font-medium text-slate-900">{option.title}</span>
-								<span className="shrink-0 text-xs text-slate-500">{option.path}</span>
-							</button>
+								<span className="truncate font-medium text-foreground">{option.title}</span>
+								<span className="shrink-0 text-xs text-muted-foreground">{option.path}</span>
+							</Button>
 						</li>
 					))}
 				</ul>

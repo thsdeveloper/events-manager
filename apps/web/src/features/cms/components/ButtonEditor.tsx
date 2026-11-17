@@ -1,11 +1,11 @@
 'use client';
 
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
-import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { useId } from 'react';
 import type { FieldErrors } from '../api/client';
 import { firstError } from '../lib/validation';
 import type { CmsButtonRow } from '../types';
@@ -87,9 +87,9 @@ export function ButtonFields({
 	const update = (patch: Partial<ButtonState>) => onChange({ ...value, ...patch });
 
 	return (
-		<fieldset aria-label={name} className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+		<fieldset aria-label={name} className="space-y-3 rounded-lg border border-border bg-slate-50/60 p-3">
 			<div className="flex items-center justify-between gap-2">
-				<legend className="text-sm font-semibold text-slate-700">{name}</legend>
+				<legend className="text-sm font-semibold text-foreground">{name}</legend>
 				<div className="flex items-center gap-1">
 					{onMoveUp && (
 						<Button type="button" size="icon" variant="ghost" onClick={onMoveUp} aria-label={`Mover ${name} para cima`}>
@@ -227,7 +227,7 @@ export function ButtonListEditor({ value, onChange, errors, max = 4 }: ButtonLis
 					Adicionar botão
 				</Button>
 			</div>
-			{value.length === 0 && <p className="text-xs text-slate-500">Nenhum botão. Até {max} por bloco.</p>}
+			{value.length === 0 && <p className="text-xs text-muted-foreground">Nenhum botão. Até {max} por bloco.</p>}
 			{value.map((button, index) => (
 				<ButtonFields
 					key={button.id ?? index}

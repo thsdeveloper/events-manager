@@ -1,16 +1,11 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { Download, RefreshCcw } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useFinanceOverview, usePayouts, useTransactions } from '@/hooks/queries/useFinanceData';
 import type { OrganizerProfile } from '@/lib/auth/server-auth';
+import { resolveDateWindow, type TransactionSort } from '@/lib/finance/api-client';
 import type {
 	AppliedFilters,
 	EventsOption,
@@ -19,15 +14,12 @@ import type {
 	PayoutSummary,
 	TransactionsResult,
 } from '@/lib/finance/server-fetchers';
-import {
-	resolveDateWindow,
-	type TransactionSort,
-} from '@/lib/finance/api-client';
-import { useFinanceOverview, usePayouts, useTransactions } from '@/hooks/queries/useFinanceData';
-import FinanceOverview from './FinanceOverview';
+import { Download, RefreshCcw } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import FinanceFilters, { type FiltersDraft } from './FinanceFilters';
-import PayoutHistory from './PayoutHistory';
+import FinanceOverview from './FinanceOverview';
 import PaymentAccountStatus from './PaymentAccountStatus';
+import PayoutHistory from './PayoutHistory';
 import TransactionsTable from './TransactionsTable';
 
 const DEFAULT_PAGINATION: PaginationState = {
@@ -101,10 +93,7 @@ export default function FinanceiroDashboard({
 	});
 	const [exporting, setExporting] = useState(false);
 	const [exportError, setExportError] = useState<string | null>(null);
-	const isDefaultFilterSelection = useMemo(
-		() => areFiltersEqual(filters, defaultFilters),
-		[filters],
-	);
+	const isDefaultFilterSelection = useMemo(() => areFiltersEqual(filters, defaultFilters), [filters]);
 	const isDefaultQueryState =
 		isDefaultFilterSelection &&
 		paginationState.page === (initialTransactions.pagination?.page ?? DEFAULT_PAGINATION.page) &&
@@ -190,9 +179,7 @@ export default function FinanceiroDashboard({
 			const url = URL.createObjectURL(blob);
 			const link = document.createElement('a');
 			link.href = url;
-			link.download = `financeiro-transacoes-${new Date()
-				.toISOString()
-				.replace(/[:.]/g, '-')}.csv`;
+			link.download = `financeiro-transacoes-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
@@ -218,19 +205,11 @@ export default function FinanceiroDashboard({
 		<div className="space-y-6">
 			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<div>
-					<h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-						Financeiro
-					</h1>
-					<p className="text-gray-600 dark:text-gray-400">
-						Acompanhe vendas, taxas e repasses dos seus eventos
-					</p>
+					<h1 className="text-3xl font-bold text-foreground ">Financeiro</h1>
+					<p className="text-muted-foreground ">Acompanhe vendas, taxas e repasses dos seus eventos</p>
 				</div>
 				<div className="flex flex-wrap gap-2">
-					<Button
-						variant="outline"
-						onClick={loadPayouts}
-						disabled={payoutLoading}
-					>
+					<Button variant="outline" onClick={loadPayouts} disabled={payoutLoading}>
 						<RefreshCcw className="mr-2 size-4" />
 						Atualizar repasses
 					</Button>
@@ -241,34 +220,24 @@ export default function FinanceiroDashboard({
 				</div>
 			</div>
 
-			<FinanceFilters
-				events={initialEvents}
-				filters={filters}
-				onApply={handleFiltersApply}
-			/>
+			<FinanceFilters events={initialEvents} filters={filters} onApply={handleFiltersApply} />
 
 			<PaymentAccountStatus organizer={organizer} payoutSummary={payoutSummary} />
 
-			<FinanceOverview
-				isLoading={overviewLoading}
-				metrics={metrics}
-				currencyFormatter={currencyFormatter}
-			/>
+			<FinanceOverview isLoading={overviewLoading} metrics={metrics} currencyFormatter={currencyFormatter} />
 
-			<Card className="border border-gray-200 shadow-sm dark:border-gray-800">
+			<Card className="border border-border shadow-sm ">
 				<CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
 					<div>
 						<CardTitle>Transações</CardTitle>
-						<CardDescription>
-							Vendas e pagamentos processados pelos seus eventos
-						</CardDescription>
+						<CardDescription>Vendas e pagamentos processados pelos seus eventos</CardDescription>
 					</div>
 				</CardHeader>
 				<CardContent>
 					{globalError && (
-						<div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+						<Alert className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
 							{globalError}
-						</div>
+						</Alert>
 					)}
 					<TransactionsTable
 						rows={transactions}
@@ -282,11 +251,7 @@ export default function FinanceiroDashboard({
 				</CardContent>
 			</Card>
 
-			<PayoutHistory
-				isLoading={payoutLoading}
-				summary={payoutSummary}
-				currencyFormatter={currencyFormatter}
-			/>
+			<PayoutHistory isLoading={payoutLoading} summary={payoutSummary} currencyFormatter={currencyFormatter} />
 		</div>
 	);
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Mail, AlertTriangle } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
 	Dialog,
 	DialogContent,
@@ -10,8 +10,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { AlertTriangle, Mail } from 'lucide-react';
+import { useState } from 'react';
 import type { ParticipantRow } from '../_lib/types';
 
 interface ResendEmailDialogProps {
@@ -92,32 +93,30 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 				</DialogHeader>
 
 				<div className="space-y-4">
-					<div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-						<h4 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Detalhes do Email</h4>
+					<div className="rounded-lg border border-border bg-muted/40 p-4  ">
+						<h4 className="mb-3 text-sm font-semibold text-foreground ">Detalhes do Email</h4>
 						<dl className="space-y-2 text-sm">
 							<div className="flex justify-between">
-								<dt className="text-gray-600 dark:text-gray-400">Destinatário:</dt>
-								<dd className="font-medium text-gray-900 dark:text-white">{participant.participant_name}</dd>
+								<dt className="text-muted-foreground ">Destinatário:</dt>
+								<dd className="font-medium text-foreground ">{participant.participant_name}</dd>
 							</div>
 							<div className="flex justify-between">
-								<dt className="text-gray-600 dark:text-gray-400">Email:</dt>
-								<dd className="font-medium text-gray-900 dark:text-white">{participant.participant_email}</dd>
+								<dt className="text-muted-foreground ">Email:</dt>
+								<dd className="font-medium text-foreground ">{participant.participant_email}</dd>
 							</div>
 							<div className="flex justify-between">
-								<dt className="text-gray-600 dark:text-gray-400">Evento:</dt>
-								<dd className="font-medium text-gray-900 dark:text-white">{participant.event_id.title}</dd>
+								<dt className="text-muted-foreground ">Evento:</dt>
+								<dd className="font-medium text-foreground ">{participant.event_id.title}</dd>
 							</div>
 							<div className="flex justify-between">
-								<dt className="text-gray-600 dark:text-gray-400">Código do Ingresso:</dt>
-								<dd className="font-mono text-xs font-medium text-gray-900 dark:text-white">
-									{participant.ticket_code || 'N/A'}
-								</dd>
+								<dt className="text-muted-foreground ">Código do Ingresso:</dt>
+								<dd className="font-mono text-xs font-medium text-foreground ">{participant.ticket_code || 'N/A'}</dd>
 							</div>
 						</dl>
 					</div>
 
 					{isCancelled && (
-						<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+						<Alert className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
 							<div className="flex items-start gap-2">
 								<AlertTriangle className="mt-0.5 size-4 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
 								<div>
@@ -128,7 +127,7 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 									</p>
 								</div>
 							</div>
-						</div>
+						</Alert>
 					)}
 
 					<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">

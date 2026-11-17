@@ -29,10 +29,10 @@ export default defineConfig({
 			// Catraca: valores medidos em 2026-09-05 (todos os arquivos do `include`
 			// contam, cobertos ou não). Só podem subir; eleve ao cobrir um módulo.
 			thresholds: {
-				lines: 53,
-				functions: 75,
+				lines: 54,
+				functions: 76,
 				branches: 76,
-				statements: 53,
+				statements: 54,
 			},
 		},
 		projects: [
