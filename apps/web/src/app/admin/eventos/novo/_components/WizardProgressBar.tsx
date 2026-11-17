@@ -1,9 +1,11 @@
 'use client';
 
-import { Check } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import type { EventWizardStepMeta } from './types';
 
 interface WizardProgressBarProps {
@@ -19,9 +21,7 @@ interface WizardProgressBarProps {
  * and there is no per-frame handler competing with the sticky paint.
  */
 function readHeaderHeight() {
-	return (
-		Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue('--admin-header-height'), 10) || 0
-	);
+	return Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue('--admin-header-height'), 10) || 0;
 }
 
 function useIsStuck() {
@@ -59,7 +59,7 @@ function useIsStuck() {
 }
 
 export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSelect }: WizardProgressBarProps) {
-	const progress = Math.max(0, (currentStep / (steps.length - 1)) * 100);
+	const progress = Math.max(0, (currentStep / Math.max(1, steps.length - 1)) * 100);
 	const estimatedTime = steps.slice(currentStep).reduce((sum, step) => sum + (step.estimatedMinutes ?? 0), 0);
 	const { sentinelRef, isStuck } = useIsStuck();
 
@@ -108,17 +108,7 @@ export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSele
 				</div>
 
 				{/* Flush against the header once stuck — no gutter, no rounding. */}
-				<div
-					className={cn('h-1 overflow-hidden bg-secondary/50 transition-all duration-300', !isStuck && 'rounded-full')}
-				>
-					<div
-						className={cn(
-							'h-full bg-primary shadow-sm transition-all duration-500 ease-out',
-							!isStuck && 'rounded-full',
-						)}
-						style={{ width: `${progress}%` }}
-					/>
-				</div>
+				<Progress value={progress} aria-label="Progresso da criação do evento" className="h-1" />
 
 				{/* pt-3 keeps a clear gap between the progress track and the circles so
 				    the two never read as one crowded strip. */}
@@ -142,12 +132,13 @@ export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSele
 								<li key={step.id} className="relative">
 									<Tooltip>
 										<TooltipTrigger asChild>
-											<button
+											<Button
+												variant="ghost"
 												type="button"
 												onClick={() => isClickable && onStepSelect?.(index)}
 												disabled={!isClickable}
 												className={cn(
-													'group relative flex w-full flex-col items-center gap-1 text-center transition-all duration-200',
+													'group relative flex h-auto w-full flex-col p-0 whitespace-normal hover:bg-transparent items-center gap-1 text-center transition-all duration-200',
 													isClickable ? 'cursor-pointer' : 'cursor-default',
 												)}
 												aria-current={isActive ? 'step' : undefined}
@@ -209,7 +200,7 @@ export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSele
 														aria-hidden="true"
 													/>
 												)}
-											</button>
+											</Button>
 										</TooltipTrigger>
 										{/* Only while stuck: the labels are visible otherwise, and a tooltip
 										    repeating them would be noise. Omitting the content keeps the

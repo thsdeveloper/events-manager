@@ -1,10 +1,11 @@
 'use client';
 
-import { memo } from 'react';
-import { Check } from 'lucide-react';
-import { resolveCategoryIcon } from '@/features/categories/icons';
+import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { resolveCategoryIcon } from '@/features/categories/icons';
 import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
+import { memo } from 'react';
 
 interface CategoryCardProps {
 	id: string;
@@ -21,7 +22,15 @@ interface CategoryCardProps {
  * super admin picker, so an unknown name means the category predates a change
  * to that list and falls back rather than breaking the card.
  */
-function DynamicLucideIcon({ iconName, className, color }: { iconName?: string | null; className?: string; color?: string | null }) {
+function DynamicLucideIcon({
+	iconName,
+	className,
+	color,
+}: {
+	iconName?: string | null;
+	className?: string;
+	color?: string | null;
+}) {
 	const IconComponent = resolveCategoryIcon(iconName);
 
 	return <IconComponent className={className} style={{ color: color || undefined }} />;
@@ -60,22 +69,23 @@ export const CategoryCard = memo(function CategoryCard({
 	};
 
 	const cardContent = (
-		<button
+		<Button
+			variant="ghost"
 			type="button"
 			onClick={handleClick}
 			onKeyDown={handleKeyDown}
 			className={cn(
-				'group relative flex w-full items-center gap-3 rounded-lg border-2 px-4 py-3 text-left transition-all duration-200',
+				'group relative flex h-auto w-full whitespace-normal items-center gap-3 rounded-lg border-2 px-4 py-3 text-left transition-all duration-200',
 				'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
 				'hover:shadow-md active:scale-[0.98]',
-				isSelected
-					? 'bg-primary/10 shadow-sm'
-					: 'border-border bg-card hover:bg-accent/50',
+				isSelected ? 'bg-primary/10 shadow-sm' : 'border-border bg-card hover:bg-accent/50',
 			)}
-			style={{
-				borderColor: isSelected && color ? color : undefined,
-				'--category-color': color || 'hsl(var(--primary))',
-			} as React.CSSProperties}
+			style={
+				{
+					borderColor: isSelected && color ? color : undefined,
+					'--category-color': color || 'hsl(var(--primary))',
+				} as React.CSSProperties
+			}
 			onMouseEnter={(e) => {
 				if (!isSelected && color) {
 					e.currentTarget.style.borderColor = `${color}80`;
@@ -101,10 +111,7 @@ export const CategoryCard = memo(function CategoryCard({
 			>
 				<DynamicLucideIcon
 					iconName={icon}
-					className={cn(
-						'size-5 transition-all duration-200',
-						isSelected ? 'scale-110' : 'group-hover:scale-105'
-					)}
+					className={cn('size-5 transition-all duration-200', isSelected ? 'scale-110' : 'group-hover:scale-105')}
 					color={isSelected && color ? color : undefined}
 				/>
 			</div>
@@ -144,7 +151,7 @@ export const CategoryCard = memo(function CategoryCard({
 					backgroundColor: color || 'hsl(var(--primary))',
 				}}
 			/>
-		</button>
+		</Button>
 	);
 
 	// Only wrap with tooltip if there's a description

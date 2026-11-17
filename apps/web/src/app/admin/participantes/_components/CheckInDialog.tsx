@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { CheckCircle, X, AlertTriangle } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
 	Dialog,
 	DialogContent,
@@ -10,8 +10,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { AlertTriangle, CheckCircle, X } from 'lucide-react';
+import { useState } from 'react';
 import type { ParticipantRow } from '../_lib/types';
 
 interface CheckInDialogProps {
@@ -126,19 +127,19 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 
 				<div className="space-y-4 py-4">
 					{/* Participant Info */}
-					<div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+					<div className="rounded-lg border border-border bg-muted/40 p-4  ">
 						<div className="space-y-2">
 							<div>
-								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Participante</p>
-								<p className="text-base font-semibold text-gray-900 dark:text-white">{participant.participant_name}</p>
+								<p className="text-sm font-medium text-muted-foreground ">Participante</p>
+								<p className="text-base font-semibold text-foreground ">{participant.participant_name}</p>
 							</div>
 							<div>
-								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</p>
-								<p className="text-sm text-gray-900 dark:text-white">{participant.participant_email}</p>
+								<p className="text-sm font-medium text-muted-foreground ">Email</p>
+								<p className="text-sm text-foreground ">{participant.participant_email}</p>
 							</div>
 							<div>
-								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Código</p>
-								<p className="font-mono text-sm text-gray-900 dark:text-white">{participant.ticket_code}</p>
+								<p className="text-sm font-medium text-muted-foreground ">Código</p>
+								<p className="font-mono text-sm text-foreground ">{participant.ticket_code}</p>
 							</div>
 						</div>
 					</div>
@@ -157,7 +158,7 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 					)}
 
 					{hasCheckedIn && !isCancelled && (
-						<div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+						<Alert className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
 							<AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
 							<div>
 								<p className="font-medium text-amber-900 dark:text-amber-200">Check-in já realizado</p>
@@ -169,7 +170,7 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 									})}
 								</p>
 							</div>
-						</div>
+						</Alert>
 					)}
 				</div>
 

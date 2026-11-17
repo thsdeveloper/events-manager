@@ -1,6 +1,22 @@
 'use client';
 
 import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import {
 	ArrowDown,
 	ArrowUp,
 	CornerDownRight,
@@ -14,20 +30,6 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import { revalidateCmsContent } from '../api/actions';
 import { cmsRequest, describeError } from '../api/client';
 import type { CmsNavigationDetail, CmsNavigationItemNode } from '../types';
@@ -110,14 +112,14 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 
 		return (
 			<li key={item.id} className="space-y-2">
-				<div
+				<Card
 					className={cn(
-						'flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm',
+						'flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm',
 						parent && 'ml-8',
 						busy && 'pointer-events-none opacity-60',
 					)}
 				>
-					{parent && <CornerDownRight className="size-4 text-slate-400" />}
+					{parent && <CornerDownRight className="size-4 text-muted-foreground" />}
 					<div className="flex flex-col">
 						<Button
 							size="icon"
@@ -140,12 +142,12 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 							<ArrowDown className="size-4" />
 						</Button>
 					</div>
-					<span className="flex size-9 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+					<span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
 						<Icon className="size-4" />
 					</span>
 					<div className="min-w-0 flex-1">
-						<p className="font-medium text-slate-950">{item.title}</p>
-						<p className="truncate text-xs text-slate-500">{itemTarget(item)}</p>
+						<p className="font-medium text-foreground">{item.title}</p>
+						<p className="truncate text-xs text-muted-foreground">{itemTarget(item)}</p>
 					</div>
 					<div className="flex items-center gap-1">
 						{!parent && (
@@ -177,7 +179,7 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 							<Trash2 className="size-4" />
 						</Button>
 					</div>
-				</div>
+				</Card>
 				{item.children.length > 0 && (
 					<ul className="space-y-2">
 						{item.children.map((child, childIndex) => renderItem(child, item.children, childIndex, item))}
@@ -189,8 +191,8 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 
 	return (
 		<div className="space-y-4">
-			<div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-				<label className="flex items-center gap-3 text-sm">
+			<Card className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-sm">
+				<Label className="flex items-center gap-3 text-sm">
 					<Switch
 						checked={navigation.is_active}
 						onCheckedChange={toggleActive}
@@ -198,20 +200,20 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 						disabled={busy}
 					/>
 					<span>
-						<span className="font-medium text-slate-950">
+						<span className="font-medium text-foreground">
 							{navigation.is_active ? 'Menu ativo' : 'Menu desativado'}
 						</span>
-						<span className="block text-xs text-slate-500">Um menu desativado não aparece no site.</span>
+						<span className="block text-xs text-muted-foreground">Um menu desativado não aparece no site.</span>
 					</span>
-				</label>
+				</Label>
 				<Button onClick={() => setDialog({ item: null, parent: null })}>
 					<Plus className="mr-2 size-4" />
 					Adicionar item
 				</Button>
-			</div>
+			</Card>
 
 			{navigation.items.length === 0 ? (
-				<p className="rounded-lg border border-dashed bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+				<p className="rounded-lg border border-dashed bg-muted/40 px-6 py-12 text-center text-sm text-muted-foreground">
 					Este menu ainda não tem itens.
 				</p>
 			) : (

@@ -1,13 +1,14 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { ImageCropperDialog } from '@/components/ui/image-cropper-dialog';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { getMediaAssetUrl } from '@/lib/media';
 import { Building2, Loader2, Trash2, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { ImageCropperDialog } from '@/components/ui/image-cropper-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { getMediaAssetUrl } from '@/lib/media';
 
 const ACCEPTED = ['image/png', 'image/webp', 'image/jpeg'];
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -100,7 +101,13 @@ export function OrganizerLogoField({ logo }: { logo: string | null }) {
 
 			<div className="space-y-1.5">
 				<div className="flex flex-wrap items-center gap-2">
-					<Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() => inputRef.current?.click()}
+						disabled={uploading}
+					>
 						<Upload className="mr-2 size-4" />
 						{preview ? 'Trocar logo' : 'Enviar logo'}
 					</Button>
@@ -125,7 +132,7 @@ export function OrganizerLogoField({ logo }: { logo: string | null }) {
 				</p>
 			</div>
 
-			<input
+			<Input
 				ref={inputRef}
 				type="file"
 				accept={ACCEPTED.join(',')}

@@ -1,13 +1,14 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { cmsNavigationInputSchema } from '@events-manager/contracts';
 import { ListTree, Lock, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { revalidateCmsContent } from '../api/actions';
 import { CmsRequestError, cmsRequest, describeError, type FieldErrors } from '../api/client';
 import { validateWith } from '../lib/validation';
@@ -65,24 +66,25 @@ export function NavigationsList({ navigations }: { navigations: CmsNavigationRow
 						<li key={navigation.id}>
 							<Link
 								href={`/super-admin/conteudo/menus/${navigation.id}`}
-								className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-violet-300"
+								className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 shadow-sm transition hover:border-violet-300"
 							>
-								<span className="flex size-11 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+								<span className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
 									<ListTree className="size-5" />
 								</span>
 								<span className="min-w-0 flex-1">
-									<span className="block font-semibold text-slate-950">{protectedLabel ?? navigation.title}</span>
-									<span className="block text-xs text-slate-500">
+									<span className="block font-semibold text-foreground">{protectedLabel ?? navigation.title}</span>
+									<span className="block text-xs text-muted-foreground">
 										id: {navigation.id} · {navigation.is_active ? 'ativo' : 'desativado'}
 									</span>
 								</span>
 								{protectedLabel && (
-									<span
-										className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600"
+									<Badge
+										variant="secondary"
+										className="flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
 										title="Menu do sistema: não pode ser excluído"
 									>
 										<Lock className="size-3" /> sistema
-									</span>
+									</Badge>
 								)}
 							</Link>
 						</li>

@@ -1,7 +1,8 @@
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { renderWithProviders } from '@/test';
 import { screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { renderWithProviders } from '@/test';
 import AdminHeader from './AdminHeader';
 
 vi.mock('next/navigation', () => ({
@@ -28,7 +29,11 @@ const organizer = { id: 'o1', name: 'Maya Eventos', status: 'active' } as never;
 
 describe('AdminHeader', () => {
 	it('shows the same account avatar and menu as the rest of the site', async () => {
-		const { user: person } = renderWithProviders(<AdminHeader user={user as never} organizer={organizer} />);
+		const { user: person } = renderWithProviders(
+			<SidebarProvider>
+				<AdminHeader user={user as never} organizer={organizer} />
+			</SidebarProvider>,
+		);
 
 		const trigger = screen.getByRole('button', { name: /conta de ana/i });
 		expect(trigger).toBeInTheDocument();
@@ -44,14 +49,20 @@ describe('AdminHeader', () => {
 	});
 
 	it('does not offer a theme switch: the organizer area follows the site theme', () => {
-		renderWithProviders(<AdminHeader user={user as never} organizer={organizer} />);
+		renderWithProviders(
+			<SidebarProvider>
+				<AdminHeader user={user as never} organizer={organizer} />
+			</SidebarProvider>,
+		);
 
 		expect(screen.queryByRole('button', { name: /tema/i })).not.toBeInTheDocument();
 	});
 
 	it('opens the administration section for a super admin managing events', async () => {
 		const { user: person } = renderWithProviders(
-			<AdminHeader user={{ ...user, role: 'super_admin' } as never} organizer={organizer} />,
+			<SidebarProvider>
+				<AdminHeader user={{ ...user, role: 'super_admin' } as never} organizer={organizer} />
+			</SidebarProvider>,
 		);
 
 		await person.click(screen.getByRole('button', { name: /conta de ana/i }));

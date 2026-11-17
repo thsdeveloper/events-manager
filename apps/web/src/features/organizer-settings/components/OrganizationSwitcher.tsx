@@ -1,9 +1,5 @@
 'use client';
 
-import { Building2, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -13,6 +9,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { getMediaAssetUrl } from '@/lib/media';
 import { cn } from '@/lib/utils';
+import { Building2, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useCallback, useState } from 'react';
 
 export interface OrganizationOption {
 	id: string;
@@ -89,15 +89,15 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 	return (
 		<>
 			<DropdownMenu>
-				<DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-slate-50">
+				<DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-muted/40">
 					<OrganizationMark organization={active} />
 					<div className="min-w-0 flex-1">
-						<p className="truncate text-sm font-bold text-slate-950">{active.name}</p>
-						<p className="text-xs text-slate-500">
+						<p className="truncate text-sm font-bold text-foreground">{active.name}</p>
+						<p className="text-xs text-muted-foreground">
 							{organizations.length > 1 ? `${organizations.length} organizações` : 'Workspace do organizador'}
 						</p>
 					</div>
-					<ChevronsUpDown className="size-4 shrink-0 text-slate-400" />
+					<ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
 				</DropdownMenuTrigger>
 
 				<DropdownMenuContent align="start" className="w-64">
@@ -111,7 +111,7 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 							{switching === organization.id ? (
 								<Loader2 className="size-4 shrink-0 animate-spin" />
 							) : (
-								organization.id === activeId && <Check className="size-4 shrink-0 text-violet-600" />
+								organization.id === activeId && <Check className="size-4 shrink-0 text-primary" />
 							)}
 						</DropdownMenuItem>
 					))}

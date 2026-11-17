@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useRef, useImperativeHandle, forwardRef, useEffect, useId } from 'react';
-import { Upload, X, ImageIcon, Loader2 } from 'lucide-react';
-import Image from 'next/image';
+import { Button } from '@/components/ui/button';
 import { ImageCropperDialog } from '@/components/ui/image-cropper-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { getMediaAssetUrl } from '@/lib/media';
+import { ImageIcon, Loader2, X } from 'lucide-react';
+import Image from 'next/image';
+import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
 
 /** Sentinel value meaning "a file is selected but has not reached storage yet". */
 export const PENDING_UPLOAD_VALUE = 'local-file';
@@ -262,16 +265,16 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 
 		return (
 			<div>
-				<label htmlFor={inputId} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+				<Label htmlFor={inputId} className="block text-sm font-medium text-foreground  mb-2">
 					{label} {required && <span className="text-red-500">*</span>}
-				</label>
+				</Label>
 
 				<div className="space-y-2">
 					{preview ? (
-						<div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800">
+						<div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-input  bg-muted ">
 							{/* Unoptimised: the preview is either a data: URL or /api/media/:id, which
 						    redirects to storage — next/image cannot optimise either one. */}
-						<Image src={preview} alt="Preview" fill className="object-cover" unoptimized />
+							<Image src={preview} alt="Preview" fill className="object-cover" unoptimized />
 							{isUploading && (
 								<div className="absolute inset-0 bg-black/50 flex items-center justify-center">
 									<div className="flex flex-col items-center gap-2 text-white">
@@ -281,43 +284,43 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 								</div>
 							)}
 							{!isUploading && (
-								<button
+								<Button
+									variant="ghost"
 									type="button"
 									onClick={handleRemove}
-									className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+									className="h-auto whitespace-normal absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
 									aria-label="Remover imagem"
 								>
 									<X className="size-3" />
-								</button>
+								</Button>
 							)}
 						</div>
 					) : (
-						<button
+						<Button
+							variant="ghost"
 							type="button"
 							onClick={handleClick}
 							disabled={isUploading}
-							className={`relative w-full h-48 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 transition-colors flex flex-col items-center justify-center gap-2 ${
-								isUploading
-									? 'cursor-not-allowed opacity-50'
-									: 'hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer'
+							className={`relative w-full h-48 rounded-lg border-2 border-dashed border-input  bg-muted/40  transition-colors flex flex-col items-center justify-center gap-2 ${
+								isUploading ? 'cursor-not-allowed opacity-50' : 'hover:bg-muted dark:hover:bg-gray-700 cursor-pointer'
 							}`}
 						>
 							{isUploading ? (
 								<>
-									<Loader2 className="size-8 text-gray-400 animate-spin" />
-									<p className="text-sm text-gray-600 dark:text-gray-400">Enviando...</p>
+									<Loader2 className="size-8 text-muted-foreground animate-spin" />
+									<p className="text-sm text-muted-foreground ">Enviando...</p>
 								</>
 							) : (
 								<>
-									<ImageIcon className="size-8 text-gray-400" />
-									<p className="text-sm text-gray-600 dark:text-gray-400">Clique para selecionar</p>
-									<p className="text-xs text-gray-500">PNG, JPG, GIF até 5MB</p>
+									<ImageIcon className="size-8 text-muted-foreground" />
+									<p className="text-sm text-muted-foreground ">Clique para selecionar</p>
+									<p className="text-xs text-muted-foreground">PNG, JPG, GIF até 5MB</p>
 								</>
 							)}
-						</button>
+						</Button>
 					)}
 
-					<input
+					<Input
 						id={inputId}
 						ref={fileInputRef}
 						type="file"
@@ -334,7 +337,7 @@ const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(
 					</p>
 				)}
 
-				{description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</p>}
+				{description && <p className="text-xs text-muted-foreground  mt-1">{description}</p>}
 
 				<ImageCropperDialog
 					file={fileToCrop}

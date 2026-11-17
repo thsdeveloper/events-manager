@@ -1,8 +1,9 @@
 'use client';
 
-import { ReactNode, useState, useEffect } from 'react';
-import { Check, X, AlertCircle, Info } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { AlertCircle, Check, Info, X } from 'lucide-react';
+import { ReactNode, useState } from 'react';
 
 interface FormFieldProps {
 	label: string;
@@ -41,15 +42,10 @@ export function FormField({
 		<div className="space-y-2">
 			{/* Label */}
 			<div className="flex items-center justify-between">
-				<label
-					htmlFor={name}
-					className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-				>
+				<Label htmlFor={name} className="block text-sm font-medium text-foreground ">
 					{label}
-					{required && (
-						<span className="text-purple-600 dark:text-purple-400 ml-1">*</span>
-					)}
-				</label>
+					{required && <span className="text-purple-600 dark:text-purple-400 ml-1">*</span>}
+				</Label>
 
 				{/* Validation Status Icon */}
 				{validationState !== 'idle' && (
@@ -57,12 +53,8 @@ export function FormField({
 						{validationState === 'validating' && (
 							<div className="size-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
 						)}
-						{validationState === 'valid' && (
-							<Check className="size-4 text-green-600 dark:text-green-400" />
-						)}
-						{validationState === 'error' && (
-							<X className="size-4 text-red-600 dark:text-red-400" />
-						)}
+						{validationState === 'valid' && <Check className="size-4 text-green-600 dark:text-green-400" />}
+						{validationState === 'error' && <X className="size-4 text-red-600 dark:text-red-400" />}
 					</div>
 				)}
 			</div>
@@ -74,7 +66,7 @@ export function FormField({
 					focused && 'ring-2 ring-purple-500/20',
 					required && !error && !value && 'border-l-4 border-l-purple-500',
 					error && 'border-l-4 border-l-red-500',
-					validationState === 'valid' && 'border-l-4 border-l-green-500'
+					validationState === 'valid' && 'border-l-4 border-l-green-500',
 				)}
 				onFocus={() => setFocused(true)}
 				onBlur={() => {
@@ -90,7 +82,7 @@ export function FormField({
 				<div className="flex-1 space-y-1">
 					{/* Hint */}
 					{hint && !error && (
-						<div className="flex items-start gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+						<div className="flex items-start gap-1.5 text-xs text-muted-foreground ">
 							<Info className="size-3.5 mt-0.5 flex-shrink-0" />
 							<span>{hint}</span>
 						</div>
@@ -105,18 +97,12 @@ export function FormField({
 					)}
 
 					{/* SEO Warning for short descriptions */}
-					{name === 'short_description' &&
-						maxLength &&
-						characterCount < 50 &&
-						characterCount > 0 &&
-						!error && (
-							<div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-								<AlertCircle className="size-3.5 mt-0.5 flex-shrink-0" />
-								<span>
-									Adicione mais {50 - characterCount} caracteres (mín. 50 para SEO)
-								</span>
-							</div>
-						)}
+					{name === 'short_description' && maxLength && characterCount < 50 && characterCount > 0 && !error && (
+						<div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+							<AlertCircle className="size-3.5 mt-0.5 flex-shrink-0" />
+							<span>Adicione mais {50 - characterCount} caracteres (mín. 50 para SEO)</span>
+						</div>
+					)}
 				</div>
 
 				{/* Character Counter */}
@@ -124,9 +110,7 @@ export function FormField({
 					<div
 						className={cn(
 							'text-xs font-medium tabular-nums',
-							isNearLimit
-								? 'text-amber-600 dark:text-amber-400'
-								: 'text-gray-500 dark:text-gray-400'
+							isNearLimit ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground ',
 						)}
 					>
 						{characterCount}/{maxLength}

@@ -1,6 +1,27 @@
 'use client';
 
 import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TicketFormSheet } from '@/features/tickets/components/TicketFormSheet';
+import { TicketList } from '@/features/tickets/components/TicketList';
+import type { TicketDraft } from '@/features/tickets/types';
+import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/lib/fees';
+import { cn } from '@/lib/utils';
+import type { Event, EventTicket } from '@events-manager/contracts';
+import {
 	ArrowLeft,
 	Calendar,
 	Edit,
@@ -19,28 +40,9 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
-import type { Event, EventTicket } from '@events-manager/contracts';
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TicketFormSheet } from '@/features/tickets/components/TicketFormSheet';
-import { TicketList } from '@/features/tickets/components/TicketList';
-import type { TicketDraft } from '@/features/tickets/types';
-import { useToast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/fees';
-import { cn } from '@/lib/utils';
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-	draft: { label: 'Rascunho', className: 'bg-slate-100 text-slate-700' },
+	draft: { label: 'Rascunho', className: 'bg-muted text-foreground' },
 	published: { label: 'Publicado', className: 'bg-emerald-100 text-emerald-700' },
 	cancelled: { label: 'Cancelado', className: 'bg-red-100 text-red-700' },
 	archived: { label: 'Arquivado', className: 'bg-amber-100 text-amber-700' },
@@ -77,16 +79,26 @@ function toTicketDraft(ticket: EventTicket): TicketDraft {
 	};
 }
 
-function MetricCard({ icon: Icon, label, value, hint }: { icon: typeof Users; label: string; value: string; hint?: string }) {
+function MetricCard({
+	icon: Icon,
+	label,
+	value,
+	hint,
+}: {
+	icon: typeof Users;
+	label: string;
+	value: string;
+	hint?: string;
+}) {
 	return (
-		<div className="rounded-lg border bg-card p-4">
+		<Card className="rounded-lg border bg-card p-4">
 			<div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
 				<Icon className="size-3.5" />
 				{label}
 			</div>
 			<p className="mt-1.5 text-2xl font-bold tabular-nums text-foreground">{value}</p>
 			{hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-		</div>
+		</Card>
 	);
 }
 
@@ -155,7 +167,7 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 
 	const handleRemoveTicket = useCallback(
 		(ticket: TicketDraft) => {
-			const stored = storedTickets.find(item => item.id === ticket.id);
+			const stored = storedTickets.find((item) => item.id === ticket.id);
 			if (stored?.quantity_sold) {
 				toast({
 					title: 'Ingresso com vendas',
@@ -239,12 +251,20 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 					</Link>
 					<div className="mt-2 flex flex-wrap items-center gap-3">
 						<h1 className="text-2xl font-bold tracking-tight text-foreground">{event.title}</h1>
-						<span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', status.className)}>{status.label}</span>
+						<Badge
+							variant="secondary"
+							className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', status.className)}
+						>
+							{status.label}
+						</Badge>
 						{event.featured && (
-							<span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+							<Badge
+								variant="secondary"
+								className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700"
+							>
 								<Star className="size-3" />
 								Destaque
-							</span>
+							</Badge>
 						)}
 					</div>
 				</div>
@@ -282,7 +302,11 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 					hint={stats.totalQuantity > 0 ? `de ${stats.totalQuantity.toLocaleString('pt-BR')} disponíveis` : undefined}
 				/>
 				<MetricCard icon={TrendingUp} label="Receita bruta" value={formatCurrency(stats.revenue)} />
-				<MetricCard icon={Users} label="Capacidade" value={event.max_attendees ? String(event.max_attendees) : 'Ilimitada'} />
+				<MetricCard
+					icon={Users}
+					label="Capacidade"
+					value={event.max_attendees ? String(event.max_attendees) : 'Ilimitada'}
+				/>
 			</div>
 
 			<Tabs defaultValue="informacoes" className="space-y-4">
@@ -295,21 +319,23 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 						<Ticket className="size-4" />
 						Ingressos
 						{tickets.length > 0 && (
-							<span className="rounded-full bg-muted px-1.5 text-xs tabular-nums">{tickets.length}</span>
+							<Badge variant="secondary" className="rounded-full bg-muted px-1.5 text-xs tabular-nums">
+								{tickets.length}
+							</Badge>
 						)}
 					</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="informacoes" className="space-y-4">
 					<div className="grid gap-4 lg:grid-cols-3">
-						<div className="rounded-lg border bg-card p-5 lg:col-span-2">
+						<Card className="rounded-lg border bg-card p-5 lg:col-span-2">
 							<h2 className="text-sm font-semibold text-foreground">Sobre o evento</h2>
 							<p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">
 								{event.description || 'Nenhuma descrição cadastrada.'}
 							</p>
-						</div>
+						</Card>
 
-						<div className="rounded-lg border bg-card p-5">
+						<Card className="rounded-lg border bg-card p-5">
 							<h2 className="text-sm font-semibold text-foreground">Detalhes</h2>
 							<div className="mt-2">
 								<InfoRow icon={Calendar} label="Início">
@@ -327,11 +353,16 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 									{isFree ? 'Evento gratuito' : 'Evento pago'}
 								</InfoRow>
 							</div>
-						</div>
+						</Card>
 					</div>
 
 					<div className="flex justify-end">
-						<Button variant="ghost" size="sm" onClick={requestDeleteEvent} className="text-destructive hover:bg-destructive/10">
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={requestDeleteEvent}
+							className="text-destructive hover:bg-destructive/10"
+						>
 							<Trash2 className="mr-2 size-4" />
 							Excluir evento
 						</Button>
@@ -369,7 +400,7 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 				onSaved={handleTicketSaved}
 			/>
 
-			<AlertDialog open={Boolean(ticketToDelete)} onOpenChange={open => !open && setTicketToDelete(null)}>
+			<AlertDialog open={Boolean(ticketToDelete)} onOpenChange={(open) => !open && setTicketToDelete(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Excluir ingresso</AlertDialogTitle>
@@ -391,7 +422,8 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 					<AlertDialogHeader>
 						<AlertDialogTitle>Excluir evento</AlertDialogTitle>
 						<AlertDialogDescription>
-							&ldquo;{event.title}&rdquo; e seus ingressos serão removidos permanentemente. Esta ação não pode ser desfeita.
+							&ldquo;{event.title}&rdquo; e seus ingressos serão removidos permanentemente. Esta ação não pode ser
+							desfeita.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

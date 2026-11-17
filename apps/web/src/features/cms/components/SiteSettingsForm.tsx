@@ -1,15 +1,17 @@
 'use client';
 
-import { CMS_SOCIAL_SERVICES, cmsSiteSettingsInputSchema } from '@events-manager/contracts';
-import { Plus, Save, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useId, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { CMS_SOCIAL_SERVICES, cmsSiteSettingsInputSchema } from '@events-manager/contracts';
+import { Plus, Save, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useId, useState } from 'react';
 import { revalidateCmsContent } from '../api/actions';
 import { CmsRequestError, cmsRequest, describeError, type FieldErrors } from '../api/client';
 import { firstError, validateWith } from '../lib/validation';
@@ -98,9 +100,9 @@ export function SiteSettingsForm({ settings }: { settings: CmsSiteSettings }) {
 	return (
 		<div className="space-y-6">
 			{formError && (
-				<p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-					{formError}
-				</p>
+				<Alert variant="destructive">
+					<AlertDescription>{formError}</AlertDescription>
+				</Alert>
 			)}
 			<div className="grid gap-6 xl:grid-cols-2">
 				<SectionCard title="Identidade" description="Nome, descrição padrão e endereço público do site.">
@@ -152,12 +154,12 @@ export function SiteSettingsForm({ settings }: { settings: CmsSiteSettings }) {
 					<div className="space-y-1.5">
 						<Label htmlFor={`${id}-color-hex`}>Cor de destaque (hex)</Label>
 						<div className="flex items-center gap-3">
-							<input
+							<Input
 								type="color"
 								aria-label="Escolher cor de destaque"
 								value={colorIsValid ? accentColor : '#6644ff'}
 								onChange={(event) => setAccentColor(event.target.value)}
-								className="size-10 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+								className="size-10 cursor-pointer rounded-lg border border-border bg-card p-1"
 							/>
 							<Input
 								id={`${id}-color-hex`}
@@ -167,7 +169,7 @@ export function SiteSettingsForm({ settings }: { settings: CmsSiteSettings }) {
 								className="max-w-[160px] font-mono"
 							/>
 							<span
-								className="size-10 rounded-lg border border-slate-200"
+								className="size-10 rounded-lg border border-border"
 								style={{ backgroundColor: colorIsValid ? accentColor : 'transparent' }}
 								aria-hidden
 							/>
@@ -212,7 +214,7 @@ export function SiteSettingsForm({ settings }: { settings: CmsSiteSettings }) {
 					</Button>
 				}
 			>
-				{socialLinks.length === 0 && <p className="text-sm text-slate-500">Nenhuma rede cadastrada.</p>}
+				{socialLinks.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma rede cadastrada.</p>}
 				{socialLinks.map((link, index) => (
 					<div key={index} className="grid gap-3 sm:grid-cols-[200px_1fr_auto]">
 						<div className="space-y-1.5">
@@ -256,13 +258,13 @@ export function SiteSettingsForm({ settings }: { settings: CmsSiteSettings }) {
 				))}
 			</SectionCard>
 
-			<div className="sticky bottom-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-				<p className="text-sm text-slate-600">As alterações valem para todo o site assim que salvas.</p>
+			<Card className="sticky bottom-4 flex flex-col gap-3 rounded-lg border border-border bg-card/95 p-4 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+				<p className="text-sm text-muted-foreground">As alterações valem para todo o site assim que salvas.</p>
 				<Button onClick={save} loading={saving}>
 					<Save className="mr-2 size-4" />
 					Salvar configurações
 				</Button>
-			</div>
+			</Card>
 		</div>
 	);
 }

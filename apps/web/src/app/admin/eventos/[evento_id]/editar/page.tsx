@@ -1,19 +1,22 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, AlertCircle, X } from 'lucide-react';
-import Link from 'next/link';
+import ImageUpload, { ImageUploadRef } from '@/components/admin/ImageUpload';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Event, EventCategory } from '@events-manager/contracts';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
-import ImageUpload, { ImageUploadRef } from '@/components/admin/ImageUpload';
+import { ArrowLeft, X } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 interface PageProps {
 	params: Promise<{ evento_id: string }>;
@@ -58,15 +61,11 @@ export default function EditarEventoPage({ params }: PageProps) {
 				setEventType(eventData.event_type || 'in_person');
 				setIsFree(eventData.is_free || false);
 				setCategoryId(
-					typeof eventData.category_id === 'string'
-						? eventData.category_id
-						: eventData.category_id?.id || ''
+					typeof eventData.category_id === 'string' ? eventData.category_id : eventData.category_id?.id || '',
 				);
 				setTags(Array.isArray(eventData.tags) ? eventData.tags : []);
 				setCoverImage(
-					typeof eventData.cover_image === 'string'
-						? eventData.cover_image
-						: eventData.cover_image?.id || null
+					typeof eventData.cover_image === 'string' ? eventData.cover_image : eventData.cover_image?.id || null,
 				);
 
 				// Fetch categories
@@ -94,7 +93,7 @@ export default function EditarEventoPage({ params }: PageProps) {
 	};
 
 	const removeTag = (tagToRemove: string) => {
-		setTags(tags.filter(tag => tag !== tagToRemove));
+		setTags(tags.filter((tag) => tag !== tagToRemove));
 	};
 
 	const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -119,8 +118,8 @@ export default function EditarEventoPage({ params }: PageProps) {
 						variant: 'destructive',
 					});
 					setIsLoading(false);
-					
-return;
+
+					return;
 				}
 			}
 
@@ -138,8 +137,8 @@ return;
 						variant: 'destructive',
 					});
 					setIsLoading(false);
-					
-return;
+
+					return;
 				}
 			}
 
@@ -166,8 +165,8 @@ return;
 					variant: 'destructive',
 				});
 				setIsLoading(false);
-				
-return;
+
+				return;
 			}
 
 			// Create event data
@@ -227,7 +226,7 @@ return;
 			<div className="flex items-center justify-center min-h-[400px]">
 				<div className="text-center">
 					<div className="inline-block animate-spin rounded-full size-8 border-b-2 border-accent"></div>
-					<p className="mt-4 text-gray-600 dark:text-gray-400">Carregando evento...</p>
+					<p className="mt-4 text-muted-foreground ">Carregando evento...</p>
 				</div>
 			</div>
 		);
@@ -237,17 +236,20 @@ return;
 		return (
 			<div className="space-y-6">
 				<div className="flex items-center gap-4">
-					<Link
-						href="/admin/eventos"
-						className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-					>
-						<ArrowLeft className="size-5" />
-					</Link>
-					<h1 className="text-3xl font-bold text-gray-900 dark:text-white">Erro</h1>
+					<Button asChild variant="ghost" size="icon">
+						<Link
+							aria-label="Voltar aos eventos"
+							href="/admin/eventos"
+							className="p-2 hover:bg-muted dark:hover:bg-gray-700 rounded-lg transition-colors"
+						>
+							<ArrowLeft className="size-5" />
+						</Link>
+					</Button>
+					<h1 className="text-3xl font-bold text-foreground ">Erro</h1>
 				</div>
-				<div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+				<Alert className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
 					<p className="text-red-600 dark:text-red-400">{error || 'Evento não encontrado'}</p>
-				</div>
+				</Alert>
 			</div>
 		);
 	}
@@ -255,36 +257,33 @@ return;
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center gap-4">
-				<Link
-					href={`/admin/eventos/${id}`}
-					className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-				>
-					<ArrowLeft className="size-5" />
-				</Link>
+				<Button asChild variant="ghost" size="icon">
+					<Link
+						aria-label="Voltar ao evento"
+						href={`/admin/eventos/${id}`}
+						className="p-2 hover:bg-muted dark:hover:bg-gray-700 rounded-lg transition-colors"
+					>
+						<ArrowLeft className="size-5" />
+					</Link>
+				</Button>
 				<div>
-					<h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-						Editar Evento
-					</h1>
-					<p className="text-gray-600 dark:text-gray-400 mt-1">
-						{event.title}
-					</p>
+					<h1 className="text-3xl font-bold text-foreground ">Editar Evento</h1>
+					<p className="text-muted-foreground  mt-1">{event.title}</p>
 				</div>
 			</div>
 
 			<form onSubmit={handleSubmit} className="space-y-6">
 				{/* Status e Publicação */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-					<h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-						📋 Status e Publicação
-					</h2>
+				<Card className="bg-card  rounded-lg border border-border  p-6 space-y-4">
+					<h2 className="text-lg font-semibold text-foreground  flex items-center gap-2">📋 Status e Publicação</h2>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div>
-							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							<Label htmlFor="status" className="block text-sm font-medium text-foreground mb-2">
 								Status do Evento *
-							</label>
+							</Label>
 							<Select value={status} onValueChange={setStatus}>
-								<SelectTrigger className="w-full">
+								<SelectTrigger id="status" className="w-full">
 									<SelectValue placeholder="Selecione o status" />
 								</SelectTrigger>
 								<SelectContent>
@@ -317,18 +316,16 @@ return;
 						</div>
 
 						<div>
-							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							<Label htmlFor="category" className="block text-sm font-medium text-foreground  mb-2">
 								Categoria
-							</label>
+							</Label>
 							<Select value={categoryId} onValueChange={setCategoryId}>
-								<SelectTrigger className="w-full">
+								<SelectTrigger id="category" className="w-full">
 									<SelectValue placeholder="Selecione uma categoria" />
 								</SelectTrigger>
 								<SelectContent>
 									{categories.length === 0 ? (
-										<div className="px-2 py-1.5 text-sm text-gray-500">
-											Nenhuma categoria disponível
-										</div>
+										<div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhuma categoria disponível</div>
 									) : (
 										categories.map((category) => (
 											<SelectItem key={category.id} value={category.id}>
@@ -343,24 +340,16 @@ return;
 					</div>
 
 					<div className="flex items-center gap-2">
-						<input
-							type="checkbox"
-							name="featured"
-							id="featured"
-							defaultChecked={event.featured || false}
-							className="size-4 text-accent border-gray-300 rounded focus:ring-accent"
-						/>
-						<label htmlFor="featured" className="text-sm text-gray-700 dark:text-gray-300">
+						<Checkbox name="featured" id="featured" defaultChecked={event.featured || false} />
+						<Label htmlFor="featured" className="text-sm text-foreground ">
 							⭐ Destacar este evento na página inicial
-						</label>
+						</Label>
 					</div>
-				</div>
+				</Card>
 
 				{/* Informações Básicas */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-					<h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-						📝 Informações Básicas
-					</h2>
+				<Card className="bg-card  rounded-lg border border-border  p-6 space-y-4">
+					<h2 className="text-lg font-semibold text-foreground  flex items-center gap-2">📝 Informações Básicas</h2>
 
 					<ImageUpload
 						ref={imageUploadRef}
@@ -371,245 +360,228 @@ return;
 					/>
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<Label htmlFor="title" className="block text-sm font-medium text-foreground  mb-2">
 							Nome do Evento *
-						</label>
-						<input
+						</Label>
+						<Input
 							type="text"
+							id="title"
 							name="title"
 							required
 							defaultValue={event.title}
-							className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+							className="w-full"
 							placeholder="Ex: Workshop de React Avançado"
 						/>
 					</div>
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<Label htmlFor="short_description" className="block text-sm font-medium text-foreground  mb-2">
 							Descrição Resumida
-						</label>
-						<input
+						</Label>
+						<Input
 							type="text"
+							id="short_description"
 							name="short_description"
 							maxLength={160}
 							defaultValue={event.short_description || ''}
-							className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+							className="w-full"
 							placeholder="Uma breve descrição para listagens (máx. 160 caracteres)"
 						/>
-						<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-							Aparecerá nos cards e compartilhamentos
-						</p>
+						<p className="text-xs text-muted-foreground  mt-1">Aparecerá nos cards e compartilhamentos</p>
 					</div>
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<Label htmlFor="description" className="block text-sm font-medium text-foreground  mb-2">
 							Descrição Completa *
-						</label>
-						<textarea
+						</Label>
+						<Textarea
+							id="description"
 							name="description"
 							required
 							rows={6}
 							defaultValue={event.description || ''}
-							className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+							className="w-full"
 							placeholder="Descreva detalhadamente seu evento: conteúdo, objetivos, o que os participantes vão aprender..."
 						/>
 					</div>
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<Label htmlFor="tags" className="block text-sm font-medium text-foreground  mb-2">
 							Tags
-						</label>
+						</Label>
 						<div className="space-y-2">
 							<div className="flex gap-2">
-								<input
+								<Input
 									type="text"
+									id="tags"
 									value={currentTag}
 									onChange={(e) => setCurrentTag(e.target.value)}
-									onKeyPress={handleKeyPress}
-									className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+									onKeyDown={handleKeyPress}
+									className="flex-1"
 									placeholder="Digite uma tag e pressione Enter"
 								/>
-								<button
+								<Button
+									variant="ghost"
 									type="button"
 									onClick={addTag}
-									className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+									className="h-auto whitespace-normal px-4 py-2 bg-muted  text-foreground  rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
 								>
 									Adicionar
-								</button>
+								</Button>
 							</div>
 							{tags.length > 0 && (
 								<div className="flex flex-wrap gap-2">
 									{tags.map((tag) => (
-										<span
-											key={tag}
-											className="inline-flex items-center gap-1 px-3 py-1 bg-accent/10 text-accent rounded-full text-sm"
-										>
+										<Badge variant="secondary" key={tag} className="gap-1">
 											{tag}
-											<button
+											<Button
+												variant="ghost"
 												type="button"
 												onClick={() => removeTag(tag)}
-												className="hover:text-accent-foreground"
+												aria-label={`Remover tag ${tag}`}
+												size="icon"
+												className="size-5"
 											>
 												<X className="size-3" />
-											</button>
-										</span>
+											</Button>
+										</Badge>
 									))}
 								</div>
 							)}
 						</div>
 					</div>
-				</div>
+				</Card>
 
 				{/* Datas e Horários */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-					<h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-						📅 Datas e Horários
-					</h2>
+				<Card className="bg-card  rounded-lg border border-border  p-6 space-y-4">
+					<h2 className="text-lg font-semibold text-foreground  flex items-center gap-2">📅 Datas e Horários</h2>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div>
-							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							<Label htmlFor="start_date" className="block text-sm font-medium text-foreground  mb-2">
 								Data e Hora de Início *
-							</label>
-							<input
+							</Label>
+							<Input
 								type="datetime-local"
+								id="start_date"
 								name="start_date"
 								required
 								defaultValue={event.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : ''}
-								className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+								className="w-full"
 							/>
 						</div>
 
 						<div>
-							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							<Label htmlFor="end_date" className="block text-sm font-medium text-foreground  mb-2">
 								Data e Hora de Término
-							</label>
-							<input
+							</Label>
+							<Input
 								type="datetime-local"
+								id="end_date"
 								name="end_date"
 								defaultValue={event.end_date ? new Date(event.end_date).toISOString().slice(0, 16) : ''}
-								className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+								className="w-full"
 							/>
 						</div>
 					</div>
 
-					<div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-						<h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-							Período de Inscrições
-						</h3>
+					<div className="border-t border-border  pt-4">
+						<h3 className="text-sm font-semibold text-foreground  mb-3">Período de Inscrições</h3>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+								<Label htmlFor="registration_start" className="block text-sm font-medium text-foreground  mb-2">
 									Início das Inscrições
-								</label>
-								<input
+								</Label>
+								<Input
 									type="datetime-local"
+									id="registration_start"
 									name="registration_start"
-									defaultValue={event.registration_start ? new Date(event.registration_start).toISOString().slice(0, 16) : ''}
-									className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+									defaultValue={
+										event.registration_start ? new Date(event.registration_start).toISOString().slice(0, 16) : ''
+									}
+									className="w-full"
 								/>
 							</div>
 
 							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+								<Label htmlFor="registration_end" className="block text-sm font-medium text-foreground  mb-2">
 									Encerramento das Inscrições
-								</label>
-								<input
+								</Label>
+								<Input
 									type="datetime-local"
+									id="registration_end"
 									name="registration_end"
-									defaultValue={event.registration_end ? new Date(event.registration_end).toISOString().slice(0, 16) : ''}
-									className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+									defaultValue={
+										event.registration_end ? new Date(event.registration_end).toISOString().slice(0, 16) : ''
+									}
+									className="w-full"
 								/>
 							</div>
 						</div>
 					</div>
-				</div>
+				</Card>
 
 				{/* Tipo e Localização */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-					<h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-						📍 Tipo e Localização
-					</h2>
+				<Card className="bg-card  rounded-lg border border-border  p-6 space-y-4">
+					<h2 className="text-lg font-semibold text-foreground  flex items-center gap-2">📍 Tipo e Localização</h2>
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-							Tipo de Evento *
-						</label>
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-							<label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${eventType === 'in_person' ? 'border-accent bg-accent/5' : 'border-gray-300 dark:border-gray-600'}`}>
-								<input
-									type="radio"
-									name="event_type"
-									value="in_person"
-									checked={eventType === 'in_person'}
-									onChange={(e) => setEventType(e.target.value as any)}
-									className="sr-only"
-								/>
-								<div className="flex-1">
-									<div className="text-2xl mb-1">🏢</div>
-									<div className="font-medium text-gray-900 dark:text-white">Presencial</div>
-									<div className="text-xs text-gray-500 dark:text-gray-400">Evento físico</div>
-								</div>
-							</label>
-
-							<label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${eventType === 'online' ? 'border-accent bg-accent/5' : 'border-gray-300 dark:border-gray-600'}`}>
-								<input
-									type="radio"
-									name="event_type"
-									value="online"
-									checked={eventType === 'online'}
-									onChange={(e) => setEventType(e.target.value as any)}
-									className="sr-only"
-								/>
-								<div className="flex-1">
-									<div className="text-2xl mb-1">💻</div>
-									<div className="font-medium text-gray-900 dark:text-white">Online</div>
-									<div className="text-xs text-gray-500 dark:text-gray-400">Virtual</div>
-								</div>
-							</label>
-
-							<label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${eventType === 'hybrid' ? 'border-accent bg-accent/5' : 'border-gray-300 dark:border-gray-600'}`}>
-								<input
-									type="radio"
-									name="event_type"
-									value="hybrid"
-									checked={eventType === 'hybrid'}
-									onChange={(e) => setEventType(e.target.value as any)}
-									className="sr-only"
-								/>
-								<div className="flex-1">
-									<div className="text-2xl mb-1">🌐</div>
-									<div className="font-medium text-gray-900 dark:text-white">Híbrido</div>
-									<div className="text-xs text-gray-500 dark:text-gray-400">Ambos</div>
-								</div>
-							</label>
-						</div>
+						<Label className="block text-sm font-medium text-foreground  mb-3">Tipo de Evento *</Label>
+						<RadioGroup
+							aria-label="Tipo de Evento"
+							name="event_type"
+							value={eventType}
+							onValueChange={(value) => setEventType(value as typeof eventType)}
+							className="grid gap-3 md:grid-cols-3"
+						>
+							{(
+								[
+									{ value: 'in_person', label: 'Presencial', description: 'Evento físico' },
+									{ value: 'online', label: 'Online', description: 'Virtual' },
+									{ value: 'hybrid', label: 'Híbrido', description: 'Ambos' },
+								] as const
+							).map((option) => (
+								<Label
+									key={option.value}
+									htmlFor={`type-${option.value}`}
+									className="flex cursor-pointer items-center gap-3 rounded-lg border p-4 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent"
+								>
+									<RadioGroupItem value={option.value} id={`type-${option.value}`} />
+									<span>
+										<span className="block font-medium">{option.label}</span>
+										<span className="text-xs text-muted-foreground">{option.description}</span>
+									</span>
+								</Label>
+							))}
+						</RadioGroup>
 					</div>
 
 					{(eventType === 'in_person' || eventType === 'hybrid') && (
-						<div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+						<div className="space-y-4 border-t border-border  pt-4">
 							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+								<Label htmlFor="location_name" className="block text-sm font-medium text-foreground  mb-2">
 									Nome do Local
-								</label>
-								<input
+								</Label>
+								<Input
 									type="text"
+									id="location_name"
 									name="location_name"
 									defaultValue={event.location_name || ''}
-									className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+									className="w-full"
 									placeholder="Ex: Teatro Municipal, Centro de Convenções"
 								/>
 							</div>
 
 							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+								<Label htmlFor="location_address" className="block text-sm font-medium text-foreground  mb-2">
 									Endereço Completo
-								</label>
-								<input
+								</Label>
+								<Input
 									type="text"
+									id="location_address"
 									name="location_address"
 									defaultValue={event.location_address || ''}
-									className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+									className="w-full"
 									placeholder="Ex: Av. Paulista, 1000 - Bela Vista, São Paulo - SP"
 								/>
 							</div>
@@ -617,82 +589,79 @@ return;
 					)}
 
 					{(eventType === 'online' || eventType === 'hybrid') && (
-						<div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<div className="border-t border-border  pt-4">
+							<Label htmlFor="online_url" className="block text-sm font-medium text-foreground  mb-2">
 								Link do Evento Online
-							</label>
-							<input
+							</Label>
+							<Input
 								type="url"
+								id="online_url"
 								name="online_url"
 								defaultValue={event.online_url || ''}
-								className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+								className="w-full"
 								placeholder="https://zoom.us/j/123456789 ou https://meet.google.com/..."
 							/>
 						</div>
 					)}
-				</div>
+				</Card>
 
 				{/* Ingressos e Vagas */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-					<h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-						🎫 Ingressos e Vagas
-					</h2>
+				<Card className="bg-card  rounded-lg border border-border  p-6 space-y-4">
+					<h2 className="text-lg font-semibold text-foreground  flex items-center gap-2">🎫 Ingressos e Vagas</h2>
 
-					<div className="flex items-center gap-2 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-						<input
-							type="checkbox"
+					<div className="flex items-center gap-2 p-4 bg-muted/40  rounded-lg border border-border ">
+						<Checkbox
 							name="is_free"
 							id="is_free"
 							checked={isFree}
-							onChange={(e) => setIsFree(e.target.checked)}
-							className="size-4 text-accent border-gray-300 rounded focus:ring-accent"
+							onCheckedChange={(checked) => setIsFree(checked === true)}
 						/>
-						<label htmlFor="is_free" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+						<Label htmlFor="is_free" className="text-sm font-medium text-foreground ">
 							Este é um evento gratuito (entrada livre)
-						</label>
+						</Label>
 					</div>
 
 					{isFree && (
-						<div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-							<p className="text-sm text-yellow-800 dark:text-yellow-300">
-								⚠️ <strong>Atenção:</strong> Ao marcar este evento como gratuito, você não poderá cadastrar ingressos. Se você já possui ingressos cadastrados, eles deverão ser removidos antes de salvar.
-							</p>
-						</div>
+						<Alert>
+							<AlertDescription>
+								⚠️ <strong>Atenção:</strong> Ao marcar este evento como gratuito, você não poderá cadastrar ingressos.
+								Se você já possui ingressos cadastrados, eles deverão ser removidos antes de salvar.
+							</AlertDescription>
+						</Alert>
 					)}
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<Label htmlFor="max_attendees" className="block text-sm font-medium text-foreground  mb-2">
 							Vagas Totais do Evento
-						</label>
-						<input
+						</Label>
+						<Input
 							type="number"
+							id="max_attendees"
 							name="max_attendees"
 							min="1"
 							defaultValue={event.max_attendees || ''}
-							className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+							className="w-full"
 							placeholder="Ex: 100 (deixe vazio para vagas ilimitadas)"
 						/>
-						<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+						<p className="text-xs text-muted-foreground  mt-1">
 							Limite geral de participantes {!isFree && '(independente dos ingressos)'}
 						</p>
 					</div>
-				</div>
+				</Card>
 
 				{/* Actions */}
 				<div className="flex gap-4 pt-4">
-					<button
-						type="submit"
-						disabled={isLoading}
-						className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-					>
+					<Button type="submit" disabled={isLoading} loading={isLoading}>
 						{isLoading ? 'Salvando...' : 'Salvar Alterações'}
-					</button>
-					<Link
-						href={`/admin/eventos/${id}`}
-						className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-					>
-						Cancelar
-					</Link>
+					</Button>
+					<Button asChild variant="outline">
+						<Link
+							href={`/admin/eventos/${id}`}
+							className="px-6 py-2 border border-input  rounded-lg hover:bg-muted/40 dark:hover:bg-gray-700 transition-colors"
+						>
+							Cancelar
+						</Link>
+					</Button>
 				</div>
 			</form>
 		</div>

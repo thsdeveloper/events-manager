@@ -1,8 +1,8 @@
 'use client';
 
-import { memo } from 'react';
-import { TrendingUp, Ticket, DollarSign, Loader2, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Clock, DollarSign, Loader2, Ticket, TrendingUp } from 'lucide-react';
+import { memo } from 'react';
 
 interface FinanceOverviewProps {
 	metrics: {
@@ -68,21 +68,19 @@ function FinanceOverview({ metrics, isLoading, currencyFormatter }: FinanceOverv
 			{cards.map((card, index) => (
 				<Card
 					key={card.title}
-					className="overflow-hidden border border-gray-200 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg dark:border-gray-800"
+					className="overflow-hidden border border-border shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg "
 				>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-semibold text-gray-600 dark:text-gray-300">
-							{card.title}
-						</CardTitle>
+						<CardTitle className="text-sm font-semibold text-muted-foreground ">{card.title}</CardTitle>
 						<div className={`rounded-lg p-2 ${card.highlight}`}>
 							<card.icon className="size-4" />
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold text-gray-900 dark:text-white">
+						<div className="text-2xl font-bold text-foreground ">
 							{isLoading ? (
-								<div className="flex items-center text-sm text-gray-500">
-									<Loader2 className="mr-2 size-4 animate-spin text-gray-400" />
+								<div className="flex items-center text-sm text-muted-foreground">
+									<Loader2 className="mr-2 size-4 animate-spin text-muted-foreground" />
 									Atualizando...
 								</div>
 							) : (
@@ -90,7 +88,7 @@ function FinanceOverview({ metrics, isLoading, currencyFormatter }: FinanceOverv
 							)}
 						</div>
 						{index === 0 && metrics && (
-							<p className="mt-2 text-xs text-gray-500">
+							<p className="mt-2 text-xs text-muted-foreground">
 								{metrics.totalTransactions.toLocaleString('pt-BR')} transações pagas no período
 							</p>
 						)}

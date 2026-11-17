@@ -1,13 +1,13 @@
 'use client';
 
-import { cmsBlockItemSchemas, type CmsBlockCollection } from '@events-manager/contracts';
-import { Save } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
+import { cmsBlockItemSchemas, type CmsBlockCollection } from '@events-manager/contracts';
+import { Save } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
 import { CmsRequestError, cmsRequest, describeError, type FieldErrors } from '../api/client';
 import { blockTypeMeta } from '../lib/blocks';
 import { validateWith } from '../lib/validation';
@@ -92,7 +92,7 @@ export function BlockFormSheet({ open, onOpenChange, pageId, collection, block, 
 				<form id={formId} onSubmit={submit} className="flex-1 space-y-6 overflow-y-auto p-6">
 					<Fields value={state} onChange={setState} errors={errors} />
 
-					<div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+					<div className="grid gap-4 rounded-lg border border-border bg-muted/40 p-4 sm:grid-cols-2">
 						<div className="space-y-1.5">
 							<Label htmlFor={`${formId}-background`}>Fundo</Label>
 							<Select value={background} onValueChange={(value) => setBackground(value as 'light' | 'dark')}>
@@ -105,10 +105,10 @@ export function BlockFormSheet({ open, onOpenChange, pageId, collection, block, 
 								</SelectContent>
 							</Select>
 						</div>
-						<label className="flex items-center gap-3 self-end pb-2 text-sm">
+						<Label className="flex items-center gap-3 self-end pb-2 text-sm">
 							<Switch checked={hidden} onCheckedChange={setHidden} aria-label="Ocultar bloco no site" />
 							Ocultar no site
-						</label>
+						</Label>
 					</div>
 
 					{formError && <FieldError message={formError} />}

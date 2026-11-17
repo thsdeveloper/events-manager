@@ -1,9 +1,5 @@
 'use client';
 
-import { cmsRedirectInputSchema } from '@events-manager/contracts';
-import { ArrowRight, Pencil, Plus, Route, Save, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useId, useState } from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -14,12 +10,19 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { cmsRedirectInputSchema } from '@events-manager/contracts';
+import { ArrowRight, Pencil, Plus, Route, Save, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useId, useState } from 'react';
 import { revalidateCmsContent } from '../api/actions';
 import { CmsRequestError, cmsRequest, describeError, type FieldErrors } from '../api/client';
 import { formatDateTime } from '../lib/dates';
@@ -171,7 +174,7 @@ export function RedirectsManager({ redirects }: { redirects: CmsRedirectRow[] })
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-4">
-				<p className="text-sm text-slate-600">
+				<p className="text-sm text-muted-foreground">
 					{redirects.length} {redirects.length === 1 ? 'redirecionamento ativo' : 'redirecionamentos ativos'}.
 				</p>
 				<Button
@@ -186,52 +189,55 @@ export function RedirectsManager({ redirects }: { redirects: CmsRedirectRow[] })
 			</div>
 
 			{redirects.length === 0 ? (
-				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-slate-50 px-6 py-12 text-center">
-					<div className="flex size-12 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted/40 px-6 py-12 text-center">
+					<div className="flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary">
 						<Route className="size-6" />
 					</div>
-					<p className="font-medium text-slate-950">Nenhum redirecionamento</p>
-					<p className="text-sm text-slate-500">
+					<p className="font-medium text-foreground">Nenhum redirecionamento</p>
+					<p className="text-sm text-muted-foreground">
 						Ao trocar o permalink de uma página, crie um daqui para não perder visitas.
 					</p>
 				</div>
 			) : (
-				<div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-					<table className="w-full text-left text-sm">
-						<thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-							<tr>
-								<th className="px-5 py-3">Origem</th>
-								<th className="px-5 py-3">Destino</th>
-								<th className="px-5 py-3">Tipo</th>
-								<th className="px-5 py-3">Nota</th>
-								<th className="px-5 py-3">Atualizado</th>
-								<th className="px-5 py-3 text-right">
+				<Card className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+					<Table className="w-full text-left text-sm">
+						<TableHeader className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+							<TableRow>
+								<TableHead className="px-5 py-3">Origem</TableHead>
+								<TableHead className="px-5 py-3">Destino</TableHead>
+								<TableHead className="px-5 py-3">Tipo</TableHead>
+								<TableHead className="px-5 py-3">Nota</TableHead>
+								<TableHead className="px-5 py-3">Atualizado</TableHead>
+								<TableHead className="px-5 py-3 text-right">
 									<span className="sr-only">Ações</span>
-								</th>
-							</tr>
-						</thead>
-						<tbody className="divide-y divide-slate-100">
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody className="divide-y divide-border">
 							{redirects.map((redirect) => (
-								<tr key={redirect.id} className="hover:bg-slate-50">
-									<td className="px-5 py-3 font-mono text-xs text-slate-800">{redirect.url_from}</td>
-									<td className="px-5 py-3 font-mono text-xs text-slate-800">
+								<TableRow key={redirect.id} className="hover:bg-muted/40">
+									<TableCell className="px-5 py-3 font-mono text-xs text-foreground">{redirect.url_from}</TableCell>
+									<TableCell className="px-5 py-3 font-mono text-xs text-foreground">
 										<span className="inline-flex items-center gap-1">
-											<ArrowRight className="size-3 text-slate-400" />
+											<ArrowRight className="size-3 text-muted-foreground" />
 											{redirect.url_to}
 										</span>
-									</td>
-									<td className="px-5 py-3">
-										<span
+									</TableCell>
+									<TableCell className="px-5 py-3">
+										<Badge
+											variant="secondary"
 											className={`rounded-full px-2 py-0.5 text-xs font-semibold ${redirect.response_code === '301' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}
 										>
 											{redirect.response_code}
-										</span>
-									</td>
-									<td className="max-w-xs truncate px-5 py-3 text-slate-600">{redirect.note ?? '—'}</td>
-									<td className="px-5 py-3 text-slate-600">
+										</Badge>
+									</TableCell>
+									<TableCell className="max-w-xs truncate px-5 py-3 text-muted-foreground">
+										{redirect.note ?? '—'}
+									</TableCell>
+									<TableCell className="px-5 py-3 text-muted-foreground">
 										{formatDateTime(redirect.date_updated ?? redirect.date_created)}
-									</td>
-									<td className="px-5 py-3 text-right">
+									</TableCell>
+									<TableCell className="px-5 py-3 text-right">
 										<Button
 											size="icon"
 											variant="ghost"
@@ -252,12 +258,12 @@ export function RedirectsManager({ redirects }: { redirects: CmsRedirectRow[] })
 										>
 											<Trash2 className="size-4" />
 										</Button>
-									</td>
-								</tr>
+									</TableCell>
+								</TableRow>
 							))}
-						</tbody>
-					</table>
-				</div>
+						</TableBody>
+					</Table>
+				</Card>
 			)}
 
 			<RedirectSheet open={sheetOpen} onOpenChange={setSheetOpen} redirect={editing} onSaved={afterSave} />

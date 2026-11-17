@@ -1,7 +1,7 @@
+import { renderWithProviders } from '@/test';
 import { screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { renderWithProviders } from '@/test';
 import { SuperAdminShell } from './SuperAdminShell';
 
 const navigationState = vi.hoisted(() => ({ pathname: '/super-admin' }));
@@ -28,6 +28,24 @@ const user = {
 };
 
 describe('SuperAdminShell', () => {
+	it('opens mobile navigation as a dialog and closes it after choosing a destination', async () => {
+		const width = window.innerWidth;
+		Object.defineProperty(window, 'innerWidth', { configurable: true, value: 500 });
+		try {
+			const { user: person } = renderWithProviders(
+				<SuperAdminShell user={user as never} isOrganizer={false}>
+					<p>conteúdo</p>
+				</SuperAdminShell>,
+			);
+			await person.click(screen.getByRole('button', { name: 'Alternar navegação' }));
+			expect(await screen.findByRole('dialog')).toBeInTheDocument();
+			await person.click(screen.getByRole('link', { name: 'Páginas' }));
+			expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+		} finally {
+			Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+		}
+	});
+
 	it('offers the content management section next to the platform links', () => {
 		renderWithProviders(
 			<SuperAdminShell user={user as never} isOrganizer={false}>

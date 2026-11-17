@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { Tag, Wand2, X } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { Tag, Wand2, X } from 'lucide-react';
+import { useState } from 'react';
+import { useFormContext } from 'react-hook-form';
 import type { EventWizardFormValues } from '../types';
 
 const popularTags = ['networking', 'tecnologia', 'imersão', 'carreira', 'produtividade', 'marketing'];
@@ -28,14 +29,14 @@ export function DetailsStep() {
 	const removeTag = (tagToRemove: string) => {
 		form.setValue(
 			'tags',
-			tags.filter(tag => tag !== tagToRemove),
+			tags.filter((tag) => tag !== tagToRemove),
 			{ shouldDirty: true, shouldValidate: true },
 		);
 	};
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-lg border bg-card p-6 shadow-sm">
+			<Card className="rounded-lg border bg-card p-6 shadow-sm">
 				<div className="flex flex-col gap-2">
 					<div className="flex items-start justify-between gap-4">
 						<div>
@@ -79,8 +80,8 @@ export function DetailsStep() {
 							<div className="mt-3 flex gap-2">
 								<Input
 									value={tagDraft}
-									onChange={event => setTagDraft(event.target.value)}
-									onKeyDown={event => {
+									onChange={(event) => setTagDraft(event.target.value)}
+									onKeyDown={(event) => {
 										if (event.key === 'Enter') {
 											event.preventDefault();
 											addTag(tagDraft);
@@ -99,44 +100,48 @@ export function DetailsStep() {
 
 							{tags.length > 0 && (
 								<div className="mt-4 flex flex-wrap gap-2">
-									{tags.map(tag => (
-										<button
+									{tags.map((tag) => (
+										<Button
+											variant="ghost"
 											key={tag}
 											type="button"
 											onClick={() => removeTag(tag)}
-											className="group inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+											className="h-auto whitespace-normal group inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
 										>
 											<Tag className="size-3" />
 											<span>{tag}</span>
 											<X className="size-3.5" />
-										</button>
+										</Button>
 									))}
 								</div>
 							)}
 
 							<div className="mt-4 flex flex-wrap gap-2">
-									{popularTags.map(tag => {
-										const isActive = tags.includes(tag);
+								{popularTags.map((tag) => {
+									const isActive = tags.includes(tag);
 
-										return (
-										<button
+									return (
+										<Button
+											variant="ghost"
 											type="button"
 											key={tag}
 											onClick={() => addTag(tag)}
 											className={cn(
 												'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-												isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-dashed hover:border-primary',
+												isActive
+													? 'border-primary bg-primary text-primary-foreground'
+													: 'border-dashed hover:border-primary',
 											)}
 										>
 											#{tag}
-										</button>
+										</Button>
 									);
 								})}
 							</div>
 						</div>
 					</div>
 				</div>
-			</div>
+			</Card>
 		</div>
 	);
 }

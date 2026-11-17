@@ -1,8 +1,5 @@
 'use client';
 
-import { Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -14,7 +11,11 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { revalidateCmsContent } from '../api/actions';
 import { cmsRequest, describeError } from '../api/client';
 import { PROTECTED_NAVIGATIONS } from './NavigationsList';
@@ -40,8 +41,8 @@ export function NavigationDangerZone({ navigationId, title }: { navigationId: st
 	}
 
 	return (
-		<div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-			<p className="text-xs text-slate-500">
+		<Card className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+			<p className="text-xs text-muted-foreground">
 				{isProtected
 					? 'Menus do sistema (principal e rodapé) não podem ser excluídos.'
 					: 'Excluir o menu remove todos os seus itens.'}
@@ -67,6 +68,6 @@ export function NavigationDangerZone({ navigationId, title }: { navigationId: st
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</div>
+		</Card>
 	);
 }

@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
+
 import { cn } from '@/lib/utils';
 import type { CmsPagination } from '../types';
 
@@ -20,31 +21,40 @@ export function PaginationLinks({
 
 		return `${pathname}?${params}`;
 	};
-	const buttonClass =
-		'rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50';
 
 	return (
-		<nav aria-label="Paginação" className="flex items-center justify-between text-sm text-slate-500">
+		<Pagination
+			aria-label="Paginação"
+			className="flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground"
+		>
 			<span>
 				Página {pagination.page} de {pagination.pageCount} · {pagination.total}{' '}
 				{pagination.total === 1 ? 'item' : 'itens'}
 			</span>
-			<div className="flex gap-2">
-				<Link
-					href={link(Math.max(1, pagination.page - 1))}
-					aria-disabled={pagination.page <= 1}
-					className={cn(buttonClass, pagination.page <= 1 && 'pointer-events-none opacity-50')}
-				>
-					Anterior
-				</Link>
-				<Link
-					href={link(Math.min(pagination.pageCount, pagination.page + 1))}
-					aria-disabled={pagination.page >= pagination.pageCount}
-					className={cn(buttonClass, pagination.page >= pagination.pageCount && 'pointer-events-none opacity-50')}
-				>
-					Próxima
-				</Link>
-			</div>
-		</nav>
+			<PaginationContent>
+				<PaginationItem>
+					<PaginationLink
+						size="default"
+						href={link(Math.max(1, pagination.page - 1))}
+						aria-disabled={pagination.page <= 1}
+						tabIndex={pagination.page <= 1 ? -1 : undefined}
+						className={cn(pagination.page <= 1 && 'pointer-events-none opacity-50')}
+					>
+						Anterior
+					</PaginationLink>
+				</PaginationItem>
+				<PaginationItem>
+					<PaginationLink
+						size="default"
+						href={link(Math.min(pagination.pageCount, pagination.page + 1))}
+						aria-disabled={pagination.page >= pagination.pageCount}
+						tabIndex={pagination.page >= pagination.pageCount ? -1 : undefined}
+						className={cn(pagination.page >= pagination.pageCount && 'pointer-events-none opacity-50')}
+					>
+						Próxima
+					</PaginationLink>
+				</PaginationItem>
+			</PaginationContent>
+		</Pagination>
 	);
 }

@@ -1,5 +1,10 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -20,9 +25,6 @@ import {
 	Undo2,
 } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import { mediaUrl } from '../lib/media';
 import { MediaPickerDialog } from './MediaPicker';
 
@@ -44,7 +46,9 @@ interface ToolbarButtonProps {
 
 function ToolbarButton({ label, active = false, disabled = false, onClick, children }: ToolbarButtonProps) {
 	return (
-		<button
+		<Button
+			variant="ghost"
+			size="icon"
 			type="button"
 			aria-label={label}
 			title={label}
@@ -53,12 +57,12 @@ function ToolbarButton({ label, active = false, disabled = false, onClick, child
 			onMouseDown={(event) => event.preventDefault()}
 			onClick={onClick}
 			className={cn(
-				'flex size-8 items-center justify-center rounded-md text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 disabled:opacity-40',
-				active && 'bg-violet-100 text-violet-800',
+				'flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40',
+				active && 'bg-primary/15 text-primary',
 			)}
 		>
 			{children}
-		</button>
+		</Button>
 	);
 }
 
@@ -95,7 +99,7 @@ export function RichTextEditor({
 				'aria-multiline': 'true',
 				'aria-label': label,
 				class: cn(
-					'prose prose-slate max-w-none px-4 py-3 text-sm focus:outline-none prose-headings:font-semibold prose-a:text-violet-700',
+					'prose prose-slate max-w-none px-4 py-3 text-sm focus:outline-none prose-headings:font-semibold prose-a:text-primary',
 					minHeightClassName,
 				),
 			},
@@ -126,7 +130,7 @@ export function RichTextEditor({
 	}, [editor, value]);
 
 	if (!editor || !state) {
-		return <div className={cn('animate-pulse rounded-lg border border-slate-200 bg-slate-50', minHeightClassName)} />;
+		return <Skeleton className={cn('animate-pulse rounded-lg border border-border bg-muted/40', minHeightClassName)} />;
 	}
 
 	function applyLink() {
@@ -142,11 +146,11 @@ export function RichTextEditor({
 	}
 
 	return (
-		<div className="rounded-lg border border-slate-200 bg-white shadow-sm focus-within:border-violet-400">
+		<Card className="rounded-lg border border-border bg-card shadow-sm focus-within:border-violet-400">
 			<div
 				role="toolbar"
 				aria-label="Formatação"
-				className="flex flex-wrap items-center gap-0.5 border-b border-slate-200 p-1.5"
+				className="flex flex-wrap items-center gap-0.5 border-b border-border p-1.5"
 			>
 				<ToolbarButton label="Negrito" active={state.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
 					<Bold className="size-4" />
@@ -231,7 +235,7 @@ export function RichTextEditor({
 				</span>
 			</div>
 			{linkOpen && (
-				<div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+				<div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
 					<Input
 						aria-label="Endereço do link"
 						value={linkUrl}
@@ -266,6 +270,6 @@ export function RichTextEditor({
 					setImageOpen(false);
 				}}
 			/>
-		</div>
+		</Card>
 	);
 }
