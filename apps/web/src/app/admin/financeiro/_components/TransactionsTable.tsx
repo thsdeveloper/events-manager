@@ -1,13 +1,15 @@
 'use client';
 
+import { RecordTable } from '@/components/ui/record-table';
+
+import { Spinner } from '@/components/ui/spinner';
 import { memo } from 'react';
-import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Receipt } from 'lucide-react';
 import type { PaginationState, TransactionRow } from '@/lib/finance/server-fetchers';
 import type { TransactionSort, TransactionSortField } from '@/lib/finance/api-client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Illustration } from '@/components/design-system/atoms/Illustration';
-import { emptyIllustrations } from '@/lib/illustrations';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from '@/components/ui/empty';
 
 interface TransactionsTableProps {
 	rows: TransactionRow[];
@@ -35,13 +37,6 @@ function formatDate(value: string) {
 	});
 }
 
-const statusStyles: Record<string, string> = {
-	succeeded: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-	pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-	failed: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
-	refunded: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
-};
-
 function getStatusLabel(status: string) {
 	switch (status) {
 		case 'succeeded':
@@ -60,14 +55,16 @@ function getStatusLabel(status: string) {
 function SortIcon({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
 	if (!active) {
 		return (
-			<span className="ml-1 inline-flex size-3 items-center justify-center text-gray-300 dark:text-gray-600">•</span>
+			<span className="ml-1 inline-flex size-3 items-center justify-center text-muted-foreground dark:text-muted-foreground">
+				•
+			</span>
 		);
 	}
 
 	return direction === 'asc' ? (
-		<ChevronUp className="ml-1 size-4 text-gray-500" />
+		<ChevronUp className="ml-1 size-4 text-muted-foreground" />
 	) : (
-		<ChevronDown className="ml-1 size-4 text-gray-500" />
+		<ChevronDown className="ml-1 size-4 text-muted-foreground" />
 	);
 }
 
@@ -98,122 +95,134 @@ function TransactionsTable({
 
 	return (
 		<div className="overflow-x-auto">
-			<table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-gray-800">
-				<thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">
-					<tr>
-						<th className="px-4 py-3 font-semibold">
-							<button
-								type="button"
-								onClick={() => handleSort('date')}
-								className="inline-flex items-center text-xs font-semibold uppercase tracking-wider text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-							>
-								Data
-								<SortIcon active={sort.field === 'date'} direction={sort.direction} />
-							</button>
-						</th>
-						<th className="px-4 py-3 font-semibold">ID Transação</th>
-						<th className="px-4 py-3 font-semibold">Evento</th>
-						<th className="px-4 py-3 font-semibold">Participante</th>
-						<th className="px-4 py-3 font-semibold text-right">Qtd</th>
-						<th className="px-4 py-3 font-semibold text-right">
-							<button
-								type="button"
-								onClick={() => handleSort('gross')}
-								className="inline-flex items-center justify-end text-xs font-semibold uppercase tracking-wider text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-							>
-								Valor Bruto
-								<SortIcon active={sort.field === 'gross'} direction={sort.direction} />
-							</button>
-						</th>
-						<th className="px-4 py-3 font-semibold text-right">
-							<button
-								type="button"
-								onClick={() => handleSort('fee')}
-								className="inline-flex items-center justify-end text-xs font-semibold uppercase tracking-wider text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-							>
-								Taxa
-								<SortIcon active={sort.field === 'fee'} direction={sort.direction} />
-							</button>
-						</th>
-						<th className="px-4 py-3 font-semibold text-right">
-							<button
-								type="button"
-								onClick={() => handleSort('net')}
-								className="inline-flex items-center justify-end text-xs font-semibold uppercase tracking-wider text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-							>
-								Valor Líquido
-								<SortIcon active={sort.field === 'net'} direction={sort.direction} />
-							</button>
-						</th>
-						<th className="px-4 py-3 font-semibold text-right">
-							<button
-								type="button"
-								onClick={() => handleSort('status')}
-								className="inline-flex items-center justify-end text-xs font-semibold uppercase tracking-wider text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-							>
-								Status
-								<SortIcon active={sort.field === 'status'} direction={sort.direction} />
-							</button>
-						</th>
-					</tr>
-				</thead>
-				<tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-800 dark:bg-slate-900">
-					{isLoading ? (
-						<tr>
-							<td colSpan={9} className="px-4 py-6 text-center text-gray-500">
-								<div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-									<Loader2 className="size-4 animate-spin" />
-									Carregando transações...
-								</div>
-							</td>
-						</tr>
-					) : rows.length === 0 ? (
-						<tr>
-							<td colSpan={9} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-								<Illustration illustration={emptyIllustrations.transactions} className="mx-auto mb-4 h-28" />
-								Nenhuma transação encontrada para os filtros selecionados.
-							</td>
-						</tr>
+			<RecordTable
+				headers={[
+					<>
+						<Button
+							variant="ghost"
+							type="button"
+							onClick={() => handleSort('date')}
+							className="h-auto whitespace-normal inline-flex items-center uppercase tracking-wider"
+						>
+							Data
+							<SortIcon active={sort.field === 'date'} direction={sort.direction} />
+						</Button>
+					</>,
+					'ID Transação',
+					'Evento',
+					'Participante',
+					'Qtd',
+					<>
+						<Button
+							variant="ghost"
+							type="button"
+							onClick={() => handleSort('gross')}
+							className="h-auto whitespace-normal inline-flex items-center justify-end uppercase tracking-wider"
+						>
+							Valor Bruto
+							<SortIcon active={sort.field === 'gross'} direction={sort.direction} />
+						</Button>
+					</>,
+					<>
+						<Button
+							variant="ghost"
+							type="button"
+							onClick={() => handleSort('fee')}
+							className="h-auto whitespace-normal inline-flex items-center justify-end uppercase tracking-wider"
+						>
+							Taxa
+							<SortIcon active={sort.field === 'fee'} direction={sort.direction} />
+						</Button>
+					</>,
+					<>
+						<Button
+							variant="ghost"
+							type="button"
+							onClick={() => handleSort('net')}
+							className="h-auto whitespace-normal inline-flex items-center justify-end uppercase tracking-wider"
+						>
+							Valor Líquido
+							<SortIcon active={sort.field === 'net'} direction={sort.direction} />
+						</Button>
+					</>,
+					<>
+						<Button
+							variant="ghost"
+							type="button"
+							onClick={() => handleSort('status')}
+							className="h-auto whitespace-normal inline-flex items-center justify-end uppercase tracking-wider"
+						>
+							Status
+							<SortIcon active={sort.field === 'status'} direction={sort.direction} />
+						</Button>
+					</>,
+				]}
+				rows={
+					isLoading
+						? []
+						: rows.map((row) => ({
+								id: String(row.id),
+								cells: [
+									<div key="column-0" className="text-sm text-foreground">
+										{formatDate(row.date)}
+									</div>,
+									<div key="column-1" className="font-medium text-primary">
+										{row.transactionId || '—'}
+									</div>,
+									<div key="column-2" className="text-sm text-foreground">
+										{row.eventTitle}
+									</div>,
+									<div key="column-3" className="text-sm text-muted-foreground">
+										<div className="flex flex-col">
+											<span className="font-medium text-foreground">{row.participantName}</span>
+											<span className="text-xs text-muted-foreground dark:text-muted-foreground">
+												{row.participantEmail}
+											</span>
+										</div>
+									</div>,
+									<div key="column-4" className="text-right text-sm text-foreground">
+										{row.quantity}
+									</div>,
+									<div key="column-5" className="text-right text-sm text-foreground">
+										{currencyFormatter.format(row.gross)}
+									</div>,
+									<div key="column-6" className="text-right text-sm text-foreground">
+										{currencyFormatter.format(row.fee)}
+									</div>,
+									<div key="column-7" className="text-right text-sm text-muted-foreground ">
+										{currencyFormatter.format(row.net)}
+									</div>,
+									<div key="column-8" className="text-right">
+										<Badge variant="secondary">{getStatusLabel(row.status)}</Badge>
+									</div>,
+								],
+							}))
+				}
+				paginate={false}
+				emptyMessage={
+					isLoading ? (
+						<>
+							<div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+								<Spinner className="size-4 animate-spin" />
+								Carregando transações...
+							</div>
+						</>
 					) : (
-						rows.map((row) => (
-							<tr key={row.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40">
-								<td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{formatDate(row.date)}</td>
-								<td className="px-4 py-3 text-xs font-medium text-purple-600 dark:text-purple-300">
-									{row.transactionId || '—'}
-								</td>
-								<td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">{row.eventTitle}</td>
-								<td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-									<div className="flex flex-col">
-										<span className="font-medium text-gray-800 dark:text-gray-100">{row.participantName}</span>
-										<span className="text-xs text-gray-500 dark:text-gray-400">{row.participantEmail}</span>
-									</div>
-								</td>
-								<td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
-									{row.quantity}
-								</td>
-								<td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
-									{currencyFormatter.format(row.gross)}
-								</td>
-								<td className="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-200">
-									{currencyFormatter.format(row.fee)}
-								</td>
-								<td className="px-4 py-3 text-right text-sm font-semibold text-emerald-600 dark:text-emerald-300">
-									{currencyFormatter.format(row.net)}
-								</td>
-								<td className="px-4 py-3 text-right">
-									<Badge
-										className={`ml-auto text-xs ${statusStyles[row.status] ?? 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-200'}`}
-									>
-										{getStatusLabel(row.status)}
-									</Badge>
-								</td>
-							</tr>
-						))
-					)}
-				</tbody>
-			</table>
+						<>
+							<Empty>
+								<EmptyHeader>
+									<EmptyMedia variant="icon">
+										<Receipt aria-hidden="true" />
+									</EmptyMedia>
+									<EmptyDescription>Nenhuma transação encontrada para os filtros selecionados.</EmptyDescription>
+								</EmptyHeader>
+							</Empty>
+						</>
+					)
+				}
+			/>
 			{rows.length > 0 && !isLoading && (
-				<div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+				<div className="mt-4 flex items-center justify-between text-sm text-muted-foreground dark:text-muted-foreground">
 					<span>
 						Exibindo página {pagination.page} de {Math.max(pagination.pageCount, 1)}
 					</span>

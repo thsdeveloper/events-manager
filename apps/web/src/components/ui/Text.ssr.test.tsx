@@ -25,10 +25,13 @@ describe('Text (rich HTML from the CMS)', () => {
 		expect(markup).toContain('<p>ok</p>');
 	});
 
-	it('uses the typography styles so the rich content is readable in both themes', () => {
-		const markup = renderToStaticMarkup(<Text content="<p>texto</p>" />);
+	it('preserves the heading hierarchy and emphasis in editorial content', () => {
+		const markup = renderToStaticMarkup(
+			<Text content="<h2>Seção</h2><h3>Detalhes</h3><p>Texto com <strong>destaque</strong>.</p>" />,
+		);
 
-		expect(markup).toMatch(/class="[^"]*\bprose\b[^"]*dark:prose-invert[^"]*"/);
+		expect(markup).toContain('<h2>Seção</h2><h3>Detalhes</h3>');
+		expect(markup).toContain('<strong>destaque</strong>');
 	});
 
 	it('turns plain text written before the rich editor into paragraphs, keeping its line breaks', () => {

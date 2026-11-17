@@ -1,5 +1,6 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import type { EventPageLayout, EventPageSection } from '@events-manager/contracts';
 import { Plus, Trash2 } from 'lucide-react';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -26,10 +27,10 @@ function Toggle({
 	onChange: (checked: boolean) => void;
 }) {
 	return (
-		<label className="flex cursor-pointer items-center gap-2 text-sm">
+		<Label className="flex cursor-pointer items-center gap-2 text-sm">
 			<Checkbox aria-label={label} checked={checked} onCheckedChange={(value) => onChange(value === true)} />
 			{label}
-		</label>
+		</Label>
 	);
 }
 
@@ -44,7 +45,7 @@ export function HeaderThemeCard({ layout, sections, onChange }: HeaderThemeCardP
 	const firstAnchor = sections[0]?.anchor ?? '';
 
 	return (
-		<div className="space-y-5 rounded-lg border bg-card p-4">
+		<Card className="space-y-5 p-4">
 			<div>
 				<h3 className="text-sm font-semibold text-foreground">Cabeçalho e tema</h3>
 				<p className="text-xs text-muted-foreground">A página tem cabeçalho próprio, sem o menu do site.</p>
@@ -130,8 +131,7 @@ export function HeaderThemeCard({ layout, sections, onChange }: HeaderThemeCardP
 						<Button
 							type="button"
 							size="icon"
-							variant="ghost"
-							className="text-destructive hover:text-destructive"
+							variant="destructive"
 							onClick={() => setNav(header.nav.filter((_, i) => i !== index))}
 							aria-label={`Remover link ${index + 1}`}
 						>
@@ -143,7 +143,7 @@ export function HeaderThemeCard({ layout, sections, onChange }: HeaderThemeCardP
 					type="button"
 					variant="outline"
 					size="sm"
-					className="w-full border-dashed"
+					className="w-full"
 					disabled={header.nav.length >= 8 || sections.length === 0}
 					onClick={() => setNav([...header.nav, { label: 'Novo link', anchor: firstAnchor }])}
 				>
@@ -171,12 +171,12 @@ export function HeaderThemeCard({ layout, sections, onChange }: HeaderThemeCardP
 				<div className="space-y-1.5">
 					<Label htmlFor="theme-accent-hex">Cor de destaque (hex)</Label>
 					<div className="flex items-center gap-2">
-						<input
+						<Input
 							type="color"
 							aria-label="Cor de destaque"
 							value={theme.accent ?? '#6644ff'}
 							onChange={(event) => onChange({ theme: { ...theme, accent: event.target.value } })}
-							className="size-9 cursor-pointer rounded border bg-transparent p-0.5"
+							className="size-9 cursor-pointer rounded border p-0.5"
 						/>
 						<Input
 							id="theme-accent-hex"
@@ -204,6 +204,6 @@ export function HeaderThemeCard({ layout, sections, onChange }: HeaderThemeCardP
 					/>
 				</div>
 			</div>
-		</div>
+		</Card>
 	);
 }

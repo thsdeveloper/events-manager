@@ -1,5 +1,6 @@
 'use client';
 
+import { Spinner } from '@/components/ui/spinner';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -14,16 +15,16 @@ export function AutoSaveIndicator({ isSaving, lastSaved }: AutoSaveIndicatorProp
 		<div className="flex items-center gap-2 text-xs text-muted-foreground">
 			{isSaving ? (
 				<>
-					<Loader2 className="size-3 animate-spin" />
+					<Spinner className="size-3 animate-spin" />
 					<span>Salvando alterações...</span>
 				</>
 			) : lastSaved ? (
 				<>
-					<CheckCircle2 className="size-3 text-emerald-500" />
-					<span>Salvo às {format(lastSaved, 'HH:mm', { locale: ptBR })}</span>
+					<CheckCircle2 className="size-3 text-muted-foreground" />
+					<span>Salvo neste navegador às {format(lastSaved, 'HH:mm', { locale: ptBR })}</span>
 				</>
 			) : (
-				<span>As alterações são salvas automaticamente</span>
+				<span>As alterações ficam salvas automaticamente neste navegador</span>
 			)}
 		</div>
 	);

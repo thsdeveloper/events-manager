@@ -3,6 +3,9 @@ import type { Event, EventPageLayout, EventPageSection } from '@events-manager/c
 import { Globe, Mail } from 'lucide-react';
 import Link from 'next/link';
 import MediaImage from '@/components/shared/MediaImage';
+import { localizedLayout, type EventDescriptionLanguage } from '../content';
+import { EventLanguageLinks } from './EventLanguageLinks';
+import { EventPreviewSurface } from './EventPreviewSurface';
 import { cn } from '@/lib/utils';
 import { organizerOf, type LandingContext, type LandingMode } from './landing-context';
 import { AccentButton, AnchorLink } from './LandingPrimitives';
@@ -26,6 +29,8 @@ export interface EventLandingPageProps {
 	layout: EventPageLayout;
 	/** `preview` desliga a navegação: o construtor mostra a página sem sair dela. */
 	mode?: LandingMode;
+	language?: EventDescriptionLanguage;
+	previewCoverUrl?: string | null;
 }
 
 const DEFAULT_ACCENT = '#6644ff';
@@ -36,18 +41,26 @@ const DEFAULT_ACCENT = '#6644ff';
  * visibilidade das seções vêm do layout; o conteúdo dinâmico (ingressos,
  * datas, local, organizador) vem do evento.
  */
-export function EventLandingPage({ event, layout, mode = 'live' }: EventLandingPageProps) {
+export function EventLandingPage({
+	event,
+	layout: originalLayout,
+	mode = 'live',
+	language = 'pt',
+	previewCoverUrl,
+}: EventLandingPageProps) {
+	const layout = localizedLayout(originalLayout, event, language);
 	const visible = layout.sections.filter((section) => !section.hidden);
 	const context: LandingContext = {
 		event,
 		mode,
+		previewCoverUrl,
 		checkoutHref: `/eventos/${event.slug}/checkout`,
 		ticketsAnchor: visible.find((section) => section.type === 'tickets')?.anchor ?? null,
 	};
 	const dark = layout.theme.mode === 'dark';
 	const style = { '--landing-accent': layout.theme.accent ?? DEFAULT_ACCENT } as CSSProperties;
 
-	return (
+	const page = (
 		<div
 			data-theme={layout.theme.mode}
 			style={style}
@@ -57,7 +70,12 @@ export function EventLandingPage({ event, layout, mode = 'live' }: EventLandingP
 			)}
 		>
 			{layout.header.show ? <LandingHeader context={context} layout={layout} /> : null}
-			<main>
+			<main lang={language}>
+				{mode === 'live' && (
+					<div className="mx-auto max-w-6xl px-4">
+						<EventLanguageLinks event={event} language={language} />
+					</div>
+				)}
 				{visible.map((section) => (
 					<LandingSection key={section.id} context={context} section={section} />
 				))}
@@ -65,6 +83,8 @@ export function EventLandingPage({ event, layout, mode = 'live' }: EventLandingP
 			<LandingFooter context={context} layout={layout} />
 		</div>
 	);
+
+	return mode === 'preview' ? <EventPreviewSurface>{page}</EventPreviewSurface> : page;
 }
 
 function LandingSection({ context, section }: { context: LandingContext; section: EventPageSection }) {

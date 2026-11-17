@@ -47,7 +47,7 @@ export default function NovoOrganizadorPage() {
 		return (
 			<div className="flex min-h-[60vh] items-center justify-center" role="status">
 				<div className="text-center">
-					<Loader2 className="mx-auto mb-4 size-10 animate-spin text-primary" aria-hidden="true" />
+					<Loader2 className="mx-auto mb-4 size-10 animate-spin text-link" aria-hidden="true" />
 					<p className="text-muted-foreground">Carregando...</p>
 				</div>
 			</div>
@@ -64,10 +64,10 @@ export default function NovoOrganizadorPage() {
 						<p className="text-sm font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
 							Organizador
 						</p>
-						<h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+						<h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
 							Crie sua conta de organizador
 						</h1>
-						<p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
+						<p className="mt-3 text-base leading-7 text-muted-foreground">
 							Escolha se vai vender como pessoa física ou como empresa. Pessoa física vende com os dados já validados no
 							seu perfil; empresa informa os dados da organização e o CNPJ.
 						</p>
@@ -83,7 +83,7 @@ export default function NovoOrganizadorPage() {
 
 				<aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
 					<div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-						<h2 className="font-semibold text-slate-950 dark:text-white">O que acontece depois</h2>
+						<h2 className="font-semibold text-foreground">O que acontece depois</h2>
 						<ol className="mt-4 space-y-4">
 							{nextSteps.map((step, index) => {
 								const Icon = step.icon;
@@ -94,10 +94,10 @@ export default function NovoOrganizadorPage() {
 											<Icon className="size-4" aria-hidden="true" />
 										</span>
 										<div>
-											<p className="text-sm font-semibold text-slate-950 dark:text-white">
+											<p className="text-sm font-semibold text-foreground">
 												{index + 1}. {step.title}
 											</p>
-											<p className="mt-0.5 text-sm leading-6 text-slate-600 dark:text-slate-300">{step.text}</p>
+											<p className="mt-0.5 text-sm leading-6 text-muted-foreground">{step.text}</p>
 										</div>
 									</li>
 								);

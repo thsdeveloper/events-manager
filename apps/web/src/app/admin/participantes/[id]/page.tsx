@@ -1,9 +1,13 @@
 'use client';
 
+import { PageHeader } from '@/components/design-system/molecules/PageHeader';
+
+import { Spinner } from '@/components/ui/spinner';
+import { Card } from '@/components/ui/card';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, User, Calendar, CreditCard, CheckCircle, FileText, Settings } from 'lucide-react';
+import { User, Calendar, CreditCard, CheckCircle, FileText, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -20,9 +24,7 @@ import {
 	getInitials,
 	getParticipantFullName,
 	statusLabels,
-	statusBadgeClasses,
 	paymentStatusLabels,
-	paymentStatusBadgeClasses,
 	paymentMethodLabels,
 } from '../_lib/utils';
 
@@ -123,7 +125,7 @@ export default function ParticipantDetailsPage() {
 	if (isLoading) {
 		return (
 			<div className="flex min-h-[400px] items-center justify-center">
-				<Loader2 className="size-8 animate-spin text-gray-400" />
+				<Spinner className="size-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
@@ -131,22 +133,14 @@ export default function ParticipantDetailsPage() {
 	if (error || !participant) {
 		return (
 			<div className="space-y-6">
-				<div className="flex items-center gap-4">
-					<Link
-						href="/admin/participantes"
-						className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-					>
-						<ArrowLeft className="size-5" />
-					</Link>
-					<h1 className="text-3xl font-bold text-gray-900 dark:text-white">Detalhes do Ingresso</h1>
-				</div>
+				<PageHeader title="Detalhes do Ingresso" />
 
-				<div className="rounded-lg border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-800 dark:bg-rose-900/20">
-					<p className="font-medium text-rose-900 dark:text-rose-200">{error || 'Ingresso não encontrado'}</p>
+				<Card className="p-8 text-center">
+					<p className="font-medium text-destructive ">{error || 'Ingresso não encontrado'}</p>
 					<Button variant="outline" className="mt-4" onClick={() => router.push('/admin/participantes')}>
 						Voltar para lista
 					</Button>
-				</div>
+				</Card>
 			</div>
 		);
 	}
@@ -160,65 +154,49 @@ export default function ParticipantDetailsPage() {
 	return (
 		<div className="space-y-6">
 			{/* Header com Navegação */}
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex items-center gap-4">
-					<Link
-						href="/admin/participantes"
-						className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-					>
-						<ArrowLeft className="size-5" />
-					</Link>
-					<div>
-						<h1 className="text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">Detalhes do Ingresso</h1>
-						<p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-							<Link href="/admin/participantes" className="hover:underline">
-								Participantes
-							</Link>
-							{' / '}
-							<span className="font-medium">{attendeeName}</span>
-						</p>
+			<PageHeader
+				title="Detalhes do Ingresso"
+				description={<>Participantes / {attendeeName}</>}
+				actions={
+					<div className="flex flex-wrap gap-2 sm:flex-nowrap">
+						<Button
+							variant="outline"
+							size="sm"
+							className="flex-1 sm:flex-initial"
+							onClick={() => setActiveDialog('resend')}
+							disabled={!participant.attendee_email}
+						>
+							Reenviar Email
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							className="flex-1 sm:flex-initial"
+							onClick={() => setActiveDialog('edit')}
+						>
+							{participant.attendee_name ? 'Editar' : 'Informar participante'}
+						</Button>
+						<Button
+							variant="destructive"
+							size="sm"
+							className="flex-1 sm:flex-initial"
+							onClick={() => setActiveDialog('cancel')}
+							disabled={isCancelled}
+						>
+							Cancelar Pedido
+						</Button>
 					</div>
-				</div>
-
-				{/* Ações Principais - Responsivo */}
-				<div className="flex flex-wrap gap-2 sm:flex-nowrap">
-					<Button
-						variant="outline"
-						size="sm"
-						className="flex-1 sm:flex-initial"
-						onClick={() => setActiveDialog('resend')}
-						disabled={!participant.attendee_email}
-					>
-						Reenviar Email
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						className="flex-1 sm:flex-initial"
-						onClick={() => setActiveDialog('edit')}
-					>
-						{participant.attendee_name ? 'Editar' : 'Informar participante'}
-					</Button>
-					<Button
-						variant="destructive"
-						size="sm"
-						className="flex-1 sm:flex-initial"
-						onClick={() => setActiveDialog('cancel')}
-						disabled={isCancelled}
-					>
-						Cancelar Pedido
-					</Button>
-				</div>
-			</div>
+				}
+			/>
 
 			<div className="grid gap-6 lg:grid-cols-3">
 				{/* Coluna Principal */}
 				<div className="space-y-6 lg:col-span-2">
 					{/* Seção: Participante do ingresso */}
-					<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+					<Card className="p-6">
 						<div className="mb-4 flex items-center gap-2">
-							<User className="size-5 text-gray-600 dark:text-gray-400" />
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Participante</h2>
+							<User className="size-5 text-muted-foreground dark:text-muted-foreground" />
+							<h2 className="text-lg font-semibold text-foreground">Participante</h2>
 						</div>
 
 						<div className="space-y-4">
@@ -232,17 +210,17 @@ export default function ParticipantDetailsPage() {
 								<div>
 									<h3
 										className={`text-xl font-bold ${
-											participant.attendee_name
-												? 'text-gray-900 dark:text-white'
-												: 'italic text-amber-700 dark:text-amber-300'
+											participant.attendee_name ? 'text-foreground' : 'italic text-muted-foreground '
 										}`}
 									>
 										{attendeeName}
 									</h3>
 									{participant.attendee_email ? (
-										<p className="text-sm text-gray-600 dark:text-gray-400">{participant.attendee_email}</p>
+										<p className="text-sm text-muted-foreground dark:text-muted-foreground">
+											{participant.attendee_email}
+										</p>
 									) : (
-										<p className="text-sm text-gray-600 dark:text-gray-400">
+										<p className="text-sm text-muted-foreground dark:text-muted-foreground">
 											Quem comprou ainda não informou quem vai usar este ingresso.
 										</p>
 									)}
@@ -251,100 +229,114 @@ export default function ParticipantDetailsPage() {
 
 							<div className="grid gap-4 sm:grid-cols-2">
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Telefone</p>
-									<p className="text-base text-gray-900 dark:text-white">{participant.attendee_phone || '—'}</p>
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Telefone</p>
+									<p className="text-base text-foreground">{participant.attendee_phone || '—'}</p>
 								</div>
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Documento</p>
-									<p className="text-base text-gray-900 dark:text-white">{participant.attendee_document || '—'}</p>
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Documento</p>
+									<p className="text-base text-foreground">{participant.attendee_document || '—'}</p>
 								</div>
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Código do Ingresso</p>
-									<p className="font-mono text-base text-gray-900 dark:text-white">{participant.ticket_code}</p>
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+										Código do Ingresso
+									</p>
+									<p className="font-mono text-base text-foreground">{participant.ticket_code}</p>
 								</div>
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</p>
-									<Badge className={`${statusBadgeClasses[status]} mt-1`}>{statusLabels[status] || status}</Badge>
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Status</p>
+									<Badge variant="secondary">{statusLabels[status] || status}</Badge>
 								</div>
 							</div>
 						</div>
-					</div>
+					</Card>
 
 					{/* Seção: Ingresso e evento */}
-					<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+					<Card className="p-6">
 						<div className="mb-4 flex items-center gap-2">
-							<Calendar className="size-5 text-gray-600 dark:text-gray-400" />
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Ingresso e Evento</h2>
+							<Calendar className="size-5 text-muted-foreground dark:text-muted-foreground" />
+							<h2 className="text-lg font-semibold text-foreground">Ingresso e Evento</h2>
 						</div>
 
 						<div className="space-y-4">
 							<div>
-								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Evento</p>
-								<p className="text-lg font-semibold text-gray-900 dark:text-white">{event.title}</p>
-								<p className="text-sm text-gray-600 dark:text-gray-400">
+								<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Evento</p>
+								<p className="text-lg font-semibold text-foreground">{event.title}</p>
+								<p className="text-sm text-muted-foreground dark:text-muted-foreground">
 									{formatDate(event.start_date, 'dd MMM yyyy, HH:mm')}
 									{event.end_date && ` - ${formatDate(event.end_date, 'dd MMM yyyy, HH:mm')}`}
 								</p>
 								{event.location_name && (
-									<p className="text-sm text-gray-600 dark:text-gray-400">{event.location_name}</p>
+									<p className="text-sm text-muted-foreground dark:text-muted-foreground">{event.location_name}</p>
 								)}
 							</div>
 
 							<div className="grid gap-4 sm:grid-cols-2">
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tipo de Ingresso</p>
-									<p className="text-base text-gray-900 dark:text-white">{participant.ticket_type?.title || '—'}</p>
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+										Tipo de Ingresso
+									</p>
+									<p className="text-base text-foreground">{participant.ticket_type?.title || '—'}</p>
 									{participant.ticket_type?.description && (
-										<p className="text-sm text-gray-600 dark:text-gray-400">{participant.ticket_type.description}</p>
+										<p className="text-sm text-muted-foreground dark:text-muted-foreground">
+											{participant.ticket_type.description}
+										</p>
 									)}
 								</div>
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Unidade</p>
-									<p className="text-base text-gray-900 dark:text-white">
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Unidade</p>
+									<p className="text-base text-foreground">
 										Ingresso {participant.sequence} de {registration.quantity}
 									</p>
 								</div>
 								{participant.named_at && (
 									<div>
-										<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Participante informado em</p>
-										<p className="text-base text-gray-900 dark:text-white">
+										<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+											Participante informado em
+										</p>
+										<p className="text-base text-foreground">
 											{formatDate(participant.named_at, 'dd MMM yyyy, HH:mm')}
 										</p>
 									</div>
 								)}
 							</div>
 						</div>
-					</div>
+					</Card>
 
 					{/* Seção: Pedido e pagamento */}
-					<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+					<Card className="p-6">
 						<div className="mb-4 flex items-center gap-2">
-							<CreditCard className="size-5 text-gray-600 dark:text-gray-400" />
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Pedido e Pagamento</h2>
+							<CreditCard className="size-5 text-muted-foreground dark:text-muted-foreground" />
+							<h2 className="text-lg font-semibold text-foreground">Pedido e Pagamento</h2>
 						</div>
 
 						<div className="space-y-4">
 							<div className="grid gap-4 sm:grid-cols-2">
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Comprado por</p>
-									<p className="text-base text-gray-900 dark:text-white">{registration.participant_name}</p>
-									<p className="text-sm text-gray-600 dark:text-gray-400">{registration.participant_email}</p>
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Comprado por</p>
+									<p className="text-base text-foreground">{registration.participant_name}</p>
+									<p className="text-sm text-muted-foreground dark:text-muted-foreground">
+										{registration.participant_email}
+									</p>
 								</div>
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Data da Compra</p>
-									<p className="text-base text-gray-900 dark:text-white">
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Data da Compra</p>
+									<p className="text-base text-foreground">
 										{formatDate(registration.date_created, 'dd MMM yyyy, HH:mm')}
 									</p>
 								</div>
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Status do Pagamento</p>
-									<Badge className={`${paymentStatusBadgeClasses[registration.payment_status || '']} mt-1`}>
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+										Status do Pagamento
+									</p>
+									<Badge variant="secondary">
 										{paymentStatusLabels[registration.payment_status || ''] || registration.payment_status}
 									</Badge>
 								</div>
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Método de Pagamento</p>
-									<p className="text-base text-gray-900 dark:text-white">
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+										Método de Pagamento
+									</p>
+									<p className="text-base text-foreground">
 										{registration.payment_method
 											? paymentMethodLabels[registration.payment_method] || registration.payment_method
 											: '—'}
@@ -352,42 +344,36 @@ export default function ParticipantDetailsPage() {
 								</div>
 							</div>
 
-							<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
+							<div className="rounded-lg bg-muted p-4">
 								<div className="grid gap-3">
 									<div className="flex justify-between">
-										<span className="text-gray-600 dark:text-gray-400">Preço Unitário</span>
-										<span className="font-medium text-gray-900 dark:text-white">
-											{formatCurrency(participant.unit_price)}
-										</span>
+										<span className="text-muted-foreground dark:text-muted-foreground">Preço Unitário</span>
+										<span className="font-medium text-foreground">{formatCurrency(participant.unit_price)}</span>
 									</div>
 									{participant.service_fee > 0 && (
 										<div className="flex justify-between">
-											<span className="text-gray-600 dark:text-gray-400">Taxa de Serviço</span>
-											<span className="font-medium text-gray-900 dark:text-white">
-												{formatCurrency(participant.service_fee)}
-											</span>
+											<span className="text-muted-foreground dark:text-muted-foreground">Taxa de Serviço</span>
+											<span className="font-medium text-foreground">{formatCurrency(participant.service_fee)}</span>
 										</div>
 									)}
 									{participant.discount > 0 && (
 										<div className="flex justify-between">
-											<span className="text-gray-600 dark:text-gray-400">Desconto</span>
-											<span className="font-medium text-gray-900 dark:text-white">
-												- {formatCurrency(participant.discount)}
-											</span>
+											<span className="text-muted-foreground dark:text-muted-foreground">Desconto</span>
+											<span className="font-medium text-foreground">- {formatCurrency(participant.discount)}</span>
 										</div>
 									)}
-									<div className="border-t border-gray-200 pt-3 dark:border-gray-700">
+									<div className="border-t border-border pt-3">
 										<div className="flex justify-between">
-											<span className="text-lg font-semibold text-gray-900 dark:text-white">Este ingresso</span>
-											<span className="text-lg font-bold text-gray-900 dark:text-white">
+											<span className="text-lg font-semibold text-foreground">Este ingresso</span>
+											<span className="text-lg font-bold text-foreground">
 												{formatCurrency(participant.total_amount)}
 											</span>
 										</div>
 										<div className="mt-1 flex justify-between text-sm">
-											<span className="text-gray-600 dark:text-gray-400">
+											<span className="text-muted-foreground dark:text-muted-foreground">
 												Pedido inteiro ({registration.quantity} ingresso{registration.quantity > 1 ? 's' : ''})
 											</span>
-											<span className="text-gray-900 dark:text-white">{formatCurrency(registration.total_amount)}</span>
+											<span className="text-foreground">{formatCurrency(registration.total_amount)}</span>
 										</div>
 									</div>
 								</div>
@@ -398,7 +384,7 @@ export default function ParticipantDetailsPage() {
 									href={registration.receipt_url}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+									className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:underline "
 								>
 									<FileText className="size-4" />
 									Ver comprovante de pagamento
@@ -407,32 +393,34 @@ export default function ParticipantDetailsPage() {
 
 							{registration.notes && (
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Observações do pedido</p>
-									<p className="whitespace-pre-line text-base text-gray-900 dark:text-white">{registration.notes}</p>
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+										Observações do pedido
+									</p>
+									<p className="whitespace-pre-line text-base text-foreground">{registration.notes}</p>
 								</div>
 							)}
 						</div>
-					</div>
+					</Card>
 				</div>
 
 				{/* Coluna Lateral */}
 				<div className="space-y-6">
 					{/* Seção: Check-in */}
-					<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+					<Card className="p-6">
 						<div className="mb-4 flex items-center gap-2">
-							<CheckCircle className="size-5 text-gray-600 dark:text-gray-400" />
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Check-in</h2>
+							<CheckCircle className="size-5 text-muted-foreground dark:text-muted-foreground" />
+							<h2 className="text-lg font-semibold text-foreground">Check-in</h2>
 						</div>
 
 						{participant.check_in_date ? (
 							<div className="space-y-3">
-								<div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+								<div className="flex items-center gap-2 text-muted-foreground ">
 									<CheckCircle className="size-5" />
 									<span className="font-medium">Check-in realizado</span>
 								</div>
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Data e Hora</p>
-									<p className="text-base text-gray-900 dark:text-white">
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Data e Hora</p>
+									<p className="text-base text-foreground">
 										{formatDate(participant.check_in_date, 'dd MMM yyyy, HH:mm')}
 									</p>
 								</div>
@@ -442,13 +430,14 @@ export default function ParticipantDetailsPage() {
 							</div>
 						) : (
 							<div className="space-y-3">
-								<p className="text-sm text-gray-600 dark:text-gray-400">
+								<p className="text-sm text-muted-foreground dark:text-muted-foreground">
 									{participant.attendee_name
 										? 'Check-in ainda não realizado'
 										: 'Informe o participante antes do check-in'}
 								</p>
 								<Button
-									className="w-full bg-emerald-600 hover:bg-emerald-700"
+									variant="default"
+									className="w-full"
 									size="sm"
 									onClick={() => setActiveDialog('checkin')}
 									disabled={isCancelled || !participant.attendee_name}
@@ -457,13 +446,13 @@ export default function ParticipantDetailsPage() {
 								</Button>
 							</div>
 						)}
-					</div>
+					</Card>
 
 					{/* Seção: Ações Rápidas */}
-					<div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+					<Card className="p-6">
 						<div className="mb-4 flex items-center gap-2">
-							<Settings className="size-5 text-gray-600 dark:text-gray-400" />
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Ações</h2>
+							<Settings className="size-5 text-muted-foreground dark:text-muted-foreground" />
+							<h2 className="text-lg font-semibold text-foreground">Ações</h2>
 						</div>
 
 						<div className="space-y-2">
@@ -503,7 +492,7 @@ export default function ParticipantDetailsPage() {
 								Cancelar Pedido
 							</Button>
 						</div>
-					</div>
+					</Card>
 				</div>
 			</div>
 

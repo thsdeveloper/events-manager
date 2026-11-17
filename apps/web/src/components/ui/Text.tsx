@@ -65,7 +65,7 @@ const Text = ({ content, className }: TextProps) => {
 
 	return (
 		<div
-			className={cn('prose prose-slate max-w-none dark:prose-invert', className)}
+			className={cn('prose max-w-none break-words', className)}
 			dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
 		/>
 	);

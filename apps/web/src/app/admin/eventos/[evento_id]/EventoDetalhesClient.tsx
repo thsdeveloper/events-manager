@@ -1,7 +1,11 @@
 'use client';
 
+import { PageHeader } from '@/components/design-system/molecules/PageHeader';
+
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-	ArrowLeft,
 	Calendar,
 	Edit,
 	ExternalLink,
@@ -37,19 +41,18 @@ import { Button } from '@/components/ui/button';
 import Text from '@/components/ui/Text';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EventCoupons } from '@/features/coupons/components/EventCoupons';
-import { TicketFormSheet } from '@/features/tickets/components/TicketFormSheet';
-import { TicketList } from '@/features/tickets/components/TicketList';
-import type { TicketDraft } from '@/features/tickets/types';
+import { EventTicketManager } from '@/features/tickets/components/EventTicketManager';
+import { ticketMetrics, type TicketStockRegistration } from '@/features/tickets/metrics';
+import { revalidateEventPage } from '@/features/event-page/actions';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/fees';
 import { describeProblem } from '@/lib/problem';
-import { cn } from '@/lib/utils';
 
-const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-	draft: { label: 'Rascunho', className: 'bg-slate-100 text-slate-700' },
-	published: { label: 'Publicado', className: 'bg-emerald-100 text-emerald-700' },
-	cancelled: { label: 'Cancelado', className: 'bg-red-100 text-red-700' },
-	archived: { label: 'Arquivado', className: 'bg-amber-100 text-amber-700' },
+const STATUS_STYLES: Record<string, { label: string }> = {
+	draft: { label: 'Rascunho' },
+	published: { label: 'Publicado' },
+	cancelled: { label: 'Cancelado' },
+	archived: { label: 'Arquivado' },
 };
 
 function formatDateTime(value?: string | null) {
@@ -64,25 +67,6 @@ function formatDateTime(value?: string | null) {
 	});
 }
 
-/** Maps a stored ticket onto the shape the shared sheet and list expect. */
-function toTicketDraft(ticket: EventTicket): TicketDraft {
-	return {
-		id: ticket.id,
-		title: ticket.title ?? '',
-		description: ticket.description ?? null,
-		quantity: ticket.quantity ?? 0,
-		price: Number(ticket.price ?? 0),
-		service_fee_type: (ticket.service_fee_type ?? 'passed_to_buyer') as TicketDraft['service_fee_type'],
-		visibility: (ticket.visibility ?? 'public') as TicketDraft['visibility'],
-		sale_start_date: ticket.sale_start_date ?? null,
-		sale_end_date: ticket.sale_end_date ?? null,
-		min_quantity_per_purchase: ticket.min_quantity_per_purchase ?? 1,
-		max_quantity_per_purchase: ticket.max_quantity_per_purchase ?? 5,
-		allow_installments: ticket.allow_installments ?? false,
-		max_installments: ticket.max_installments ?? null,
-	};
-}
-
 function MetricCard({
 	icon: Icon,
 	label,
@@ -95,7 +79,7 @@ function MetricCard({
 	hint?: string;
 }) {
 	return (
-		<div className="rounded-lg border bg-card p-4">
+		<div role="group" aria-label={label} className="rounded-lg border bg-card p-4">
 			<div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
 				<Icon className="size-3.5" />
 				{label}
@@ -128,88 +112,32 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 	const { toast } = useToast();
 	const event = initialEvent;
 
-	const [sheetOpen, setSheetOpen] = useState(false);
-	const [editingTicket, setEditingTicket] = useState<TicketDraft | null>(null);
-	const [ticketToDelete, setTicketToDelete] = useState<TicketDraft | null>(null);
 	const [eventDeleteOpen, setEventDeleteOpen] = useState(false);
 	const [publishOpen, setPublishOpen] = useState(false);
+	const [unpublishOpen, setUnpublishOpen] = useState(false);
+	const [unpublishError, setUnpublishError] = useState<string | null>(null);
 	const [publishError, setPublishError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	const storedTickets = useMemo(() => (event.tickets ?? []) as EventTicket[], [event.tickets]);
-	const tickets = useMemo(() => storedTickets.map(toTicketDraft), [storedTickets]);
+	const registrations: TicketStockRegistration[] = (event.registrations ?? [])
+		.filter((row): row is Exclude<typeof row, string> => typeof row !== 'string')
+		.map((row) => ({
+			...row,
+			ticket_type_id: typeof row.ticket_type_id === 'object' ? (row.ticket_type_id?.id ?? null) : row.ticket_type_id,
+		}));
+	const metrics = ticketMetrics(registrations);
 	const participantsCount = Array.isArray(event.registrations) ? event.registrations.length : 0;
 	const isFree = Boolean(event.is_free);
 
 	const stats = useMemo(() => {
 		const totalQuantity = storedTickets.reduce((sum, ticket) => sum + (ticket.quantity ?? 0), 0);
 		const totalSold = storedTickets.reduce((sum, ticket) => sum + (ticket.quantity_sold ?? 0), 0);
-		const revenue = storedTickets.reduce(
-			(sum, ticket) => sum + (ticket.quantity_sold ?? 0) * Number(ticket.price ?? 0),
-			0,
-		);
 
-		return { totalQuantity, totalSold, revenue };
+		return { totalQuantity, totalSold };
 	}, [storedTickets]);
 
 	const status = STATUS_STYLES[event.status ?? 'draft'] ?? STATUS_STYLES.draft;
-
-	const handleAddTicket = useCallback(() => {
-		setEditingTicket(null);
-		setSheetOpen(true);
-	}, []);
-
-	const handleEditTicket = useCallback((ticket: TicketDraft) => {
-		setEditingTicket(ticket);
-		setSheetOpen(true);
-	}, []);
-
-	// The sheet already persisted the change, so the server data is refetched
-	// rather than mirrored in local state — one source of truth.
-	const handleTicketSaved = useCallback(() => {
-		setEditingTicket(null);
-		router.refresh();
-	}, [router]);
-
-	const handleRemoveTicket = useCallback(
-		(ticket: TicketDraft) => {
-			const stored = storedTickets.find((item) => item.id === ticket.id);
-			if (stored?.quantity_sold) {
-				toast({
-					title: 'Ingresso com vendas',
-					description: `Já existem ${stored.quantity_sold} vendas deste ingresso. Desative-o em vez de excluir.`,
-					variant: 'destructive',
-				});
-
-				return;
-			}
-			setTicketToDelete(ticket);
-		},
-		[storedTickets, toast],
-	);
-
-	const confirmDeleteTicket = useCallback(async () => {
-		if (!ticketToDelete?.id) return;
-		setBusy(true);
-		try {
-			const response = await fetch(`/api/admin/ingressos/${ticketToDelete.id}`, { method: 'DELETE' });
-			if (!response.ok) {
-				const problem = await response.json().catch(() => null);
-				throw new Error(problem?.detail ?? 'Não foi possível excluir o ingresso.');
-			}
-			toast({ title: 'Ingresso excluído', variant: 'success' });
-			setTicketToDelete(null);
-			router.refresh();
-		} catch (error) {
-			toast({
-				title: 'Erro ao excluir',
-				description: error instanceof Error ? error.message : 'Tente novamente.',
-				variant: 'destructive',
-			});
-		} finally {
-			setBusy(false);
-		}
-	}, [router, ticketToDelete, toast]);
 
 	const confirmDeleteEvent = useCallback(async () => {
 		setBusy(true);
@@ -247,7 +175,13 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 				const problem = await response.json().catch(() => null);
 				throw new Error(describeProblem(problem, 'Não foi possível publicar o evento.'));
 			}
-			toast({ title: 'Evento publicado', description: 'Ele já aparece para o público.', variant: 'success' });
+			if (event.slug) await revalidateEventPage(event.slug).catch(() => undefined);
+			toast({
+				title: 'Evento publicado',
+				description:
+					event.visibility === 'unlisted' ? 'A página está disponível pelo link.' : 'Ele já aparece para o público.',
+				variant: 'success',
+			});
 			setPublishOpen(false);
 			router.refresh();
 		} catch (error) {
@@ -255,7 +189,32 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 		} finally {
 			setBusy(false);
 		}
-	}, [evento_id, router, toast]);
+	}, [event.slug, event.visibility, evento_id, router, toast]);
+
+	const confirmUnpublish = useCallback(async () => {
+		setBusy(true);
+		setUnpublishError(null);
+		try {
+			const response = await fetch('/api/events/' + evento_id, {
+				method: 'PATCH',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ status: 'draft' }),
+			});
+			if (!response.ok) {
+				const problem = await response.json().catch(() => null);
+				throw new Error(describeProblem(problem, 'Não foi possível despublicar o evento.'));
+			}
+			if (event.slug) await revalidateEventPage(event.slug).catch(() => undefined);
+			setUnpublishOpen(false);
+			router.refresh();
+			toast({ title: 'Evento despublicado', description: 'Os ingressos e participantes continuam no painel.' });
+		} catch (error) {
+			setUnpublishError(error instanceof Error ? error.message : 'Tente novamente.');
+		} finally {
+			setBusy(false);
+		}
+	}, [event.slug, evento_id, router, toast]);
 
 	const requestDeleteEvent = useCallback(() => {
 		if (participantsCount > 0 || stats.totalSold > 0) {
@@ -272,85 +231,101 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 
 	return (
 		<div className="space-y-6">
-			<div className="flex flex-wrap items-start justify-between gap-4">
-				<div className="min-w-0">
-					<Link
-						href="/admin/eventos"
-						className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-					>
-						<ArrowLeft className="size-4" />
-						Eventos
-					</Link>
-					<div className="mt-2 flex flex-wrap items-center gap-3">
-						<h1 className="text-2xl font-bold tracking-tight text-foreground">{event.title}</h1>
-						<span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', status.className)}>
-							{status.label}
-						</span>
+			<PageHeader
+				title={event.title}
+				description={
+					<div className="flex flex-wrap gap-2">
+						<Badge variant="secondary">{status.label}</Badge>
 						{event.featured && (
-							<span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+							<Badge variant="secondary" className="inline-flex items-center gap-1">
 								<Star className="size-3" />
 								Destaque
-							</span>
+							</Badge>
 						)}
 					</div>
-				</div>
-
-				<div role="toolbar" aria-label="Ações do evento" className="flex flex-wrap items-center gap-2">
-					{event.slug && (
+				}
+				actions={
+					<div role="toolbar" aria-label="Ações do evento" className="flex flex-wrap items-center gap-2">
+						{event.slug && (
+							<Button variant="outline" size="sm" asChild>
+								<Link
+									href={event.status === 'published' ? `/eventos/${event.slug}` : `/admin/eventos/${evento_id}/previa`}
+									target="_blank"
+								>
+									<ExternalLink className="mr-2 size-4" />
+									{event.status === 'published' ? 'Ver página' : 'Prévia'}
+								</Link>
+							</Button>
+						)}
 						<Button variant="outline" size="sm" asChild>
-							<Link href={`/eventos/${event.slug}`} target="_blank">
-								<ExternalLink className="mr-2 size-4" />
-								Ver página
+							<Link href={`/admin/eventos/${evento_id}/pagina`}>
+								<LayoutTemplate className="mr-2 size-4" />
+								Página do evento
 							</Link>
 						</Button>
-					)}
-					<Button variant="outline" size="sm" asChild>
-						<Link href={`/admin/eventos/${evento_id}/pagina`}>
-							<LayoutTemplate className="mr-2 size-4" />
-							Página do evento
-						</Link>
-					</Button>
-					<Button variant="outline" size="sm" asChild>
-						<Link href={`/admin/eventos/${evento_id}/configuracoes`}>
-							<Settings className="mr-2 size-4" />
-							Configurações
-						</Link>
-					</Button>
-					<Button size="sm" asChild>
-						<Link href={`/admin/eventos/${evento_id}/editar`}>
-							<Edit className="mr-2 size-4" />
-							Editar
-						</Link>
-					</Button>
-					{event.status === 'draft' && (
-						<Button
-							size="sm"
-							className="bg-emerald-600 text-white hover:bg-emerald-700"
-							onClick={() => {
-								setPublishError(null);
-								setPublishOpen(true);
-							}}
-						>
-							<Rocket className="mr-2 size-4" />
-							Publicar
+						<Button variant="outline" size="sm" asChild>
+							<Link href={`/admin/eventos/${evento_id}/configuracoes`}>
+								<Settings className="mr-2 size-4" />
+								Configurações
+							</Link>
 						</Button>
-					)}
-					<Button variant="destructive" size="sm" onClick={requestDeleteEvent}>
-						<Trash2 className="mr-2 size-4" />
-						Excluir
-					</Button>
-				</div>
-			</div>
+						<Button size="sm" asChild>
+							<Link href={`/admin/eventos/${evento_id}/editar`}>
+								<Edit className="mr-2 size-4" />
+								Editar
+							</Link>
+						</Button>
+						{event.status === 'draft' && (
+							<Button
+								variant="default"
+								size="sm"
+								onClick={() => {
+									setPublishError(null);
+									setPublishOpen(true);
+								}}
+							>
+								<Rocket className="mr-2 size-4" />
+								Publicar
+							</Button>
+						)}
+						{event.status === 'published' && (
+							<>
+								<Button variant="outline" size="sm" asChild>
+									<Link href={'/admin/eventos/' + evento_id + '/previa'} target="_blank">
+										Prévia
+									</Link>
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => {
+										setUnpublishError(null);
+										setUnpublishOpen(true);
+									}}
+									disabled={busy}
+								>
+									Despublicar
+								</Button>
+							</>
+						)}
+						<Button variant="destructive" size="sm" onClick={requestDeleteEvent}>
+							<Trash2 className="mr-2 size-4" />
+							Excluir
+						</Button>
+					</div>
+				}
+			/>
 
-			<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+			<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
 				<MetricCard icon={UserCheck} label="Inscritos" value={participantsCount.toLocaleString('pt-BR')} />
 				<MetricCard
 					icon={Ticket}
 					label="Ingressos vendidos"
-					value={stats.totalSold.toLocaleString('pt-BR')}
+					value={metrics.sold.toLocaleString('pt-BR')}
 					hint={stats.totalQuantity > 0 ? `de ${stats.totalQuantity.toLocaleString('pt-BR')} disponíveis` : undefined}
 				/>
-				<MetricCard icon={TrendingUp} label="Receita bruta" value={formatCurrency(stats.revenue)} />
+				<MetricCard icon={Ticket} label="Reservados" value={metrics.reserved.toLocaleString('pt-BR')} />
+				<MetricCard icon={TrendingUp} label="Receita bruta" value={formatCurrency(metrics.revenue)} />
 				<MetricCard
 					icon={Users}
 					label="Capacidade"
@@ -367,8 +342,10 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 					<TabsTrigger value="ingressos" className="gap-1.5">
 						<Ticket className="size-4" />
 						Ingressos
-						{tickets.length > 0 && (
-							<span className="rounded-full bg-muted px-1.5 text-xs tabular-nums">{tickets.length}</span>
+						{storedTickets.length > 0 && (
+							<Badge variant="secondary" className="tabular-nums">
+								{storedTickets.length}
+							</Badge>
 						)}
 					</TabsTrigger>
 					<TabsTrigger value="cupons" className="gap-1.5">
@@ -383,16 +360,16 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 
 				<TabsContent value="informacoes" className="space-y-4">
 					<div className="grid gap-4 lg:grid-cols-3">
-						<div className="rounded-lg border bg-card p-5 lg:col-span-2">
+						<Card className="p-5 lg:col-span-2">
 							<h2 className="text-sm font-semibold text-foreground">Sobre o evento</h2>
 							{event.description ? (
 								<Text className="prose-sm mt-2 text-muted-foreground" content={event.description} />
 							) : (
 								<p className="mt-2 text-sm leading-6 text-muted-foreground">Nenhuma descrição cadastrada.</p>
 							)}
-						</div>
+						</Card>
 
-						<div className="rounded-lg border bg-card p-5">
+						<Card className="p-5">
 							<h2 className="text-sm font-semibold text-foreground">Detalhes</h2>
 							<div className="mt-2">
 								<InfoRow icon={Calendar} label="Início">
@@ -402,82 +379,44 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 									{formatDateTime(event.end_date)}
 								</InfoRow>
 								<InfoRow icon={event.event_type === 'online' ? Globe : MapPin} label="Local">
-									{event.event_type === 'online'
-										? (event.online_url ?? 'Link não informado')
-										: (event.location_name ?? event.location_address ?? 'Não informado')}
+									{event.location_tbd
+										? 'Local a definir'
+										: event.event_type === 'online'
+											? (event.online_url ?? 'Link não informado')
+											: (event.location_name ?? event.location_address ?? 'Não informado')}
 								</InfoRow>
 								<InfoRow icon={Ticket} label="Modelo">
 									{isFree ? 'Evento gratuito' : 'Evento pago'}
 								</InfoRow>
 							</div>
-						</div>
+						</Card>
 					</div>
 				</TabsContent>
 
 				<TabsContent value="ingressos" className="space-y-4">
-					{!isFree && tickets.length === 0 && (
-						<p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-							Este evento é pago e ainda não tem nenhum tipo de ingresso. O público não consegue se inscrever até que
-							você cadastre pelo menos um.
-						</p>
-					)}
-					<TicketList
-						tickets={tickets}
+					<EventTicketManager
+						eventId={evento_id}
+						tickets={storedTickets}
+						registrations={registrations}
 						isFree={isFree}
-						onAdd={handleAddTicket}
-						onEdit={handleEditTicket}
-						onRemove={handleRemoveTicket}
-						emptyHint={
-							isFree
-								? 'Em eventos gratuitos os ingressos são opcionais — use para separar categorias de inscrição.'
-								: undefined
-						}
+						onChanged={() => router.refresh()}
 					/>
 				</TabsContent>
 			</Tabs>
-
-			<TicketFormSheet
-				open={sheetOpen}
-				onOpenChange={setSheetOpen}
-				pricing={isFree ? 'free' : 'paid'}
-				eventId={evento_id}
-				ticket={editingTicket}
-				onSaved={handleTicketSaved}
-			/>
-
-			<AlertDialog open={Boolean(ticketToDelete)} onOpenChange={(open) => !open && setTicketToDelete(null)}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Excluir ingresso</AlertDialogTitle>
-						<AlertDialogDescription>
-							O ingresso &ldquo;{ticketToDelete?.title}&rdquo; será removido permanentemente.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-						<AlertDialogAction onClick={confirmDeleteTicket} loading={busy}>
-							Excluir
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
 
 			<AlertDialog open={publishOpen} onOpenChange={setPublishOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Publicar evento</AlertDialogTitle>
 						<AlertDialogDescription>
-							&ldquo;{event.title}&rdquo; passa a aparecer na lista pública e as inscrições abrem conforme as datas
-							configuradas. Você pode voltar a rascunho depois pela edição do evento.
+							A página ficará disponível conforme a visibilidade escolhida e as inscrições abrirão nas datas
+							configuradas. Você poderá despublicar o evento depois.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					{publishError && (
-						<p
-							role="alert"
-							className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-						>
-							{publishError}
-						</p>
+						<Alert variant="destructive" role="alert" className="border text-sm">
+							<AlertDescription>{publishError}</AlertDescription>
+						</Alert>
 					)}
 					<AlertDialogFooter>
 						<AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
@@ -494,6 +433,34 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 				</AlertDialogContent>
 			</AlertDialog>
 
+			<AlertDialog open={unpublishOpen} onOpenChange={setUnpublishOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Despublicar evento</AlertDialogTitle>
+						<AlertDialogDescription>
+							O evento sai da página pública e deixa de receber novas inscrições. Seus ingressos e participantes
+							continuam no painel.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					{unpublishError && (
+						<Alert variant="destructive" role="alert" className="text-sm">
+							<AlertDescription>{unpublishError}</AlertDescription>
+						</Alert>
+					)}
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+						<AlertDialogAction
+							loading={busy}
+							onClick={(e) => {
+								e.preventDefault();
+								void confirmUnpublish();
+							}}
+						>
+							Despublicar
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 			<AlertDialog open={eventDeleteOpen} onOpenChange={setEventDeleteOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>

@@ -1,0 +1,185 @@
+{
+	"status": "passed",
+	"date": "2026-11-17",
+	"scope": [
+		"Troca de painel no header para superadmins",
+		"Redirecionamento de sessões válidas em /login para /perfil?section=overview",
+		"TanStack Charts nos dashboards e análises, substituindo Recharts",
+		"404 Flouvi com acessibilidade e status HTTP correto",
+		"Date Pickers Shadcn nos filtros, cupons e agendamento CMS"
+	],
+	"dependencies": {
+		"added": "@tanstack/charts@1.5.0",
+		"removed": "recharts"
+	},
+	"verification": {
+		"web_tests": 779,
+		"web_test_files": 187,
+		"coverage": {
+			"statements": 76.5,
+			"lines": 76.5,
+			"branches": 79.1,
+			"functions": 78.51
+		},
+		"coverage_thresholds": {
+			"statements": 76.5,
+			"lines": 76.5,
+			"branches": 79.1,
+			"functions": 78.5
+		},
+		"lint": "passed",
+		"typescript": "passed (production build)",
+		"production_build": "passed"
+	},
+	"commands": [
+		"pnpm --dir apps/web test:coverage --maxWorkers=2",
+		"pnpm --dir apps/web lint",
+		"pnpm --dir apps/web exec tsc --noEmit --incremental false",
+		"pnpm exec prettier --check <changed files>",
+		"NODE_OPTIONS=--max-old-space-size=2048 node /home/pcthiago/projetos/events-manager/apps/web/node_modules/next/dist/bin/next build (cwd: /tmp/events-wizard-build/apps/web)"
+	],
+	"test_files": [
+		"apps/web/src/app/not-found.test.tsx",
+		"apps/web/src/app/admin/analises/_components/AnalyticsFilters.test.tsx",
+		"apps/web/src/app/admin/analises/_components/AnalyticsCharts.test.tsx",
+		"apps/web/src/app/admin/financeiro/_components/FinanceFilters.test.tsx",
+		"apps/web/src/app/(auth)/login/layout.ssr.test.tsx",
+		"apps/web/src/components/admin/AdminHeader.test.tsx",
+		"apps/web/src/components/ui/date-picker.test.tsx",
+		"apps/web/src/components/shared/QueryFilterSheet.test.tsx",
+		"apps/web/src/components/charts/MetricChart.test.tsx",
+		"apps/web/src/components/charts/MetricChartCard.test.tsx",
+		"apps/web/src/components/charts/DashboardCharts.test.tsx",
+		"apps/web/src/features/coupons/components/CouponManager.test.tsx",
+		"apps/web/src/features/cms/components/PublishingFields.test.tsx",
+		"apps/web/src/features/super-admin/components/SuperAdminShell.test.tsx"
+	],
+	"browser": {
+		"charts": {
+			"results": [
+				{
+					"theme": "light",
+					"width": 1440,
+					"charts": 5,
+					"overflow": false,
+					"keyboard": true,
+					"table": true,
+					"tabs": true
+				},
+				{
+					"theme": "light",
+					"width": 768,
+					"charts": 5,
+					"overflow": false,
+					"keyboard": true,
+					"table": true,
+					"tabs": true
+				},
+				{
+					"theme": "light",
+					"width": 390,
+					"charts": 5,
+					"overflow": false,
+					"keyboard": true,
+					"table": true,
+					"tabs": true
+				},
+				{
+					"theme": "light",
+					"width": 320,
+					"charts": 5,
+					"overflow": false,
+					"keyboard": true,
+					"table": true,
+					"tabs": true
+				},
+				{
+					"theme": "dark",
+					"width": 1440,
+					"charts": 5,
+					"overflow": false,
+					"keyboard": true,
+					"table": true,
+					"tabs": true
+				},
+				{
+					"theme": "dark",
+					"width": 768,
+					"charts": 5,
+					"overflow": false,
+					"keyboard": true,
+					"table": true,
+					"tabs": true
+				},
+				{
+					"theme": "dark",
+					"width": 390,
+					"charts": 5,
+					"overflow": false,
+					"keyboard": true,
+					"table": true,
+					"tabs": true
+				},
+				{
+					"theme": "dark",
+					"width": 320,
+					"charts": 5,
+					"overflow": false,
+					"keyboard": true,
+					"table": true,
+					"tabs": true
+				}
+			],
+			"errors": []
+		},
+		"navigation": {
+			"checks": [
+				"Header navigation in both directions",
+				"Authenticated login redirects to overview",
+				"404 light/1440",
+				"404 light/390",
+				"404 light/320",
+				"404 dark/1440",
+				"404 dark/390",
+				"404 dark/320",
+				"Anonymous visitor keeps login form",
+				"Invalid cookie keeps login form"
+			],
+			"errors": []
+		},
+		"dates": {
+			"checks": [
+				"Finance dates chosen through Shadcn calendar inside sheet",
+				"Analytics filter uses the same calendar",
+				"CMS calendar preserves time and supports immediate publication"
+			]
+		}
+	},
+	"screenshots": [
+		"testsprite_tests/tmp/charts-light-1440.png",
+		"testsprite_tests/tmp/charts-dark-390.png",
+		"testsprite_tests/tmp/not-found-light-390.png",
+		"testsprite_tests/tmp/not-found-dark-1440.png",
+		"testsprite_tests/tmp/date-filter-mobile.png"
+	],
+	"production_validation": {
+		"port": 3004,
+		"fixture_route": "/chart-visual-check, created only in isolated build; not added to application routes",
+		"api": "existing local API",
+		"writes": "no existing content or settings modified"
+	},
+	"cleanup": "Temporary local test user and organization removed; browser closed and isolated preview servers stopped; original development server preserved.",
+	"sources": [
+		"https://tanstack.com/charts/latest/docs/installation",
+		"https://tanstack.com/charts/latest/docs/overview",
+		"@tanstack/charts@1.5.0 bundled release documentation",
+		"https://ui.shadcn.com/docs/components/date-picker"
+	],
+	"previous_branding_validation": "testsprite_tests/cms-branding.validation.json",
+	"development_validation": {
+		"status": "passed",
+		"runtime": "Next.js 15.2.4 Turbopack fresh process",
+		"errors": [],
+		"existing_process": "Existing development server on 3003 has stale state after dependency changes; restart dev:apps. Fresh Turbopack on 3005 passed header navigation and chart rendering."
+	}
+}

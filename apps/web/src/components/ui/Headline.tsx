@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils';
+
 interface HeadlineProps {
 	headline?: string | null;
 	className?: string;
@@ -8,8 +10,18 @@ const Headline = ({ headline, className = '', as: Component = 'p' }: HeadlinePro
 	if (!headline) return null;
 
 	return (
-		<Component className={`font-heading text-foreground font-normal ${className}
-         text-4xl md:text-5xl lg:text-headline`}>
+		<Component
+			className={cn(
+				'break-words font-heading font-semibold tracking-tight text-foreground',
+				Component === 'h1'
+					? 'text-3xl md:text-4xl'
+					: Component === 'h2'
+						? 'text-2xl md:text-3xl'
+						: 'text-xl md:text-2xl',
+				'leading-tight',
+				className,
+			)}
+		>
 			{headline}
 		</Component>
 	);

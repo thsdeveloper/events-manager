@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { firstError } from '../../lib/validation';
 import type { CmsRichtextItem } from '../../types';
 import { Field, FieldError } from '../FormPrimitives';
-import { RichTextEditor } from '../RichTextEditor';
+import { RichTextEditor } from '../LazyRichTextEditor';
 import type { BlockFieldsProps, BlockFormDefinition } from './types';
 
 export interface RichtextState {

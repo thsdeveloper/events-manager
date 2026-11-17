@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/design-system/molecules/PageHeader';
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cmsFormInputSchema } from '@events-manager/contracts';
 import { Save, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -109,30 +112,36 @@ export function FormEditor({ form, submissions, initialTab = 'campos' }: FormEdi
 
 	return (
 		<div className="space-y-6">
-			<header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-				<div className="min-w-0">
-					<p className="text-sm font-semibold text-violet-700">Formulários</p>
-					<h1 className="mt-1 truncate text-3xl font-bold tracking-tight">{form ? form.title : 'Novo formulário'}</h1>
-					<p className="mt-2 text-sm text-slate-600">Use o bloco “Formulário” em uma página para exibi-lo no site.</p>
-				</div>
-				<div className="flex flex-wrap items-center gap-2">
-					{form && (
-						<Button variant="outline" className="text-red-600 hover:text-red-700" onClick={() => setDeleteOpen(true)}>
-							<Trash2 className="mr-2 size-4" />
-							Excluir
+			<PageHeader
+				eyebrow="Formulários"
+				title={form ? form.title : 'Novo formulário'}
+				description={
+					<>
+						<p className="mt-2 text-sm text-muted-foreground">
+							Use o bloco “Formulário” em uma página para exibi-lo no site.
+						</p>
+					</>
+				}
+				actions={
+					<div className="flex flex-wrap items-center gap-2">
+						{form && (
+							<Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+								<Trash2 className="mr-2 size-4" />
+								Excluir
+							</Button>
+						)}
+						<Button onClick={save} loading={saving}>
+							<Save className="mr-2 size-4" />
+							Salvar
 						</Button>
-					)}
-					<Button onClick={save} loading={saving}>
-						<Save className="mr-2 size-4" />
-						Salvar
-					</Button>
-				</div>
-			</header>
+					</div>
+				}
+			/>
 
 			{formError && (
-				<p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-					{formError}
-				</p>
+				<Alert variant="destructive" className="border text-sm" role="alert">
+					<AlertDescription>{formError}</AlertDescription>
+				</Alert>
 			)}
 
 			<Tabs defaultValue={form ? initialTab : 'campos'}>
@@ -199,13 +208,15 @@ export function FormEditor({ form, submissions, initialTab = 'campos' }: FormEdi
 								</Field>
 							)}
 						</div>
-						<label className="flex items-center gap-3 text-sm">
+						<Label className="flex items-center gap-3 text-sm">
 							<Switch checked={isActive} onCheckedChange={setIsActive} aria-label="Formulário ativo" />
 							<span>
 								<span className="font-medium">{isActive ? 'Ativo' : 'Inativo'}</span>
-								<span className="block text-xs text-slate-500">Um formulário inativo não aceita envios no site.</span>
+								<span className="block text-xs text-muted-foreground">
+									Um formulário inativo não aceita envios no site.
+								</span>
 							</span>
-						</label>
+						</Label>
 					</SectionCard>
 					<SectionCard
 						title="Campos"

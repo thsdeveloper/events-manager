@@ -1,0 +1,211 @@
+STORMER 123 BACKTEST | Expert Advisor para MetaTrader 5
+Versão 1.20 — 30/10/2026
+
+Este robô funciona EXCLUSIVAMENTE no Testador de Estratégias do MT5.
+Não inicializa em gráficos normais de contas reais ou demo. Não há parâmetro
+para habilitar operação fora do tester nesta versão.
+O indicador Stormer123 v1.30 usa o mesmo filtro de médias desta versão do robô.
+
+FILTRO DE MÉDIAS — NOVO NA VERSÃO 1.20
+Com FiltroTendencia=true (padrão), o sinal exige NO FECHAMENTO DE C3:
+• Compra: MME curta > MME longa, e ambas subindo de C2 para C3.
+• Venda: MME curta < MME longa, e ambas caindo de C2 para C3.
+Médias iguais ou uma média plana rejeitam o sinal. Não é necessário um
+cruzamento novo nessa vela: alinhamento contínuo também é válido.
+A mesma regra usa os períodos configurados, inclusive se trocar a curta para 9.
+As médias da vela em formação não são usadas para liberar o padrão.
+FiltroTendencia=false desliga tanto alinhamento quanto inclinação, para testes.
+Uma operação já aberta mantém sua gestão de stop/alvo; cruzar médias depois
+não força uma saída. Validade do gatilho permanece conforme ValidadeBarras.
+Todos os presets fornecidos usam FiltroTendencia=true. Os presets A/B/C passam
+a usar o filtro NOVO, permanecendo idênticos entre si exceto pela gestão do stop.
+Rode novamente A, B e C na mesma versão. O relatório anterior usava somente
+inclinação; não compare diretamente B/C novos contra aquele A antigo como se
+a única mudança fosse o trailing. Os novos resultados ainda precisam ser medidos.
+GESTÃO DO STOP — ADICIONADA NA VERSÃO 1.10
+Os presets A/B/C mudam SOMENTE ModoGestao. Mantêm MME8/80, alvo 1,61R,
+volume 1, entradas e demais filtros idênticos para comparação controlada.
+A: Stormer123_A_Referencia.set — ModoGestao=0 (STOP_FIXO).
+B: Stormer123_B_Breakeven_1R.set — ModoGestao=1 (BREAKEVEN).
+C: Stormer123_C_Trailing_075R.set — ModoGestao=2 (TRAILING_R).
+
+R é congelado quando a posição está executada, usando a entrada média efetiva
+e seu stop original. Aguardamos eventuais ordens de preenchimento restantes
+antes de inicializar a proteção. Mover o stop NÃO reduz o R usado nos cálculos.
+A próxima posição começa com seu próprio R e seu próprio melhor preço.
+Compra acompanha o melhor Bid; venda acompanha o melhor Ask.
+
+A — STOP FIXO
+Não modifica SL nem TP. É a referência para reproduzir o teste anterior.
+
+B — BREAKEVEN
+AtivarProtecaoR=1.0: ao alcançar lucro flutuante de 1R, tenta mover o stop para
+entrada + OffsetBreakevenTicks na compra, ou entrada − esse offset na venda.
+O padrão é 1 tick. Empate/proteção refere-se ao PREÇO: custos e slippage podem
+produzir resultado líquido negativo mesmo depois do movimento do stop.
+
+C — TRAILING EM R
+AtivarProtecaoR=1.0: só inicia depois de alcançar +1R.
+DistanciaTrailingR=0.75: novo stop a 0,75R do melhor preço favorável observado.
+Exemplo com R=100 pontos: ao avançar 100 pontos, o stop teórico fica 25 pontos
+além da entrada. Ao avançar 140 pontos, fica 65 pontos além da entrada.
+Os preços são arredondados ao tick real, sem aproximar além da distância escolhida.
+O stop só avança quando houver melhora mínima de 1 tick; nunca volta para trás.
+Este modo é independente do breakeven, não uma combinação dos dois modos.
+
+O alvo de 1,61R é mantido em todos os modos. A gestão não encerra parcial.
+Enquanto houver posição aberta, novos padrões continuam bloqueados.
+Se um stop antecipado encerrar a operação, sinais posteriores voltam a ser
+avaliados normalmente; portanto a sequência de trades pode mudar entre A/B/C.
+
+A modificação usa o ticket da posição e confere símbolo e MagicNumber.
+Respeita distância mínima e faixa de congelamento do símbolo (stop/freeze level).
+Se a proteção calculada não puder ser colocada, conserva o stop atual e mantém
+memória do melhor preço. Tenta novamente quando permitido. Rejeições pelo MT5
+são registradas no Diário e têm intervalo mínimo de um segundo entre tentativas.
+Em gaps ou execução atrasada, o resultado não é garantido pelo preço do stop.
+O retorno do servidor é conferido; uma solicitação não é contada como aplicada
+apenas porque a função local retornou sucesso.
+
+ROTEIRO DE COMPARAÇÃO
+1. No Ctrl+R, selecione novamente Stormer123Backtest para carregar a v1.20.
+2. Repita primeiro o teste anterior: WINZ26, M1, 2026.10.27 até 2026.10.28,
+   depósito de R$ 5.000 e os mesmos ajustes de ticks/execução usados no relatório.
+3. Rode A, B e C separadamente, carregando o respectivo .set em Parâmetros.
+4. Salve cada relatório com nome que identifique modo, ativo, período e datas.
+5. Confira no Diário as linhas BREAKEVEN/TRAILING_R e "stops modificados".
+   Zero modificações pode ser correto se nenhum trade atingir o limiar ou se
+   as restrições do símbolo impedirem alterações; confira os motivos registrados.
+6. Compare lucro líquido, drawdown, fator de lucro, quantidade de operações,
+   duração e sequência de perdas. Não escolha apenas pela taxa de acerto.
+7. Depois amplie para vários pregões e valide em outras datas, mantendo o mesmo
+   modelo de ticks, volume e custos. O dia analisado isoladamente não valida melhoria.
+
+O relatório anterior tinha comissões zeradas e uma saída por fim do teste.
+Confira os custos no testador; esta versão não inventa uma comissão que não foi
+informada. Registre separadamente trades encerrados por "end of test".
+Não foram adicionados neste experimento filtros de horário
+ou de distância de entrada: variar tudo junto impediria isolar o efeito do stop.
+
+PRIMEIRO BACKTEST
+1. Abra o MT5 e pressione Ctrl+R (Testador de Estratégias).
+2. Escolha teste individual e o Expert:
+   Stormer123 > Stormer123Backtest.
+   Se não aparecer, atualize Expert Advisors no Navegador ou reabra o tester.
+3. Selecione ativo, período gráfico e intervalo de datas com histórico disponível.
+   No seu gráfico anterior havia WINZ26, M1. O nome do contrato pode variar
+   conforme a corretora. Use datas em que esse contrato existia e tinha dados.
+4. Use o modelo "Cada tick baseado em ticks reais". Se indisponível, o modelo
+   "Cada tick" gerado pode servir a uma verificação funcional, mas não é equivalente.
+   "Apenas preços de abertura" e "OHLC de 1 minuto" não são adequados para
+   avaliar a ordem dos gatilhos, stops e alvos intrabar deste operacional.
+5. Defina depósito/moeda e confira margem e custos do ativo no ambiente do tester.
+   Comissões e custos não são inventados pelo robô: confirme o que o relatório
+   e a configuração do testador realmente incluem.
+6. Em Parâmetros de entrada, carregue um dos arquivos .set instalados.
+7. Confira VolumeFixo: os presets usam 1.0. No WIN isso representa um contrato
+   se essa for a especificação da corretora. Em Forex pode representar um lote
+   inteiro; ajuste conforme o símbolo antes de comparar os testes.
+8. Para acompanhar entradas e saídas no gráfico, marque Visualização e inicie.
+9. Consulte Backtest/Resultados, Gráfico e Diário. Salve o relatório do MT5.
+
+CONFIGURAÇÕES PARA COMPARAÇÃO
+Stormer123_8_80_161R.set: MME8/80, stop C2, alvo 1,61R, ambas as direções.
+Stormer123_9_80_161R.set: muda somente a MME curta para 9.
+Stormer123_8_80_2R.set: muda somente o alvo para 2R.
+Use o mesmo ativo, intervalo, modelo de ticks, volume, depósito e custos para
+comparar. São cenários de teste, não resultados otimizados ou recomendações.
+
+INSTALAÇÃO
+Já instalado na pasta de dados do MT5 deste computador:
+  MQL5\Experts\Stormer123\Stormer123Backtest.ex5
+Os presets ficam em:
+  MQL5\Profiles\Tester\Stormer123_*.set
+Para outro MT5: Arquivo > Abrir Pasta de Dados e copie o .ex5 para o caminho acima.
+Para editar/compilar, mantenha juntos:
+  Stormer123Backtest.mq5
+  Stormer123Core.mqh
+  Stormer123EARules.mqh
+Abra o .mq5 no MetaEditor e pressione F7. A biblioteca Trade é a padrão do MT5.
+
+OPERACIONAL
+Reutiliza Pattern123, Trend123 e Levels123 do mesmo núcleo do indicador:
+• Três candles fechados; C2 é o extremo central. Empates e padrões duplos rejeitados.
+• Compra/venda, alinhamento e inclinação das MMEs, inside bar opcional, stop C2/C3 e alvo por
+  múltiplo do risco ou amplitude são configuráveis.
+• Por padrão: MME8/80, margem de 1 tick na entrada e stop, alvo 1,61R e validade
+  de uma barra após C3. IFR2 não é filtro, como no indicador.
+• O robô inicia sem posição simulada e sem reconstruir operações anteriores
+  à data inicial do teste. Usa candles anteriores apenas para aquecimento e padrão.
+• Um novo padrão pode substituir o pendente antes de a entrada ser acionada.
+• Com posição aberta ou solicitação em processamento, ignora novos padrões.
+  Não há pirâmide, hedge, recuperação de sinais ignorados ou fila de entradas.
+• Depois da saída, espera um C3 fechado após ela. Se a saída ocorreu exatamente
+  na abertura de uma barra, não usa o padrão fechado antes dessa saída.
+• Não faz parcial, martingale ou aumento de lote. Breakeven/trailing são opcionais.
+• A posição sai integralmente por SL/TP nativos do tester. Não há zeragem por
+  horário; ela pode atravessar sessões se não atingir saída. O tester pode
+  encerrar posição restante no fim do intervalo; confira o motivo no relatório.
+
+ENTRADA E DIFERENÇAS EM RELAÇÃO AO INDICADOR
+O gatilho é virtual, monitorado a cada tick. Ao alcançá-lo, envia uma ordem a
+mercado no ambiente simulado, já com stop e alvo planejados. Não envia uma
+ordem stop pendente ao servidor do tester. Isso permite cancelar validade e
+invalidar o sinal antes de enviar uma ordem, inclusive na mudança de barra.
+Compra dispara pelo Ask; venda pelo Bid. Stop de invalidação de compra usa Bid;
+na venda usa Ask. Se o stop já foi atingido no mesmo tick, o sinal é descartado.
+Gap além do alvo descarta o sinal em vez de perseguir uma entrada sem alvo útil.
+O preço efetivamente executado pode diferir do gatilho. O alvo não é recalculado após a execução; o stop inicial só muda nos modos de proteção; por isso o risco/retorno realizado pode diferir
+levemente do planejado. O MT5 aplica seu modelo de spread e execução.
+
+O indicador faz leitura de OHLC e pode marcar INCERTO quando dois níveis são
+tocados na mesma vela. O robô usa a sequência de ticks e execuções do tester.
+Não força GAIN/LOSS fictício nem replica a classificação OHLC do indicador.
+Candles de símbolos de bolsa podem ser construídos por Last, enquanto o robô
+executa em Bid/Ask. Isso também pode produzir diferenças entre os sinais e trades.
+Resultados não serão necessariamente idênticos aos rótulos do indicador.
+
+VOLUME, SPREAD E REJEIÇÕES
+VolumeFixo respeita mínimo, máximo e passo do símbolo, arredondando para baixo.
+Nunca aumenta um volume menor até o mínimo. Volume inválido impede inicialização.
+MaxSpreadTicks=0 desliga o filtro; um valor positivo adia a entrada enquanto o
+spread exceder esse limite, até expirar/invalidar o sinal ou encontrar tick válido.
+DesvioTicks define a tolerância enviada ao MT5, convertida para pontos; sua
+aplicação depende do modo de execução. Não é garantia de slippage máximo.
+Distância mínima de stops e margem livre são verificadas antes de enviar ordem.
+Se uma ordem for rejeitada, o sinal é consumido, com motivo no Diário, sem
+repetir tentativas a cada tick. O próximo padrão elegível poderá ser testado.
+O bloqueio de posição/ordem é por símbolo. O EA usa o símbolo e período do tester.
+
+RESULTADOS E DIAGNÓSTICO
+Use o relatório nativo: total de operações, lucro líquido, fator de lucro,
+drawdown e distribuição dos resultados. No Diário, as linhas "S123" registram
+sinal, gatilho, expiração, invalidação, rejeição e confirmação de execução/saída.
+O resultado impresso em cada deal de saída é BRUTO; comissões e outras parcelas
+podem estar em outros deals e devem ser conferidas no relatório completo.
+Se não houver trades: confira disponibilidade de ticks, volume mínimo, margem,
+rejeições no Diário e filtros. Não remova filtros apenas para produzir lucro.
+
+VALIDAÇÃO DESTA ENTREGA
+TDD: regras de execução testadas primeiro; a gestão de stop teve 11 falhas esperadas antes da implementação.
+95 verificações do operacional + 74 do robô = 169 aprovadas. O alinhamento foi coberto por dez verificações novas, com quatro falhas esperadas antes da implementação, em tests/core.test.cpp.
+Arquivos de teste: tests/core.test.cpp e tests/ea.test.cpp.
+pnpm test, pnpm lint e pnpm test:coverage aprovados.
+100% de cobertura de linhas de Stormer123Core.mqh e Stormer123EARules.mqh.
+A cobertura NÃO inclui o adaptador MQL5, a biblioteca Trade ou o motor do MT5.
+Build-EA.ps1: compilação nativa, zero erros e zero avisos; compile-ea.log incluído.
+O usuário executou a versão anterior em 27/10/2026. Os novos modos de gestão ainda não foram comparados com dados de mercado nesta entrega; não há melhora de rentabilidade comprovada.
+
+REPRODUZIR
+Linux/WSL na pasta do pacote: pnpm test; pnpm lint; pnpm test:coverage.
+Windows: execute Build-EA.ps1 com PowerShell. -MetaEditor aceita outro caminho.
+
+FONTES TÉCNICAS
+https://www.mql5.com/en/docs/standardlibrary/tradeclasses/ctrade/ctradebuy
+https://www.mql5.com/en/docs/event_handlers/ontradetransaction
+https://www.mql5.com/en/docs/constants/environment_state/marketinfoconstants
+https://www.mql5.com/en/docs/runtime/testing
+https://www.metatrader5.com/en/terminal/help/start_advanced/start
+Referências do operacional e suas variantes: LEIA-ME.txt do indicador.
+
+

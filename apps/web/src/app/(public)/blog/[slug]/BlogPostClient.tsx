@@ -29,15 +29,15 @@ export default function BlogPostClient({ post, relatedPosts, author, authorName,
 					</div>
 				)}
 
-				<Headline as="h1" headline={post.title} className="!text-accent mb-4" />
+				<Headline as="h1" headline={post.title} className="mb-4" />
 				<Separator className="mb-8" />
 
-				<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,_2fr)_400px] gap-12">
-					<article className="text-left">
+				<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,_2fr)_minmax(0,_1fr)] gap-12">
+					<article className="min-w-0 text-left">
 						<BaseText content={post.content || ''} />
 					</article>
 
-					<aside className="space-y-6 p-6 rounded-lg max-w-[496px] h-fit bg-background-muted">
+					<aside className="min-w-0 space-y-6 p-6 rounded-lg h-fit bg-muted text-foreground">
 						{author && (
 							<div className="flex items-center space-x-4">
 								{author.avatar && (
@@ -49,7 +49,7 @@ export default function BlogPostClient({ post, relatedPosts, author, authorName,
 										height={48}
 									/>
 								)}
-								<div>{authorName && <p className="font-bold">{authorName}</p>}</div>
+								<div>{authorName && <p className="font-semibold">{authorName}</p>}</div>
 							</div>
 						)}
 
@@ -62,16 +62,16 @@ export default function BlogPostClient({ post, relatedPosts, author, authorName,
 						{relatedPosts.length > 0 && (
 							<div>
 								<Separator className="my-4" />
-								<h2 className="font-bold mb-4">Posts relacionados</h2>
+								<h2 className="font-semibold mb-4">Posts relacionados</h2>
 								<div className="space-y-4">
 									{relatedPosts.map((relatedPost) => (
 										<Link
 											key={relatedPost.id}
 											href={`/blog/${relatedPost.slug}`}
-											className="flex items-center space-x-4 hover:text-accent group"
+											className="flex items-center space-x-4 hover:text-link group"
 										>
 											{relatedPost.image && (
-												<div className="relative shrink-0 w-[150px] h-[100px] overflow-hidden rounded-lg">
+												<div className="relative shrink-0 w-20 h-16 sm:w-[120px] sm:h-20 overflow-hidden rounded-lg">
 													<MediaImage
 														uuid={relatedPost.image}
 														alt={relatedPost.title || 'related posts'}
@@ -81,7 +81,7 @@ export default function BlogPostClient({ post, relatedPosts, author, authorName,
 													/>
 												</div>
 											)}
-											<span className="font-heading">{relatedPost.title}</span>
+											<span className="font-heading font-semibold">{relatedPost.title}</span>
 										</Link>
 									))}
 								</div>

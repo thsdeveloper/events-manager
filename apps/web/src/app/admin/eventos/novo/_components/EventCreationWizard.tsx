@@ -1,28 +1,87 @@
 'use client';
 
+import { eventAIContext, generateEventContent } from './event-ai';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AIImageGenerationModal } from '@/components/admin/AIImageGenerationModal';
+const EventLandingPage = dynamic(
+	() => import('@/features/event-page/components/EventLandingPage').then((module) => module.EventLandingPage),
+	{
+		loading: () => (
+			<p role="status" className="p-6 text-sm text-muted-foreground">
+				Carregando prévia…
+			</p>
+		),
+	},
+);
+import { revalidateEventPage } from '@/features/event-page/actions';
+import { contentDefaults, contentFromEvent, contentPayload, eventForPreview } from './wizard-content';
 import { Form } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { PENDING_UPLOAD_VALUE } from '@/components/admin/ImageUpload';
-import type { Event, EventCategory, EventTicket } from '@events-manager/contracts';
+import {
+	migrateEventSalesPeriod,
+	buildDefaultEventPageLayout,
+	type Event,
+	type EventCategory,
+	type EventTicket,
+} from '@events-manager/contracts';
 import type { TicketDraft } from '@/features/tickets/types';
 import { useOrganizer } from '@/hooks/useOrganizer';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
 import { WizardProgressBar } from './WizardProgressBar';
 import { StepNavigation } from './StepNavigation';
 import { BasicInfoStep } from './steps/BasicInfoStep';
-import { CoverImageStep } from './steps/CoverImageStep';
-import { DetailsStep } from './steps/DetailsStep';
-import { ScheduleStep } from './steps/ScheduleStep';
-import { LocationStep } from './steps/LocationStep';
-import { TicketsStep } from './steps/TicketsStep';
-import { ReviewStep } from './steps/ReviewStep';
-import { AIImageGenerationModal } from '@/components/admin/AIImageGenerationModal';
-import type { EventWizardFormValues, EventWizardStepMeta } from './types';
+const CoverImageStep = dynamic(() => import('./steps/CoverImageStep').then((module) => module.CoverImageStep), {
+	loading: () => (
+		<p role="status" className="p-6 text-sm text-muted-foreground">
+			Carregando etapa…
+		</p>
+	),
+});
+const DetailsStep = dynamic(() => import('./steps/DetailsStep').then((module) => module.DetailsStep), {
+	loading: () => (
+		<p role="status" className="p-6 text-sm text-muted-foreground">
+			Carregando etapa…
+		</p>
+	),
+});
+const ScheduleStep = dynamic(() => import('./steps/ScheduleStep').then((module) => module.ScheduleStep), {
+	loading: () => (
+		<p role="status" className="p-6 text-sm text-muted-foreground">
+			Carregando etapa…
+		</p>
+	),
+});
+const LocationStep = dynamic(() => import('./steps/LocationStep').then((module) => module.LocationStep), {
+	loading: () => (
+		<p role="status" className="p-6 text-sm text-muted-foreground">
+			Carregando etapa…
+		</p>
+	),
+});
+const TicketsStep = dynamic(() => import('./steps/TicketsStep').then((module) => module.TicketsStep), {
+	loading: () => (
+		<p role="status" className="p-6 text-sm text-muted-foreground">
+			Carregando etapa…
+		</p>
+	),
+});
+const ReviewStep = dynamic(() => import('./steps/ReviewStep').then((module) => module.ReviewStep), {
+	loading: () => (
+		<p role="status" className="p-6 text-sm text-muted-foreground">
+			Carregando etapa…
+		</p>
+	),
+});
+import type { EventWizardFormValues, EventWizardStepMeta, EventWizardSnapshot } from './types';
 import {
 	basicInfoSchema,
 	coverImageSchema,
@@ -35,19 +94,11 @@ import {
 
 const LOCAL_STORAGE_KEY = 'event-creation-wizard';
 
-const Confetti = dynamic(() => import('react-confetti'), { ssr: false });
-
 const steps: EventWizardStepMeta[] = [
 	{
 		id: 'basic',
 		title: 'Básico',
 		description: 'Nome, categoria e resumo',
-		estimatedMinutes: 1,
-	},
-	{
-		id: 'visual',
-		title: 'Visual',
-		description: 'Imagem de capa e estilo',
 		estimatedMinutes: 1,
 	},
 	{
@@ -59,7 +110,7 @@ const steps: EventWizardStepMeta[] = [
 	{
 		id: 'schedule',
 		title: 'Agenda',
-		description: 'Datas e inscrições',
+		description: 'Quando o evento acontece',
 		estimatedMinutes: 1,
 	},
 	{
@@ -75,6 +126,12 @@ const steps: EventWizardStepMeta[] = [
 		estimatedMinutes: 1,
 	},
 	{
+		id: 'visual',
+		title: 'Visual',
+		description: 'Imagem de capa e estilo',
+		estimatedMinutes: 1,
+	},
+	{
 		id: 'review',
 		title: 'Revisão',
 		description: 'Confirme e publique',
@@ -82,20 +139,47 @@ const steps: EventWizardStepMeta[] = [
 	},
 ];
 
+// Persisted positions are stable across releases, even when the visible order changes.
+const storedStepIds = ['basic', 'visual', 'details', 'schedule', 'location', 'tickets', 'review'];
+const restoreStep = (index: number) =>
+	Math.max(
+		0,
+		steps.findIndex((step) => step.id === storedStepIds[index]),
+	);
+const storeStep = (index: number) => storedStepIds.indexOf(steps[index].id);
+
 type StoredWizardPayload = {
 	formData?: Partial<EventWizardFormValues>;
 	meta?: {
 		currentStep?: number;
+		draftId?: string;
 	};
 };
 
 const stepFieldGroups: Array<(keyof EventWizardFormValues)[]> = [
 	['title', 'category_id', 'short_description'],
-	['cover_image'],
-	['description', 'tags'],
-	['start_date', 'end_date', 'registration_start', 'registration_end'],
-	['event_type', 'location_name', 'location_address', 'latitude', 'longitude', 'online_url'],
+	['description', 'description_en', 'description_es', 'tags'],
+	['start_date', 'end_date'],
+	[
+		'event_type',
+		'location_tbd',
+		'show_map',
+		'location_name',
+		'location_address',
+		'latitude',
+		'longitude',
+		'online_url',
+		'online_platform',
+		'location_street',
+		'location_number',
+		'location_complement',
+		'location_neighborhood',
+		'location_city',
+		'location_state',
+		'location_postal_code',
+	],
 	['is_free', 'tickets', 'max_attendees', 'status', 'visibility', 'featured', 'publish_after_create'],
+	['cover_image', 'cover_image_alt'],
 	[
 		'title',
 		'category_id',
@@ -112,6 +196,8 @@ const stepFieldGroups: Array<(keyof EventWizardFormValues)[]> = [
 ];
 
 const emptyValues: EventWizardFormValues = {
+	...contentDefaults,
+	ticket_groups: [],
 	title: '',
 	category_id: '',
 	short_description: '',
@@ -120,8 +206,6 @@ const emptyValues: EventWizardFormValues = {
 	tags: [],
 	start_date: '',
 	end_date: '',
-	registration_start: '',
-	registration_end: '',
 	event_type: 'in_person',
 	location_name: '',
 	location_address: '',
@@ -148,6 +232,8 @@ function relationId(value: unknown): string {
 function ticketDraft(ticket: EventTicket): TicketDraft {
 	return {
 		id: ticket.id,
+		group_id: ticket.group_id ?? null,
+		admission_type: ticket.admission_type ?? 'standard',
 		title: ticket.title ?? '',
 		description: ticket.description ?? null,
 		quantity: ticket.quantity ?? 0,
@@ -169,6 +255,7 @@ function valuesFromEvent(event: Event): EventWizardFormValues {
 
 	return {
 		...emptyValues,
+		...contentFromEvent(event),
 		title: event.title ?? '',
 		category_id: relationId(event.category_id),
 		short_description: event.short_description ?? '',
@@ -177,8 +264,6 @@ function valuesFromEvent(event: Event): EventWizardFormValues {
 		tags: Array.isArray(event.tags) ? event.tags : [],
 		start_date: event.start_date ?? '',
 		end_date: event.end_date ?? '',
-		registration_start: event.registration_start ?? '',
-		registration_end: event.registration_end ?? '',
 		event_type: (event.event_type ?? 'in_person') as EventWizardFormValues['event_type'],
 		location_name: event.location_name ?? '',
 		location_address: event.location_address ?? '',
@@ -198,6 +283,8 @@ interface EventCreationWizardProps {
 	/** `edit` parte do evento guardado e atualiza em vez de criar. */
 	mode?: 'create' | 'edit';
 	event?: Event;
+	initialDraft?: EventWizardSnapshot;
+	draftOnly?: boolean;
 }
 
 function getStepSchema(stepIndex: number) {
@@ -219,28 +306,62 @@ function getStepSchema(stepIndex: number) {
 	}
 }
 
-export function EventCreationWizard({ mode = 'create', event }: EventCreationWizardProps = {}) {
+export function EventCreationWizard({
+	mode = 'create',
+	event,
+	initialDraft,
+	draftOnly = false,
+}: EventCreationWizardProps = {}) {
 	const isEdit = mode === 'edit' && Boolean(event);
 	const router = useRouter();
 	const { toast } = useToast();
 	const { organizer, loading: organizerLoading } = useOrganizer();
 	const autoSaveTimeoutRef = useRef<number | undefined>(undefined);
 	const initializedRef = useRef(false);
-	const celebrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const submittingRef = useRef(false);
+	const submissionCompletedRef = useRef(false);
 
-	const [categories, setCategories] = useState<EventCategory[]>([]);
-	const [currentStep, setCurrentStep] = useState(0);
+	const {
+		data: categories = [],
+		isPending: categoriesLoading,
+		isError: categoriesFailed,
+		refetch: retryCategories,
+	} = useQuery({
+		queryKey: ['event-categories'],
+		staleTime: 10 * 60 * 1000,
+		queryFn: async ({ signal }) => {
+			const response = await fetch('/api/event-categories', { signal });
+			if (!response.ok) throw new Error('Não foi possível carregar as categorias.');
+
+			return ((await response.json()) as { data: EventCategory[] }).data ?? [];
+		},
+	});
+	const initialStep =
+		initialDraft && initialDraft.current_step >= 0 && initialDraft.current_step < steps.length
+			? restoreStep(initialDraft.current_step)
+			: 0;
+	const [currentStep, setCurrentStep] = useState(initialStep);
+	const [serverDraftId, setServerDraftId] = useState<string | undefined>(initialDraft?.id);
+	const [serverDraftSaving, setServerDraftSaving] = useState(false);
+	const [serverDraftError, setServerDraftError] = useState<string | null>(null);
+	const [serverDraftSaved, setServerDraftSaved] = useState(false);
+	const [previewOpen, setPreviewOpen] = useState(false);
 	// Na edição tudo já foi preenchido uma vez: qualquer etapa fica ao alcance.
 	const [visitedSteps, setVisitedSteps] = useState<Set<number>>(
-		() => new Set(isEdit ? steps.map((_, index) => index) : [0]),
+		() => new Set(isEdit ? steps.map((_, index) => index) : Array.from({ length: initialStep + 1 }, (_, i) => i)),
 	);
 	const [isSavingDraft, setIsSavingDraft] = useState(false);
 	const [lastSaved, setLastSaved] = useState<Date | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+	const coverGeneration = useMutation({
+		retry: false,
+		gcTime: 0,
+		mutationFn: (input: Parameters<typeof eventAIContext>[0]) =>
+			generateEventContent<{ fileId: string }>('cover', eventAIContext(input)),
+	});
+	const isGeneratingCover = coverGeneration.isPending;
+	const generatingCoverRef = useRef(false);
 	const [coverAiError, setCoverAiError] = useState<string | null>(null);
-	const [showCelebration, setShowCelebration] = useState(false);
-	const [confettiSize, setConfettiSize] = useState({ width: 0, height: 0 });
 	// The cover is held here, not inside the step, because the step unmounts as soon
 	// as the user moves on and the file must survive until the event is submitted.
 	const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -250,30 +371,20 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 		mode: 'onBlur',
 		reValidateMode: 'onChange',
 		// Don't use resolver - we'll validate manually per step
-		defaultValues: isEdit && event ? valuesFromEvent(event) : emptyValues,
+		defaultValues:
+			isEdit && event
+				? valuesFromEvent(event)
+				: initialDraft
+					? ({
+							...emptyValues,
+							...migrateEventSalesPeriod(initialDraft.values),
+							cover_image:
+								initialDraft.values.cover_image === PENDING_UPLOAD_VALUE
+									? ''
+									: String(initialDraft.values.cover_image ?? ''),
+						} as EventWizardFormValues)
+					: emptyValues,
 	});
-
-	const watchedValues = form.watch();
-
-	useEffect(() => {
-		if (typeof window === 'undefined') {
-			return;
-		}
-
-		const updateSize = () => {
-			setConfettiSize({ width: window.innerWidth, height: window.innerHeight });
-		};
-
-		updateSize();
-		window.addEventListener('resize', updateSize);
-
-		return () => {
-			window.removeEventListener('resize', updateSize);
-			if (celebrationTimeoutRef.current) {
-				clearTimeout(celebrationTimeoutRef.current);
-			}
-		};
-	}, []);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') {
@@ -281,7 +392,7 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 		}
 
 		// O rascunho local é da criação; na edição o ponto de partida é o evento.
-		if (isEdit) return;
+		if (isEdit || initialDraft) return;
 		const stored = window.localStorage.getItem(LOCAL_STORAGE_KEY);
 		if (!stored) {
 			return;
@@ -295,7 +406,8 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 			if (parsed && typeof parsed === 'object' && ('formData' in parsed || 'meta' in parsed)) {
 				const payload = parsed as StoredWizardPayload;
 				formData = payload.formData ?? undefined;
-				storedStep = payload.meta?.currentStep;
+				storedStep = typeof payload.meta?.currentStep === 'number' ? restoreStep(payload.meta.currentStep) : undefined;
+				if (payload.meta?.draftId) setServerDraftId(payload.meta.draftId);
 			} else {
 				formData = parsed as Partial<EventWizardFormValues>;
 			}
@@ -303,7 +415,7 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 			if (formData && Object.keys(formData).length > 0) {
 				form.reset({
 					...form.getValues(),
-					...formData,
+					...migrateEventSalesPeriod(formData),
 					// A pending cover only lives in memory, so a reloaded draft must not
 					// claim to still have one.
 					cover_image: formData.cover_image === PENDING_UPLOAD_VALUE ? '' : (formData.cover_image ?? ''),
@@ -317,7 +429,7 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 		} catch (error) {
 			console.error('Erro ao carregar rascunho do evento', error);
 		}
-	}, [form, isEdit]);
+	}, [form, isEdit, initialDraft]);
 
 	const handleCoverFileSelected = useCallback((file: File | null) => {
 		setCoverFile(file);
@@ -336,7 +448,7 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 	);
 
 	const persistDraft = useCallback(
-		(formValues: Partial<EventWizardFormValues>, stepOverride?: number) => {
+		(formValues: Partial<EventWizardFormValues>, stepOverride?: number, draftIdOverride?: string) => {
 			if (typeof window === 'undefined' || isEdit) {
 				return false;
 			}
@@ -345,7 +457,8 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 				const payload: StoredWizardPayload = {
 					formData: formValues,
 					meta: {
-						currentStep: typeof stepOverride === 'number' ? stepOverride : currentStep,
+						currentStep: storeStep(typeof stepOverride === 'number' ? stepOverride : currentStep),
+						draftId: draftIdOverride ?? serverDraftId,
 					},
 				};
 				window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
@@ -357,8 +470,50 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 				return false;
 			}
 		},
-		[currentStep, isEdit],
+		[currentStep, isEdit, serverDraftId],
 	);
+
+	const saveServerDraft = useCallback(async () => {
+		if (isEdit || serverDraftSaving || initialDraft?.event_id) return;
+		const current = form.getValues();
+		persistDraft(current);
+		setServerDraftSaving(true);
+		setServerDraftError(null);
+		setServerDraftSaved(false);
+		const values = Object.fromEntries(
+			Object.keys(emptyValues).map((key) => [key, current[key as keyof EventWizardFormValues]]),
+		);
+		if (values.cover_image === PENDING_UPLOAD_VALUE || String(values.cover_image ?? '').startsWith('blob:'))
+			values.cover_image = '';
+		try {
+			const body = JSON.stringify({ values, current_step: storeStep(currentStep) }, (_key, value) =>
+				typeof File !== 'undefined' && value instanceof File
+					? undefined
+					: typeof value === 'string' && value.startsWith('blob:')
+						? undefined
+						: value,
+			);
+			const response = await fetch(
+				serverDraftId ? '/api/event-drafts/' + encodeURIComponent(serverDraftId) : '/api/event-drafts',
+				{
+					method: serverDraftId ? 'PUT' : 'POST',
+					credentials: 'include',
+					headers: { 'Content-Type': 'application/json' },
+					body,
+				},
+			);
+			const saved = await response.json().catch(() => null);
+			if (!response.ok) throw new Error(saved?.detail ?? 'Não foi possível salvar o rascunho na conta.');
+			if (typeof saved?.id !== 'string') throw new Error('O servidor não confirmou o salvamento do rascunho.');
+			setServerDraftId(saved.id);
+			persistDraft(form.getValues(), currentStep, saved.id);
+			setServerDraftSaved(JSON.stringify(current) === JSON.stringify(form.getValues()));
+		} catch (cause) {
+			setServerDraftError(cause instanceof Error ? cause.message : 'Não foi possível salvar o rascunho na conta.');
+		} finally {
+			setServerDraftSaving(false);
+		}
+	}, [currentStep, form, initialDraft?.event_id, isEdit, persistDraft, serverDraftId, serverDraftSaving]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined' || isEdit) {
@@ -372,6 +527,7 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 				return;
 			}
 
+			setServerDraftSaved(false);
 			setIsSavingDraft(true);
 			window.clearTimeout(autoSaveTimeoutRef.current);
 
@@ -389,21 +545,6 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 			window.clearTimeout(autoSaveTimeoutRef.current);
 		};
 	}, [form, isEdit, persistDraft]);
-
-	useEffect(() => {
-		const loadCategories = async () => {
-			try {
-				const response = await fetch('/api/event-categories');
-				if (!response.ok) throw new Error('Não foi possível carregar as categorias.');
-				const payload = (await response.json()) as { data: EventCategory[] };
-				setCategories(payload.data ?? []);
-			} catch (error) {
-				console.error('Erro ao carregar categorias', error);
-			}
-		};
-
-		loadCategories();
-	}, []);
 
 	const goToStep = useCallback(
 		(stepIndex: number) => {
@@ -428,69 +569,29 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 		[form, persistDraft],
 	);
 
+	const generateCover = coverGeneration.mutateAsync;
 	const handleGenerateCover = useCallback(async () => {
+		if (generatingCoverRef.current) return;
+		const values = form.getValues();
+		if (!values.title.trim() || !values.category_id) {
+			setCoverAiError('Informe o nome e a categoria do evento antes de gerar a capa.');
+
+			return;
+		}
+		generatingCoverRef.current = true;
 		setCoverAiError(null);
-		setIsGeneratingCover(true);
-
 		try {
-			const { title, description, short_description, category_id: categoryId } = form.getValues();
-			if (!title) {
-				setCoverAiError('Informe o título do evento antes de gerar a capa.');
-				setIsGeneratingCover(false);
-
-				return;
-			}
-
-			// Start the API call
-			const response = await fetch('/api/ai/generate-cover', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					title,
-					description,
-					short_description,
-					categoryId,
-				}),
-			});
-
-			if (!response.ok) {
-				let errorMessage = 'Não foi possível gerar a capa agora.';
-				try {
-					const data = await response.json();
-					// RFC 7807 format
-					errorMessage = data?.detail || data?.error || errorMessage;
-				} catch {
-					// ignore
-				}
-
-				throw new Error(errorMessage);
-			}
-
-			const data = await response.json();
-			if (!data?.fileId) {
-				throw new Error('Serviço de IA não retornou uma imagem válida.');
-			}
-
-			// The generator already stored the image, so any file held for a deferred
-			// upload is now stale and must not overwrite it on submit.
+			const data = await generateCover(values);
+			if (!data.fileId) throw new Error('Serviço de IA não retornou uma imagem válida.');
 			handleCoverFileSelected(null);
 			form.setValue('cover_image', data.fileId, { shouldDirty: true, shouldValidate: true });
-			toast({
-				title: 'Imagem gerada com sucesso!',
-				description: 'Revise o resultado e ajuste se precisar.',
-				variant: 'success',
-			});
+			toast({ title: 'Capa gerada', description: 'Confira a imagem antes de finalizar o evento.', variant: 'success' });
 		} catch (error) {
 			setCoverAiError(error instanceof Error ? error.message : 'Não foi possível gerar a capa agora.');
-			toast({
-				title: 'Erro ao gerar imagem',
-				description: error instanceof Error ? error.message : 'Não foi possível gerar a capa agora.',
-				variant: 'destructive',
-			});
 		} finally {
-			setIsGeneratingCover(false);
+			generatingCoverRef.current = false;
 		}
-	}, [form, handleCoverFileSelected, toast]);
+	}, [form, generateCover, handleCoverFileSelected, toast]);
 
 	const handleNext = useCallback(async () => {
 		if (currentStep === steps.length - 1) {
@@ -500,7 +601,7 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 		const schema = getStepSchema(currentStep);
 		const fields = stepFieldGroups[currentStep];
 		const values = fields.reduce<Record<string, unknown>>((acc, key) => {
-			acc[key] = (watchedValues as unknown as Record<string, unknown>)[key];
+			acc[key] = form.getValues(key);
 
 			return acc;
 		}, {});
@@ -521,7 +622,7 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 		}
 
 		goToStep(currentStep + 1);
-	}, [currentStep, form, goToStep, toast, watchedValues]);
+	}, [currentStep, form, goToStep, toast]);
 
 	const handleBack = useCallback(() => {
 		const targetStep = Math.max(currentStep - 1, 0);
@@ -573,8 +674,15 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 
 	const submitValues = useCallback(
 		async (values: EventWizardFormValues) => {
+			if (draftOnly || submittingRef.current || submissionCompletedRef.current) return;
+			if (initialDraft?.event_id) {
+				router.push('/admin/eventos/' + initialDraft.event_id);
+
+				return;
+			}
 			if (!validateAll(values)) return;
 
+			submittingRef.current = true;
 			setIsSubmitting(true);
 
 			try {
@@ -613,20 +721,14 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 						method: 'PATCH',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
+							...contentPayload(values),
 							title: values.title,
 							description: values.description,
 							short_description: values.short_description || null,
 							start_date: values.start_date,
 							end_date: values.end_date,
 							event_type: values.event_type,
-							location_name: values.location_name || null,
-							location_address: values.location_address || null,
-							latitude: values.latitude ?? null,
-							longitude: values.longitude ?? null,
-							online_url: values.online_url || null,
 							max_attendees: values.max_attendees ?? null,
-							registration_start: values.registration_start || null,
-							registration_end: values.registration_end || null,
 							status: values.status,
 							visibility: values.visibility ?? 'public',
 							is_free: values.is_free,
@@ -640,6 +742,7 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 						const problem = await response.json().catch(() => null);
 						throw new Error(problem?.detail ?? 'Não foi possível salvar o evento.');
 					}
+					if (event.slug) await revalidateEventPage(event.slug).catch(() => undefined);
 					toast({ title: 'Evento atualizado', description: 'As alterações já estão salvas.', variant: 'success' });
 					router.push(`/admin/eventos/${event.id}`);
 
@@ -647,20 +750,16 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 				}
 
 				const eventData: Record<string, unknown> = {
+					...contentPayload(values),
+					draft_id: serverDraftId,
+					ticket_groups: values.ticket_groups ?? [],
 					title: values.title,
 					description: values.description,
 					short_description: values.short_description || null,
 					start_date: values.start_date,
 					end_date: values.end_date,
 					event_type: values.event_type,
-					location_name: values.location_name || null,
-					location_address: values.location_address || null,
-					latitude: values.latitude ?? null,
-					longitude: values.longitude ?? null,
-					online_url: values.online_url || null,
 					max_attendees: values.max_attendees ?? null,
-					registration_start: values.registration_start || null,
-					registration_end: values.registration_end || null,
 					status: values.status,
 					visibility: values.visibility ?? 'public',
 					is_free: values.is_free,
@@ -694,27 +793,30 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 					const problem = await response.json().catch(() => null);
 					throw new Error(problem?.detail ?? 'Não foi possível salvar o evento.');
 				}
-				const created = (await response.json()) as { id: string };
+				const created = (await response.json()) as { id: string; status?: Event['status'] };
+				const actualStatus = created.status ?? values.status;
+				const savedMessage =
+					{
+						published: 'Seu evento está no ar. Que tal compartilhar agora?',
+						draft: 'O evento foi salvo como rascunho. Publique quando estiver pronto.',
+						cancelled: 'O evento existente está cancelado. Você pode revisá-lo no painel.',
+						archived: 'O evento existente está arquivado. Você pode revisá-lo no painel.',
+					}[actualStatus] ?? 'O evento existente foi recuperado. Revise o estado atual no painel.';
 
+				if (slug) await revalidateEventPage(slug).catch(() => undefined);
 				window.localStorage.removeItem(LOCAL_STORAGE_KEY);
 
 				toast({
-					title: 'Evento criado com sucesso!',
-					description:
-						values.status === 'published'
-							? 'Seu evento está no ar. Que tal compartilhar agora?'
-							: 'O evento foi salvo como rascunho. Publique quando estiver pronto.',
+					title:
+						actualStatus === 'published' || actualStatus === 'draft'
+							? 'Evento salvo com sucesso!'
+							: 'Evento existente recuperado',
+					description: savedMessage,
 					variant: 'success',
 				});
 
-				setShowCelebration(true);
-				if (celebrationTimeoutRef.current) {
-					clearTimeout(celebrationTimeoutRef.current);
-				}
-				celebrationTimeoutRef.current = setTimeout(() => {
-					setShowCelebration(false);
-					router.push(`/admin/eventos/${created.id}`);
-				}, 3000);
+				submissionCompletedRef.current = true;
+				router.push(`/admin/eventos/${created.id}`);
 			} catch (error: any) {
 				console.error('Erro ao criar evento', error);
 				toast({
@@ -723,10 +825,23 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 					variant: 'destructive',
 				});
 			} finally {
+				submittingRef.current = false;
 				setIsSubmitting(false);
 			}
 		},
-		[coverFile, event, form, isEdit, organizer?.id, router, toast, validateAll],
+		[
+			draftOnly,
+			coverFile,
+			event,
+			form,
+			isEdit,
+			organizer?.id,
+			router,
+			toast,
+			validateAll,
+			initialDraft?.event_id,
+			serverDraftId,
+		],
 	);
 
 	const onSubmit = useCallback(
@@ -749,7 +864,7 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 	const stepContent = useMemo(() => {
 		switch (steps[currentStep].id) {
 			case 'basic':
-				return <BasicInfoStep categories={categories} />;
+				return <BasicInfoStep categories={categories} loading={categoriesLoading} />;
 			case 'visual':
 				return (
 					<CoverImageStep
@@ -770,46 +885,114 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 			case 'location':
 				return <LocationStep />;
 			case 'tickets':
-				return <TicketsStep manageTicketsHref={isEdit && event ? `/admin/eventos/${event.id}` : undefined} />;
+				return (
+					<TicketsStep
+						draftOnly={draftOnly}
+						manageTicketsHref={isEdit && event ? `/admin/eventos/${event.id}` : undefined}
+					/>
+				);
 			case 'review':
-				return <ReviewStep categories={categories} mode={mode} />;
+				return (
+					<ReviewStep
+						categories={categories}
+						mode={mode}
+						onEdit={(id) => goToStep(steps.findIndex((step) => step.id === id))}
+					/>
+				);
 			default:
 				return null;
 		}
 	}, [
 		categories,
+		categoriesLoading,
 		coverAiError,
 		coverPreviewUrl,
 		currentStep,
 		event,
 		form,
+		goToStep,
 		handleCoverFileSelected,
 		handleGenerateCover,
 		isEdit,
 		isGeneratingCover,
 		mode,
+		draftOnly,
 	]);
 
-	const handleFormSubmit = useCallback(
-		(e: React.FormEvent<HTMLFormElement>) => {
-			e.preventDefault();
-
-			// Only allow submission on the last step
-			if (currentStep !== steps.length - 1) {
-				return;
-			}
-
-			// Call react-hook-form's handleSubmit
-			form.handleSubmit(onSubmit)(e);
-		},
-		[currentStep, form, onSubmit],
+	// Keep the preview snapshot stable while background autosave updates its status.
+	// Rebuilding the layout creates new section ids and would remount the entire preview.
+	const previewEvent = useMemo(
+		() => (previewOpen ? eventForPreview(form.getValues(), organizer, categories, event) : null),
+		[previewOpen, form, organizer, categories, event],
+	);
+	const previewLayout = useMemo(
+		() =>
+			previewEvent
+				? buildDefaultEventPageLayout({
+						...previewEvent,
+						cover_image: coverPreviewUrl ? null : previewEvent.cover_image,
+					})
+				: null,
+		[previewEvent, coverPreviewUrl],
 	);
 
 	return (
 		<Form {...form}>
 			{/* The progress bar sticks, so its parent has to be the element that spans
 			    the whole scrollable form — a short wrapper would end the stick early. */}
-			<form className="space-y-6" onSubmit={handleFormSubmit}>
+			<form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
+				{draftOnly && (
+					<p role="status" className="rounded-lg border p-4 text-sm">
+						A publicação fica disponível após a aprovação do perfil de organizador. Você já pode salvar seu rascunho e
+						ver a prévia.
+					</p>
+				)}
+				<div className="flex flex-wrap items-center justify-end gap-2">
+					<Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
+						Prévia
+					</Button>
+					{!isEdit && (
+						<Button
+							type="button"
+							variant="secondary"
+							onClick={() => void saveServerDraft()}
+							disabled={serverDraftSaving || Boolean(initialDraft?.event_id)}
+						>
+							{serverDraftSaving ? 'Salvando rascunho...' : 'Salvar rascunho'}
+						</Button>
+					)}
+				</div>
+				{!isEdit && serverDraftSaved && (
+					<p role="status" className="text-sm text-muted-foreground">
+						Rascunho salvo na sua conta.
+					</p>
+				)}
+				{!isEdit && serverDraftError && (
+					<Alert variant="destructive" role="alert" className="border text-sm">
+						<AlertDescription>
+							<p>{serverDraftError}</p>
+							<p>Seu rascunho continua neste navegador. Você pode continuar editando.</p>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => void saveServerDraft()}
+								disabled={serverDraftSaving}
+							>
+								Tentar salvar novamente
+							</Button>
+						</AlertDescription>
+					</Alert>
+				)}
+				{categoriesFailed && (
+					<Alert variant="destructive">
+						<AlertDescription>
+							Não foi possível carregar as categorias.{' '}
+							<Button type="button" variant="outline" onClick={() => void retryCategories()}>
+								Tentar novamente
+							</Button>
+						</AlertDescription>
+					</Alert>
+				)}
 				<WizardProgressBar
 					steps={steps}
 					currentStep={currentStep}
@@ -821,11 +1004,10 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 				<div className="relative">
 					{/* scroll-mt keeps anything scrolled into view (a focused field, a
 					    validation error) clear of the header plus the sticky progress bar. */}
-					<div className="scroll-mt-36 rounded-lg border border-primary/20 bg-primary/5 p-1 transition-colors dark:border-primary/30 dark:bg-primary/10">
-						{stepContent}
-					</div>
+					<div className="scroll-mt-36">{stepContent}</div>
 					<StepNavigation
-						submitLabel={isEdit ? 'Salvar alterações' : 'Criar evento'}
+						submitLabel={draftOnly ? 'Aguardando aprovação' : isEdit ? 'Salvar alterações' : 'Criar evento'}
+						disableNext={draftOnly && isLastStep}
 						onSave={isEdit ? handleQuickSave : undefined}
 						isFirstStep={isFirstStep}
 						isLastStep={isLastStep}
@@ -833,21 +1015,36 @@ export function EventCreationWizard({ mode = 'create', event }: EventCreationWiz
 						isLoadingOrganizer={organizerLoading}
 						onBack={handleBack}
 						onNext={handleNext}
+						onConfirm={() => void form.handleSubmit(onSubmit)()}
 					/>
 				</div>
 			</form>
 
-			{showCelebration && confettiSize.width > 0 && confettiSize.height > 0 && (
-				<div className="pointer-events-none fixed inset-0 z-40">
-					<Confetti width={confettiSize.width} height={confettiSize.height} recycle={false} numberOfPieces={420} />
-				</div>
+			<Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+				<DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto p-0">
+					<DialogHeader className="border-b p-5">
+						<DialogTitle>Prévia do evento</DialogTitle>
+						<DialogDescription>
+							Veja como está ficando. Esta prévia não publica o evento e a compra está desativada.
+						</DialogDescription>
+					</DialogHeader>
+					{previewEvent && previewLayout && (
+						<EventLandingPage
+							event={previewEvent}
+							layout={previewLayout}
+							mode="preview"
+							previewCoverUrl={coverPreviewUrl}
+						/>
+					)}
+				</DialogContent>
+			</Dialog>
+			{isGeneratingCover && (
+				<AIImageGenerationModal
+					isOpen={isGeneratingCover}
+					eventTitle={form.getValues('title') || 'Seu Evento'}
+					categoryName={categories.find((c) => c.id === form.getValues('category_id'))?.name}
+				/>
 			)}
-
-			<AIImageGenerationModal
-				isOpen={isGeneratingCover}
-				eventTitle={form.watch('title') || 'Seu Evento'}
-				categoryName={categories.find((c) => c.id === form.watch('category_id'))?.name}
-			/>
 		</Form>
 	);
 }

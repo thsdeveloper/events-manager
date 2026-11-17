@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 export type PaymentMethod = 'PIX' | 'CARD';
 
 const FALLBACK_METHODS: PaymentMethod[] = ['PIX'];
 
-async function fetchPaymentMethods(): Promise<PaymentMethod[]> {
-	const response = await fetch('/api/payments/methods');
+async function fetchPaymentMethods(signal: AbortSignal): Promise<PaymentMethod[]> {
+	const response = await fetch('/api/payments/methods', { signal });
 	if (!response.ok) throw new Error('Não foi possível carregar as formas de pagamento.');
 	const body = (await response.json()) as { methods?: unknown };
 	const methods = Array.isArray(body.methods)
@@ -17,36 +17,14 @@ async function fetchPaymentMethods(): Promise<PaymentMethod[]> {
 	return methods.length > 0 ? methods : FALLBACK_METHODS;
 }
 
-/**
- * A loja no provedor decide o que aceita, e pedir um método desabilitado derruba
- * o checkout inteiro. Sem resposta da API, só Pix, que toda loja tem: melhor
- * esconder o cartão do que prometer e falhar na hora de pagar.
- *
- * Usa `fetch` direto, como os outros hooks do checkout público: essa página não
- * está sob o `QueryClientProvider`, que só envolve a área administrativa.
- */
+/** The provider defines the methods available at checkout. A failed lookup offers only Pix. */
 export function usePaymentMethods() {
-	const [methods, setMethods] = useState<PaymentMethod[]>(FALLBACK_METHODS);
-	const [isLoading, setIsLoading] = useState(true);
+	const query = useQuery({
+		queryKey: ['public', 'payment-methods'],
+		queryFn: ({ signal }) => fetchPaymentMethods(signal),
+		staleTime: 60_000,
+		retry: false,
+	});
 
-	useEffect(() => {
-		let active = true;
-		const load = async () => {
-			try {
-				const loaded = await fetchPaymentMethods();
-				if (active) setMethods(loaded);
-			} catch {
-				if (active) setMethods(FALLBACK_METHODS);
-			} finally {
-				if (active) setIsLoading(false);
-			}
-		};
-		void load();
-
-		return () => {
-			active = false;
-		};
-	}, []);
-
-	return { methods, isLoading };
+	return { methods: query.data ?? FALLBACK_METHODS, isLoading: query.isPending };
 }

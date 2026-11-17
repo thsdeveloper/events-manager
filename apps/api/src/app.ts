@@ -1,7 +1,7 @@
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
-import Fastify from 'fastify';
+import Fastify, { type FastifyRequest } from 'fastify';
 import rawBody from 'fastify-raw-body';
 import { CheckHealth } from './application/health/check-health.js';
 import type { ApiEnv } from './config/env.js';
@@ -14,6 +14,7 @@ import { contentRoutes } from './routes/content.js';
 import { couponRoutes } from './routes/coupons.js';
 import { eventRoutes } from './routes/events.js';
 import { adminRoutes } from './routes/admin.js';
+import { ticketGroupRoutes } from './routes/ticket-groups.js';
 import { emailRoutes } from './routes/email.js';
 import { eventPageRoutes } from './routes/event-pages.js';
 import { externalRoutes } from './routes/external.js';
@@ -25,11 +26,21 @@ import { superAdminRoutes } from './routes/super-admin.js';
 import { uploadRoutes } from './routes/uploads.js';
 import { userRoutes } from './routes/users.js';
 import { installErrorHandler } from './shared/errors.js';
+import { installHttpSecurity } from './shared/http-security.js';
 
 export async function buildApp(env: ApiEnv) {
 	const app = Fastify({
-		logger: env.NODE_ENV !== 'test',
-		trustProxy: env.TRUST_PROXY_HOPS || false,
+		logger: env.NODE_ENV !== 'test' && {
+			redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
+			serializers: {
+				req: (request: FastifyRequest) => ({
+					method: request.method,
+					url: request.url?.split('?')[0],
+					remoteAddress: request.ip,
+				}),
+			},
+		},
+		trustProxy: env.TRUST_PROXY_HOPS > 0 ? (_address, hop) => hop < env.TRUST_PROXY_HOPS : false,
 	});
 	const clients = createSupabaseClients(env);
 	const payments = createPaymentGateway(env);
@@ -41,10 +52,7 @@ export async function buildApp(env: ApiEnv) {
 	await app.register(rawBody, { global: false, field: 'rawBody', encoding: false, runFirst: true });
 
 	installErrorHandler(app);
-	app.addHook('onRequest', async (request, reply) => {
-		reply.header('x-request-id', request.id);
-		reply.header('x-content-type-options', 'nosniff');
-	});
+	installHttpSecurity(app, env.WEB_URL);
 
 	app.get('/health', () => checkHealth.execute());
 
@@ -54,6 +62,7 @@ export async function buildApp(env: ApiEnv) {
 	await app.register(eventRoutes, { clients });
 	await app.register(organizerRoutes, { env, clients });
 	await app.register(adminRoutes, { clients, payments });
+	await app.register(ticketGroupRoutes, { clients });
 	await app.register(userRoutes, { clients, env });
 	await app.register(eventPageRoutes, { clients });
 	await app.register(locationRoutes, { clients });

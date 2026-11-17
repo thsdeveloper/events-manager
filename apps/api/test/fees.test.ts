@@ -5,6 +5,7 @@ import { buildRouteTestApp, createSupabaseClientsStub, createTestEnv } from './s
 const configuration = {
 	id: 1,
 	platform_fee_percentage: 5,
+	platform_fee_minimum: 3,
 	pix_fee_fixed: 0.8,
 	card_fee_percentage: 3.5,
 	card_fee_fixed: 0.6,
@@ -29,6 +30,7 @@ describe('GET /api/content/fees', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.json()).toEqual({
 			platform_fee_percentage: 5,
+			platform_fee_minimum: 3,
 			pix_fee_fixed: 0.8,
 			card_fee_percentage: 3.5,
 			card_fee_fixed: 0.6,

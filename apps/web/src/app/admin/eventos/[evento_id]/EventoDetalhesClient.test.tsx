@@ -9,6 +9,7 @@ import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@
 import EventoDetalhesClient from './EventoDetalhesClient';
 
 const router = { push: vi.fn(), refresh: vi.fn() };
+vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 vi.mock('next/link', () => ({
 	default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
@@ -101,4 +102,51 @@ describe('EventoDetalhesClient', () => {
 		expect(screen.getByText('encontros')).toBeInTheDocument();
 		expect(screen.queryByText(/<strong>/)).not.toBeInTheDocument();
 	});
+});
+
+describe('prévia e retirada do ar', () => {
+	it('links a draft to its private preview', () => {
+		renderWithProviders(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
+		expect(screen.getByRole('link', { name: /Prévia/ })).toHaveAttribute('href', '/admin/eventos/e-1/previa');
+	});
+	it('unpublishes only after confirmation', async () => {
+		const requests = mockFetch([['/api/events/e-1', () => jsonResponse({ ...event, status: 'draft' })]]);
+		const { user } = renderWithProviders(
+			<EventoDetalhesClient initialEvent={{ ...event, status: 'published' } as Event} evento_id="e-1" />,
+		);
+		await user.click(screen.getByRole('button', { name: 'Despublicar' }));
+		expect(requests.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+		await user.click(
+			within(screen.getByRole('alertdialog', { name: 'Despublicar evento' })).getByRole('button', {
+				name: 'Despublicar',
+			}),
+		);
+		await waitFor(() =>
+			expect(requests).toHaveBeenCalledWith('/api/events/e-1', expect.objectContaining({ method: 'PATCH' })),
+		);
+		const call = requests.mock.calls.find(([, init]) => init?.method === 'PATCH');
+		expect(JSON.parse(String(call?.[1]?.body))).toEqual({ status: 'draft' });
+	});
+});
+
+it('separates confirmed sales, reservations and paid revenue', () => {
+	const initialEvent = {
+		...event,
+		tickets: [{ id: 't-1', quantity: 10, quantity_sold: 3, price: 100 }],
+		registrations: [
+			{
+				id: 'r-1',
+				status: 'pending',
+				payment_status: 'pending',
+				quantity: 2,
+				payment_amount: 200,
+				inventory_reserved: true,
+			},
+			{ id: 'r-2', status: 'confirmed', payment_status: 'paid', quantity: 1, payment_amount: 100 },
+		],
+	} as unknown as Event;
+	renderWithProviders(<EventoDetalhesClient initialEvent={initialEvent} evento_id="e-1" />);
+	expect(within(screen.getByRole('group', { name: 'Ingressos vendidos' })).getByText('1')).toBeInTheDocument();
+	expect(within(screen.getByRole('group', { name: 'Reservados' })).getByText('2')).toBeInTheDocument();
+	expect(within(screen.getByRole('group', { name: 'Receita bruta' })).getByText(/100,00/)).toBeInTheDocument();
 });

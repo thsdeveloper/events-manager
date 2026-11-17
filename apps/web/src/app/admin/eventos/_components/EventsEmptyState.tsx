@@ -1,30 +1,28 @@
-import { Plus } from 'lucide-react';
+import { CalendarDays, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { Illustration } from '@/components/design-system/atoms/Illustration';
 import { Button } from '@/components/ui/button';
-import { Heading } from '@/components/design-system/atoms/Heading';
-import { Card, CardDescription, CardFooter, CardHeader } from '@/components/ui/card';
-import { emptyIllustrations } from '@/lib/illustrations';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 
-/** Lista de eventos do organizador ainda vazia: convida a criar o primeiro. */
 export function EventsEmptyState() {
 	return (
-		<Card className="grid place-items-center border-dashed py-16 text-center">
-			<CardHeader className="items-center">
-				<Illustration illustration={emptyIllustrations.events} className="mb-2 h-36" />
-				<Heading level="h2" className="text-xl">
+		<Empty className="border">
+			<EmptyHeader>
+				<EmptyMedia variant="icon">
+					<CalendarDays aria-hidden="true" />
+				</EmptyMedia>
+				<EmptyTitle role="heading" aria-level={2}>
 					Nenhum evento criado ainda
-				</Heading>
-				<CardDescription>Crie seu primeiro evento e acompanhe tudo por aqui.</CardDescription>
-			</CardHeader>
-			<CardFooter>
-				<Button asChild className="gap-2">
+				</EmptyTitle>
+				<EmptyDescription>Crie seu primeiro evento e acompanhe tudo por aqui.</EmptyDescription>
+			</EmptyHeader>
+			<EmptyContent>
+				<Button asChild>
 					<Link href="/admin/eventos/novo">
-						<Plus className="size-4" />
+						<Plus />
 						Criar primeiro evento
 					</Link>
 				</Button>
-			</CardFooter>
-		</Card>
+			</EmptyContent>
+		</Empty>
 	);
 }

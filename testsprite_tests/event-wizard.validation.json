@@ -1,0 +1,175 @@
+{
+	"date": "2026-11-17",
+	"scope": "Cadastro de eventos, IA, cabeçalhos sem setas e período de vendas somente por ingresso/lote.",
+	"results": {
+		"web": {
+			"testsPassed": 721,
+			"filesPassed": 170,
+			"coveragePercent": {
+				"statements": 72.42,
+				"branches": 78.28,
+				"functions": 77.36,
+				"lines": 72.42
+			}
+		},
+		"api": {
+			"testsPassed": 523,
+			"filesPassed": 50,
+			"coveragePercent": {
+				"statements": 73.02,
+				"branches": 83.36,
+				"functions": 76.08,
+				"lines": 73.02
+			}
+		},
+		"contracts": {
+			"testsPassed": 142,
+			"filesPassed": 11,
+			"coveragePercent": {
+				"statements": 95.28,
+				"branches": 88.21,
+				"functions": 94.23,
+				"lines": 95.28
+			}
+		}
+	},
+	"checks": [
+		{
+			"command": "pnpm --dir apps/web test:coverage --maxWorkers=2 --testTimeout=15000",
+			"status": "passed",
+			"note": "Limite de tempo ampliado apenas nesta execução para evitar contenção com os servidores locais; configuração e limiares do projeto preservados."
+		},
+		{
+			"command": "pnpm --dir apps/api test --maxWorkers=2",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir apps/api test:coverage --maxWorkers=2",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir packages/contracts test:coverage",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir apps/web lint",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir apps/api lint",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir packages/contracts lint",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir /tmp/events-wizard-build/apps/web build",
+			"status": "passed",
+			"note": "Build Next.js em cópia isolada, com dois workers, preservando o servidor de desenvolvimento e seu .next."
+		},
+		{
+			"command": "pnpm --dir apps/api exec tsc -p tsconfig.build.json --outDir /tmp/events-wizard-api-build",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir packages/contracts build",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm exec prettier --check <arquivos alterados>",
+			"status": "passed"
+		},
+		{
+			"command": "node testsprite_tests/ticket-sales-period.migration.cjs",
+			"status": "passed",
+			"checks": 7,
+			"note": "Banco temporário isolado, removido ao concluir."
+		}
+	],
+	"browser": {
+		"script": "testsprite_tests/event-wizard.browser.js",
+		"environment": "Build de produção local em localhost:3004, API e Supabase locais",
+		"result": {
+			"eventPosts": 1,
+			"status": "draft",
+			"ticketCount": 1,
+			"titleAndCategoryInDescription": true,
+			"completeCoverContext": true,
+			"onlyTicketSalesPeriod": true,
+			"explicitConfirmation": true,
+			"mobileOverflow": false
+		},
+		"aiResponses": "Simuladas, sem chamadas pagas à OpenAI.",
+		"eventPersistence": "Evento e ingresso gravados pela API real e excluídos após as verificações.",
+		"cleanup": "Conta e organização temporárias removidas; navegador e servidor temporário encerrados.",
+		"developmentHealth": {
+			"web": 200,
+			"api": 200
+		}
+	},
+	"screenshots": [
+		"testsprite_tests/tmp/wizard-description-production.png",
+		"testsprite_tests/tmp/wizard-review-production.png",
+		"testsprite_tests/tmp/wizard-review-production-mobile.png"
+	],
+	"migration": {
+		"file": "supabase/migrations/202611170001_ticket_sales_period_only.sql",
+		"appliedLocally": true,
+		"appliedToProduction": false,
+		"behavior": "Transfere a interseção das janelas antigas para os ingressos; períodos incompatíveis permanecem indisponíveis; impede novas datas globais de venda no evento."
+	},
+	"ai": {
+		"coverModel": "gpt-image-2.6-flare",
+		"coverSettings": {
+			"quality": "low",
+			"complexity": "low",
+			"size": "1536x864",
+			"format": "jpeg"
+		},
+		"descriptionModel": "gpt-6-luna",
+		"descriptionMaxOutputTokens": 1000,
+		"requiredExistingEnvironmentVariable": "OPENAI_API_KEY",
+		"liveProviderCallTested": false,
+		"automaticRetries": false,
+		"limitsPerUserPerHour": {
+			"cover": 6,
+			"description": 20
+		},
+		"references": [
+			"https://developers.openai.com/api/docs/models/gpt-image-2.6-flare",
+			"https://developers.openai.com/api/docs/models/gpt-6-luna",
+			"https://developers.openai.com/api/docs/guides/image-generation"
+		]
+	},
+	"performance": {
+		"changes": [
+			"Assinaturas do formulário por etapa, evitando renderização global a cada tecla.",
+			"Categorias em cache com TanStack Query por dez minutos.",
+			"Prévia e assistente de descrição carregados sob demanda com fronteiras de carregamento locais.",
+			"Layout da prévia memoizado, sem recriar as seções durante o autosalvamento.",
+			"Removidos confete e atraso artificial após salvar."
+		],
+		"firstLoadJsEventCreationKb": {
+			"before": 220,
+			"after": 221
+		},
+		"note": "O bundle inicial ficou aproximadamente estável com as funcionalidades adicionadas. Não foi feito benchmark de latência com a OpenAI real."
+	},
+	"testFilesChanged": [
+		"apps/web/src/app/admin/eventos/novo/page.test.tsx",
+		"apps/web/src/app/admin/eventos/novo/_components/EventCreationWizard.edit.test.tsx",
+		"apps/web/src/app/admin/eventos/novo/_components/steps/DetailsStep.test.tsx",
+		"apps/web/src/components/admin/AIImageGenerationModal.test.tsx",
+		"apps/web/src/components/ui/date-time-picker.test.tsx",
+		"apps/web/src/components/design-system/molecules/PageHeader.test.tsx",
+		"apps/web/src/features/tickets/components/TicketFormSheet.test.tsx",
+		"apps/web/src/features/tickets/components/TicketGroupingEditor.test.tsx",
+		"apps/api/test/payments.test.ts",
+		"apps/api/test/event-ai-routes.test.ts",
+		"apps/api/test/application-services.test.ts",
+		"apps/api/test/events.test.ts",
+		"packages/contracts/src/event-drafts.test.ts",
+		"packages/contracts/src/schemas.test.ts"
+	]
+}

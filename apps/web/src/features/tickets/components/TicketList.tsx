@@ -1,87 +1,14 @@
 'use client';
-
-import { Eye, EyeOff, Infinity as InfinityIcon, Pencil, Plus, Ticket, Trash2, Users } from 'lucide-react';
-import { memo, useCallback } from 'react';
+import { Empty } from '@/components/ui/empty';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/fees';
-import { cn } from '@/lib/utils';
 import { ticketKey, type TicketDraft } from '../types';
-
-const VISIBILITY_LABEL = {
-	public: 'Público',
-	invited_only: 'Convidados',
-	manual: 'Manual',
-} as const;
-
-interface TicketRowProps {
-	ticket: TicketDraft;
-	isFree: boolean;
-	onEdit: (ticket: TicketDraft) => void;
-	onRemove: (ticket: TicketDraft) => void;
+export interface TicketGroupOption {
+	id: string;
+	title: string;
+	parent_id?: string | null;
 }
-
-const TicketRow = memo(function TicketRow({ ticket, isFree, onEdit, onRemove }: TicketRowProps) {
-	// Bound here so each row keeps a stable handler and memoisation actually holds.
-	const handleEdit = useCallback(() => onEdit(ticket), [onEdit, ticket]);
-	const handleRemove = useCallback(() => onRemove(ticket), [onRemove, ticket]);
-	const isPublic = ticket.visibility === 'public';
-
-	return (
-		<li className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary/40">
-			<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-				<Ticket className="size-5" />
-			</div>
-
-			<div className="min-w-0 flex-1">
-				<p className="truncate font-semibold text-foreground">{ticket.title}</p>
-				<div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-					<span className="inline-flex items-center gap-1">
-						<Users className="size-3" />
-						{ticket.quantity.toLocaleString('pt-BR')} disponíveis
-					</span>
-					<span className="inline-flex items-center gap-1">
-						{isPublic ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
-						{VISIBILITY_LABEL[ticket.visibility]}
-					</span>
-					{ticket.allow_installments && ticket.max_installments ? (
-						<span className="inline-flex items-center gap-1">
-							<InfinityIcon className="size-3" />
-							até {ticket.max_installments}x
-						</span>
-					) : null}
-				</div>
-			</div>
-
-			<div className="text-right">
-				<p className={cn('font-bold tabular-nums', isFree ? 'text-emerald-600' : 'text-foreground')}>
-					{isFree || ticket.price === 0 ? 'Gratuito' : formatCurrency(Number(ticket.price))}
-				</p>
-				{!isFree && ticket.price > 0 && (
-					<p className="text-[11px] text-muted-foreground">
-						{ticket.service_fee_type === 'passed_to_buyer' ? 'comprador paga a taxa' : 'taxa absorvida'}
-					</p>
-				)}
-			</div>
-
-			<div className="flex items-center gap-1">
-				<Button type="button" variant="ghost" size="icon" onClick={handleEdit} aria-label={`Editar ${ticket.title}`}>
-					<Pencil className="size-4" />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					onClick={handleRemove}
-					aria-label={`Remover ${ticket.title}`}
-					className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-				>
-					<Trash2 className="size-4" />
-				</Button>
-			</div>
-		</li>
-	);
-});
-
 interface TicketListProps {
 	tickets: TicketDraft[];
 	isFree: boolean;
@@ -89,39 +16,123 @@ interface TicketListProps {
 	onEdit: (ticket: TicketDraft) => void;
 	onRemove: (ticket: TicketDraft) => void;
 	emptyHint?: string;
+	onReorder?: (tickets: TicketDraft[]) => void;
+	onDuplicate?: (ticket: TicketDraft) => void;
+	groups?: TicketGroupOption[];
 }
-
-export function TicketList({ tickets, isFree, onAdd, onEdit, onRemove, emptyHint }: TicketListProps) {
-	if (tickets.length === 0) {
-		return (
-			<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-6 py-10 text-center">
-				<div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-					<Ticket className="size-6" />
-				</div>
-				<div>
-					<p className="font-medium text-foreground">Nenhum ingresso cadastrado</p>
-					<p className="mt-1 max-w-sm text-sm text-muted-foreground">
-						{emptyHint ?? 'Cadastre pelo menos um tipo de ingresso para o público conseguir se inscrever.'}
-					</p>
-				</div>
-				<Button type="button" onClick={onAdd}>
-					<Plus className="mr-2 size-4" />
-					Adicionar ingresso
-				</Button>
-			</div>
-		);
-	}
+export function TicketList({
+	tickets,
+	isFree,
+	onAdd,
+	onEdit,
+	onRemove,
+	emptyHint,
+	onReorder,
+	onDuplicate,
+	groups = [],
+}: TicketListProps) {
+	const move = (index: number, direction: -1 | 1) => {
+		const next = [...tickets];
+		[next[index], next[index + direction]] = [next[index + direction], next[index]];
+		onReorder?.(next);
+	};
 
 	return (
 		<div className="space-y-3">
-			<ul className="space-y-2">
-				{tickets.map(ticket => (
-					<TicketRow key={ticketKey(ticket)} ticket={ticket} isFree={isFree} onEdit={onEdit} onRemove={onRemove} />
-				))}
-			</ul>
-			<Button type="button" variant="outline" onClick={onAdd} className="w-full border-dashed">
-				<Plus className="mr-2 size-4" />
-				Adicionar outro ingresso
+			{tickets.length === 0 ? (
+				<Empty className="rounded-lg border border-dashed p-6 text-center">
+					<p className="font-medium">Nenhum ingresso cadastrado</p>
+					<p className="text-sm text-muted-foreground">
+						{emptyHint ?? 'Cadastre pelo menos um tipo de ingresso para o público conseguir se inscrever.'}
+					</p>
+				</Empty>
+			) : (
+				<ul className="space-y-2">
+					{tickets.map((ticket, index) => (
+						<li key={ticketKey(ticket)}>
+							<Card className="flex flex-wrap items-center gap-3 p-4">
+								<div className="min-w-0 flex-1">
+									<p className="font-semibold">{ticket.title}</p>
+									<p className="text-xs text-muted-foreground">
+										{ticket.quantity.toLocaleString('pt-BR')} disponíveis ·{' '}
+										{ticket.visibility === 'public'
+											? 'Público'
+											: ticket.visibility === 'manual'
+												? 'Manual — emissão indisponível'
+												: 'Convidados — venda indisponível'}
+									</p>
+									<p className="text-xs text-muted-foreground">
+										{ticket.admission_type === 'half_price' ? 'Meia-entrada · ' : ''}
+										{groups.find((group) => group.id === ticket.group_id)?.title}
+									</p>
+								</div>
+								<div className="text-right">
+									<p className="font-bold">
+										{isFree || ticket.price === 0 ? 'Gratuito' : formatCurrency(Number(ticket.price))}
+									</p>
+									{!isFree && ticket.price > 0 && (
+										<p className="text-xs text-muted-foreground">
+											{ticket.service_fee_type === 'passed_to_buyer' ? 'comprador paga a taxa' : 'taxa absorvida'}
+										</p>
+									)}
+								</div>
+								<div className="flex flex-wrap gap-1">
+									{onReorder && (
+										<>
+											<Button
+												type="button"
+												variant="ghost"
+												disabled={index === 0}
+												aria-label={'Mover ' + ticket.title + ' para cima'}
+												onClick={() => move(index, -1)}
+											>
+												↑
+											</Button>
+											<Button
+												type="button"
+												variant="ghost"
+												disabled={index === tickets.length - 1}
+												aria-label={'Mover ' + ticket.title + ' para baixo'}
+												onClick={() => move(index, 1)}
+											>
+												↓
+											</Button>
+										</>
+									)}
+									<Button
+										type="button"
+										variant="ghost"
+										aria-label={'Editar ' + ticket.title}
+										onClick={() => onEdit(ticket)}
+									>
+										Editar
+									</Button>
+									{onDuplicate && (
+										<Button
+											type="button"
+											variant="ghost"
+											aria-label={'Duplicar ' + ticket.title}
+											onClick={() => onDuplicate(ticket)}
+										>
+											Duplicar
+										</Button>
+									)}
+									<Button
+										type="button"
+										variant="ghost"
+										aria-label={'Remover ' + ticket.title}
+										onClick={() => onRemove(ticket)}
+									>
+										Remover
+									</Button>
+								</div>
+							</Card>
+						</li>
+					))}
+				</ul>
+			)}
+			<Button type="button" variant={tickets.length ? 'outline' : 'default'} onClick={onAdd}>
+				{tickets.length ? 'Adicionar outro ingresso' : 'Adicionar ingresso'}
 			</Button>
 		</div>
 	);

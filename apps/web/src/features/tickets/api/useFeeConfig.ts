@@ -5,6 +5,7 @@ import type { FeeConfig } from '@/lib/fees';
 
 const FALLBACK_FEE_CONFIG: FeeConfig = {
 	platformFeePercentage: 5,
+	platformFeeMinimum: 0,
 	providerPercentageFee: 3.5,
 	providerFixedFee: 0.6,
 };
@@ -17,6 +18,7 @@ async function fetchFeeConfig(): Promise<FeeConfig> {
 
 	return {
 		platformFeePercentage: Number(config?.platform_fee_percentage ?? FALLBACK_FEE_CONFIG.platformFeePercentage),
+		platformFeeMinimum: Number(config?.platform_fee_minimum ?? 0),
 		providerPercentageFee: Number(config?.card_fee_percentage ?? FALLBACK_FEE_CONFIG.providerPercentageFee),
 		providerFixedFee: Number(config?.card_fee_fixed ?? FALLBACK_FEE_CONFIG.providerFixedFee),
 	};

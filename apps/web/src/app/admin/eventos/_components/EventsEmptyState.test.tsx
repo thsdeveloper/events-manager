@@ -9,11 +9,11 @@ vi.mock('next/link', () => ({
 }));
 
 describe('EventsEmptyState', () => {
-	it('invites the organizer to create the first event, with the calendar illustration', () => {
+	it('invites the organizer to create the first event in a standard empty state', () => {
 		const { container } = renderWithProviders(<EventsEmptyState />);
 
 		expect(screen.getByRole('heading', { name: 'Nenhum evento criado ainda' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: /criar primeiro evento/i })).toHaveAttribute('href', '/admin/eventos/novo');
-		expect(container.querySelector('img[aria-hidden="true"]')).toHaveAttribute('src', '/images/empty/events.svg');
+		expect(container.querySelector('img')).not.toBeInTheDocument();
 	});
 });

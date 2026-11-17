@@ -23,23 +23,31 @@ import {
 	Phone,
 	AlertCircle,
 } from 'lucide-react';
+import { EventLanguageLinks } from '@/features/event-page/components/EventLanguageLinks';
+import { descriptionLanguage, descriptionForLanguage } from '@/features/event-page/content';
 import type { EventTicket } from '@events-manager/contracts';
 
 interface EventPageProps {
+	searchParams?: Promise<{ lang?: string | string[] }>;
 	params: Promise<{
 		slug: string;
 	}>;
 }
 
-export async function generateMetadata({ params }: EventPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: EventPageProps): Promise<Metadata> {
 	const { slug } = await params;
 	try {
 		const event = await fetchEventBySlug(slug);
+		const language = descriptionLanguage(searchParams ? (await searchParams).lang : undefined);
+		const description = descriptionForLanguage(event, language);
 
 		return {
 			title: event.title,
 			...(event.visibility === 'unlisted' ? { robots: { index: false, follow: false } } : {}),
-			description: event.short_description || htmlToPlainText(event.description ?? '').substring(0, 160),
+			description:
+				language === 'pt'
+					? event.short_description || htmlToPlainText(description).substring(0, 160)
+					: htmlToPlainText(description).substring(0, 160),
 		};
 	} catch (error) {
 		return {
@@ -48,7 +56,7 @@ export async function generateMetadata({ params }: EventPageProps): Promise<Meta
 	}
 }
 
-export default async function EventPage({ params }: EventPageProps) {
+export default async function EventPage({ params, searchParams }: EventPageProps) {
 	const { slug } = await params;
 	let event;
 
@@ -58,6 +66,9 @@ export default async function EventPage({ params }: EventPageProps) {
 		notFound();
 	}
 
+	const language = descriptionLanguage(searchParams ? (await searchParams).lang : undefined);
+	const originalEvent = event;
+	event = { ...event, description: descriptionForLanguage(event, language) };
 	const formatDate = (dateString: string) => {
 		const date = new Date(dateString);
 
@@ -112,8 +123,8 @@ export default async function EventPage({ params }: EventPageProps) {
 	const eventCategory = typeof event.category_id !== 'string' ? event.category_id : null;
 
 	// Landing publicada pelo organizador: a página é dele, sem a casca do site.
-	if (event.page) {
-		return <EventLandingPage event={event} layout={event.page} />;
+	if (originalEvent.page) {
+		return <EventLandingPage event={originalEvent} layout={originalEvent.page} language={language} />;
 	}
 
 	const { globals, headerNavigation, footerNavigation } = await fetchSiteData();
@@ -125,6 +136,7 @@ export default async function EventPage({ params }: EventPageProps) {
 					<EventHero
 						category={eventCategory ?? null}
 						coverImage={event.cover_image}
+						coverImageAlt={event.cover_image_alt}
 						dateLabel={formatDateRange()}
 						formatLabel={
 							event.event_type === 'in_person' ? 'Presencial' : event.event_type === 'online' ? 'Online' : 'Híbrido'
@@ -141,6 +153,7 @@ export default async function EventPage({ params }: EventPageProps) {
 							<div className="lg:col-span-2 space-y-8">
 								{/* Description */}
 								<div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-8 md:p-10 border border-gray-100 dark:border-gray-700">
+									<EventLanguageLinks event={originalEvent} language={language} />
 									<h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-6">
 										Sobre o evento
 									</h2>
@@ -176,22 +189,31 @@ export default async function EventPage({ params }: EventPageProps) {
 								</div>
 
 								{/* Location */}
-								{(event.location_name || event.location_address) && (
+								{(event.location_tbd || event.location_name || event.location_address) && (
 									<div className="bg-white rounded-lg shadow-sm p-8">
 										<h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
 											<MapPin className="size-6 text-purple-600" />
 											Local
 										</h2>
-										{event.location_name && (
-											<p className="text-lg font-semibold text-gray-900 mb-2">{event.location_name}</p>
+										{event.location_tbd ? (
+											<p className="text-lg font-semibold">Local a definir</p>
+										) : (
+											event.location_name && (
+												<p className="text-lg font-semibold text-gray-900 mb-2">{event.location_name}</p>
+											)
 										)}
-										{event.location_address && <p className="text-gray-600">{event.location_address}</p>}
-										{typeof event.latitude === 'number' && typeof event.longitude === 'number' && (
-											<EventLocationView
-												position={{ latitude: event.latitude, longitude: event.longitude }}
-												locationName={event.location_name}
-											/>
+										{!event.location_tbd && event.location_address && (
+											<p className="text-gray-600">{event.location_address}</p>
 										)}
+										{!event.location_tbd &&
+											event.show_map !== false &&
+											typeof event.latitude === 'number' &&
+											typeof event.longitude === 'number' && (
+												<EventLocationView
+													position={{ latitude: event.latitude, longitude: event.longitude }}
+													locationName={event.location_name}
+												/>
+											)}
 									</div>
 								)}
 
@@ -367,18 +389,6 @@ export default async function EventPage({ params }: EventPageProps) {
 												</p>
 											</div>
 										</div>
-
-										{(event.registration_start || event.registration_end) && (
-											<div className="pt-4 border-t border-gray-100">
-												<p className="font-semibold text-gray-900 mb-2 text-sm">Período de Inscrições</p>
-												{event.registration_start && (
-													<p className="text-xs text-gray-600">Início: {formatDate(event.registration_start)}</p>
-												)}
-												{event.registration_end && (
-													<p className="text-xs text-gray-600">Término: {formatDate(event.registration_end)}</p>
-												)}
-											</div>
-										)}
 									</div>
 
 									{/* Share Button */}

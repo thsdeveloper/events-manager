@@ -26,13 +26,13 @@ export default defineConfig({
 			reportsDirectory: './coverage',
 			include: ['src/lib/**', 'src/hooks/**', 'src/features/**', 'src/components/**'],
 			exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/components/ui/**', 'src/components/animate-ui/**'],
-			// Catraca: valores medidos em 2026-09-05 (todos os arquivos do `include`
+			// Catraca: atualizada na migração do admin para Shadcn/UI (todos os arquivos do `include`
 			// contam, cobertos ou não). Só podem subir; eleve ao cobrir um módulo.
 			thresholds: {
-				lines: 53,
-				functions: 75,
-				branches: 76,
-				statements: 53,
+				lines: 76.5,
+				functions: 78.5,
+				branches: 79.1,
+				statements: 76.5,
 			},
 		},
 		projects: [

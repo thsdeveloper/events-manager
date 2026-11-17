@@ -1,5 +1,8 @@
 'use client';
 
+import { Empty } from '@/components/ui/empty';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import {
 	ArrowDown,
 	ArrowUp,
@@ -110,14 +113,14 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 
 		return (
 			<li key={item.id} className="space-y-2">
-				<div
+				<Card
 					className={cn(
-						'flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm',
+						'flex flex-wrap items-center gap-3 p-3',
 						parent && 'ml-8',
 						busy && 'pointer-events-none opacity-60',
 					)}
 				>
-					{parent && <CornerDownRight className="size-4 text-slate-400" />}
+					{parent && <CornerDownRight className="size-4 text-muted-foreground" />}
 					<div className="flex flex-col">
 						<Button
 							size="icon"
@@ -140,12 +143,12 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 							<ArrowDown className="size-4" />
 						</Button>
 					</div>
-					<span className="flex size-9 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+					<span className="flex size-9 items-center justify-center rounded-lg bg-accent text-primary">
 						<Icon className="size-4" />
 					</span>
 					<div className="min-w-0 flex-1">
-						<p className="font-medium text-slate-950">{item.title}</p>
-						<p className="truncate text-xs text-slate-500">{itemTarget(item)}</p>
+						<p className="font-medium text-foreground">{item.title}</p>
+						<p className="truncate text-xs text-muted-foreground">{itemTarget(item)}</p>
 					</div>
 					<div className="flex items-center gap-1">
 						{!parent && (
@@ -169,15 +172,14 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 						</Button>
 						<Button
 							size="icon"
-							variant="ghost"
+							variant="destructive"
 							onClick={() => setToDelete(item)}
 							aria-label={`Excluir ${item.title}`}
-							className="text-red-600 hover:bg-red-50 hover:text-red-700"
 						>
 							<Trash2 className="size-4" />
 						</Button>
 					</div>
-				</div>
+				</Card>
 				{item.children.length > 0 && (
 					<ul className="space-y-2">
 						{item.children.map((child, childIndex) => renderItem(child, item.children, childIndex, item))}
@@ -189,8 +191,8 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 
 	return (
 		<div className="space-y-4">
-			<div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-				<label className="flex items-center gap-3 text-sm">
+			<Card className="flex flex-wrap items-center justify-between gap-4 p-4">
+				<Label className="flex items-center gap-3 text-sm">
 					<Switch
 						checked={navigation.is_active}
 						onCheckedChange={toggleActive}
@@ -198,22 +200,22 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 						disabled={busy}
 					/>
 					<span>
-						<span className="font-medium text-slate-950">
+						<span className="font-medium text-foreground">
 							{navigation.is_active ? 'Menu ativo' : 'Menu desativado'}
 						</span>
-						<span className="block text-xs text-slate-500">Um menu desativado não aparece no site.</span>
+						<span className="block text-xs text-muted-foreground">Um menu desativado não aparece no site.</span>
 					</span>
-				</label>
+				</Label>
 				<Button onClick={() => setDialog({ item: null, parent: null })}>
 					<Plus className="mr-2 size-4" />
 					Adicionar item
 				</Button>
-			</div>
+			</Card>
 
 			{navigation.items.length === 0 ? (
-				<p className="rounded-lg border border-dashed bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+				<Empty className="rounded-lg border border-dashed bg-muted px-6 py-12 text-center text-sm text-muted-foreground">
 					Este menu ainda não tem itens.
-				</p>
+				</Empty>
 			) : (
 				<ul className="space-y-2">
 					{navigation.items.map((item, index) => renderItem(item, navigation.items, index, null))}

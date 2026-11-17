@@ -287,3 +287,144 @@ describe('PaymentService.checkout hospedado: método escolhido', () => {
 		expect(registrations[0]).toMatchObject({ payment_method: 'card', payment_status: 'paid' });
 	});
 });
+
+describe('minimum unit fee snapshots', () => {
+	it('uses the same per-unit minimum for provider products and stored orders', async () => {
+		const { service, repository, registrations } = buildService();
+		vi.mocked(repository.getConfiguration).mockResolvedValue({
+			...configuration,
+			platform_fee_percentage: 5,
+			platform_fee_minimum: 3,
+		} as never);
+		vi.mocked(repository.findCheckoutEvent).mockResolvedValue({
+			...event,
+			tickets: [{ ...event.tickets[0], price: 10, service_fee_type: 'passed_to_buyer' }],
+		});
+		await service.checkout(TEST_USER_ID, { ...cart, tickets: [{ ticketId: TICKET_ID, quantity: 2 }] }, logger);
+		expect(registrations[0]).toMatchObject({ unit_price: 10, total_amount: 26, platform_fee: 6, service_fee: 6 });
+		expect(repository.findProviderProduct).toHaveBeenCalledWith(TICKET_ID, 1300);
+	});
+});
+
+describe('installment current pricing', () => {
+	it('refuses an absorbed ticket below the new minimum with a validation error before creating a payment', async () => {
+		const { service, repository } = buildService();
+		Object.assign(repository, {
+			findTicketForInstallments: vi.fn().mockResolvedValue({
+				...event.tickets[0],
+				price: 2,
+				buyer_price: 2,
+				allow_installments: true,
+				max_installments: 3,
+				event_id: {
+					id: TEST_EVENT_ID,
+					title: 'Evento',
+					status: 'published',
+					registration_start: null,
+					registration_end: null,
+				},
+			}),
+		});
+		vi.mocked(repository.getConfiguration).mockResolvedValue({ ...configuration, platform_fee_minimum: 3 } as never);
+		await expect(
+			service.createInstallmentCheckout(
+				TEST_USER_ID,
+				{
+					ticket_id: TICKET_ID,
+					quantity: 1,
+					installments: 2,
+					participant_name: 'Ana',
+					participant_email: 'ana@example.com',
+				},
+				logger,
+			),
+		).rejects.toMatchObject({ statusCode: 422, code: 'TICKET_PRICE_BELOW_FEE' });
+		expect(repository.createRegistration).not.toHaveBeenCalled();
+	});
+	it('uses the current per-unit minimum for installment amounts and records immutable fee snapshots', async () => {
+		const { service, repository, registrations, gateway } = buildService();
+		Object.assign(repository, {
+			findTicketForInstallments: vi.fn().mockResolvedValue({
+				...event.tickets[0],
+				price: 10,
+				buyer_price: 10.5,
+				service_fee_type: 'passed_to_buyer',
+				allow_installments: true,
+				max_installments: 3,
+				event_id: {
+					id: TEST_EVENT_ID,
+					title: 'Evento',
+					status: 'published',
+					registration_start: null,
+					registration_end: null,
+				},
+			}),
+			createInstallments: vi.fn(async (rows: Array<Record<string, unknown>>) =>
+				rows.map((row, index) => ({ ...row, id: 'i-' + index })),
+			),
+			setInstallmentCharge: vi.fn().mockResolvedValue(undefined),
+		});
+		Object.assign(gateway, {
+			createPixCharge: vi.fn().mockResolvedValue({
+				id: 'pix-1',
+				qrCodeBase64: 'QR',
+				copyPasteCode: 'PIX',
+				expiresAt: '2026-12-01T12:00:00Z',
+			}),
+		});
+		vi.mocked(repository.getConfiguration).mockResolvedValue({
+			...configuration,
+			platform_fee_percentage: 5,
+			platform_fee_minimum: 3,
+		} as never);
+		const result = await service.createInstallmentCheckout(
+			TEST_USER_ID,
+			{
+				ticket_id: TICKET_ID,
+				quantity: 2,
+				installments: 2,
+				participant_name: 'Ana',
+				participant_email: 'ana@example.com',
+			},
+			logger,
+		);
+		expect(result.total_amount).toBe(26);
+		expect(registrations[0]).toMatchObject({ total_amount: 26, platform_fee: 6, service_fee: 6 });
+		expect(repository.createInstallments).toHaveBeenCalledWith([
+			expect.objectContaining({ amount: 13 }),
+			expect.objectContaining({ amount: 13 }),
+		]);
+	});
+});
+
+describe('project discounted fee snapshots', () => {
+	it.each([
+		{ discount: 26, total: 0, fee: 0 },
+		{ discount: 24, total: 2, fee: 2 },
+	])('stores fees limited to the actual discounted line total: $total', async ({ discount, total, fee }) => {
+		const coupons = partialMock<CouponApplier>({
+			validate: vi.fn().mockResolvedValue({ code: 'PROMO', discount, subtotal: 26, total }),
+		});
+		const { service, repository, registrations } = buildService({ coupons });
+		vi.mocked(repository.getConfiguration).mockResolvedValue({
+			...configuration,
+			platform_fee_percentage: 5,
+			platform_fee_minimum: 3,
+		} as never);
+		vi.mocked(repository.findCheckoutEvent).mockResolvedValue({
+			...event,
+			tickets: [{ ...event.tickets[0], price: 10, service_fee_type: 'passed_to_buyer' }],
+		});
+		await service.checkout(
+			TEST_USER_ID,
+			{ ...cart, couponCode: 'PROMO', tickets: [{ ticketId: TICKET_ID, quantity: 2 }] },
+			logger,
+		);
+		expect(registrations[0]).toMatchObject({
+			unit_price: 10,
+			total_amount: total,
+			platform_fee: fee,
+			service_fee: fee,
+		});
+	});
+});

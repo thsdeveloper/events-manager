@@ -11,6 +11,7 @@ async function fetchPublicFees(): Promise<PublicFeeTable> {
 
 	return {
 		platform_fee_percentage: numeric('platform_fee_percentage'),
+		platform_fee_minimum: Number(table.platform_fee_minimum ?? 0),
 		pix_fee_fixed: numeric('pix_fee_fixed'),
 		card_fee_percentage: numeric('card_fee_percentage'),
 		card_fee_fixed: numeric('card_fee_fixed'),

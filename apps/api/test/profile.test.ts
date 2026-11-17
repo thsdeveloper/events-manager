@@ -121,6 +121,21 @@ describe('AuthService.updateProfile', () => {
 		return { repository, avatarStorage, service: new AuthService(repository, avatarStorage) };
 	}
 
+	it('refuses changing the verified login email through profile fields', async () => {
+		const { repository, service } = setup(null);
+		await expect(service.updateProfile(identity, { email: 'victim@example.com' })).rejects.toMatchObject({
+			statusCode: 422,
+			code: 'EMAIL_CHANGE_NOT_ALLOWED',
+		});
+		expect(repository.updateProfile).not.toHaveBeenCalled();
+	});
+
+	it('permits saving an unchanged email alongside profile details', async () => {
+		const { repository, service } = setup(null);
+		await service.updateProfile(identity, { email: identity.email, description: 'Bio' });
+		expect(repository.updateProfile).toHaveBeenCalledWith(identity, { description: 'Bio' });
+	});
+
 	it('removes the previous photo from storage once a new one is saved', async () => {
 		const { repository, avatarStorage, service } = setup(previousAvatar);
 

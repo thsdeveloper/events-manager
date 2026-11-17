@@ -1,5 +1,7 @@
+import { calculateUnitBuyerPrice, calculateUnitPlatformFee } from '@events-manager/contracts';
 import { ticketInputSchema, type NominalTicket, type TicketInput } from '@events-manager/contracts';
 import { ApiError } from '../../shared/errors.js';
+import { csvCell } from '../security/csv.js';
 import type { RefundableRegistration } from '../payments/refund-registration.js';
 import type { TicketDelivery } from '../tickets/deliver-tickets.js';
 
@@ -70,6 +72,8 @@ export interface AdminRepository {
 	findTicket(id: string): Promise<AdminTicket | null>;
 	getConfiguration(): Promise<unknown>;
 	getPlatformFeePercentage(): Promise<number>;
+	nextTicketSort?(eventId: string): Promise<number>;
+	groupBelongsToEvent?(groupId: string, eventId: string): Promise<boolean>;
 	listEventOptions(organizerId: string): Promise<unknown[]>;
 	listOwnedEventIds(organizerId: string): Promise<string[]>;
 	listParticipantFilterOptions(eventIds: string[]): Promise<{ events: unknown[]; ticketTypes: unknown[] }>;
@@ -120,11 +124,12 @@ export class AdminService {
 		if (!ownedIds.includes(input.event_id)) {
 			throw new ApiError('Evento não encontrado ou sem permissão.', 403, 'FORBIDDEN');
 		}
+		await this.assertTicketGroup(input.group_id, input.event_id);
 		return this.repository.createTicket({
 			...input,
 			buyer_price: await this.buyerPrice(input.price, input.service_fee_type),
 			quantity_sold: 0,
-			sort: 0,
+			sort: this.repository.nextTicketSort ? await this.repository.nextTicketSort(input.event_id) : 0,
 		});
 	}
 
@@ -132,6 +137,9 @@ export class AdminService {
 		const current = await this.ownedTicket(organizerId, id);
 		const eventId = eventRelation(current).id;
 		ticketInputSchema.parse({ ...current, ...input, event_id: eventId });
+		if (input.event_id && input.event_id !== eventId)
+			throw new ApiError('O ingresso não pode ser movido para outro evento.', 422, 'INVALID_TICKET_EVENT');
+		await this.assertTicketGroup(input.group_id, eventId);
 		const price = input.price ?? Number(current.price);
 		const feeType = input.service_fee_type ?? current.service_fee_type;
 		const productChanged =
@@ -144,7 +152,13 @@ export class AdminService {
 	}
 
 	async deleteTicket(organizerId: string, id: string) {
-		await this.ownedTicket(organizerId, id);
+		const current = await this.ownedTicket(organizerId, id);
+		if (Number(current.quantity_sold ?? 0) > 0)
+			throw new ApiError(
+				'Este ingresso possui vendas ou reservas. Desative-o para preservar os pedidos.',
+				409,
+				'TICKET_HAS_ORDERS',
+			);
 		await this.repository.deleteTicket(id);
 	}
 
@@ -164,6 +178,8 @@ export class AdminService {
 			provider_product_id: null,
 			event_id: ownedEvent.id,
 			title: `${current.title} - Cópia`,
+			sort: this.repository.nextTicketSort ? await this.repository.nextTicketSort(ownedEvent.id) : 0,
+			buyer_price: await this.buyerPrice(Number(current.price), current.service_fee_type),
 			status: 'inactive',
 			quantity_sold: 0,
 		});
@@ -326,9 +342,27 @@ export class AdminService {
 		return ticket;
 	}
 
+	private async assertTicketGroup(groupId: string | null | undefined, eventId: string) {
+		if (
+			groupId &&
+			(!this.repository.groupBelongsToEvent || !(await this.repository.groupBelongsToEvent(groupId, eventId)))
+		)
+			throw new ApiError('Grupo não pertence a este evento.', 422, 'INVALID_TICKET_GROUP');
+	}
 	private async buyerPrice(price: number, feeType: string) {
-		const fee = await this.repository.getPlatformFeePercentage();
-		return feeType === 'passed_to_buyer' ? price * (1 + fee / 100) : price;
+		const config = this.repository.getConfiguration
+			? ((await this.repository.getConfiguration()) as {
+					platform_fee_percentage?: number;
+					platform_fee_minimum?: number;
+				})
+			: { platform_fee_percentage: await this.repository.getPlatformFeePercentage() };
+		if (price > 0 && feeType === 'absorbed' && calculateUnitPlatformFee(price, config) > price)
+			throw new ApiError(
+				'O preço não cobre a taxa mínima. Aumente o preço ou repasse a taxa ao comprador.',
+				422,
+				'TICKET_PRICE_BELOW_FEE',
+			);
+		return calculateUnitBuyerPrice(price, feeType, config);
 	}
 
 	private async ownedNominalTicket(organizerId: string, id: string) {
@@ -360,8 +394,4 @@ function emptyParticipantPage(page: number, limit: number) {
 		meta: { total: 0, page, limit, pageCount: 0 },
 		metrics: { total: 0, checkedIn: 0, pending: 0, checkInRate: 0 },
 	};
-}
-
-function csvCell(value: unknown) {
-	return `"${String(value ?? '').replaceAll('"', '""')}"`;
 }

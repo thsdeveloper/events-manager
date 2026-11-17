@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 import { notFound } from 'next/navigation';
 import type { Event } from '@events-manager/contracts';
 import { authenticatedBackendFetch, BackendRequestError } from '@/lib/backend-auth';
@@ -25,7 +26,8 @@ export default async function EditarEventoPage({ params }: PageProps) {
 	if (!event) notFound();
 
 	return (
-		<div className="mx-auto -mt-2 space-y-6 pb-24 sm:-mt-4 lg:-mt-6">
+		<div className="w-full space-y-6 pb-24">
+			<PageHeader title="Editar evento" description={event.title} />
 			<EventCreationWizard mode="edit" event={event} />
 		</div>
 	);

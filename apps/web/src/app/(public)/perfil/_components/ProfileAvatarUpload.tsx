@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ImageCropperDialog } from '@/components/ui/image-cropper-dialog';
+import { ImageCropperDialog } from '@/components/ui/lazy-image-cropper-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { getDisplayName, getInitials, type ProfileUser } from './types';

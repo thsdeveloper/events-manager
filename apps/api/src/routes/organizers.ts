@@ -34,8 +34,9 @@ const payoutInput = z.object({
 export async function organizerRoutes(app: FastifyInstance, options: { env: ApiEnv; clients: SupabaseClients }) {
 	const { env, clients } = options;
 	const auth = createSupabaseAuthService(clients);
-	const service = new OrganizerService(new SupabaseOrganizerRepository(clients));
-	const media = new MediaService(new SupabaseMediaRepository(clients));
+	const mediaRepository = new SupabaseMediaRepository(clients);
+	const service = new OrganizerService(new SupabaseOrganizerRepository(clients), mediaRepository);
+	const media = new MediaService(mediaRepository);
 	const initialStatus = env.PAYMENTS_MODE === 'mock' ? 'active' : 'pending';
 
 	app.get('/api/organizer/profile', async (request) => {
@@ -72,15 +73,29 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 		const context = await requireOrganizer(request, auth);
 		const file = await request.file();
 		if (!file) throw new ApiError('Nenhum arquivo foi enviado.', 400, 'FILE_REQUIRED');
+		if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+			throw new ApiError('Envie uma imagem PNG, JPG ou WebP.', 422, 'INVALID_FILE_TYPE');
+		}
+		const buffer = await file.toBuffer();
+		if (buffer.length > 5 * 1024 * 1024) throw new ApiError('O limite é 5 MB.', 413, 'FILE_TOO_LARGE');
 		const uploaded = await media.upload({
-			buffer: await file.toBuffer(),
+			buffer,
 			filename: file.filename,
 			folder: 'organizers',
 			mimetype: file.mimetype,
 			userId: context.user.id,
 		});
-		const organizer = await service.setLogo(context.organizer.id, uploaded.file.id);
-		return { success: true, file: uploaded, organizer };
+		const result = await service.setLogo(context.organizer.id, uploaded.file.id, context.user.id);
+		if (result.cleanupPending)
+			request.log.warn({ organizerId: context.organizer.id }, 'Previous organizer logo cleanup failed');
+		return { success: true, file: uploaded, ...result };
+	});
+
+	app.delete('/api/organizer/logo', async (request) => {
+		const context = await requireOrganizer(request, auth);
+		const result = await service.setLogo(context.organizer.id, null, context.user.id);
+		if (result.cleanupPending) request.log.warn({ organizerId: context.organizer.id }, 'Organizer logo cleanup failed');
+		return { success: true, ...result };
 	});
 
 	app.get('/api/organizer/organizations', async (request) => {

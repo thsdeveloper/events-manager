@@ -2,7 +2,6 @@ import crypto from 'node:crypto';
 import type { CheckoutAttendee, Database, Json } from '@events-manager/contracts';
 import { couponProblem } from '../coupons/coupon-problem.js';
 import {
-	assertRegistrationOpen,
 	applyDiscountToPlan,
 	assertTicketAvailable,
 	buildCheckoutPlan,
@@ -191,7 +190,6 @@ export class PaymentService {
 		try {
 			plan = buildCheckoutPlan({
 				configuration,
-				registrationWindow: { end: event.registration_end, start: event.registration_start },
 				selections: input.tickets,
 				tickets: event.tickets.map(ticketSnapshot),
 			});
@@ -372,13 +370,24 @@ export class PaymentService {
 		}
 		try {
 			if (ticket.event_id.status !== 'published') throw new CheckoutRuleViolation('ticket_unavailable');
-			assertRegistrationOpen({ end: ticket.event_id.registration_end, start: ticket.event_id.registration_start });
 			assertTicketAvailable(ticketSnapshot(ticket), input.quantity);
 		} catch (error) {
 			if (error instanceof CheckoutRuleViolation) throw checkoutRuleError(error);
 			throw error;
 		}
-		const total = money(Number(ticket.buyer_price ?? ticket.price) * input.quantity);
+		const configuration = await this.repository.getConfiguration();
+		let item: CheckoutPlanItem;
+		try {
+			item = buildCheckoutPlan({
+				configuration,
+				selections: [{ ticketId: ticket.id, quantity: input.quantity }],
+				tickets: [ticketSnapshot(ticket)],
+			})[0];
+		} catch (error) {
+			if (error instanceof CheckoutRuleViolation) throw checkoutRuleError(error);
+			throw error;
+		}
+		const total = item.totalAmount;
 		let amounts: number[];
 		try {
 			amounts = buildInstallmentAmounts(total, input.installments, Number(ticket.min_amount_for_installments ?? 0));
@@ -405,6 +414,8 @@ export class PaymentService {
 			payment_amount: 0,
 			payment_method: 'pix',
 			payment_provider: this.gateway.provider,
+			service_fee: item.serviceFee,
+			platform_fee: item.platformFee,
 			is_installment_payment: true,
 			total_installments: input.installments,
 			installment_plan_status: 'active',
@@ -864,10 +875,13 @@ function checkoutRuleError(error: CheckoutRuleViolation) {
 		return new ApiError(`Há somente ${error.details.available} ingresso(s) disponível(is).`, 409, 'INSUFFICIENT_STOCK');
 	}
 	const errors: Partial<Record<CheckoutRuleViolation['rule'], [string, string]>> = {
+		fee_exceeds_price: [
+			'O preço deste ingresso não cobre a taxa mínima. O organizador precisa atualizar o preço ou a forma de cobrança.',
+			'TICKET_PRICE_BELOW_FEE',
+		],
 		duplicate_ticket: ['O mesmo tipo de ingresso foi selecionado mais de uma vez.', 'DUPLICATE_TICKET'],
 		maximum_quantity: ['Quantidade acima do limite por compra.', 'PURCHASE_LIMIT'],
 		minimum_quantity: ['Quantidade abaixo do mínimo por compra.', 'MINIMUM_PURCHASE'],
-		registration_closed: ['As inscrições para este evento estão fechadas.', 'REGISTRATION_CLOSED'],
 	};
 	const [message, code] = errors[error.rule] ?? ['Ingresso indisponível.', 'TICKET_UNAVAILABLE'];
 	return new ApiError(message, 422, code);

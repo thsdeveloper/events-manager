@@ -15,12 +15,23 @@ function renderTable(data = [nominalTicket()]) {
 }
 
 describe('ParticipantsTable', () => {
-	it('shows the search illustration when the filters match nobody', () => {
+	it('announces partial selection and can select or clear all tickets', async () => {
+		const { user } = renderTable([nominalTicket(), nominalTicket({ id: 'second', attendee_name: 'Carlos' })]);
+		const all = screen.getByRole('checkbox', { name: 'Selecionar todos os ingressos' });
+		await user.click(screen.getByRole('checkbox', { name: 'Selecionar Bia Lima' }));
+		expect(all).toBePartiallyChecked();
+		await user.click(all);
+		expect(screen.getByRole('checkbox', { name: 'Selecionar Carlos' })).toBeChecked();
+		await user.click(all);
+		expect(screen.getByRole('checkbox', { name: 'Selecionar Bia Lima' })).not.toBeChecked();
+	});
+
+	it('shows a standard empty state when the filters match nobody', () => {
 		const { container } = renderTable([]);
 
 		expect(screen.getByRole('heading', { name: 'Nenhum participante encontrado' })).toBeInTheDocument();
 		expect(screen.getByText(/ajustar os filtros/i)).toBeInTheDocument();
-		expect(container.querySelector('img[aria-hidden="true"]')).toHaveAttribute('src', '/images/empty/search.svg');
+		expect(container.querySelector('img')).not.toBeInTheDocument();
 	});
 
 	it('lists one row per ticket, naming the attendee and who bought it for them', () => {

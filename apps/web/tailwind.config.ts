@@ -6,282 +6,273 @@ const config: Config = {
 	darkMode: ['class'],
 	content: ['./app/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}', './src/**/*.{js,ts,jsx,tsx}'],
 	theme: {
-    	extend: {
-    		fontFamily: {
-    			heading: [
-    				'Poppins',
-    				'sans-serif'
-    			],
-    			sans: [
-    				'Inter',
-    				'sans-serif'
-    			],
-    			code: [
-    				'Fira Mono',
-    				'monospace'
-    			]
-    		},
-    		fontSize: {
-    			tagline: [
-    				'24px',
-    				'33.6px'
-    			],
-    			headline: [
-    				'56px',
-    				'64px'
-    			],
-    			h1: [
-    				'56px',
-    				'78.4px'
-    			],
-    			h2: [
-    				'36px',
-    				'50.4px'
-    			],
-    			h3: [
-    				'24px',
-    				'33.6px'
-    			],
-    			description: [
-    				'16px',
-    				'22.4px'
-    			],
-    			regular: [
-    				'16px',
-    				'24px'
-    			],
-    			bold: [
-    				'16px',
-    				'22.4px'
-    			],
-    			nav: [
-    				'16px',
-    				'22.4px'
-    			],
-    			code: [
-    				'14px',
-    				'16.8px'
-    			]
-    		},
-    		alignments: {
-    			left: 'text-left',
-    			center: 'text-center',
-    			right: 'text-right'
-    		},
-    		colors: {
-    			background: 'hsl(var(--background))',
-    			foreground: 'hsl(var(--foreground))',
-    			primary: {
-    				DEFAULT: 'hsl(var(--primary))',
-    				foreground: 'hsl(var(--primary-foreground))'
-    			},
-    			input: 'hsl(var(--input))',
-    			secondary: {
-    				DEFAULT: 'hsl(var(--secondary))',
-    				foreground: 'hsl(var(--secondary-foreground))'
-    			},
-    			accent: {
-    				DEFAULT: 'hsl(var(--accent))',
-    				foreground: 'hsl(var(--accent-foreground))'
-    			},
-    			soft: 'var(--accent-color-soft)',
-    			blue: {
-    				DEFAULT: '#172940'
-    			},
-    			gray: {
-    				DEFAULT: '#F5F8FB',
-    				muted: '#A5B0BD',
-    				dark: '#42566E'
-    			},
-    			card: {
-    				DEFAULT: 'hsl(var(--card))',
-    				foreground: 'hsl(var(--card-foreground))'
-    			},
-    			popover: {
-    				DEFAULT: 'hsl(var(--popover))',
-    				foreground: 'hsl(var(--popover-foreground))'
-    			},
-    			muted: {
-    				DEFAULT: 'hsl(var(--muted))',
-    				foreground: 'hsl(var(--muted-foreground))'
-    			},
+		extend: {
+			fontFamily: {
+				heading: ['var(--font-dm-sans)', 'DM Sans', 'system-ui', 'sans-serif'],
+				sans: ['var(--font-dm-sans)', 'DM Sans', 'system-ui', 'sans-serif'],
+				code: ['Fira Mono', 'monospace'],
+			},
+			fontSize: {
+				tagline: ['12px', '18px'],
+				headline: ['36px', '43.2px'],
+				h1: ['36px', '43.2px'],
+				h2: ['30px', '39px'],
+				h3: ['20px', '28px'],
+				description: ['16px', '22.4px'],
+				regular: ['16px', '24px'],
+				bold: ['16px', '22.4px'],
+				nav: ['16px', '22.4px'],
+				code: ['14px', '16.8px'],
+			},
+			alignments: {
+				left: 'text-left',
+				center: 'text-center',
+				right: 'text-right',
+			},
+			colors: {
+				sidebar: {
+					DEFAULT: 'hsl(var(--sidebar-background))',
+					foreground: 'hsl(var(--sidebar-foreground))',
+					primary: 'hsl(var(--sidebar-primary))',
+					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+					accent: 'hsl(var(--sidebar-accent))',
+					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+					border: 'hsl(var(--sidebar-border))',
+					ring: 'hsl(var(--sidebar-ring))',
+				},
+				background: 'hsl(var(--background))',
+				link: 'hsl(var(--link))',
+				foreground: 'hsl(var(--foreground))',
+				primary: {
+					DEFAULT: 'hsl(var(--primary))',
+					foreground: 'hsl(var(--primary-foreground))',
+				},
+				input: 'hsl(var(--input))',
+				secondary: {
+					DEFAULT: 'hsl(var(--secondary))',
+					foreground: 'hsl(var(--secondary-foreground))',
+				},
+				accent: {
+					DEFAULT: 'hsl(var(--accent))',
+					foreground: 'hsl(var(--accent-foreground))',
+				},
+				soft: 'var(--accent-color-soft)',
+				blue: {
+					DEFAULT: '#172940',
+				},
+				gray: {
+					DEFAULT: '#F5F8FB',
+					muted: '#A5B0BD',
+					dark: '#42566E',
+				},
+				card: {
+					DEFAULT: 'hsl(var(--card))',
+					foreground: 'hsl(var(--card-foreground))',
+				},
+				popover: {
+					DEFAULT: 'hsl(var(--popover))',
+					foreground: 'hsl(var(--popover-foreground))',
+				},
+				muted: {
+					DEFAULT: 'hsl(var(--muted))',
+					foreground: 'hsl(var(--muted-foreground))',
+				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
-					foreground: 'hsl(var(--destructive-foreground))'
+					foreground: 'hsl(var(--destructive-foreground))',
 				},
 				success: {
 					DEFAULT: 'hsl(var(--success))',
-					foreground: 'hsl(var(--success-foreground))'
+					foreground: 'hsl(var(--success-foreground))',
 				},
 				info: {
 					DEFAULT: 'hsl(var(--info))',
-					foreground: 'hsl(var(--info-foreground))'
+					foreground: 'hsl(var(--info-foreground))',
 				},
 				warning: {
 					DEFAULT: 'hsl(var(--warning))',
-					foreground: 'hsl(var(--warning-foreground))'
+					foreground: 'hsl(var(--warning-foreground))',
 				},
-    			border: 'hsl(var(--border))',
-    			ring: 'hsl(var(--ring))',
-    			chart: {
-    				'1': 'hsl(var(--chart-1))',
-    				'2': 'hsl(var(--chart-2))',
-    				'3': 'hsl(var(--chart-3))',
-    				'4': 'hsl(var(--chart-4))',
-    				'5': 'hsl(var(--chart-5))'
-    			}
-    		},
-    		typography: {
-    			DEFAULT: {
-    				css: {
-    					color: 'var(--foreground-color)',
-    					textAlign: 'left',
-    					a: {
-    						color: 'var(--accent-color)',
-    						textDecoration: 'none',
-    						'&:hover': {
-    							textDecoration: 'underline'
-    						}
-    					},
-    					// Tamanhos em `em`: escalam com o contêiner, então `prose-sm`,
-    					// `prose-base` e `prose-lg` continuam mandando no texto rico.
-    					h1: {
-    						fontFamily: 'Poppins',
-    						fontSize: '2.25em',
-    						fontWeight: '400',
-    						lineHeight: '1.2',
-    						marginTop: '1rem'
-    					},
-    					h2: {
-    						fontFamily: 'Poppins',
-    						fontSize: '1.6em',
-    						fontWeight: '400',
-    						lineHeight: '1.3',
-    						marginTop: '1rem'
-    					},
-    					h3: {
-    						fontFamily: 'Poppins',
-    						fontSize: '1.3em',
-    						fontWeight: '400',
-    						lineHeight: '1.4',
-    						marginTop: '0'
-    					},
-    					// Sem tamanho fixo: o parágrafo herda do contêiner `prose`.
-    					p: {
-    						fontFamily: 'Inter',
-    						fontWeight: '400',
-    						lineHeight: '1.75'
-    					},
-    					img: {
-    						borderRadius: '8px',
-    						margin: '1rem 0',
-    						maxWidth: '100%',
-    						height: 'auto'
-    					},
-    					iframe: {
-    						borderRadius: '8px',
-    						margin: '1rem 0'
-    					},
-    					code: {
-    						fontFamily: 'Fira Mono',
-    						fontSize: 'clamp(0.875rem, 1rem, 1.125rem)',
-    						fontWeight: '400',
-    						lineHeight: '1.6',
-    						backgroundColor: 'var(--background-color-muted)',
-    						color: 'var(--foreground-color)',
-    						borderRadius: '4px',
-    						padding: '0.15rem 0.35rem',
-    						display: 'inline',
-    						'&::before': {
-    							content: 'none'
-    						},
-    						'&::after': {
-    							content: 'none'
-    						}
-    					},
-    					'p > code': {
-    						'&::before': {
-    							content: 'none'
-    						},
-    						'&::after': {
-    							content: 'none'
-    						}
-    					},
-    					pre: {
-    						fontFamily: 'Fira Mono',
-    						fontSize: 'clamp(0.9rem, 1.125rem, 1.25rem)',
-    						lineHeight: '1.6',
-    						backgroundColor: 'var(--background-color-muted)',
-    						color: 'var(--foreground-color)',
-    						borderRadius: '8px',
-    						padding: '1rem',
-    						overflowX: 'auto'
-    					},
-    					blockquote: {
-    						fontStyle: 'italic',
-    						borderLeft: '4px solid var(--accent-color)',
-    						paddingLeft: '1rem',
-    						textAlign: 'left'
-    					},
-    					ul: {
-    						listStyleType: 'disc',
-    						paddingLeft: '1.25rem',
-    						listStylePosition: 'inside'
-    					},
-    					ol: {
-    						listStyleType: 'decimal',
-    						paddingLeft: '1.25rem',
-    						listStylePosition: 'inside'
-    					},
-    					li: {
-    						marginBottom: '0.5rem',
-    						'& p': {
-    							display: 'inline',
-    							margin: '0'
-    						}
-    					}
-    				}
-    			},
-    			dark: {
-    				css: {
-    					color: 'var(--foreground-color)',
-    					a: {
-    						color: 'var(--accent-color)',
-    						textDecoration: 'none',
-    						'&:hover': {
-    							textDecoration: 'underline'
-    						}
-    					},
-					blockquote: {
-						borderLeftColor: 'hsl(var(--border))'
-    					}
-    				}
-    			}
-    		},
-    		borderRadius: {
-    			// max() guards the subtraction: with --radius at 0 the plain calc would
-    			// produce a negative length, which makes the declaration invalid.
-    			lg: 'var(--radius)',
-    			md: 'max(0px, calc(var(--radius) - 2px))',
-    			sm: 'max(0px, calc(var(--radius) - 4px))',
-    			// Tailwind's xl/2xl/3xl ship as fixed lengths and would stay rounded
-    			// while the rest of the system went square. Deriving them keeps the
-    			// whole scale under one switch.
-    			xl: 'calc(var(--radius) * 1.33)',
-    			'2xl': 'calc(var(--radius) * 1.67)',
-    			'3xl': 'calc(var(--radius) * 2)'
-    		},
-    		animation: {
-    			'spin-slow': 'spin 3s linear infinite',
-    		},
-    		keyframes: {
-    			'spin': {
-    				'0%': { transform: 'rotate(0deg)' },
-    				'100%': { transform: 'rotate(360deg)' },
-    			}
-    		}
-    	}
-    },
+				border: 'hsl(var(--border))',
+				ring: 'hsl(var(--ring))',
+				chart: {
+					'1': 'hsl(var(--chart-1))',
+					'2': 'hsl(var(--chart-2))',
+					'3': 'hsl(var(--chart-3))',
+					'4': 'hsl(var(--chart-4))',
+					'5': 'hsl(var(--chart-5))',
+				},
+			},
+			typography: {
+				DEFAULT: {
+					css: {
+						'--tw-prose-body': 'hsl(var(--foreground))',
+						'--tw-prose-headings': 'hsl(var(--foreground))',
+						'--tw-prose-lead': 'hsl(var(--muted-foreground))',
+						'--tw-prose-links': 'hsl(var(--link))',
+						'--tw-prose-bold': 'hsl(var(--foreground))',
+						'--tw-prose-counters': 'hsl(var(--muted-foreground))',
+						'--tw-prose-bullets': 'hsl(var(--muted-foreground))',
+						'--tw-prose-hr': 'hsl(var(--border))',
+						'--tw-prose-quotes': 'hsl(var(--foreground))',
+						'--tw-prose-quote-borders': 'hsl(var(--border))',
+						'--tw-prose-captions': 'hsl(var(--muted-foreground))',
+						'--tw-prose-code': 'hsl(var(--foreground))',
+						'--tw-prose-pre-code': 'hsl(var(--foreground))',
+						'--tw-prose-pre-bg': 'hsl(var(--muted))',
+						'--tw-prose-th-borders': 'hsl(var(--border))',
+						'--tw-prose-td-borders': 'hsl(var(--border))',
+						color: 'hsl(var(--foreground))',
+						textAlign: 'left',
+						a: {
+							color: 'hsl(var(--link))',
+							textDecoration: 'none',
+							'&:hover': {
+								textDecoration: 'underline',
+							},
+						},
+						// Tamanhos em `em`: escalam com o contêiner, então `prose-sm`,
+						// `prose-base` e `prose-lg` continuam mandando no texto rico.
+						h1: {
+							fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif',
+							fontSize: '2.25em',
+							fontWeight: '600',
+							lineHeight: '1.2',
+							marginTop: '1rem',
+						},
+						h2: {
+							fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif',
+							fontSize: '1.6em',
+							fontWeight: '600',
+							lineHeight: '1.3',
+							marginTop: '1rem',
+						},
+						h3: {
+							fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif',
+							fontSize: '1.3em',
+							fontWeight: '600',
+							lineHeight: '1.4',
+							marginTop: '0',
+						},
+						h4: { fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif', fontWeight: '600' },
+						h5: { fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif', fontWeight: '600' },
+						h6: { fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif', fontWeight: '600' },
+						// Sem tamanho fixo: o parágrafo herda do contêiner `prose`.
+						p: {
+							fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif',
+							fontWeight: '400',
+							lineHeight: '1.75',
+						},
+						img: {
+							borderRadius: '8px',
+							margin: '1rem 0',
+							maxWidth: '100%',
+							height: 'auto',
+						},
+						iframe: {
+							borderRadius: '8px',
+							margin: '1rem 0',
+						},
+						code: {
+							fontFamily: 'Fira Mono',
+							fontSize: 'clamp(0.875rem, 1rem, 1.125rem)',
+							fontWeight: '400',
+							lineHeight: '1.6',
+							backgroundColor: 'hsl(var(--muted))',
+							color: 'hsl(var(--foreground))',
+							borderRadius: '4px',
+							padding: '0.15rem 0.35rem',
+							display: 'inline',
+							'&::before': {
+								content: 'none',
+							},
+							'&::after': {
+								content: 'none',
+							},
+						},
+						'p > code': {
+							'&::before': {
+								content: 'none',
+							},
+							'&::after': {
+								content: 'none',
+							},
+						},
+						pre: {
+							fontFamily: 'Fira Mono',
+							fontSize: 'clamp(0.9rem, 1.125rem, 1.25rem)',
+							lineHeight: '1.6',
+							backgroundColor: 'hsl(var(--muted))',
+							color: 'hsl(var(--foreground))',
+							borderRadius: '8px',
+							padding: '1rem',
+							overflowX: 'auto',
+						},
+						blockquote: {
+							fontStyle: 'italic',
+							borderLeft: '4px solid hsl(var(--border))',
+							paddingLeft: '1rem',
+							textAlign: 'left',
+						},
+						ul: {
+							listStyleType: 'disc',
+							paddingLeft: '1.25rem',
+							listStylePosition: 'inside',
+						},
+						ol: {
+							listStyleType: 'decimal',
+							paddingLeft: '1.25rem',
+							listStylePosition: 'inside',
+						},
+						li: {
+							marginBottom: '0.5rem',
+							'& p': {
+								display: 'inline',
+								margin: '0',
+							},
+						},
+					},
+				},
+				dark: {
+					css: {
+						color: 'hsl(var(--foreground))',
+						a: {
+							color: 'hsl(var(--link))',
+							textDecoration: 'none',
+							'&:hover': {
+								textDecoration: 'underline',
+							},
+						},
+						blockquote: {
+							borderLeftColor: 'hsl(var(--border))',
+						},
+					},
+				},
+			},
+			borderRadius: {
+				// max() guards the subtraction: with --radius at 0 the plain calc would
+				// produce a negative length, which makes the declaration invalid.
+				lg: 'var(--radius)',
+				md: 'max(0px, calc(var(--radius) - 2px))',
+				sm: 'max(0px, calc(var(--radius) - 4px))',
+				// Tailwind's xl/2xl/3xl ship as fixed lengths and would stay rounded
+				// while the rest of the system went square. Deriving them keeps the
+				// whole scale under one switch.
+				xl: 'calc(var(--radius) * 1.33)',
+				'2xl': 'calc(var(--radius) * 1.67)',
+				'3xl': 'calc(var(--radius) * 2)',
+			},
+			animation: {
+				'spin-slow': 'spin 3s linear infinite',
+			},
+			keyframes: {
+				spin: {
+					'0%': { transform: 'rotate(0deg)' },
+					'100%': { transform: 'rotate(360deg)' },
+				},
+			},
+		},
+	},
 	plugins: [tailwindcssAnimate, typography],
 	safelist: ['grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3'],
 };

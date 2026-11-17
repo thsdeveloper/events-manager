@@ -1,5 +1,9 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { brandingAssetKindSchema, brandingSettingsSchema, categoryIdSchema } from '@events-manager/contracts';
+import { BrandingAssetService } from '../application/media/branding-asset-service.js';
+import { SupabaseMediaRepository } from '../infrastructure/supabase/media-repository.js';
+import { ApiError } from '../shared/errors.js';
 import type { PaymentGateway } from '../application/payments/payment-gateway.js';
 import { SuperAdminService } from '../application/super-admin/super-admin-service.js';
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
@@ -9,6 +13,7 @@ import { requireSuperAdmin } from './auth-context.js';
 
 const paymentSettingsSchema = z.object({
 	platform_fee_percentage: z.coerce.number().min(0).max(100),
+	platform_fee_minimum: z.coerce.number().finite().min(0).default(0),
 	pix_fee_fixed: z.coerce.number().min(0),
 	card_fee_percentage: z.coerce.number().min(0).max(100),
 	card_fee_fixed: z.coerce.number().min(0),
@@ -19,11 +24,6 @@ const paymentSettingsSchema = z.object({
 	minimum_payout: z.coerce.number().min(1),
 	payouts_enabled: z.boolean(),
 	convenience_fee_calculation_method: z.enum(['buyer_pays', 'organizer_absorbs']),
-});
-
-const brandingSettingsSchema = z.object({
-	logo: z.string().uuid().nullable(),
-	logo_dark_mode: z.string().uuid().nullable(),
 });
 
 const categorySchema = z.object({
@@ -64,6 +64,22 @@ export async function superAdminRoutes(
 	const { clients, payments } = options;
 	const auth = createSupabaseAuthService(clients);
 	const service = new SuperAdminService(new SupabaseSuperAdminRepository(clients), payments);
+	const brandingAssets = new BrandingAssetService(new SupabaseMediaRepository(clients));
+	app.post('/api/super-admin/settings/branding/assets', async (request, reply) => {
+		const context = await requireSuperAdmin(request, auth);
+		const { kind } = z.object({ kind: brandingAssetKindSchema }).parse(request.query);
+		const file = await request.file({ limits: { fileSize: 5 * 1024 * 1024 } });
+		if (!file) throw new ApiError('Nenhum arquivo foi enviado.', 422, 'FILE_REQUIRED');
+		const uploaded = await brandingAssets.upload({
+			kind,
+			buffer: await file.toBuffer(),
+			filename: file.filename,
+			mimetype: file.mimetype,
+			folder: 'branding',
+			userId: context.user.id,
+		});
+		return reply.code(201).send({ fileId: uploaded.file.id, url: uploaded.url, file: uploaded.file });
+	});
 
 	app.get('/api/super-admin/overview', async (request) => {
 		await requireSuperAdmin(request, auth);
@@ -135,14 +151,14 @@ export async function superAdminRoutes(
 
 	app.patch('/api/super-admin/categories/:id', async (request) => {
 		const admin = await requireSuperAdmin(request, auth);
-		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		const { id } = z.object({ id: categoryIdSchema }).parse(request.params);
 		const input = categorySchema.partial().parse(request.body);
 		return service.updateCategory(admin.user.id, id, input, auditContext(request));
 	});
 
 	app.delete('/api/super-admin/categories/:id', async (request) => {
 		const admin = await requireSuperAdmin(request, auth);
-		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		const { id } = z.object({ id: categoryIdSchema }).parse(request.params);
 		return service.deleteCategory(admin.user.id, id, auditContext(request));
 	});
 

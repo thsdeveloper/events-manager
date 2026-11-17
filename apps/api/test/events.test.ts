@@ -19,6 +19,7 @@ import {
 	buildRouteTestApp,
 	createSupabaseClientsStub,
 	partialMock,
+	sessionCookie,
 	TEST_EVENT_ID,
 	TEST_USER_ID,
 } from './support/index.js';
@@ -39,6 +40,7 @@ describe('EventService', () => {
 	describe('getPublicBySlug', () => {
 		it('returns the event with tickets ordered by their sort position', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				findPublicBySlug: vi.fn().mockResolvedValue(structuredClone(publishedEvent)),
 			});
 
@@ -52,6 +54,7 @@ describe('EventService', () => {
 			const withPage = { ...publishedEvent, page: { enabled: true, published: layout, draft: { version: 1 } } };
 			const disabled = { ...publishedEvent, page: { enabled: false, published: layout, draft: { version: 1 } } };
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				findPublicBySlug: vi
 					.fn()
 					.mockResolvedValueOnce(structuredClone(withPage))
@@ -66,7 +69,10 @@ describe('EventService', () => {
 		});
 
 		it('signals a missing event with a domain error instead of returning null', async () => {
-			const repository = partialMock<EventRepository>({ findPublicBySlug: vi.fn().mockResolvedValue(null) });
+			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
+				findPublicBySlug: vi.fn().mockResolvedValue(null),
+			});
 
 			await expect(new EventService(repository).getPublicBySlug('inexistente')).rejects.toBeInstanceOf(EventNotFound);
 		});
@@ -75,6 +81,7 @@ describe('EventService', () => {
 	describe('listPublic', () => {
 		it('derives pagination metadata from the repository total', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				listPublic: vi.fn().mockResolvedValue({ data: [{ id: 'a' }, { id: 'b' }], total: 25 }),
 			});
 
@@ -88,6 +95,7 @@ describe('EventService', () => {
 	describe('listCategories', () => {
 		it('lists the catalog in the order the super admin arranged it', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				listCategories: vi.fn().mockResolvedValue([
 					{ id: 'musica', name: 'Música', sort: 2 },
 					{ id: 'tecnologia', name: 'Tecnologia', sort: 1 },
@@ -101,6 +109,7 @@ describe('EventService', () => {
 
 		it('pushes categories without a position to the end, in alphabetical order', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				listCategories: vi.fn().mockResolvedValue([
 					{ id: 'teatro', name: 'Teatro', sort: null },
 					{ id: 'arte', name: 'Arte', sort: null },
@@ -122,6 +131,8 @@ describe('EventService', () => {
 		// Como o repositório devolve o evento ao organizador: relações embutidas
 		// como objetos, não como ids.
 		const storedDraft = {
+			registration_start: null,
+			registration_end: null,
 			id: TEST_EVENT_ID,
 			title: 'Congresso',
 			slug: 'congresso',
@@ -137,6 +148,7 @@ describe('EventService', () => {
 
 		it('publishes a draft whose category and cover are stored as relations, validating them by id', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				findForUser: vi.fn().mockResolvedValue(storedDraft),
 				updateForUser: vi.fn().mockResolvedValue({ ...storedDraft, status: 'published' }),
 			});
@@ -149,6 +161,7 @@ describe('EventService', () => {
 
 		it('sanitizes the description HTML before storing it, keeping formatting and links', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				findForUser: vi.fn().mockResolvedValue(storedDraft),
 				updateForUser: vi.fn().mockResolvedValue(storedDraft),
 			});
@@ -165,6 +178,7 @@ describe('EventService', () => {
 
 		it('still refuses a patch that breaks the event rules against the stored data', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				findForUser: vi.fn().mockResolvedValue(storedDraft),
 				updateForUser: vi.fn(),
 			});
@@ -181,6 +195,7 @@ describe('EventService', () => {
 
 		it('sanitizes the description HTML of a new event', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				createForUser: vi.fn().mockResolvedValue(publishedEvent),
 			});
 
@@ -196,6 +211,7 @@ describe('EventService', () => {
 
 		it('requires an active organizer profile', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				createForUser: vi.fn().mockResolvedValue('organizer_required'),
 			});
 
@@ -206,6 +222,7 @@ describe('EventService', () => {
 
 		it('rolls the event back when one of its tickets cannot be created', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				createForUser: vi.fn().mockResolvedValue(publishedEvent),
 				deleteForUser: vi.fn().mockResolvedValue(true),
 			});
@@ -221,6 +238,7 @@ describe('EventService', () => {
 
 		it('creates each ticket against the organizer that owns the event', async () => {
 			const repository = partialMock<EventRepository>({
+				canPublishForUser: vi.fn().mockResolvedValue(true),
 				createForUser: vi.fn().mockResolvedValue(publishedEvent),
 			});
 			const tickets: EventTicketCreator = { create: vi.fn().mockResolvedValue({}) };
@@ -240,6 +258,32 @@ describe('EventService', () => {
 });
 
 describe('event routes', () => {
+	it('creates an event using a category returned by the seeded catalog', async () => {
+		const category_id = '50000000-0000-0000-0000-000000000001';
+		const organizer_id = '00000000-0000-4000-8000-000000000002';
+		const input = {
+			title: 'Encontro de tecnologia',
+			slug: 'encontro-de-tecnologia',
+			category_id,
+			is_free: true,
+			start_date: '2027-01-10T18:00:00Z',
+			end_date: '2027-01-10T21:00:00Z',
+			status: 'draft',
+		};
+		const { clients } = createSupabaseClientsStub({
+			user: { id: TEST_USER_ID, email: 'organizer@example.test' },
+			tables: {
+				organizers: { data: [{ id: organizer_id, user_id: TEST_USER_ID, status: 'active' }] },
+				events: { data: { ...input, id: TEST_EVENT_ID, organizer_id } },
+			},
+		});
+		const app = await buildRouteTestApp(eventRoutes, { clients });
+		const response = await app.inject({ method: 'POST', url: '/api/events', headers: sessionCookie(), payload: input });
+		await app.close();
+		expect(response.statusCode).toBe(201);
+		expect(response.json()).toMatchObject({ id: TEST_EVENT_ID, category_id });
+	});
+
 	it('rejects a public listing above the page size limit with a validation problem', async () => {
 		const { clients } = createSupabaseClientsStub();
 		const app = await buildRouteTestApp(eventRoutes, { clients });
@@ -279,6 +323,7 @@ describe('event publication during creation', () => {
 	it('keeps the event as a draft until every ticket is ready, then publishes it', async () => {
 		let visibleStatus: string | undefined;
 		const repository = partialMock<EventRepository>({
+			canPublishForUser: vi.fn().mockResolvedValue(true),
 			deleteForUser: vi.fn().mockResolvedValue(true),
 			createForUser: vi.fn(async (_user: string, event: { status?: string }) => {
 				visibleStatus = event.status;
@@ -301,6 +346,7 @@ describe('event publication during creation', () => {
 	});
 	it('removes the draft if publishing fails after its tickets were saved', async () => {
 		const repository = partialMock<EventRepository>({
+			canPublishForUser: vi.fn().mockResolvedValue(true),
 			createForUser: vi.fn().mockResolvedValue({ ...publishedEvent, status: 'draft' }),
 			updateForUser: vi.fn().mockResolvedValue(null),
 			deleteForUser: vi.fn().mockResolvedValue(true),
@@ -311,12 +357,16 @@ describe('event publication during creation', () => {
 		expect(repository.deleteForUser).toHaveBeenCalledWith(TEST_USER_ID, TEST_EVENT_ID);
 	});
 	it('does not create an orphan event when its ticket creator is unavailable', async () => {
-		const repository = partialMock<EventRepository>({ createForUser: vi.fn().mockResolvedValue(publishedEvent) });
+		const repository = partialMock<EventRepository>({
+			canPublishForUser: vi.fn().mockResolvedValue(true),
+			createForUser: vi.fn().mockResolvedValue(publishedEvent),
+		});
 		await expect(new EventService(repository).create(TEST_USER_ID, input as never)).rejects.toThrow('ticket creator');
 		expect(repository.createForUser).not.toHaveBeenCalled();
 	});
 	it('keeps a requested draft unpublished after its tickets are saved', async () => {
 		const repository = partialMock<EventRepository>({
+			canPublishForUser: vi.fn().mockResolvedValue(true),
 			createForUser: vi.fn().mockResolvedValue({ ...publishedEvent, status: 'draft' }),
 			updateForUser: vi.fn(),
 		});

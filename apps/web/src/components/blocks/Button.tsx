@@ -79,7 +79,14 @@ const Button = ({
 	}
 
 	return (
-		<ShadcnButton variant={variant as any} size={size} className={buttonClasses} onClick={onClick} disabled={disabled}>
+		<ShadcnButton
+			type={type === 'submit' ? 'submit' : 'button'}
+			variant={variant as any}
+			size={size}
+			className={buttonClasses}
+			onClick={onClick}
+			disabled={disabled}
+		>
 			{content}
 		</ShadcnButton>
 	);

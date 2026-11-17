@@ -1,5 +1,6 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -127,8 +128,8 @@ export function CancelRegistrationDialog({
 			<DialogContent className="max-w-md">
 				<DialogHeader>
 					<div className="flex items-center gap-3">
-						<div className="flex size-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-							<AlertTriangle className="size-5 text-red-600 dark:text-red-400" />
+						<div className="flex size-10 items-center justify-center rounded-full bg-muted ">
+							<AlertTriangle className="size-5 text-destructive " />
 						</div>
 						<div>
 							<DialogTitle>Cancelar Pedido</DialogTitle>
@@ -138,52 +139,50 @@ export function CancelRegistrationDialog({
 				</DialogHeader>
 
 				{!canCancel ? (
-					<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
-						<p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
-							Este pedido não pode ser cancelado
-						</p>
-						<p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+					<Card className="p-4">
+						<p className="text-sm font-medium text-muted-foreground ">Este pedido não pode ser cancelado</p>
+						<p className="mt-1 text-sm text-muted-foreground ">
 							Apenas pedidos com status "Confirmado" ou "Pendente" podem ser cancelados.
 						</p>
-					</div>
+					</Card>
 				) : (
 					<>
 						<div className="space-y-4">
-							<div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-								<h4 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Detalhes do Pedido</h4>
+							<Card className="p-4">
+								<h4 className="mb-3 text-sm font-semibold text-foreground">Detalhes do Pedido</h4>
 								<dl className="space-y-2 text-sm">
 									<div className="flex justify-between">
-										<dt className="text-gray-600 dark:text-gray-400">Comprado por:</dt>
-										<dd className="font-medium text-gray-900 dark:text-white">{registration.participant_name}</dd>
+										<dt className="text-muted-foreground dark:text-muted-foreground">Comprado por:</dt>
+										<dd className="font-medium text-foreground">{registration.participant_name}</dd>
 									</div>
 									<div className="flex justify-between">
-										<dt className="text-gray-600 dark:text-gray-400">Email:</dt>
-										<dd className="font-medium text-gray-900 dark:text-white">{registration.participant_email}</dd>
+										<dt className="text-muted-foreground dark:text-muted-foreground">Email:</dt>
+										<dd className="font-medium text-foreground">{registration.participant_email}</dd>
 									</div>
 									<div className="flex justify-between">
-										<dt className="text-gray-600 dark:text-gray-400">Evento:</dt>
-										<dd className="font-medium text-gray-900 dark:text-white">{participant.event.title}</dd>
+										<dt className="text-muted-foreground dark:text-muted-foreground">Evento:</dt>
+										<dd className="font-medium text-foreground">{participant.event.title}</dd>
 									</div>
 									<div className="flex justify-between">
-										<dt className="text-gray-600 dark:text-gray-400">Ingressos:</dt>
-										<dd className="font-medium text-gray-900 dark:text-white">
+										<dt className="text-muted-foreground dark:text-muted-foreground">Ingressos:</dt>
+										<dd className="font-medium text-foreground">
 											{registration.quantity} × {participant.ticket_type?.title || 'Ingresso'}
 										</dd>
 									</div>
 									{orderTotal > 0 && (
-										<div className="flex justify-between border-t border-gray-200 pt-2 dark:border-gray-700">
-											<dt className="text-gray-600 dark:text-gray-400">Valor do pedido:</dt>
-											<dd className="font-medium text-gray-900 dark:text-white">
+										<div className="flex justify-between border-t border-border pt-2">
+											<dt className="text-muted-foreground dark:text-muted-foreground">Valor do pedido:</dt>
+											<dd className="font-medium text-foreground">
 												{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(orderTotal)}
 											</dd>
 										</div>
 									)}
 								</dl>
-							</div>
+							</Card>
 
-							<div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-								<p className="text-sm font-medium text-red-900 dark:text-red-200">Atenção:</p>
-								<ul className="mt-2 list-inside list-disc space-y-1 text-sm text-red-700 dark:text-red-300">
+							<Card className="p-4">
+								<p className="text-sm font-medium text-destructive ">Atenção:</p>
+								<ul className="mt-2 list-inside list-disc space-y-1 text-sm text-destructive ">
 									<li>
 										{registration.quantity === 1
 											? 'O ingresso deste pedido será cancelado'
@@ -197,12 +196,12 @@ export function CancelRegistrationDialog({
 									<li>Nenhum participante do pedido poderá fazer check-in</li>
 									<li>Esta ação é irreversível</li>
 								</ul>
-							</div>
+							</Card>
 
 							<form id="cancel-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 								<div className="space-y-2">
 									<Label htmlFor="reason" className="text-sm font-medium">
-										Motivo do cancelamento <span className="text-red-500">*</span>
+										Motivo do cancelamento <span className="text-destructive">*</span>
 									</Label>
 									<Textarea
 										id="reason"
@@ -211,13 +210,13 @@ export function CancelRegistrationDialog({
 										className="min-h-[100px] resize-none"
 										disabled={isSubmitting}
 									/>
-									{errors.reason && <p className="text-sm text-red-500">{errors.reason.message}</p>}
-									<p className="text-xs text-gray-500 dark:text-gray-400">
+									{errors.reason && <p className="text-sm text-destructive">{errors.reason.message}</p>}
+									<p className="text-xs text-muted-foreground dark:text-muted-foreground">
 										Este motivo ficará registrado no histórico da inscrição
 									</p>
 								</div>
 								{canRefund && (
-									<div className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+									<Card className="flex items-start gap-3 p-3">
 										<Checkbox
 											id="refund"
 											checked={refund}
@@ -228,11 +227,11 @@ export function CancelRegistrationDialog({
 											<Label htmlFor="refund" className="text-sm font-medium">
 												Reembolsar o pagamento pelo provedor
 											</Label>
-											<p className="text-xs text-gray-500 dark:text-gray-400">
+											<p className="text-xs text-muted-foreground dark:text-muted-foreground">
 												Estorno integral do valor pago. A confirmação chega pelo provedor e pode levar alguns minutos.
 											</p>
 										</div>
-									</div>
+									</Card>
 								)}
 							</form>
 						</div>

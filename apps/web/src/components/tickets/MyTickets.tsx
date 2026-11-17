@@ -44,13 +44,19 @@ export default function MyTickets({ registrations }: MyTicketsProps) {
 	const handlePrintTicket = () => {
 		if (!selectedTicket) return;
 
-		// Create a simple HTML ticket for printing
+		const escape = (value: string | number) =>
+			String(value).replace(
+				/[&<>"']/g,
+				(character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!,
+			);
+
+		// All interpolated ticket data is text, including the document title.
 		const ticketHtml = `
 			<!DOCTYPE html>
 			<html>
 			<head>
 				<meta charset="UTF-8">
-				<title>Ingresso - ${selectedTicket.event_id.title}</title>
+				<title>Ingresso - ${escape(selectedTicket.event_id.title)}</title>
 				<style>
 					@media print {
 						body { margin: 0; }
@@ -85,7 +91,7 @@ export default function MyTickets({ registrations }: MyTicketsProps) {
 			</head>
 			<body>
 				<div class="ticket">
-					<h1>${selectedTicket.event_id.title}</h1>
+					<h1>${escape(selectedTicket.event_id.title)}</h1>
 					<div class="info"><strong>Data:</strong> ${new Date(selectedTicket.event_id.event_date).toLocaleDateString('pt-BR', {
 						weekday: 'long',
 						year: 'numeric',
@@ -94,26 +100,25 @@ export default function MyTickets({ registrations }: MyTicketsProps) {
 						hour: '2-digit',
 						minute: '2-digit',
 					})}</div>
-					${selectedTicket.event_id.location ? `<div class="info"><strong>Local:</strong> ${selectedTicket.event_id.location}</div>` : ''}
-					<div class="info"><strong>Tipo:</strong> ${selectedTicket.ticket_type_id.title}</div>
-					<div class="info"><strong>Quantidade:</strong> ${selectedTicket.quantity}</div>
-					<div class="info"><strong>Participante:</strong> ${selectedTicket.participant_name}</div>
-					<div class="code">${selectedTicket.ticket_code}</div>
+					${selectedTicket.event_id.location ? `<div class="info"><strong>Local:</strong> ${escape(selectedTicket.event_id.location)}</div>` : ''}
+					<div class="info"><strong>Tipo:</strong> ${escape(selectedTicket.ticket_type_id.title)}</div>
+					<div class="info"><strong>Quantidade:</strong> ${escape(selectedTicket.quantity)}</div>
+					<div class="info"><strong>Participante:</strong> ${escape(selectedTicket.participant_name)}</div>
+					<div class="code">${escape(selectedTicket.ticket_code)}</div>
 					<p style="text-align: center; color: #666; margin-top: 30px;">
 						Apresente este código na entrada do evento
 					</p>
 				</div>
-				<script>
-					window.onload = function() { window.print(); }
-				</script>
 			</body>
 			</html>
 		`;
 
 		const printWindow = window.open('', '_blank');
 		if (printWindow) {
+			printWindow.opener = null;
 			printWindow.document.write(ticketHtml);
 			printWindow.document.close();
+			printWindow.print();
 		}
 	};
 

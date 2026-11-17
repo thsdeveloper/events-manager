@@ -277,6 +277,8 @@ export interface EventConfigurations {
 	registration_confirmation_email?: boolean | null;
 	/** @description Taxa da plataforma em percentual sobre o valor base do ingresso (ex: 5 para 5%) @required */
 	platform_fee_percentage: number;
+	/** Minimum platform fee per paid ticket, in BRL. Zero preserves percentage-only pricing. */
+	platform_fee_minimum?: number;
 	/** @description Gateway utilizado pela plataforma. */
 	payment_gateway: 'abacatepay';
 	card_fee_percentage: number;
@@ -367,6 +369,20 @@ export interface Event {
 	/** @primaryKey */
 	id: string;
 	status?: 'published' | 'draft' | 'cancelled' | 'archived';
+	cover_image_alt?: string | null;
+	description_en?: string | null;
+	description_es?: string | null;
+	location_tbd?: boolean;
+	show_map?: boolean;
+	location_street?: string | null;
+	location_number?: string | null;
+	location_complement?: string | null;
+	location_neighborhood?: string | null;
+	location_city?: string | null;
+	location_state?: string | null;
+	location_postal_code?: string | null;
+	online_platform?: import('./schemas.js').OnlinePlatform | null;
+	ticket_groups?: import('./ticket-groups.js').EventTicketGroup[];
 	/** Unlisted events are reachable by link and omitted from public discovery. */
 	visibility?: EventVisibility;
 	sort?: number | null;
@@ -425,6 +441,9 @@ export interface Event {
 export interface EventTicket {
 	/** @primaryKey */
 	id: string;
+	group_id?: string | null;
+	admission_type?: 'standard' | 'half_price';
+	group?: import('./ticket-groups.js').EventTicketGroup | null;
 	status?: 'active' | 'sold_out' | 'inactive';
 	sort?: number | null;
 	user_created?: AppUser | string | null;
@@ -566,6 +585,10 @@ export interface Globals {
 	url?: string | null;
 	/** @description Small icon for browser tabs. 1:1 ratio. No larger than 512px × 512px. */
 	favicon?: MediaFile | string | null;
+	favicon_dark_mode?: MediaFile | string | null;
+	app_icon?: MediaFile | string | null;
+	app_icon_dark_mode?: MediaFile | string | null;
+	app_icon_tinted?: MediaFile | string | null;
 	/** @description Main logo shown on the site (for light mode). */
 	logo?: MediaFile | string | null;
 	/** @description Main logo shown on the site (for dark mode). */

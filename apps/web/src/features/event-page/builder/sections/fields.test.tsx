@@ -79,12 +79,12 @@ describe('SectionFields', () => {
 
 	it('edits the free text of "about" and "richtext" through the rich editor', async () => {
 		const about = setup('about');
-		await about.user.type(screen.getByLabelText('Texto'), '<p>Oi</p>');
+		await about.user.type(await screen.findByLabelText('Texto'), '<p>Oi</p>');
 		expect(about.latest()).toMatchObject({ type: 'about', content: '<p>Oi</p>' });
 		about.unmount();
 
 		const richtext = setup('richtext');
-		await richtext.user.type(screen.getByLabelText('Texto'), 'x');
+		await richtext.user.type(await screen.findByLabelText('Texto'), 'x');
 		expect(richtext.latest()).toMatchObject({ type: 'richtext', content: 'x' });
 	});
 

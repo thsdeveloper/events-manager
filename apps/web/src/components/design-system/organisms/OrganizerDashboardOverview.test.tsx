@@ -14,11 +14,12 @@ const emptyDashboard = {
 };
 
 describe('OrganizerDashboardOverview', () => {
-	it('invites the organizer to create the first event, with an illustration, when there are none', () => {
+	it('invites the organizer to create the first event in the standard empty state', () => {
 		const { container } = renderWithProviders(<OrganizerDashboardOverview dashboard={emptyDashboard} />);
 
 		expect(screen.getByRole('heading', { name: 'Sua agenda começa aqui' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Criar primeiro evento' })).toHaveAttribute('href', '/admin/eventos/novo');
-		expect(container.querySelector('img[aria-hidden="true"]')).toHaveAttribute('src', '/images/empty/overview.svg');
+		expect(screen.getByRole('status', { name: 'Nenhum evento recente' })).toHaveTextContent('Sua agenda começa aqui');
+		expect(container.querySelector('img')).not.toBeInTheDocument();
 	});
 });

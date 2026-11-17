@@ -24,3 +24,29 @@ describe('ABACATEPAY_METHODS', () => {
 		expect(() => loadEnv({ ...base, ABACATEPAY_METHODS: 'PIX,BOLETO' })).toThrow(/ABACATEPAY_METHODS/);
 	});
 });
+
+describe('production security configuration', () => {
+	const production = {
+		...base,
+		NODE_ENV: 'production',
+		WEB_URL: 'https://flouvi.example',
+		COOKIE_SECRET: 'a-long-random-production-secret-value',
+		PAYMENTS_MODE: 'abacatepay',
+		ABACATEPAY_API_KEY: 'test-key',
+		ABACATEPAY_WEBHOOK_SECRET: 'test-webhook-secret',
+	};
+	it('accepts explicit production credentials and HTTPS', () => {
+		expect(loadEnv(production).NODE_ENV).toBe('production');
+	});
+	it.each([
+		{ COOKIE_SECRET: undefined },
+		{ COOKIE_SECRET: 'local-development-cookie-secret' },
+		{ COOKIE_SECRET: 'a-secret-too-short' },
+		{ PAYMENTS_MODE: 'mock' },
+		{ ABACATEPAY_WEBHOOK_SECRET: undefined },
+		{ ABACATEPAY_API_KEY: undefined },
+		{ WEB_URL: 'http://flouvi.example' },
+	])('refuses unsafe production configuration: %j', (overrides) => {
+		expect(() => loadEnv({ ...production, ...overrides })).toThrow(/Configuração inválida/);
+	});
+});

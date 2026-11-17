@@ -105,3 +105,14 @@ describe('calculateFeesForMethod', () => {
 		]);
 	});
 });
+
+it('applies the configured minimum per paid ticket', () => {
+	expect(
+		calculateBuyerPrice(10, 'passed_to_buyer', {
+			platformFeePercentage: 5,
+			platformFeeMinimum: 3,
+			providerPercentageFee: 0,
+			providerFixedFee: 0,
+		}),
+	).toBe(13);
+});

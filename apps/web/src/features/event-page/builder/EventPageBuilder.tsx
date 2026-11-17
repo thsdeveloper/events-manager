@@ -1,5 +1,8 @@
 'use client';
+import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import {
 	buildEventPageSection,
 	validateEventPageLayout,
@@ -10,7 +13,7 @@ import {
 	type EventPageSection,
 	type EventPageSectionType,
 } from '@events-manager/contracts';
-import { ArrowLeft, ExternalLink, Monitor, Plus, Smartphone } from 'lucide-react';
+import { ExternalLink, Monitor, Plus, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -191,27 +194,11 @@ export function EventPageBuilder({ event, initialPage, autosaveDelayMs = 1500 }:
 
 	return (
 		<div className="space-y-6">
-			<div className="flex flex-wrap items-start justify-between gap-4">
-				<div className="min-w-0">
-					<Link
-						href={`/admin/eventos/${event.id}`}
-						className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-					>
-						<ArrowLeft className="size-4" />
-						{event.title}
-					</Link>
-					<h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Página do evento</h1>
+			<PageHeader
+				title="Página do evento"
+				description={
 					<p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-						<span
-							className={cn(
-								'rounded-full px-2.5 py-0.5 text-xs font-semibold',
-								status.kind === 'draft' && 'bg-slate-100 text-slate-700',
-								status.kind === 'published' && 'bg-emerald-100 text-emerald-700',
-								status.kind === 'changed' && 'bg-amber-100 text-amber-700',
-							)}
-						>
-							{statusLabel}
-						</span>
+						<Badge variant="secondary">{statusLabel}</Badge>
 						<span aria-live="polite">
 							{saving
 								? 'Salvando…'
@@ -222,29 +209,31 @@ export function EventPageBuilder({ event, initialPage, autosaveDelayMs = 1500 }:
 										: null}
 						</span>
 					</p>
-				</div>
-				<div role="toolbar" aria-label="Ações da página" className="flex flex-wrap items-center gap-2">
-					{record.enabled && event.slug ? (
-						<Button variant="outline" size="sm" asChild>
-							<Link href={`/eventos/${event.slug}`} target="_blank">
-								<ExternalLink className="mr-2 size-4" />
-								Ver página
-							</Link>
+				}
+				actions={
+					<div role="toolbar" aria-label="Ações da página" className="flex flex-wrap items-center gap-2">
+						{record.enabled && event.slug ? (
+							<Button variant="outline" size="sm" asChild>
+								<Link href={`/eventos/${event.slug}`} target="_blank">
+									<ExternalLink className="mr-2 size-4" />
+									Ver página
+								</Link>
+							</Button>
+						) : null}
+						{record.enabled ? (
+							<Button variant="outline" size="sm" onClick={() => setConfirmUnpublish(true)}>
+								Voltar ao padrão
+							</Button>
+						) : null}
+						<Button variant="outline" size="sm" onClick={() => void saveDraft()} disabled={saving}>
+							Salvar rascunho
 						</Button>
-					) : null}
-					{record.enabled ? (
-						<Button variant="outline" size="sm" onClick={() => setConfirmUnpublish(true)}>
-							Voltar ao padrão
+						<Button size="sm" onClick={() => void publish()} loading={publishing}>
+							{status.kind === 'changed' ? 'Publicar alterações' : 'Publicar'}
 						</Button>
-					) : null}
-					<Button variant="outline" size="sm" onClick={() => void saveDraft()} disabled={saving}>
-						Salvar rascunho
-					</Button>
-					<Button size="sm" onClick={() => void publish()} loading={publishing}>
-						{status.kind === 'changed' ? 'Publicar alterações' : 'Publicar'}
-					</Button>
-				</div>
-			</div>
+					</div>
+				}
+			/>
 
 			<PublishIssues issues={issues} sections={draft.sections} />
 
@@ -289,7 +278,7 @@ export function EventPageBuilder({ event, initialPage, autosaveDelayMs = 1500 }:
 				<section aria-label="Pré-visualização" className="space-y-3 xl:sticky xl:top-20 xl:self-start">
 					<div className="flex items-center justify-between">
 						<h2 className="text-sm font-semibold text-foreground">Pré-visualização</h2>
-						<div className="flex items-center gap-1 rounded-md border p-0.5">
+						<Card className="flex items-center gap-1 p-0.5">
 							<Button
 								size="sm"
 								variant={viewport === 'desktop' ? 'secondary' : 'ghost'}
@@ -308,18 +297,18 @@ export function EventPageBuilder({ event, initialPage, autosaveDelayMs = 1500 }:
 							>
 								<Smartphone className="size-4" />
 							</Button>
-						</div>
+						</Card>
 					</div>
-					<div className="overflow-hidden rounded-lg border bg-muted/40 p-3">
-						<div
+					<Card className="overflow-hidden p-3">
+						<Card
 							className={cn(
-								'mx-auto max-h-[75vh] overflow-y-auto rounded-md border bg-background shadow-sm transition-[width]',
+								'mx-auto max-h-[75vh] overflow-y-auto transition-[width]',
 								viewport === 'mobile' ? 'w-[390px]' : 'w-full',
 							)}
 						>
 							<EventLandingPage event={event} layout={draft} mode="preview" />
-						</div>
-					</div>
+						</Card>
+					</Card>
 				</section>
 			</div>
 

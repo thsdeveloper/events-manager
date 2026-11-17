@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/design-system/molecules/PageHeader';
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cmsPageInputSchema, type CmsContentStatus, type CmsSeo } from '@events-manager/contracts';
 import { ExternalLink, Eye, Save, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -105,39 +108,43 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 
 	return (
 		<div className="space-y-6">
-			<header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-				<div className="min-w-0">
-					<p className="text-sm font-semibold text-violet-700">Páginas</p>
-					<h1 className="mt-1 truncate text-3xl font-bold tracking-tight">{page.title}</h1>
-					<div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-						<StatusBadge status={page.status} publishedAt={page.published_at} />
-						<span>Atualizada em {formatDateTime(page.date_updated ?? page.date_created)}</span>
-					</div>
-				</div>
-				<div className="flex flex-wrap items-center gap-2">
-					<Button variant="outline" onClick={preview}>
-						<Eye className="mr-2 size-4" />
-						Pré-visualizar
-					</Button>
-					{page.status === 'published' && (
-						<Button variant="outline" asChild>
-							<Link href={publicUrl} target="_blank" rel="noopener">
-								<ExternalLink className="mr-2 size-4" />
-								Ver no site
-							</Link>
+			<PageHeader
+				eyebrow="Páginas"
+				title={page.title}
+				description={
+					<>
+						<div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+							<StatusBadge status={page.status} publishedAt={page.published_at} />
+							<span>Atualizada em {formatDateTime(page.date_updated ?? page.date_created)}</span>
+						</div>
+					</>
+				}
+				actions={
+					<div className="flex flex-wrap items-center gap-2">
+						<Button variant="outline" onClick={preview}>
+							<Eye className="mr-2 size-4" />
+							Pré-visualizar
 						</Button>
-					)}
-					<Button onClick={save} loading={saving}>
-						<Save className="mr-2 size-4" />
-						Salvar
-					</Button>
-				</div>
-			</header>
+						{page.status === 'published' && (
+							<Button variant="outline" asChild>
+								<Link href={publicUrl} target="_blank" rel="noopener">
+									<ExternalLink className="mr-2 size-4" />
+									Ver no site
+								</Link>
+							</Button>
+						)}
+						<Button onClick={save} loading={saving}>
+							<Save className="mr-2 size-4" />
+							Salvar
+						</Button>
+					</div>
+				}
+			/>
 
 			{formError && (
-				<p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-					{formError}
-				</p>
+				<Alert variant="destructive" className="border text-sm" role="alert">
+					<AlertDescription>{formError}</AlertDescription>
+				</Alert>
 			)}
 
 			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -190,16 +197,11 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 					</SectionCard>
 
 					<SectionCard title="Zona de perigo">
-						<Button
-							variant="outline"
-							className="w-full text-red-600 hover:text-red-700"
-							disabled={isHome}
-							onClick={() => setDeleteOpen(true)}
-						>
+						<Button variant="destructive" className="w-full" disabled={isHome} onClick={() => setDeleteOpen(true)}>
 							<Trash2 className="mr-2 size-4" />
 							Excluir página
 						</Button>
-						<p className="text-xs text-slate-500">
+						<p className="text-xs text-muted-foreground">
 							{isHome
 								? 'A página inicial não pode ser excluída: ela responde na raiz do site. Edite os blocos ou deixe-a como rascunho.'
 								: 'Os blocos são apagados junto. Links de menu que apontam para ela ficam sem destino.'}

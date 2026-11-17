@@ -1,3 +1,4 @@
+import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { UseFormReturn } from 'react-hook-form';
 
@@ -12,9 +13,9 @@ const RadioGroupField = ({ name, options, form }: RadioGroupFieldProps) => (
 		{options.map((option) => (
 			<div key={option.value} className="flex items-center gap-x-2">
 				<RadioGroupItem id={`${name}-${option.value}`} value={option.value} />
-				<label htmlFor={`${name}-${option.value}`} className="text-sm">
+				<Label htmlFor={`${name}-${option.value}`} className="text-sm">
 					{option.text}
-				</label>
+				</Label>
 			</div>
 		))}
 	</RadioGroup>

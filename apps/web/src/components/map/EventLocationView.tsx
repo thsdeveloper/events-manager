@@ -27,7 +27,7 @@ export function EventLocationView({ position, locationName }: EventLocationViewP
 				href={directionsUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				className="inline-flex items-center gap-1.5 text-sm font-semibold text-purple-700 hover:text-purple-900"
+				className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary"
 			>
 				Como chegar
 				<ExternalLink className="size-3.5" />

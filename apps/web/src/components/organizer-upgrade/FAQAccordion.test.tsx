@@ -21,16 +21,23 @@ describe('FAQAccordion', () => {
 		const { user } = renderWithProviders(<FAQAccordion />);
 		const list = () => screen.getByRole('list', { name: /perguntas/i });
 
-		await user.click(screen.getByRole('button', { name: /^recursos$/i }));
+		await user.click(screen.getByRole('button', { name: /Filtros/ }));
+		await user.click(screen.getByRole('combobox', { name: 'Categoria' }));
+		await user.click(screen.getByRole('option', { name: 'Recursos' }));
+		await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }));
 		expect(within(list()).getAllByRole('listitem').length).toBeGreaterThan(0);
 		expect(within(list()).queryByRole('button', { name: /aprovad/i })).not.toBeInTheDocument();
 
-		await user.click(screen.getByRole('button', { name: /^todas$/i }));
+		await user.click(screen.getByRole('button', { name: /Filtros/ }));
+		await user.click(screen.getByRole('button', { name: 'Limpar filtros' }));
 		await user.type(screen.getByRole('searchbox', { name: /buscar/i }), 'parcelado');
+		await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }));
 		expect(within(list()).getAllByRole('listitem')).toHaveLength(1);
 
+		await user.click(screen.getByRole('button', { name: /Filtros/ }));
 		await user.clear(screen.getByRole('searchbox', { name: /buscar/i }));
 		await user.type(screen.getByRole('searchbox', { name: /buscar/i }), 'xyzabc');
+		await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }));
 		expect(screen.getByText(/nenhuma pergunta encontrada/i)).toBeInTheDocument();
 	});
 

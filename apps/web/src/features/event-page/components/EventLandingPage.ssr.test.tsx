@@ -160,3 +160,56 @@ describe('EventLandingPage', () => {
 		expect(without).toContain('Realização própria.');
 	});
 });
+
+it('uses the translated description and the custom banner alternative', () => {
+	const translated = {
+		...event,
+		description_en: '<p>English event overview.</p>',
+		cover_image_alt: 'Jovens reunidos no congresso',
+	};
+	const markup = renderToStaticMarkup(<EventLandingPage event={translated} layout={layout()} language="en" />);
+	expect(markup).toContain('English event overview.');
+	expect(markup).not.toContain('Três dias de encontros.');
+	expect(markup).toContain('alt="Jovens reunidos no congresso"');
+});
+it('hides stale venue data when the place is still undefined, and respects hidden maps', () => {
+	const withMap = layout((current) => {
+		current.sections.push({
+			id: 'local',
+			anchor: 'local',
+			type: 'location',
+			title: 'Local',
+			hidden: false,
+			showMap: true,
+		});
+	});
+	const tbd = renderToStaticMarkup(<EventLandingPage event={{ ...event, location_tbd: true }} layout={withMap} />);
+	expect(tbd).toContain('Local a definir');
+	expect(tbd).not.toContain('Rua A, 10');
+	expect(tbd).not.toContain('Ginásio Central');
+	expect(tbd).not.toContain('mapa');
+	const hidden = renderToStaticMarkup(<EventLandingPage event={{ ...event, show_map: false }} layout={withMap} />);
+	expect(hidden).toContain('Rua A, 10');
+	expect(hidden).not.toContain('mapa');
+});
+it('shows group, subgroup and admission labels for tickets', () => {
+	const grouped = {
+		...event,
+		ticket_groups: [
+			{ id: 'g-1', title: 'Pista' },
+			{ id: 'g-2', title: 'Lote antecipado', parent_id: 'g-1' },
+		],
+		tickets: [
+			{
+				...(event.tickets?.[0] as object),
+				id: 't-1',
+				title: 'Estudantes',
+				group_id: 'g-2',
+				admission_type: 'half_price',
+			},
+		],
+	} as unknown as Event;
+	const markup = renderToStaticMarkup(<EventLandingPage event={grouped} layout={layout()} />);
+	expect(markup).toContain('Pista / Lote antecipado');
+	expect(markup).toContain('Meia-entrada');
+});

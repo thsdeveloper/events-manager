@@ -1,27 +1,31 @@
 'use client';
 
 import { z } from 'zod';
-import { eventVisibilitySchema } from '@events-manager/contracts';
+import { eventVisibilitySchema, onlinePlatformSchema, isOnlinePlatformUrl } from '@events-manager/contracts';
+import { structuredAddress } from './wizard-content';
 import { htmlToPlainText } from '@/components/ui/Text';
 
 export const basicInfoSchema = z.object({
 	title: z
-		.string({ required_error: 'Informe um nome para o evento' })
+		.string({ error: 'Informe um nome para o evento' })
 		.trim()
 		.min(10, 'O nome deve ter pelo menos 10 caracteres')
 		.max(100, 'O nome pode ter no máximo 100 caracteres'),
-	category_id: z.string({ required_error: 'Selecione uma categoria' }).min(1, 'Selecione uma categoria'),
+	category_id: z.string({ error: 'Selecione uma categoria' }).min(1, 'Selecione uma categoria'),
 	short_description: z.string().trim().max(160, 'Limite de 160 caracteres').optional().or(z.literal('')),
 });
 
 export const coverImageSchema = z.object({
+	cover_image_alt: z.string().max(240, 'Use até 240 caracteres').optional(),
 	cover_image: z.string().optional().or(z.literal('')),
 });
 
 export const detailsSchema = z.object({
+	description_en: z.string().optional(),
+	description_es: z.string().optional(),
 	// HTML do editor: o mínimo vale para o texto visível, não para as tags.
 	description: z
-		.string({ required_error: 'Descreva seu evento' })
+		.string({ error: 'Descreva seu evento' })
 		.trim()
 		.refine((value) => htmlToPlainText(value).length >= 80, 'Descreva seu evento com pelo menos 80 caracteres'),
 	tags: z
@@ -34,56 +38,31 @@ export const detailsSchema = z.object({
 });
 
 const scheduleFields = z.object({
-	start_date: z.string({ required_error: 'Informe a data de início' }).min(1, 'Informe a data de início'),
+	start_date: z.string({ error: 'Informe a data de início' }).min(1, 'Informe a data de início'),
 	end_date: z.string().min(1, 'Informe a data de término'),
-	registration_start: z.string().optional().or(z.literal('')),
-	registration_end: z.string().optional().or(z.literal('')),
 });
 
-export const scheduleSchema = scheduleFields
-	.refine(
-		(data) => {
-			if (!data.start_date || !data.end_date) {
-				return false;
-			}
-
-			return new Date(data.end_date).getTime() > new Date(data.start_date).getTime();
-		},
-		{
-			path: ['end_date'],
-			message: 'A data de término deve ser após o início',
-		},
-	)
-	.refine(
-		(data) => {
-			if (!data.registration_start || !data.registration_end) {
-				return true;
-			}
-
-			return new Date(data.registration_end).getTime() > new Date(data.registration_start).getTime();
-		},
-		{
-			path: ['registration_end'],
-			message: 'O encerramento das inscrições deve ser após a abertura',
-		},
-	)
-	.refine(
-		(data) => {
-			if (!data.registration_end) {
-				return true;
-			}
-
-			return new Date(data.registration_end).getTime() <= new Date(data.end_date).getTime();
-		},
-		{
-			path: ['registration_end'],
-			message: 'Inscrições não podem encerrar depois do evento',
-		},
-	);
+export const scheduleSchema = scheduleFields.refine(
+	(data) => new Date(data.end_date).getTime() > new Date(data.start_date).getTime(),
+	{
+		path: ['end_date'],
+		message: 'A data de término deve ser após o início',
+	},
+);
 
 const locationFields = z.object({
+	location_tbd: z.boolean().default(false),
+	show_map: z.boolean().default(true),
+	location_street: z.string().optional(),
+	location_number: z.string().optional(),
+	location_complement: z.string().optional(),
+	location_neighborhood: z.string().optional(),
+	location_city: z.string().optional(),
+	location_state: z.string().optional(),
+	location_postal_code: z.string().optional(),
+	online_platform: onlinePlatformSchema.optional().default('custom'),
 	event_type: z.enum(['in_person', 'online', 'hybrid'], {
-		required_error: 'Escolha o formato do evento',
+		error: 'Escolha o formato do evento',
 	}),
 	location_name: z.string().optional().or(z.literal('')),
 	location_address: z.string().optional().or(z.literal('')),
@@ -93,7 +72,7 @@ const locationFields = z.object({
 });
 
 export const locationSchema = locationFields.superRefine((data, ctx) => {
-	if (data.event_type === 'in_person' || data.event_type === 'hybrid') {
+	if ((data.event_type === 'in_person' || data.event_type === 'hybrid') && !data.location_tbd) {
 		if (!data.location_name || data.location_name.trim().length < 3) {
 			ctx.addIssue({
 				path: ['location_name'],
@@ -101,7 +80,7 @@ export const locationSchema = locationFields.superRefine((data, ctx) => {
 				message: 'Informe o nome do local',
 			});
 		}
-		if (!data.location_address || data.location_address.trim().length < 5) {
+		if ((structuredAddress(data) || data.location_address || '').trim().length < 5) {
 			ctx.addIssue({
 				path: ['location_address'],
 				code: z.ZodIssueCode.custom,
@@ -109,10 +88,8 @@ export const locationSchema = locationFields.superRefine((data, ctx) => {
 			});
 		}
 		if (
-			data.latitude === null ||
-			data.latitude === undefined ||
-			data.longitude === null ||
-			data.longitude === undefined
+			data.show_map !== false &&
+			(data.latitude === null || data.latitude === undefined || data.longitude === null || data.longitude === undefined)
 		) {
 			ctx.addIssue({
 				path: ['latitude'],
@@ -132,12 +109,16 @@ export const locationSchema = locationFields.superRefine((data, ctx) => {
 		} else {
 			try {
 				const url = new URL(data.online_url);
-				if (!['http:', 'https:'].includes(url.protocol)) throw new Error('invalid protocol');
+				if (
+					!['http:', 'https:'].includes(url.protocol) ||
+					!isOnlinePlatformUrl(data.online_platform ?? 'custom', data.online_url)
+				)
+					throw new Error('invalid protocol or platform');
 			} catch {
 				ctx.addIssue({
 					path: ['online_url'],
 					code: z.ZodIssueCode.custom,
-					message: 'Informe uma URL válida',
+					message: 'Informe uma URL válida da plataforma selecionada',
 				});
 			}
 		}
@@ -157,7 +138,7 @@ const ticketsFields = z.object({
 		.union([
 			z
 				.number({
-					invalid_type_error: 'Informe um número válido',
+					error: 'Informe um número válido',
 				})
 				.int()
 				.min(1, 'Informe um número acima de zero')
@@ -195,16 +176,26 @@ export const eventWizardSchema = basicInfoSchema
 		const scheduleCheck = scheduleSchema.safeParse({
 			start_date: data.start_date,
 			end_date: data.end_date,
-			registration_start: data.registration_start,
-			registration_end: data.registration_end,
 		});
 
 		if (!scheduleCheck.success) {
-			scheduleCheck.error.issues.forEach((issue) => ctx.addIssue(issue));
+			scheduleCheck.error.issues.forEach((issue) =>
+				ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path }),
+			);
 		}
 
 		const locationCheck = locationSchema.safeParse({
 			event_type: data.event_type,
+			location_tbd: data.location_tbd,
+			show_map: data.show_map,
+			online_platform: data.online_platform,
+			location_street: data.location_street,
+			location_number: data.location_number,
+			location_complement: data.location_complement,
+			location_neighborhood: data.location_neighborhood,
+			location_city: data.location_city,
+			location_state: data.location_state,
+			location_postal_code: data.location_postal_code,
 			location_name: data.location_name,
 			location_address: data.location_address,
 			latitude: data.latitude,
@@ -213,7 +204,9 @@ export const eventWizardSchema = basicInfoSchema
 		});
 
 		if (!locationCheck.success) {
-			locationCheck.error.issues.forEach((issue) => ctx.addIssue(issue));
+			locationCheck.error.issues.forEach((issue) =>
+				ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path }),
+			);
 		}
 
 		addPaidTicketIssue(data, ctx);

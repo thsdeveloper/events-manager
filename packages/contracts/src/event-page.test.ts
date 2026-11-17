@@ -8,6 +8,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	buildDefaultEventPageLayout,
+	buildEventPageSection,
+	nextEventPageAnchor,
 	EVENT_PAGE_SECTION_TYPES,
 	eventPageLayoutSchema,
 	validateEventPageLayout,
@@ -23,6 +25,28 @@ const base = () =>
 		cover_image: MEDIA_ID,
 		start_date: '2026-09-19T12:00:00.000Z',
 	});
+
+describe('safe editor section defaults', () => {
+	it.each(EVENT_PAGE_SECTION_TYPES)('creates a valid %s section with a fresh unique anchor', (type) => {
+		const first = buildEventPageSection(type);
+		const second = buildEventPageSection(type, [first.anchor]);
+		const thirdAnchor = nextEventPageAnchor(type, [first.anchor, second.anchor]);
+		expect(second.anchor).not.toBe(first.anchor);
+		expect(thirdAnchor).not.toBe(second.anchor);
+		expect(second.id).not.toBe(first.id);
+		expect(second.type).toBe(type);
+		expect(second.hidden).toBe(false);
+	});
+	it('refuses publishing when all checkout sections are hidden', () => {
+		const layout = base();
+		layout.sections = layout.sections.map((section) =>
+			section.type === 'tickets' ? { ...section, hidden: true } : section,
+		);
+		expect(validateEventPageLayout(layout)).toEqual(
+			expect.arrayContaining([expect.objectContaining({ code: 'tickets_hidden' })]),
+		);
+	});
+});
 
 describe('buildDefaultEventPageLayout', () => {
 	it('starts from the event itself: hero, about and the mandatory tickets section', () => {

@@ -26,10 +26,10 @@ export default defineConfig({
 			// Catraca: os valores refletem a cobertura medida em 2026-09-05 e só
 			// podem subir. Ao cobrir um módulo, eleve o limiar correspondente.
 			thresholds: {
-				lines: 55,
-				functions: 61,
-				branches: 80,
-				statements: 55,
+				lines: 74.2,
+				functions: 77,
+				branches: 83.5,
+				statements: 74.2,
 			},
 		},
 	},

@@ -59,6 +59,7 @@ export function ImageCropperDialog({
 	const [zoom, setZoom] = useState(MIN_ZOOM);
 	const [mediaAspect, setMediaAspect] = useState<number | null>(null);
 	const [area, setArea] = useState<Area | null>(null);
+	const [cropError, setCropError] = useState<string | null>(null);
 	const [isCropping, setIsCropping] = useState(false);
 
 	// Uma URL de objeto por arquivo, revogada quando o arquivo muda ou o diálogo fecha.
@@ -74,6 +75,7 @@ export function ImageCropperDialog({
 		setZoom(MIN_ZOOM);
 		setMediaAspect(null);
 		setArea(null);
+		setCropError(null);
 
 		return () => URL.revokeObjectURL(url);
 	}, [file]);
@@ -91,13 +93,13 @@ export function ImageCropperDialog({
 	const handleConfirm = async () => {
 		if (!file || !objectUrl || !area) return;
 		setIsCropping(true);
+		setCropError(null);
 		try {
 			const height = outputHeight ?? Math.round(outputWidth / aspect);
 			const image = await loadImage(objectUrl);
 			onCropped(await renderCroppedFile({ area, image, originalName: file.name, outputWidth, outputHeight: height }));
 		} catch {
-			// Falls back to the untouched file rather than blocking the upload.
-			onCropped(file);
+			setCropError('Não foi possível recortar a imagem. Tente novamente ou escolha outra imagem.');
 		} finally {
 			setIsCropping(false);
 		}
@@ -183,6 +185,11 @@ export function ImageCropperDialog({
 				</div>
 
 				<DialogFooter>
+					{cropError && (
+						<p role="alert" className="text-sm text-destructive">
+							{cropError}
+						</p>
+					)}
 					<Button type="button" variant="outline" onClick={onCancel}>
 						Cancelar
 					</Button>

@@ -41,7 +41,7 @@ export function SearchBar({
 
 	return (
 		<div className="relative">
-			<Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+			<Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
 			<Input
 				type="text"
 				value={localValue}

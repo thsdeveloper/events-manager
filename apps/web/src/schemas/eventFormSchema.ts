@@ -32,8 +32,6 @@ const eventFormBaseSchema = z.object({
 
 		return !isNaN(date.getTime());
 	}, 'Data de término inválida'),
-	registration_start: z.string().nullable(),
-	registration_end: z.string().nullable(),
 
 	// Tipo e Localização
 	event_type: z.enum(['in_person', 'online', 'hybrid']),
@@ -114,7 +112,7 @@ export const createFieldValidator = (field: keyof EventFormData) => {
 			if (error instanceof z.ZodError) {
 				return {
 					valid: false,
-					error: error.errors[0]?.message || 'Valor inválido',
+					error: error.issues[0]?.message || 'Valor inválido',
 				};
 			}
 

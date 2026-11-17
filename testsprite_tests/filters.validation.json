@@ -1,0 +1,128 @@
+{
+	"date": "2026-11-17",
+	"scope": "Filtros das listagens em um Sheet reutilizável, com componentes padrão do shadcn.",
+	"components": {
+		"shell": "apps/web/src/components/shared/FilterSheet.tsx",
+		"fields": "apps/web/src/components/shared/FilterFields.tsx",
+		"urlAdapter": "apps/web/src/components/shared/QueryFilterSheet.tsx",
+		"usage": "Cada tela informa values, defaultValues, onApply e seus campos via children. validate e activeCount são opcionais. QueryFilterSheet recebe definições serializáveis de campos e sincroniza com os parâmetros da URL."
+	},
+	"behavior": [
+		"Busca e critérios específicos abrem no mesmo Sheet.",
+		"Alterações ficam locais até Aplicar filtros; Cancelar, Escape e fechar descartam o rascunho.",
+		"Limpar filtros restaura os valores padrão no rascunho; Aplicar confirma a limpeza.",
+		"Campos, validações e opções continuam sob responsabilidade de cada tela.",
+		"Filtros na URL preservam parâmetros não relacionados e reiniciam a paginação.",
+		"Cabeçalho e ações permanecem visíveis, com rolagem do conteúdo em telas pequenas.",
+		"Campos do Sheet são montados somente ao abrir; digitar não dispara consultas.",
+		"Controles de exibição da tabela permanecem disponíveis e preservam os filtros aplicados."
+	],
+	"migrated": [
+		"Eventos no admin e busca pública de eventos",
+		"Participantes",
+		"Financeiro",
+		"Análises",
+		"Organizadores no superadmin",
+		"CMS: páginas, posts e mídia",
+		"Meus ingressos",
+		"Perguntas frequentes do fluxo de organizador",
+		"Busca padrão do DataTable compartilhado"
+	],
+	"results": {
+		"web": {
+			"testsPassed": 735,
+			"filesPassed": 176,
+			"coveragePercent": {
+				"statements": 72.82,
+				"branches": 78.71,
+				"functions": 77.49,
+				"lines": 72.82
+			}
+		}
+	},
+	"checks": [
+		{
+			"command": "pnpm --dir apps/web test:coverage --maxWorkers=2 --testTimeout=15000",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir apps/web lint",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir apps/web exec tsc --noEmit --incremental false",
+			"status": "passed"
+		},
+		{
+			"command": "pnpm --dir /tmp/events-wizard-build/apps/web build",
+			"status": "passed",
+			"note": "Build isolado com dois workers. Todos os 16 arquivos de produção alterados são idênticos aos do workspace; o .next do servidor de desenvolvimento foi preservado."
+		},
+		{
+			"command": "pnpm exec prettier --check <arquivos alterados>",
+			"status": "passed"
+		}
+	],
+	"browser": {
+		"script": "testsprite_tests/filters.browser.js",
+		"environment": "Build de produção local em localhost:3004, com API e Supabase locais.",
+		"result": {
+			"passed": [
+				"/admin/participantes",
+				"/admin/financeiro",
+				"/admin/analises",
+				"/super-admin/organizadores",
+				"/super-admin/conteudo/paginas",
+				"/super-admin/conteudo/blog",
+				"/super-admin/conteudo/midia",
+				"/eventos",
+				"/admin/eventos"
+			],
+			"desktopAndMobile": true,
+			"cancelDiscardsDraft": true,
+			"urlRestoration": true,
+			"paginationReset": true,
+			"tableFilteringAndReset": true
+		},
+		"fixtures": "Conta e organização temporárias locais; GET /api/events simulado com dois eventos somente para verificar a filtragem da tabela.",
+		"cleanup": "Conta e organização temporárias removidas; credenciais temporárias excluídas; navegador e servidor de produção temporário encerrados.",
+		"developmentHealth": {
+			"web": 200,
+			"api": 200
+		}
+	},
+	"screenshots": [
+		"testsprite_tests/tmp/filters-admin-events-desktop.png",
+		"testsprite_tests/tmp/filters-admin-events-mobile.png",
+		"testsprite_tests/tmp/filters-analises-mobile.png",
+		"testsprite_tests/tmp/filters-blog-mobile.png",
+		"testsprite_tests/tmp/filters-eventos-mobile.png",
+		"testsprite_tests/tmp/filters-finance-desktop.png",
+		"testsprite_tests/tmp/filters-financeiro-mobile.png",
+		"testsprite_tests/tmp/filters-midia-mobile.png",
+		"testsprite_tests/tmp/filters-organizadores-mobile.png",
+		"testsprite_tests/tmp/filters-paginas-mobile.png",
+		"testsprite_tests/tmp/filters-participantes-mobile.png"
+	],
+	"migration": null,
+	"newEnvironmentVariables": [],
+	"coverageThresholdsChanged": false,
+	"additionalTestMaintenance": [
+		"Removida opção exact inválida de duas consultas getByRole em TicketFormSheet.test.tsx; o nome string já é exato.",
+		"Espera da prévia carregada sob demanda no teste do wizard ajustada para até cinco segundos durante a suíte com cobertura."
+	],
+	"testFilesChanged": [
+		"apps/web/src/app/admin/analises/_components/AnalyticsFilters.test.tsx",
+		"apps/web/src/app/admin/participantes/_components/ParticipantFilters.test.tsx",
+		"apps/web/src/app/admin/financeiro/_components/FinanceFilters.test.tsx",
+		"apps/web/src/app/admin/eventos/_components/EventsTable.test.tsx",
+		"apps/web/src/app/admin/eventos/novo/_components/EventCreationWizard.edit.test.tsx",
+		"apps/web/src/components/ui/data-table.test.tsx",
+		"apps/web/src/components/organizer-upgrade/FAQAccordion.test.tsx",
+		"apps/web/src/components/shared/QueryFilterSheet.test.tsx",
+		"apps/web/src/components/shared/FilterSheet.test.tsx",
+		"apps/web/src/components/tickets/MyTicketsContent.test.tsx",
+		"apps/web/src/features/cms/components/ListToolbar.test.tsx",
+		"apps/web/src/features/tickets/components/TicketFormSheet.test.tsx"
+	]
+}

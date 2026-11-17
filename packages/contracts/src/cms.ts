@@ -58,9 +58,7 @@ export function normalizePermalink(value: string) {
 }
 
 export function isReservedPermalink(permalink: string) {
-	return RESERVED_PERMALINK_PREFIXES.some(
-		(prefix) => permalink === prefix || permalink.startsWith(`${prefix}/`),
-	);
+	return RESERVED_PERMALINK_PREFIXES.some((prefix) => permalink === prefix || permalink.startsWith(`${prefix}/`));
 }
 
 export const permalinkSchema = z
@@ -91,9 +89,13 @@ export type CmsContentStatus = z.infer<typeof cmsContentStatusSchema>;
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 const optionalUuid = z.string().uuid().nullable().optional();
 const isoDate = z.string().datetime({ offset: true });
-const absoluteUrl = z.string().trim().url().refine((value) => /^https?:\/\//i.test(value), {
-	message: 'Informe uma URL completa começando com http:// ou https://.',
-});
+const absoluteUrl = z
+	.string()
+	.trim()
+	.url()
+	.refine((value) => /^https?:\/\//i.test(value), {
+		message: 'Informe uma URL completa começando com http:// ou https://.',
+	});
 
 /** Caminho interno (`/x`) ou URL absoluta http(s). Nunca `//` nem outros esquemas. */
 const linkUrlSchema = z
@@ -116,12 +118,7 @@ const relativePathSchema = z
 
 export const cmsSeoSchema = z.object({
 	title: z.string().trim().max(70, 'O título de SEO deve ter no máximo 70 caracteres.').nullable().optional(),
-	meta_description: z
-		.string()
-		.trim()
-		.max(160, 'A descrição deve ter no máximo 160 caracteres.')
-		.nullable()
-		.optional(),
+	meta_description: z.string().trim().max(160, 'A descrição deve ter no máximo 160 caracteres.').nullable().optional(),
 	og_image: optionalUuid,
 	canonical_url: absoluteUrl.nullable().optional(),
 	no_index: z.boolean().default(false),
@@ -202,7 +199,10 @@ export const cmsRichtextItemSchema = z.object({
 export const cmsGalleryItemSchema = z.object({
 	tagline: optionalText(80),
 	headline: optionalText(150),
-	items: z.array(z.object({ id: z.string().uuid().optional(), file: z.string().uuid() })).max(60).default([]),
+	items: z
+		.array(z.object({ id: z.string().uuid().optional(), file: z.string().uuid() }))
+		.max(60)
+		.default([]),
 });
 
 export const cmsPricingItemSchema = z.object({
@@ -276,7 +276,7 @@ export type CmsPageBlockInput = z.infer<typeof cmsPageBlockInputSchema>;
 export const cmsPageBlockUpdateSchema = z.object({
 	background: z.enum(['light', 'dark']).optional(),
 	hide_block: z.boolean().optional(),
-	item: z.record(z.unknown()).optional(),
+	item: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const cmsReorderSchema = z.object({ order: z.array(z.string().uuid()).min(1).max(200) });
@@ -382,7 +382,11 @@ export const cmsFormFieldInputSchema = z
 		help: optionalText(200),
 		validation: optionalText(120),
 		width: z.enum(['100', '67', '50', '33']).default('100'),
-		choices: z.array(z.object({ text: z.string().trim().min(1).max(80), value: z.string().trim().min(1).max(80) })).max(50).nullable().optional(),
+		choices: z
+			.array(z.object({ text: z.string().trim().min(1).max(80), value: z.string().trim().min(1).max(80) }))
+			.max(50)
+			.nullable()
+			.optional(),
 		required: z.boolean().default(false),
 	})
 	.superRefine((field, context) => {
@@ -404,7 +408,13 @@ export const cmsFormInputSchema = z
 		success_redirect_url: linkUrlSchema.nullable().optional(),
 		is_active: z.boolean().default(true),
 		emails: z
-			.array(z.object({ to: z.array(z.string().email()).min(1), subject: z.string().trim().min(1).max(150), message: z.string().trim().max(2000).default('') }))
+			.array(
+				z.object({
+					to: z.array(z.string().email()).min(1),
+					subject: z.string().trim().min(1).max(150),
+					message: z.string().trim().max(2000).default(''),
+				}),
+			)
 			.max(5)
 			.nullable()
 			.optional(),
@@ -456,7 +466,10 @@ export const cmsSiteSettingsInputSchema = z.object({
 		.trim()
 		.regex(/^#[0-9a-fA-F]{6}$/, 'Use uma cor no formato #rrggbb')
 		.optional(),
-	social_links: z.array(z.object({ service: z.enum(CMS_SOCIAL_SERVICES), url: absoluteUrl })).max(12).optional(),
+	social_links: z
+		.array(z.object({ service: z.enum(CMS_SOCIAL_SERVICES), url: absoluteUrl }))
+		.max(12)
+		.optional(),
 	favicon: optionalUuid,
 	logo: optionalUuid,
 	logo_dark_mode: optionalUuid,

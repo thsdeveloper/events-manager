@@ -1,26 +1,42 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import { useState } from 'react';
 import { Tag, Wand2, X } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { htmlToPlainText } from '@/components/ui/Text';
-import { RichTextEditor } from '@/features/cms/components/RichTextEditor';
+import { RichTextEditor } from '@/features/cms/components/LazyRichTextEditor';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+
 import type { EventWizardFormValues } from '../types';
+
+import dynamic from 'next/dynamic';
+const DescriptionAssistant = dynamic(
+	() => import('../DescriptionAssistant').then((module) => module.DescriptionAssistant),
+	{
+		loading: () => (
+			<p role="status" className="text-sm text-muted-foreground">
+				Carregando assistente…
+			</p>
+		),
+	},
+);
 
 const popularTags = ['networking', 'tecnologia', 'imersão', 'carreira', 'produtividade', 'marketing'];
 
 export function DetailsStep() {
 	const form = useFormContext<EventWizardFormValues>();
 	const [tagDraft, setTagDraft] = useState('');
-	const tags = form.watch('tags') ?? [];
+	const tags = useWatch({ control: form.control, name: 'tags' }) ?? [];
+	const [assistantOpen, setAssistantOpen] = useState(false);
+	const [title, category] = useWatch({ control: form.control, name: ['title', 'category_id'] });
 
 	const addTag = (newTag: string) => {
 		const normalized = newTag.trim().toLowerCase();
-		if (!normalized) return;
+		if (!normalized || tags.length >= 10 || normalized.length > 24 || normalized.length < 2) return;
 		if (tags.includes(normalized)) return;
 		form.setValue('tags', [...tags, normalized], { shouldDirty: true, shouldValidate: true });
 		setTagDraft('');
@@ -36,7 +52,8 @@ export function DetailsStep() {
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-lg border bg-card p-6 shadow-sm">
+			{assistantOpen && <DescriptionAssistant onClose={() => setAssistantOpen(false)} />}
+			<Card className="p-6">
 				<div className="flex flex-col gap-2">
 					<div className="flex items-start justify-between gap-4">
 						<div>
@@ -50,32 +67,78 @@ export function DetailsStep() {
 					</div>
 
 					<div className="mt-6 space-y-6">
-						<FormField
-							control={form.control}
-							name="description"
-							render={({ field }) => (
-								<FormItem>
-									<p className="text-sm font-medium">Descrição completa</p>
-									{/* Texto livre: negrito, itálico, listas e links. O HTML sai daqui e a
+						<Tabs defaultValue="pt">
+							<TabsList aria-label="Idioma da descrição">
+								<TabsTrigger value="pt">Português</TabsTrigger>
+								<TabsTrigger value="en">English</TabsTrigger>
+								<TabsTrigger value="es">Español</TabsTrigger>
+							</TabsList>
+							<TabsContent value="pt">
+								<FormField
+									control={form.control}
+									name="description"
+									render={({ field }) => (
+										<FormItem>
+											<div className="flex flex-wrap items-center justify-between gap-2">
+												<p className="text-sm font-medium">Descrição completa</p>
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													disabled={!title?.trim() || !category}
+													onClick={() => setAssistantOpen(true)}
+												>
+													<Wand2 aria-hidden="true" />
+													Criar descrição com IA
+												</Button>
+											</div>
+											{/* Texto livre: negrito, itálico, listas e links. O HTML sai daqui e a
 									    API sanitiza antes de guardar. Sem biblioteca de imagens: a capa
 									    já tem o próprio campo. */}
-									<RichTextEditor
-										label="Descrição completa"
-										value={field.value ?? ''}
-										onChange={(html) => field.onChange(html)}
-										allowImages={false}
-										minHeightClassName="min-h-[220px]"
-										placeholder="Compartilhe a programação, palestrantes, diferenciais e motivos para participar."
+											<RichTextEditor
+												label="Descrição completa"
+												value={field.value ?? ''}
+												onChange={(html) => field.onChange(html)}
+												allowImages={false}
+												minHeightClassName="min-h-[220px]"
+												placeholder="Compartilhe a programação, palestrantes, diferenciais e motivos para participar."
+											/>
+											<FormMessage />
+											<p className="text-xs text-muted-foreground">
+												{htmlToPlainText(field.value ?? '').length} caracteres — recomendamos entre 150 e 500 para bons
+												resultados.
+											</p>
+										</FormItem>
+									)}
+								/>
+							</TabsContent>
+							{(
+								[
+									['en', 'description_en', 'Descrição em inglês (opcional)'],
+									['es', 'description_es', 'Descrição em espanhol (opcional)'],
+								] as const
+							).map(([language, name, label]) => (
+								<TabsContent key={name} value={language}>
+									<FormField
+										control={form.control}
+										name={name}
+										render={({ field }) => (
+											<FormItem>
+												<RichTextEditor
+													label={label}
+													value={field.value ?? ''}
+													onChange={field.onChange}
+													allowImages={false}
+													minHeightClassName="min-h-[220px]"
+													placeholder="Tradução opcional da descrição"
+												/>
+												<FormMessage />
+											</FormItem>
+										)}
 									/>
-									<FormMessage />
-									<p className="text-xs text-muted-foreground">
-										{htmlToPlainText(field.value ?? '').length} caracteres — recomendamos entre 150 e 500 para bons
-										resultados.
-									</p>
-								</FormItem>
-							)}
-						/>
-
+								</TabsContent>
+							))}
+						</Tabs>
 						<div>
 							<div className="flex items-center justify-between">
 								<h3 className="text-sm font-medium">Tags</h3>
@@ -92,6 +155,9 @@ export function DetailsStep() {
 											addTag(tagDraft);
 										}
 									}}
+									aria-label="Nova tag"
+									maxLength={24}
+									disabled={tags.length >= 10}
 									placeholder="Ex: ux-design"
 								/>
 								<Button type="button" variant="outline" onClick={() => addTag(tagDraft)}>
@@ -106,16 +172,18 @@ export function DetailsStep() {
 							{tags.length > 0 && (
 								<div className="mt-4 flex flex-wrap gap-2">
 									{tags.map((tag) => (
-										<button
+										<Button
+											variant="secondary"
+											aria-label={`Remover tag ${tag}`}
 											key={tag}
 											type="button"
 											onClick={() => removeTag(tag)}
-											className="group inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+											className="h-auto whitespace-normal group inline-flex items-center gap-1.5 px-3 py-1.5"
 										>
 											<Tag className="size-3" />
 											<span>{tag}</span>
 											<X className="size-3.5" />
-										</button>
+										</Button>
 									))}
 								</div>
 							)}
@@ -125,26 +193,22 @@ export function DetailsStep() {
 									const isActive = tags.includes(tag);
 
 									return (
-										<button
+										<Button
+											variant={isActive ? 'secondary' : 'outline'}
 											type="button"
 											key={tag}
 											onClick={() => addTag(tag)}
-											className={cn(
-												'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-												isActive
-													? 'border-primary bg-primary text-primary-foreground'
-													: 'border-dashed hover:border-primary',
-											)}
+											size="sm"
 										>
 											#{tag}
-										</button>
+										</Button>
 									);
 								})}
 							</div>
 						</div>
 					</div>
 				</div>
-			</div>
+			</Card>
 		</div>
 	);
 }

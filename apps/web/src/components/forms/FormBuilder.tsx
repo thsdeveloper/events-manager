@@ -54,14 +54,14 @@ const FormBuilder = ({ form, className }: FormBuilderProps) => {
 		return (
 			<div className="flex flex-col items-center justify-center space-y-4 p-6 text-center">
 				<CheckCircle className="size-12 text-green-500" />
-				<p className="text-gray-600">{form.success_message || 'Formulário enviado com sucesso.'}</p>
+				<p className="text-foreground">{form.success_message || 'Formulário enviado com sucesso.'}</p>
 			</div>
 		);
 	}
 
 	return (
-		<div className={cn('space-y-6 border border-input p-8 rounded-lg', className)}>
-			{form.title && <h3 className="text-xl font-semibold mb-4">{form.title}</h3>}
+		<div className={cn('space-y-6 border border-input bg-card text-card-foreground p-5 sm:p-8 rounded-lg', className)}>
+			{form.title && <h3 className="font-heading text-lg font-semibold mb-4">{form.title}</h3>}
 
 			{error && (
 				<div className="p-4 text-red-700 bg-red-50 rounded-md" role="alert">

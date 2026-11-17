@@ -1,3 +1,5 @@
+import { cookies } from 'next/headers';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import { ReactQueryProvider } from '@/contexts/ReactQueryProvider';
@@ -21,24 +23,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 	).catch(() => ({ data: [organizer as unknown as OrganizationOption] }));
 
 	return (
-		<ReactQueryProvider>
-			<div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+		<ReactQueryProvider key={`${user.id}:${organizer.id}`}>
+			<SidebarProvider
+				defaultOpen={(await cookies()).get('sidebar_state')?.value !== 'false'}
+				data-admin-theme="neutral"
+			>
 				{/* Sidebar */}
 				<AdminSidebar organizer={organizer} organizations={organizations} />
 
 				{/* Main Content Area */}
-				<div className="lg:pl-72">
+				<SidebarInset className="min-w-0" id="main-content" tabIndex={-1}>
 					{/* Header */}
 					<AdminHeader user={user} organizer={organizer} />
 
 					{/* Page Content */}
-					<main className="p-4 sm:p-6 lg:p-8" id="main-content" tabIndex={-1}>
+					<div className="p-4 sm:p-6 lg:p-8">
 						{/* No width cap: the workspace content fills whatever the viewport
 						    gives it, matching the header above. */}
 						<div className="w-full">{children}</div>
-					</main>
-				</div>
-			</div>
+					</div>
+				</SidebarInset>
+			</SidebarProvider>
 		</ReactQueryProvider>
 	);
 }

@@ -1,4 +1,4 @@
-import type { MediaFile } from '@events-manager/contracts';
+import { brandingAssetKeys, type MediaFile } from '@events-manager/contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ContentRepository, PageReadOptions, PublicFeeTable } from '../../application/content/content-service.js';
 import { ApiError } from '../../shared/errors.js';
@@ -10,8 +10,8 @@ import { ApiError } from '../../shared/errors.js';
 function toMediaFile(value: unknown): MediaFile | null {
 	const record = Array.isArray(value) ? value[0] : value;
 	if (!record || typeof record !== 'object') return null;
-	const { id, bucket, path } = record as { bucket?: string | null; id?: string; path?: string | null };
-	return id ? { id, bucket: bucket ?? undefined, path: path ?? undefined } : null;
+	const { id, bucket, path, type, metadata } = record as MediaFile;
+	return id ? { id, bucket: bucket ?? undefined, path: path ?? undefined, type, metadata } : null;
 }
 
 /** Conteúdo publicado cuja data agendada já chegou (ou sem agendamento). */
@@ -40,9 +40,13 @@ export class SupabaseContentRepository implements ContentRepository {
 				// app turns `{bucket, path}` into a direct storage URL, and next/image
 				// cannot optimise an image that sits behind the /api/media redirect.
 				.select(
-					'id,title,description,tagline,url,social_links,accent_color,date_created,date_updated,favicon:media_files!site_settings_favicon_fkey(id,bucket,path),logo:media_files!site_settings_logo_fkey(id,bucket,path),logo_dark_mode:media_files!site_settings_logo_dark_mode_fkey(id,bucket,path)',
+					'id,title,description,tagline,url,social_links,accent_color,date_created,date_updated,' +
+						brandingAssetKeys
+							.map((key) => `${key}:media_files!site_settings_${key}_fkey(id,bucket,path,type,metadata)`)
+							.join(','),
 				)
 				.limit(1)
+				.returns<(Record<string, unknown> & { id: string })[]>()
 				.maybeSingle(),
 			this.getNavigation('main'),
 			this.getNavigation('footer'),
@@ -56,9 +60,7 @@ export class SupabaseContentRepository implements ContentRepository {
 			globals: settings
 				? {
 						...settings,
-						favicon: toMediaFile(settings.favicon),
-						logo: toMediaFile(settings.logo),
-						logo_dark_mode: toMediaFile(settings.logo_dark_mode),
+						...Object.fromEntries(brandingAssetKeys.map((key) => [key, toMediaFile(settings[key])])),
 					}
 				: {
 						id: 'local-defaults',
@@ -75,7 +77,7 @@ export class SupabaseContentRepository implements ContentRepository {
 		const { data, error } = await this.database
 			.from('event_configurations')
 			.select(
-				'platform_fee_percentage,pix_fee_fixed,card_fee_percentage,card_fee_fixed,card_installment_2_6_percentage,card_installment_7_12_percentage,boleto_fee_fixed,payout_fee_fixed,minimum_payout,convenience_fee_calculation_method',
+				'platform_fee_percentage,platform_fee_minimum,pix_fee_fixed,card_fee_percentage,card_fee_fixed,card_installment_2_6_percentage,card_installment_7_12_percentage,boleto_fee_fixed,payout_fee_fixed,minimum_payout,convenience_fee_calculation_method',
 			)
 			.eq('id', 1)
 			.single();
@@ -84,6 +86,7 @@ export class SupabaseContentRepository implements ContentRepository {
 		const numeric = (key: string) => Number(row[key] ?? 0);
 		return {
 			platform_fee_percentage: numeric('platform_fee_percentage'),
+			platform_fee_minimum: numeric('platform_fee_minimum'),
 			pix_fee_fixed: numeric('pix_fee_fixed'),
 			card_fee_percentage: numeric('card_fee_percentage'),
 			card_fee_fixed: numeric('card_fee_fixed'),

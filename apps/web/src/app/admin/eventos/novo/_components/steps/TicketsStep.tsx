@@ -1,5 +1,8 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -16,13 +19,14 @@ import {
 	Check,
 	BadgeDollarSign,
 } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { TicketGroupingEditor } from '@/features/tickets/components/TicketGroupingEditor';
 import { TicketFormSheet } from '@/features/tickets/components/TicketFormSheet';
 import { TicketList } from '@/features/tickets/components/TicketList';
 import { ticketKey, type TicketDraft } from '@/features/tickets/types';
@@ -64,19 +68,26 @@ interface TicketsStepProps {
 	 * geridos na página do evento, não aqui. Recebe o link para lá.
 	 */
 	manageTicketsHref?: string;
+	draftOnly?: boolean;
 }
 
-export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
+export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsStepProps = {}) {
 	const form = useFormContext<EventWizardFormValues>();
-	const isFree = form.watch('is_free');
-	const maxAttendees = form.watch('max_attendees');
-	const status = form.watch('status');
+	const isFree = useWatch({ control: form.control, name: 'is_free' });
+	const maxAttendees = useWatch({ control: form.control, name: 'max_attendees' });
+	const status = useWatch({ control: form.control, name: 'status' });
 	const [hasUnlimitedCapacity, setHasUnlimitedCapacity] = useState(!maxAttendees);
 	const [showAdvancedStatus, setShowAdvancedStatus] = useState(status === 'cancelled' || status === 'archived');
 
 	// Tickets live in the wizard form because the event has no id yet — they are
 	// sent together with it and persisted by the API in one atomic call.
-	const tickets = form.watch('tickets') ?? [];
+	const tickets = useWatch({ control: form.control, name: 'tickets' }) ?? [];
+	const groups = useWatch({ control: form.control, name: 'ticket_groups' }) ?? [];
+	const sheetGroups = groups.map((group) => ({
+		id: group.client_id,
+		title: group.title,
+		parent_id: group.parent_client_id ?? null,
+	}));
 	const [sheetOpen, setSheetOpen] = useState(false);
 	const [editingTicket, setEditingTicket] = useState<TicketDraft | null>(null);
 
@@ -119,11 +130,11 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 	};
 
 	const isPublished = status === 'published';
-	const isUnlisted = form.watch('visibility') === 'unlisted';
+	const isUnlisted = useWatch({ control: form.control, name: 'visibility' }) === 'unlisted';
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-lg border bg-card p-6 shadow-sm">
+			<Card className="p-6">
 				<div className="flex flex-col gap-2">
 					<div className="flex items-start justify-between gap-4">
 						<div>
@@ -137,7 +148,7 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 
 					<div className="mt-6 space-y-6">
 						{/* Bloco 1: Tipo de ingresso */}
-						<div className="rounded-lg border bg-card p-4">
+						<Card className="p-4">
 							<div className="mb-4 flex items-start justify-between gap-4">
 								<div>
 									<h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -151,14 +162,14 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 								<TooltipProvider delayDuration={200}>
 									<Tooltip>
 										<TooltipTrigger asChild>
-											<button type="button" className="text-muted-foreground hover:text-foreground">
+											<Button variant="ghost" type="button" className="h-auto whitespace-normal">
 												<Info className="size-4" />
-											</button>
+											</Button>
 										</TooltipTrigger>
 										<TooltipContent side="left" className="max-w-[280px]">
 											<p className="text-xs">
 												Você poderá alterar isso antes de publicar. Se escolher evento pago, configurará preços e lotes
-												na próxima etapa.
+												nesta etapa.
 											</p>
 										</TooltipContent>
 									</Tooltip>
@@ -166,15 +177,12 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 							</div>
 
 							<div className="grid gap-4 md:grid-cols-2">
-								<button
+								<Button
+									variant={isFree ? 'secondary' : 'outline'}
+									aria-pressed={isFree}
 									type="button"
 									onClick={() => form.setValue('is_free', true, { shouldDirty: true, shouldValidate: true })}
-									className={cn(
-										'group relative flex flex-col gap-3 rounded-lg border-2 p-4 text-left transition-all',
-										isFree
-											? 'border-primary bg-primary/5 shadow-sm'
-											: 'border-border hover:border-primary/40 hover:bg-muted/50',
-									)}
+									className="h-auto flex-col items-stretch gap-3 whitespace-normal p-4 text-left"
 								>
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
@@ -188,7 +196,7 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 											</div>
 											<div>
 												<p className="text-sm font-semibold">Evento gratuito</p>
-												<p className="flex items-center gap-1 text-xs text-emerald-600">
+												<p className="flex items-center gap-1 text-xs text-muted-foreground">
 													<Check className="size-3" />
 													Inscrição simples e rápida
 												</p>
@@ -204,17 +212,14 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 										Os participantes garantem presença sem custo. Você pode solicitar inscrição prévia para controlar
 										vagas.
 									</p>
-								</button>
+								</Button>
 
-								<button
+								<Button
+									variant={!isFree ? 'secondary' : 'outline'}
+									aria-pressed={!isFree}
 									type="button"
 									onClick={() => form.setValue('is_free', false, { shouldDirty: true, shouldValidate: true })}
-									className={cn(
-										'group relative flex flex-col gap-3 rounded-lg border-2 p-4 text-left transition-all',
-										!isFree
-											? 'border-primary bg-primary/5 shadow-sm'
-											: 'border-border hover:border-primary/40 hover:bg-muted/50',
-									)}
+									className="h-auto flex-col items-stretch gap-3 whitespace-normal p-4 text-left"
 								>
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
@@ -243,12 +248,12 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 									<p className="text-xs text-muted-foreground">
 										Defina os tipos de ingresso abaixo. Mostramos quanto o comprador paga e quanto você recebe.
 									</p>
-								</button>
+								</Button>
 							</div>
-						</div>
+						</Card>
 
 						{/* Bloco: tipos de ingresso */}
-						<div className="rounded-lg border bg-card p-4">
+						<Card className="p-4">
 							<div className="mb-4 flex items-start justify-between gap-4">
 								<div>
 									<h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -264,6 +269,20 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 								</div>
 							</div>
 
+							{!manageTicketsHref && (
+								<TicketGroupingEditor
+									groups={groups}
+									onChange={(next) => {
+										form.setValue('ticket_groups', next, { shouldDirty: true, shouldValidate: true });
+										const ids = new Set(next.map((group) => group.client_id));
+										writeTickets(
+											tickets.map((ticket) =>
+												ticket.group_id && !ids.has(ticket.group_id) ? { ...ticket, group_id: null } : ticket,
+											),
+										);
+									}}
+								/>
+							)}
 							{manageTicketsHref ? (
 								<div className="rounded-lg border border-dashed bg-muted/40 p-4 text-sm">
 									<p className="text-foreground">
@@ -289,6 +308,8 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 									onAdd={handleAddTicket}
 									onEdit={handleEditTicket}
 									onRemove={handleRemoveTicket}
+									onReorder={writeTickets}
+									groups={sheetGroups}
 									emptyHint={
 										isFree ? 'Sem ingressos, a inscrição gratuita é liberada direto na página do evento.' : undefined
 									}
@@ -298,10 +319,10 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 							{form.formState.errors.tickets?.message && (
 								<p className="mt-2 text-sm font-medium text-destructive">{form.formState.errors.tickets.message}</p>
 							)}
-						</div>
+						</Card>
 
 						{/* Bloco 2: Capacidade */}
-						<div className="rounded-lg border bg-card p-4">
+						<Card className="p-4">
 							<div className="mb-4">
 								<h3 className="flex items-center gap-2 text-sm font-semibold">
 									<Users className="size-4 text-primary" />
@@ -311,13 +332,13 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 							</div>
 
 							<div className="space-y-4">
-								<div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
+								<Card className="flex items-center justify-between p-3">
 									<div>
 										<p className="text-sm font-medium">Vagas ilimitadas</p>
 										<p className="text-xs text-muted-foreground">Qualquer número de pessoas poderá participar</p>
 									</div>
 									<Switch checked={hasUnlimitedCapacity} onCheckedChange={handleCapacityToggle} />
-								</div>
+								</Card>
 
 								{!hasUnlimitedCapacity && (
 									<FormField
@@ -350,7 +371,7 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 									/>
 								)}
 							</div>
-						</div>
+						</Card>
 
 						<FormField
 							control={form.control}
@@ -364,7 +385,7 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 											onValueChange={field.onChange}
 											className="grid gap-3 sm:grid-cols-2"
 										>
-											<label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+											<Label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
 												<RadioGroupItem value="public" />
 												<span>
 													<span className="block font-medium">Público</span>
@@ -372,8 +393,8 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 														Aparece no catálogo e nas buscas após a publicação.
 													</span>
 												</span>
-											</label>
-											<label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+											</Label>
+											<Label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
 												<RadioGroupItem value="unlisted" />
 												<span>
 													<span className="block font-medium">Não listado</span>
@@ -381,7 +402,7 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 														Acesso pelo link. Quem receber o link poderá abrir a página e se inscrever.
 													</span>
 												</span>
-											</label>
+											</Label>
 										</RadioGroup>
 									</FormControl>
 									<FormMessage />
@@ -409,40 +430,44 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 												onValueChange={(value) => field.onChange(value as EventWizardFormValues['status'])}
 												className="grid gap-3 sm:grid-cols-2"
 											>
-												{MAIN_STATUS_OPTIONS.map((option) => {
-													const Icon = option.icon;
+												{MAIN_STATUS_OPTIONS.filter((option) => !draftOnly || option.value === 'draft').map(
+													(option) => {
+														const Icon = option.icon;
 
-													return (
-														<label
-															key={option.value}
-															className={cn(
-																'flex cursor-pointer items-start gap-3 rounded-lg border-2 p-3 transition-all',
-																field.value === option.value
-																	? 'border-primary bg-primary/5'
-																	: 'border-border hover:border-primary/40 hover:bg-muted/50',
-															)}
-														>
-															<RadioGroupItem value={option.value} className="mt-0.5" />
-															<div className="flex-1">
-																<div className="flex items-center gap-2">
-																	<Icon className="size-4 text-primary" />
-																	<p className="text-sm font-semibold">{option.label}</p>
+														return (
+															<Label
+																key={option.value}
+																className={cn(
+																	'flex cursor-pointer items-start gap-3 rounded-lg border-2 p-3 transition-all',
+																	field.value === option.value
+																		? 'border-primary bg-primary/5'
+																		: 'border-border hover:border-primary/40 hover:bg-muted/50',
+																)}
+															>
+																<RadioGroupItem value={option.value} className="mt-0.5" />
+																<div className="flex-1">
+																	<div className="flex items-center gap-2">
+																		<Icon className="size-4 text-primary" />
+																		<p className="text-sm font-semibold">{option.label}</p>
+																	</div>
+																	<p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
 																</div>
-																<p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
-															</div>
-														</label>
-													);
-												})}
+															</Label>
+														);
+													},
+												)}
 											</RadioGroup>
 										</FormControl>
 										<FormMessage />
 
 										{/* Opções avançadas (colapsável) */}
-										<div className="rounded-lg border">
-											<button
+										<Card className="">
+											<Button
+												variant="ghost"
 												type="button"
+												disabled={draftOnly}
 												onClick={() => setShowAdvancedStatus(!showAdvancedStatus)}
-												className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted/50"
+												className="h-auto whitespace-normal flex w-full items-center justify-between p-3 text-left"
 											>
 												<span className="text-xs font-medium text-muted-foreground">Outras opções (avançado)</span>
 												<ChevronDown
@@ -451,9 +476,9 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 														showAdvancedStatus && 'rotate-180',
 													)}
 												/>
-											</button>
+											</Button>
 
-											{showAdvancedStatus && (
+											{showAdvancedStatus && !draftOnly && (
 												<div className="border-t p-3">
 													<RadioGroup
 														value={field.value}
@@ -464,7 +489,7 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 															const Icon = option.icon;
 
 															return (
-																<label
+																<Label
 																	key={option.value}
 																	className={cn(
 																		'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-all',
@@ -481,13 +506,13 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 																		</div>
 																		<p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
 																	</div>
-																</label>
+																</Label>
 															);
 														})}
 													</RadioGroup>
 												</div>
 											)}
-										</div>
+										</Card>
 									</FormItem>
 								)}
 							/>
@@ -495,7 +520,7 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 
 						{/* Bloco 4: Opções avançadas (apenas se publicado) */}
 						{isPublished && !isUnlisted && (
-							<div className="animate-in fade-in-50 slide-in-from-top-2 rounded-lg border bg-primary/5 p-4 duration-200">
+							<Card className="animate-in fade-in-50 slide-in-from-top-2 p-4 duration-200">
 								<div className="mb-4 flex items-start gap-2">
 									<Sparkles className="mt-0.5 size-4 text-primary" />
 									<div>
@@ -530,11 +555,11 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 										)}
 									/>
 								</div>
-							</div>
+							</Card>
 						)}
 					</div>
 				</div>
-			</div>
+			</Card>
 
 			{/* eventId is null: the event does not exist yet, so the sheet hands the
 			    ticket back to the form instead of posting it. */}
@@ -543,6 +568,7 @@ export function TicketsStep({ manageTicketsHref }: TicketsStepProps = {}) {
 				onOpenChange={setSheetOpen}
 				pricing={isFree ? 'free' : 'paid'}
 				eventId={null}
+				groups={sheetGroups}
 				ticket={editingTicket}
 				onSaved={handleTicketSaved}
 			/>

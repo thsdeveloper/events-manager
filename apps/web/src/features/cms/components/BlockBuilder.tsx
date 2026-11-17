@@ -1,5 +1,7 @@
 'use client';
 
+import { Empty } from '@/components/ui/empty';
+import { Card } from '@/components/ui/card';
 import type { CmsBlockCollection } from '@events-manager/contracts';
 import { ArrowDown, ArrowUp, Eye, EyeOff, Moon, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -87,7 +89,7 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-4">
-				<p className="text-sm text-slate-600">
+				<p className="text-sm text-muted-foreground">
 					{blocks.length === 0
 						? 'A página ainda não tem blocos.'
 						: `${blocks.length} ${blocks.length === 1 ? 'bloco' : 'blocos'} na ordem em que aparecem no site.`}
@@ -99,10 +101,10 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 			</div>
 
 			{blocks.length === 0 ? (
-				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-slate-50 px-6 py-12 text-center">
-					<p className="font-medium text-slate-950">Comece adicionando um bloco</p>
-					<p className="text-sm text-slate-500">Hero, texto, galeria, planos, posts, eventos ou formulário.</p>
-				</div>
+				<Empty className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted px-6 py-12 text-center">
+					<p className="font-medium text-foreground">Comece adicionando um bloco</p>
+					<p className="text-sm text-muted-foreground">Hero, texto, galeria, planos, posts, eventos ou formulário.</p>
+				</Empty>
 			) : (
 				<ol className="space-y-2">
 					{blocks.map((block, index) => {
@@ -111,91 +113,91 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 						const busy = busyId === block.id;
 
 						return (
-							<li
-								key={block.id}
-								className={cn(
-									'flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-violet-300',
-									block.hide_block && 'opacity-60',
-									busy && 'pointer-events-none opacity-50',
-								)}
-							>
-								<div className="flex flex-col">
-									<Button
-										size="icon"
-										variant="ghost"
-										className="size-7"
-										disabled={index === 0}
-										onClick={() => move(index, -1)}
-										aria-label={`Mover ${meta.label} para cima`}
-									>
-										<ArrowUp className="size-4" />
-									</Button>
-									<Button
-										size="icon"
-										variant="ghost"
-										className="size-7"
-										disabled={index === blocks.length - 1}
-										onClick={() => move(index, 1)}
-										aria-label={`Mover ${meta.label} para baixo`}
-									>
-										<ArrowDown className="size-4" />
-									</Button>
-								</div>
-								<div
+							<li key={block.id}>
+								<Card
 									className={cn(
-										'flex size-10 shrink-0 items-center justify-center rounded-lg',
-										block.background === 'dark' ? 'bg-slate-900 text-white' : 'bg-violet-50 text-violet-700',
+										'flex flex-wrap items-center gap-3 p-3 transition-colors hover:border-border',
+										block.hide_block && 'opacity-60',
+										busy && 'pointer-events-none opacity-50',
 									)}
 								>
-									<Icon className="size-5" />
-								</div>
-								<div className="min-w-0 flex-1">
-									<p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-										{index + 1}. {meta.label}
-										{block.hide_block && <span className="ml-2 normal-case text-amber-600">oculto</span>}
-									</p>
-									<p className="truncate font-medium text-slate-950">{blockSummary(block)}</p>
-								</div>
-								<div className="flex items-center gap-1">
-									<Button
-										size="icon"
-										variant="ghost"
-										onClick={() => patch(block, { background: block.background === 'dark' ? 'light' : 'dark' })}
-										aria-label={
-											block.background === 'dark'
-												? `Usar fundo claro em ${meta.label}`
-												: `Usar fundo escuro em ${meta.label}`
-										}
-										title={block.background === 'dark' ? 'Fundo escuro' : 'Fundo claro'}
+									<div className="flex flex-col">
+										<Button
+											size="icon"
+											variant="ghost"
+											className="size-7"
+											disabled={index === 0}
+											onClick={() => move(index, -1)}
+											aria-label={`Mover ${meta.label} para cima`}
+										>
+											<ArrowUp className="size-4" />
+										</Button>
+										<Button
+											size="icon"
+											variant="ghost"
+											className="size-7"
+											disabled={index === blocks.length - 1}
+											onClick={() => move(index, 1)}
+											aria-label={`Mover ${meta.label} para baixo`}
+										>
+											<ArrowDown className="size-4" />
+										</Button>
+									</div>
+									<div
+										className={cn(
+											'flex size-10 shrink-0 items-center justify-center rounded-lg',
+											block.background === 'dark' ? 'bg-foreground text-white' : 'bg-accent text-primary',
+										)}
 									>
-										{block.background === 'dark' ? <Moon className="size-4" /> : <Sun className="size-4" />}
-									</Button>
-									<Button
-										size="icon"
-										variant="ghost"
-										onClick={() => patch(block, { hide_block: !block.hide_block })}
-										aria-label={block.hide_block ? `Mostrar ${meta.label}` : `Ocultar ${meta.label}`}
-									>
-										{block.hide_block ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-									</Button>
-									<Button
-										size="icon"
-										variant="ghost"
-										onClick={() => setSheet({ collection: block.collection, block })}
-										aria-label={`Editar ${meta.label}`}
-									>
-										<Pencil className="size-4" />
-									</Button>
-									<Button
-										size="icon"
-										variant="ghost"
-										onClick={() => setToDelete(block)}
-										aria-label={`Excluir ${meta.label}`}
-										className="text-red-600 hover:bg-red-50 hover:text-red-700"
-									>
-										<Trash2 className="size-4" />
-									</Button>
-								</div>
+										<Icon className="size-5" />
+									</div>
+									<div className="min-w-0 flex-1">
+										<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+											{index + 1}. {meta.label}
+											{block.hide_block && <span className="ml-2 normal-case text-muted-foreground">oculto</span>}
+										</p>
+										<p className="truncate font-medium text-foreground">{blockSummary(block)}</p>
+									</div>
+									<div className="flex items-center gap-1">
+										<Button
+											size="icon"
+											variant="ghost"
+											onClick={() => patch(block, { background: block.background === 'dark' ? 'light' : 'dark' })}
+											aria-label={
+												block.background === 'dark'
+													? `Usar fundo claro em ${meta.label}`
+													: `Usar fundo escuro em ${meta.label}`
+											}
+											title={block.background === 'dark' ? 'Fundo escuro' : 'Fundo claro'}
+										>
+											{block.background === 'dark' ? <Moon className="size-4" /> : <Sun className="size-4" />}
+										</Button>
+										<Button
+											size="icon"
+											variant="ghost"
+											onClick={() => patch(block, { hide_block: !block.hide_block })}
+											aria-label={block.hide_block ? `Mostrar ${meta.label}` : `Ocultar ${meta.label}`}
+										>
+											{block.hide_block ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+										</Button>
+										<Button
+											size="icon"
+											variant="ghost"
+											onClick={() => setSheet({ collection: block.collection, block })}
+											aria-label={`Editar ${meta.label}`}
+										>
+											<Pencil className="size-4" />
+										</Button>
+										<Button
+											size="icon"
+											variant="destructive"
+											onClick={() => setToDelete(block)}
+											aria-label={`Excluir ${meta.label}`}
+										>
+											<Trash2 className="size-4" />
+										</Button>
+									</div>
+								</Card>
 							</li>
 						);
 					})}
@@ -214,22 +216,23 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 
 							return (
 								<li key={type.collection}>
-									<button
+									<Button
+										variant="outline"
 										type="button"
 										onClick={() => {
 											setPickerOpen(false);
 											setSheet({ collection: type.collection, block: null });
 										}}
-										className="flex w-full items-start gap-3 rounded-lg border border-slate-200 p-3 text-left transition hover:border-violet-400 hover:bg-violet-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+										className="h-auto whitespace-normal flex w-full items-start gap-3 p-3 text-left"
 									>
-										<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+										<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
 											<Icon className="size-4" />
 										</span>
 										<span>
-											<span className="block font-medium text-slate-950">{type.label}</span>
-											<span className="block text-xs text-slate-500">{type.description}</span>
+											<span className="block font-medium text-foreground">{type.label}</span>
+											<span className="block text-xs text-muted-foreground">{type.description}</span>
 										</span>
-									</button>
+									</Button>
 								</li>
 							);
 						})}

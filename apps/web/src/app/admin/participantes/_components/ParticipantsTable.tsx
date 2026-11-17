@@ -1,9 +1,12 @@
 'use client';
 
+import { Spinner } from '@/components/ui/spinner';
+import { Card } from '@/components/ui/card';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { useState, useMemo } from 'react';
 import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Filter } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { createColumns } from './columns';
 import { CheckInDialog } from './CheckInDialog';
 import { EditParticipantDialog } from './EditParticipantDialog';
@@ -11,8 +14,7 @@ import { CancelRegistrationDialog } from './CancelRegistrationDialog';
 import { ResendEmailDialog } from './ResendEmailDialog';
 import { ParticipantCard } from './ParticipantCard';
 import type { ParticipantRow } from '../_lib/types';
-import { Illustration } from '@/components/design-system/atoms/Illustration';
-import { emptyIllustrations } from '@/lib/illustrations';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 
 interface ParticipantsTableProps {
 	data: ParticipantRow[];
@@ -90,23 +92,27 @@ export function ParticipantsTable({
 	if (isLoading) {
 		return (
 			<div className="flex min-h-[400px] flex-col items-center justify-center space-y-4 py-12">
-				<Loader2 className="size-10 animate-spin text-blue-600 dark:text-blue-400" />
-				<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Carregando ingressos...</p>
+				<Spinner className="size-10 animate-spin text-muted-foreground " />
+				<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Carregando ingressos...</p>
 			</div>
 		);
 	}
 
 	if (data.length === 0) {
 		return (
-			<div className="flex min-h-[400px] flex-col items-center justify-center space-y-4 py-12">
-				<Illustration illustration={emptyIllustrations.search} className="h-36" />
-				<div className="space-y-2 text-center">
-					<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Nenhum participante encontrado</h3>
-					<p className="max-w-md text-sm text-gray-600 dark:text-gray-400">
+			<Empty>
+				<EmptyHeader>
+					<EmptyMedia variant="icon">
+						<Filter aria-hidden="true" />
+					</EmptyMedia>
+					<EmptyTitle role="heading" aria-level={3}>
+						Nenhum participante encontrado
+					</EmptyTitle>
+					<EmptyDescription>
 						Tente ajustar os filtros ou realize uma nova busca para encontrar participantes.
-					</p>
-				</div>
-			</div>
+					</EmptyDescription>
+				</EmptyHeader>
+			</Empty>
 		);
 	}
 
@@ -132,39 +138,34 @@ export function ParticipantsTable({
 			</div>
 
 			{/* Desktop/Tablet View - Table */}
-			<div className="hidden overflow-x-auto rounded-lg border border-gray-200 sm:block dark:border-gray-700">
-				<table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-					<thead className="bg-gray-50 dark:bg-gray-800">
+			<Card className="hidden overflow-x-auto sm:block">
+				<Table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (
-							<tr key={headerGroup.id}>
+							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
-									<th
-										key={header.id}
-										className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300"
-									>
+									<TableHead key={header.id} className="text-left uppercase tracking-wider text-muted-foreground">
 										{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-									</th>
+									</TableHead>
 								))}
-							</tr>
+							</TableRow>
 						))}
-					</thead>
-					<tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
+					</TableHeader>
+					<TableBody className="divide-y divide-gray-200 bg-card dark:divide-gray-700">
 						{table.getRowModel().rows.map((row) => (
-							<tr key={row.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40">
+							<TableRow key={row.id} className="transition-colors">
 								{row.getVisibleCells().map((cell) => (
-									<td key={cell.id} className="px-4 py-3">
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</td>
+									<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
 								))}
-							</tr>
+							</TableRow>
 						))}
-					</tbody>
-				</table>
-			</div>
+					</TableBody>
+				</Table>
+			</Card>
 
 			{/* Paginação */}
 			<div className="flex items-center justify-between">
-				<span className="text-sm text-gray-600 dark:text-gray-400">
+				<span className="text-sm text-muted-foreground dark:text-muted-foreground">
 					Página {currentPage} de {Math.max(pageCount, 1)}
 				</span>
 				<div className="flex gap-2">

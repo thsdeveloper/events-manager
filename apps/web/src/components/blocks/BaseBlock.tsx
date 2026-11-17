@@ -14,18 +14,22 @@ interface BaseBlockProps {
 	};
 }
 
-const BaseBlock = ({ block }: BaseBlockProps) => {
-	const components: Record<string, React.ElementType> = {
-		block_hero: Hero,
-		block_richtext: RichText,
-		block_gallery: Gallery,
-		block_pricing: Pricing,
-		block_posts: Posts,
-		block_form: Form,
-		block_events: Events,
-	};
+const components: Record<string, React.ElementType> = {
+	block_hero: Hero,
+	block_richtext: RichText,
+	block_gallery: Gallery,
+	block_pricing: Pricing,
+	block_posts: Posts,
+	block_form: Form,
+	block_events: Events,
+};
 
-	const Component = components[block.collection];
+export function hasBlockRenderer(collection: string) {
+	return Object.prototype.hasOwnProperty.call(components, collection);
+}
+
+const BaseBlock = ({ block }: BaseBlockProps) => {
+	const Component = hasBlockRenderer(block.collection) ? components[block.collection] : undefined;
 
 	if (!Component) {
 		return null;

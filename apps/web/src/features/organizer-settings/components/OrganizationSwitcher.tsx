@@ -1,6 +1,7 @@
 'use client';
 
-import { Building2, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { Building2, Check, ChevronsUpDown } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
@@ -33,12 +34,12 @@ function OrganizationMark({ organization, className }: { organization: Organizat
 	return (
 		<div
 			className={cn(
-				'relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-950 text-white',
+				'relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-foreground text-white',
 				className,
 			)}
 		>
 			{url ? (
-				<Image src={url} alt="" fill sizes="44px" className="object-contain p-1" unoptimized />
+				<Image src={url} alt="" fill sizes="44px" className="object-cover" unoptimized />
 			) : (
 				<Building2 className="size-6" />
 			)}
@@ -89,15 +90,18 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 	return (
 		<>
 			<DropdownMenu>
-				<DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-slate-50">
-					<OrganizationMark organization={active} />
-					<div className="min-w-0 flex-1">
-						<p className="truncate text-sm font-bold text-slate-950">{active.name}</p>
-						<p className="text-xs text-slate-500">
+				<DropdownMenuTrigger
+					aria-label={`Organização: ${active.name}`}
+					className="flex w-full items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-muted group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0"
+				>
+					<OrganizationMark organization={active} className="group-data-[collapsible=icon]:size-8" />
+					<div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+						<p className="truncate text-sm font-semibold text-foreground">{active.name}</p>
+						<p className="text-xs text-muted-foreground">
 							{organizations.length > 1 ? `${organizations.length} organizações` : 'Workspace do organizador'}
 						</p>
 					</div>
-					<ChevronsUpDown className="size-4 shrink-0 text-slate-400" />
+					<ChevronsUpDown className="size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
 				</DropdownMenuTrigger>
 
 				<DropdownMenuContent align="start" className="w-64">
@@ -106,12 +110,14 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 							<OrganizationMark organization={organization} className="size-7 rounded-md" />
 							<span className="min-w-0 flex-1">
 								<span className="block truncate text-sm font-medium">{organization.name}</span>
-								{organization.status !== 'active' && <span className="block text-xs text-amber-600">Em análise</span>}
+								{organization.status !== 'active' && (
+									<span className="block text-xs text-muted-foreground">Em análise</span>
+								)}
 							</span>
 							{switching === organization.id ? (
-								<Loader2 className="size-4 shrink-0 animate-spin" />
+								<Spinner className="size-4 shrink-0 animate-spin" />
 							) : (
-								organization.id === activeId && <Check className="size-4 shrink-0 text-violet-600" />
+								organization.id === activeId && <Check className="size-4 shrink-0 text-primary" />
 							)}
 						</DropdownMenuItem>
 					))}

@@ -12,8 +12,8 @@ export interface ParticipantFilters {
 	search: string;
 	eventIds: string[];
 	ticketTypeIds: string[];
-	registrationStatus: EventRegistration['status'][];
-	paymentStatus: EventRegistration['payment_status'][];
+	registrationStatus: NonNullable<EventRegistration['status']>[];
+	paymentStatus: NonNullable<EventRegistration['payment_status']>[];
 	hasCheckedIn: boolean | null;
 	checkInDateRange: {
 		start: string | null;

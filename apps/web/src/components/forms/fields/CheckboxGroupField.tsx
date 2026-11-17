@@ -1,3 +1,4 @@
+import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { UseFormReturn } from 'react-hook-form';
 
@@ -24,9 +25,9 @@ const CheckboxGroupField = ({ name, options, form }: CheckboxGroupFieldProps) =>
 						checked={currentValues.includes(option.value)}
 						onCheckedChange={(checked) => toggleValue(option.value, !!checked)}
 					/>
-					<label htmlFor={`${name}-${option.value}`} className="text-sm">
+					<Label htmlFor={`${name}-${option.value}`} className="text-sm">
 						{option.text}
-					</label>
+					</Label>
 				</div>
 			))}
 		</div>

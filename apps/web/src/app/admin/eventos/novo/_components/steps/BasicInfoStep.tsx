@@ -1,7 +1,9 @@
 'use client';
 
+import { Empty } from '@/components/ui/empty';
+import { Card } from '@/components/ui/card';
 import { useState } from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { Info, Tag } from 'lucide-react';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -14,16 +16,17 @@ import { cn } from '@/lib/utils';
 
 interface BasicInfoStepProps {
 	categories: EventCategory[];
+	loading?: boolean;
 }
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_SHORT_DESCRIPTION_LENGTH = 160;
 
-export function BasicInfoStep({ categories }: BasicInfoStepProps) {
+export function BasicInfoStep({ categories, loading = false }: BasicInfoStepProps) {
 	const form = useFormContext<EventWizardFormValues>();
-	const selectedCategory = form.watch('category_id');
-	const titleValue = form.watch('title');
-	const descriptionValue = form.watch('short_description');
+	const selectedCategory = useWatch({ control: form.control, name: 'category_id' });
+	const titleValue = useWatch({ control: form.control, name: 'title' });
+	const descriptionValue = useWatch({ control: form.control, name: 'short_description' });
 	const [showPreview, setShowPreview] = useState(false);
 
 	const handleCategorySelect = (categoryId: string) => {
@@ -33,14 +36,14 @@ export function BasicInfoStep({ categories }: BasicInfoStepProps) {
 	const characterProgress = (current: number, max: number) => {
 		const percentage = (current / max) * 100;
 		if (percentage >= 90) return 'text-destructive';
-		if (percentage >= 70) return 'text-amber-600';
+		if (percentage >= 70) return 'text-muted-foreground';
 
 		return 'text-muted-foreground';
 	};
 
 	return (
 		<div className="space-y-8">
-			<div className="rounded-lg border bg-card p-6 shadow-sm">
+			<Card className="p-6">
 				<div className="flex flex-col gap-2">
 					{/* Header padrão */}
 					<div className="flex items-start justify-between gap-4">
@@ -89,8 +92,8 @@ export function BasicInfoStep({ categories }: BasicInfoStepProps) {
 											<FormControl>
 												<Input
 													{...field}
-													placeholder="Ex: Imersão em Product Design 2025"
-													className="text-base font-medium"
+													placeholder="Ex: Imersão em Product Design"
+													className="text-base"
 													maxLength={MAX_TITLE_LENGTH}
 												/>
 											</FormControl>
@@ -122,14 +125,18 @@ export function BasicInfoStep({ categories }: BasicInfoStepProps) {
 								<span className="text-xs text-muted-foreground">• Organize seu evento no catálogo</span>
 							</div>
 							<div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-								{categories.length === 0 ? (
-									<div className="col-span-full rounded-lg border border-dashed bg-muted/20 p-6 text-center">
+								{loading ? (
+									<p role="status" className="col-span-full text-sm text-muted-foreground">
+										Carregando categorias…
+									</p>
+								) : categories.length === 0 ? (
+									<Empty className="col-span-full rounded-lg border border-dashed bg-muted/20 p-6 text-center">
 										<p className="text-sm text-muted-foreground">
 											Nenhuma categoria disponível. Cadastre categorias antes de criar eventos.
 										</p>
-									</div>
+									</Empty>
 								) : (
-									categories.map(category => (
+									categories.map((category) => (
 										<CategoryCard
 											key={category.id}
 											id={String(category.id)}
@@ -204,7 +211,7 @@ export function BasicInfoStep({ categories }: BasicInfoStepProps) {
 						/>
 					</div>
 				</div>
-			</div>
+			</Card>
 		</div>
 	);
 }

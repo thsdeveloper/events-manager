@@ -14,7 +14,13 @@ describe('useFeeConfig', () => {
 		mockFetch([
 			[
 				'/api/content/fees',
-				() => jsonResponse({ platform_fee_percentage: 7, card_fee_percentage: 2.9, card_fee_fixed: 0.39 }),
+				() =>
+					jsonResponse({
+						platform_fee_percentage: 7,
+						platform_fee_minimum: 3,
+						card_fee_percentage: 2.9,
+						card_fee_fixed: 0.39,
+					}),
 			],
 		]);
 
@@ -23,6 +29,7 @@ describe('useFeeConfig', () => {
 		await waitFor(() => expect(result.current.isLoading).toBe(false));
 		expect(result.current.feeConfig).toEqual({
 			platformFeePercentage: 7,
+			platformFeeMinimum: 3,
 			providerPercentageFee: 2.9,
 			providerFixedFee: 0.39,
 		});
@@ -37,6 +44,7 @@ describe('useFeeConfig', () => {
 		await waitFor(() => expect(result.current.isFallback).toBe(true));
 		expect(result.current.feeConfig).toEqual({
 			platformFeePercentage: 5,
+			platformFeeMinimum: 0,
 			providerPercentageFee: 3.5,
 			providerFixedFee: 0.6,
 		});

@@ -133,3 +133,42 @@ describe('EventPage', () => {
 		expect(markup).not.toContain('Sobre o evento');
 	});
 });
+
+describe('conteúdo adicional do evento', () => {
+	it('renders the selected translation and falls back to Portuguese', async () => {
+		fetchEventBySlug.mockResolvedValue({ ...event, description_en: '<p>English programme.</p>' });
+		const english = renderToStaticMarkup(
+			await EventPage({
+				params: Promise.resolve({ slug: 'congresso' }),
+				searchParams: Promise.resolve({ lang: 'en' }),
+			} as never),
+		);
+		expect(english).toContain('English programme.');
+		const spanish = renderToStaticMarkup(
+			await EventPage({
+				params: Promise.resolve({ slug: 'congresso' }),
+				searchParams: Promise.resolve({ lang: 'es' }),
+			} as never),
+		);
+		expect(spanish).toContain('Três dias de encontros.');
+	});
+	it('shows an undefined venue without stale location or coordinates', async () => {
+		fetchEventBySlug.mockResolvedValue({
+			...event,
+			location_tbd: true,
+			latitude: -15,
+			longitude: -47,
+			location_name: 'Local antigo',
+		});
+		const markup = renderToStaticMarkup(await EventPage({ params: Promise.resolve({ slug: 'congresso' }) }));
+		expect(markup).toContain('Local a definir');
+		expect(markup).not.toContain('Local antigo');
+		expect(markup).not.toContain('mapa');
+	});
+	it('honours the option to hide the map', async () => {
+		fetchEventBySlug.mockResolvedValue({ ...event, show_map: false, latitude: -15, longitude: -47 });
+		expect(renderToStaticMarkup(await EventPage({ params: Promise.resolve({ slug: 'congresso' }) }))).not.toContain(
+			'mapa',
+		);
+	});
+});

@@ -51,3 +51,43 @@ describe('ImageCropperDialog', () => {
 		expect(onCancel).toHaveBeenCalled();
 	});
 });
+
+it('keeps the dialog open and refuses the original file when canvas export fails', async () => {
+	const { fireEvent, waitFor } = await import('@testing-library/react');
+	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+		width: 500,
+		height: 380,
+		x: 0,
+		y: 0,
+		top: 0,
+		left: 0,
+		right: 500,
+		bottom: 380,
+		toJSON: () => ({}),
+	});
+	const onCropped = vi.fn();
+	const { user } = renderDialog({ aspectRatio: 1, onCropped });
+	const img = screen.getByRole('presentation');
+	Object.defineProperties(img, {
+		naturalWidth: { value: 1000 },
+		naturalHeight: { value: 500 },
+		width: { value: 500 },
+		height: { value: 250 },
+	});
+	fireEvent.load(img);
+	await waitFor(() => expect(screen.getByRole('button', { name: 'Usar imagem' })).toBeEnabled());
+	vi.stubGlobal(
+		'Image',
+		class {
+			onload: (() => void) | null = null;
+			set src(_value: string) {
+				queueMicrotask(() => this.onload?.());
+			}
+		},
+	);
+	vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+	await user.click(screen.getByRole('button', { name: 'Usar imagem' }));
+	expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível recortar');
+	expect(onCropped).not.toHaveBeenCalled();
+	expect(screen.getByRole('dialog')).toBeInTheDocument();
+});

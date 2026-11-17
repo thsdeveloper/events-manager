@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/design-system/molecules/PageHeader';
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cmsPostInputSchema, slugify, type CmsContentStatus, type CmsSeo } from '@events-manager/contracts';
 import { ExternalLink, Save, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -28,7 +31,7 @@ import type { CmsMedia, CmsPostRow } from '../types';
 import { Field, FieldError, SectionCard } from './FormPrimitives';
 import { MediaPicker } from './MediaPicker';
 import { PublishingFields } from './PublishingFields';
-import { RichTextEditor } from './RichTextEditor';
+import { RichTextEditor } from './LazyRichTextEditor';
 import { SeoFields } from './SeoFields';
 import { StatusBadge } from './StatusBadge';
 
@@ -119,37 +122,41 @@ export function PostEditor({ post, siteUrl }: PostEditorProps) {
 
 	return (
 		<div className="space-y-6">
-			<header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-				<div className="min-w-0">
-					<p className="text-sm font-semibold text-violet-700">Blog</p>
-					<h1 className="mt-1 truncate text-3xl font-bold tracking-tight">{post ? post.title : 'Novo post'}</h1>
-					{post && (
-						<div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-							<StatusBadge status={post.status} publishedAt={post.published_at} />
-							<span>Atualizado em {formatDateTime(post.date_updated ?? post.date_created)}</span>
-						</div>
-					)}
-				</div>
-				<div className="flex flex-wrap items-center gap-2">
-					{post?.status === 'published' && (
-						<Button variant="outline" asChild>
-							<Link href={`${siteUrl.replace(/\/$/, '')}/blog/${post.slug}`} target="_blank" rel="noopener">
-								<ExternalLink className="mr-2 size-4" />
-								Ver no site
-							</Link>
+			<PageHeader
+				eyebrow="Blog"
+				title={post ? post.title : 'Novo post'}
+				description={
+					<>
+						{post && (
+							<div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+								<StatusBadge status={post.status} publishedAt={post.published_at} />
+								<span>Atualizado em {formatDateTime(post.date_updated ?? post.date_created)}</span>
+							</div>
+						)}
+					</>
+				}
+				actions={
+					<div className="flex flex-wrap items-center gap-2">
+						{post?.status === 'published' && (
+							<Button variant="outline" asChild>
+								<Link href={`${siteUrl.replace(/\/$/, '')}/blog/${post.slug}`} target="_blank" rel="noopener">
+									<ExternalLink className="mr-2 size-4" />
+									Ver no site
+								</Link>
+							</Button>
+						)}
+						<Button onClick={save} loading={saving}>
+							<Save className="mr-2 size-4" />
+							Salvar
 						</Button>
-					)}
-					<Button onClick={save} loading={saving}>
-						<Save className="mr-2 size-4" />
-						Salvar
-					</Button>
-				</div>
-			</header>
+					</div>
+				}
+			/>
 
 			{formError && (
-				<p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-					{formError}
-				</p>
+				<Alert variant="destructive" className="border text-sm" role="alert">
+					<AlertDescription>{formError}</AlertDescription>
+				</Alert>
 			)}
 
 			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -229,15 +236,11 @@ export function PostEditor({ post, siteUrl }: PostEditorProps) {
 					</SectionCard>
 					{post && (
 						<SectionCard title="Zona de perigo">
-							<Button
-								variant="outline"
-								className="w-full text-red-600 hover:text-red-700"
-								onClick={() => setDeleteOpen(true)}
-							>
+							<Button variant="destructive" className="w-full" onClick={() => setDeleteOpen(true)}>
 								<Trash2 className="mr-2 size-4" />
 								Excluir post
 							</Button>
-							<p className="text-xs text-slate-500">O post sai do blog e do sitemap imediatamente.</p>
+							<p className="text-xs text-muted-foreground">O post sai do blog e do sitemap imediatamente.</p>
 						</SectionCard>
 					)}
 				</aside>

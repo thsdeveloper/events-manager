@@ -24,7 +24,7 @@ import SearchModal from '@/components/ui/SearchModal';
 import { UserMenu } from '@/components/layout/UserMenu';
 import Container from '@/components/ui/container';
 import { useServerAuth } from '@/hooks/useServerAuth';
-import { getMediaAssetUrl } from '@/lib/media';
+import { getBrandLogoSources } from '@/lib/branding';
 
 interface NavigationBarProps {
 	navigation: any;
@@ -40,8 +40,7 @@ const NavigationBar = forwardRef<HTMLElement, NavigationBarProps>(({ navigation,
 	// aparecem, para o header não piscar de um estado para o outro.
 	const showSignIn = !isLoading && !isAuthenticated;
 
-	const lightLogoUrl = globals?.logo ? getMediaAssetUrl(globals.logo) : '/images/logo.svg';
-	const darkLogoUrl = globals?.logo_dark_mode ? getMediaAssetUrl(globals.logo_dark_mode) : '';
+	const { light: lightLogoUrl, dark: darkLogoUrl } = getBrandLogoSources(globals);
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -49,7 +48,7 @@ const NavigationBar = forwardRef<HTMLElement, NavigationBarProps>(({ navigation,
 		};
 		window.addEventListener('scroll', handleScroll);
 
-return () => window.removeEventListener('scroll', handleScroll);
+		return () => window.removeEventListener('scroll', handleScroll);
 	}, []);
 
 	const handleLinkClick = () => {
@@ -60,9 +59,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 		<header
 			ref={ref}
 			className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-				scrolled
-					? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg shadow-lg border-b border-gray-200 dark:border-gray-800'
-					: 'bg-transparent'
+				scrolled ? 'bg-background/95 backdrop-blur-lg shadow-sm border-b border-border' : 'bg-transparent'
 			}`}
 		>
 			<Container className="flex items-center justify-between py-4">
@@ -96,16 +93,16 @@ return () => window.removeEventListener('scroll', handleScroll);
 								<NavigationMenuItem key={section.id}>
 									{section.children && section.children.length > 0 ? (
 										<>
-											<NavigationMenuTrigger className="px-4 py-2 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300 focus:outline-none group">
+											<NavigationMenuTrigger className="px-4 py-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-300 focus:outline-none group">
 												<span className="font-semibold text-sm tracking-wide">{section.title}</span>
 											</NavigationMenuTrigger>
-											<NavigationMenuContent className="mt-2 min-w-[200px] rounded-lg bg-white dark:bg-slate-900 p-3 shadow-2xl border border-gray-100 dark:border-gray-800">
+											<NavigationMenuContent className="mt-2 min-w-[200px] rounded-lg bg-popover text-popover-foreground p-3 shadow-2xl border border-border">
 												<ul className="flex flex-col gap-1">
 													{section.children.map((child: any) => (
 														<li key={child.id}>
 															<NavigationMenuLink
 																href={child.page?.permalink || child.url || '#'}
-																className="block px-4 py-2.5 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300 font-medium text-sm"
+																className="block px-4 py-2.5 rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-300 font-medium text-sm"
 															>
 																{child.title}
 															</NavigationMenuLink>
@@ -117,7 +114,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 									) : (
 										<NavigationMenuLink
 											href={section.page?.permalink || section.url || '#'}
-											className="px-4 py-2 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300 font-semibold text-sm tracking-wide"
+											className="px-4 py-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-300 font-semibold text-sm tracking-wide"
 										>
 											{section.title}
 										</NavigationMenuLink>
@@ -127,7 +124,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 						</NavigationMenuList>
 					</NavigationMenu>
 
-					<div className="hidden lg:flex items-center gap-2 border-l border-gray-300 dark:border-gray-700 pl-3 ml-2">
+					<div className="hidden lg:flex items-center gap-2 border-l border-border pl-3 ml-2">
 						<SearchModal />
 						{showSignIn && (
 							<Button size="sm" asChild className="gap-2">
@@ -156,17 +153,13 @@ return () => window.removeEventListener('scroll', handleScroll);
 									</>
 								)}
 								{!isOrganizer && (
-									<Button
-										size="sm"
-										asChild
-										className="gap-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md hover:shadow-lg transition-all duration-300 relative group hover:from-emerald-400 hover:to-green-500"
-									>
+									<Button size="sm" asChild className="gap-2 relative group">
 										<Link href="/perfil/organizador">
 											<Building2 className="size-4 group-hover:scale-500 transition-transform" />
 											<span className="hidden xl:inline font-semibold">Vender ingressos</span>
 											{hasPendingOrganizerRequest && (
 												<Badge
-													className="absolute -top-1 -right-1 size-2 p-0 bg-amber-400 border-2 border-white dark:border-gray-900 rounded-full animate-pulse"
+													className="absolute -top-1 -right-1 size-2 p-0 bg-amber-400 border-2 border-background rounded-full animate-pulse"
 													aria-label="Processo de ativação pendente"
 												>
 													<span className="sr-only">Pendente</span>
@@ -175,7 +168,9 @@ return () => window.removeEventListener('scroll', handleScroll);
 										</Link>
 									</Button>
 								)}
-								{user ? <UserMenu user={user} onLogout={logout} isOrganizer={isOrganizer} isSuperAdmin={isSuperAdmin} /> : null}
+								{user ? (
+									<UserMenu user={user} onLogout={logout} isOrganizer={isOrganizer} isSuperAdmin={isSuperAdmin} />
+								) : null}
 							</>
 						)}
 					</div>
@@ -206,16 +201,12 @@ return () => window.removeEventListener('scroll', handleScroll);
 									</>
 								)}
 								{!isOrganizer && (
-									<Button
-										size="icon"
-										asChild
-										className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-md hover:shadow-lg transition-all duration-300 relative group"
-									>
+									<Button size="icon" asChild className="relative group">
 										<Link href="/perfil/organizador" aria-label="Perfil de organizador">
 											<Building2 className="size-4 group-hover:scale-110 transition-transform" />
 											{hasPendingOrganizerRequest && (
 												<Badge
-													className="absolute -top-1 -right-1 size-2 p-0 bg-amber-400 border-2 border-white dark:border-gray-900 rounded-full animate-pulse"
+													className="absolute -top-1 -right-1 size-2 p-0 bg-amber-400 border-2 border-background rounded-full animate-pulse"
 													aria-label="Processo de ativação pendente"
 												>
 													<span className="sr-only">Pendente</span>
@@ -224,7 +215,9 @@ return () => window.removeEventListener('scroll', handleScroll);
 										</Link>
 									</Button>
 								)}
-								{user ? <UserMenu user={user} onLogout={logout} isOrganizer={isOrganizer} isSuperAdmin={isSuperAdmin} /> : null}
+								{user ? (
+									<UserMenu user={user} onLogout={logout} isOrganizer={isOrganizer} isSuperAdmin={isSuperAdmin} />
+								) : null}
 							</>
 						)}
 						<DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
@@ -232,15 +225,15 @@ return () => window.removeEventListener('scroll', handleScroll);
 								<Button
 									variant="ghost"
 									size="icon"
-									aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
-									className="relative size-10 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300"
+									aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+									className="relative size-10 rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-300"
 								>
 									{menuOpen ? <X className="size-5" animateOnHover /> : <Menu className="size-5" animateOnHover />}
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent
 								align="end"
-								className="w-screen max-w-sm mt-2 rounded-lg bg-white dark:bg-slate-900 p-4 shadow-2xl border border-gray-100 dark:border-gray-800"
+								className="w-screen max-w-sm mt-2 rounded-lg bg-popover text-popover-foreground p-4 shadow-2xl border border-border"
 							>
 								<div className="flex flex-col gap-2">
 									{navigation?.items?.map((section: any) => (
@@ -248,7 +241,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 											{section.children && section.children.length > 0 ? (
 												<Collapsible>
 													<AnimateIcon animateOnHover>
-														<CollapsibleTrigger className="w-full px-4 py-2.5 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300 text-left flex items-center justify-between focus:outline-none font-semibold text-sm">
+														<CollapsibleTrigger className="w-full px-4 py-2.5 rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-300 text-left flex items-center justify-between focus:outline-none font-semibold text-sm">
 															<span>{section.title}</span>
 															<ChevronDown className="size-4" />
 														</CollapsibleTrigger>
@@ -258,7 +251,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 															<Link
 																key={child.id}
 																href={child.page?.permalink || child.url || '#'}
-																className="px-4 py-2 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300 font-medium text-sm"
+																className="px-4 py-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-300 font-medium text-sm"
 																onClick={handleLinkClick}
 															>
 																{child.title}
@@ -269,7 +262,7 @@ return () => window.removeEventListener('scroll', handleScroll);
 											) : (
 												<Link
 													href={section.page?.permalink || section.url || '#'}
-													className="block px-4 py-2.5 rounded-lg hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600 hover:text-white transition-all duration-300 font-semibold text-sm"
+													className="block px-4 py-2.5 rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-300 font-semibold text-sm"
 													onClick={handleLinkClick}
 												>
 													{section.title}

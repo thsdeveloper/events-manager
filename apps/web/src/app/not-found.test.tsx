@@ -9,13 +9,14 @@ vi.mock('next/link', () => ({
 }));
 
 describe('NotFound', () => {
-	it('says the page does not exist, shows the 404 illustration and leads back home', () => {
-		const { container } = renderWithProviders(<NotFound />);
+	it('says the page does not exist, offers events, support and a route back home', () => {
+		renderWithProviders(<NotFound />);
 
+		expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content');
 		expect(screen.getByRole('heading', { level: 1, name: 'Esta página não existe' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: /voltar ao início/i })).toHaveAttribute('href', '/');
-		const img = container.querySelector('img[aria-hidden="true"]');
-		expect(img).toHaveAttribute('src', '/images/empty/not-found.svg');
-		expect(img).toHaveAttribute('alt', '');
+		expect(screen.getByRole('link', { name: /explorar eventos/i })).toHaveAttribute('href', '/eventos');
+		expect(screen.getByRole('link', { name: /fale com a gente/i })).toHaveAttribute('href', '/contato');
+		expect(screen.getByText('Erro 404')).toBeInTheDocument();
 	});
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import { cmsBlockItemSchemas, type CmsBlockCollection } from '@events-manager/contracts';
 import { Save } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
@@ -92,7 +93,7 @@ export function BlockFormSheet({ open, onOpenChange, pageId, collection, block, 
 				<form id={formId} onSubmit={submit} className="flex-1 space-y-6 overflow-y-auto p-6">
 					<Fields value={state} onChange={setState} errors={errors} />
 
-					<div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+					<Card className="grid gap-4 p-4 sm:grid-cols-2">
 						<div className="space-y-1.5">
 							<Label htmlFor={`${formId}-background`}>Fundo</Label>
 							<Select value={background} onValueChange={(value) => setBackground(value as 'light' | 'dark')}>
@@ -105,11 +106,11 @@ export function BlockFormSheet({ open, onOpenChange, pageId, collection, block, 
 								</SelectContent>
 							</Select>
 						</div>
-						<label className="flex items-center gap-3 self-end pb-2 text-sm">
+						<Label className="flex items-center gap-3 self-end pb-2 text-sm">
 							<Switch checked={hidden} onCheckedChange={setHidden} aria-label="Ocultar bloco no site" />
 							Ocultar no site
-						</label>
-					</div>
+						</Label>
+					</Card>
 
 					{formError && <FieldError message={formError} />}
 				</form>

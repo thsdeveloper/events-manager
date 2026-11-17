@@ -2,6 +2,26 @@ import { describe, expect, it } from 'vitest';
 import { sanitizeHtml } from './html-sanitizer.js';
 
 describe('sanitizeHtml', () => {
+	it.each([
+		'java&#x73;cript&#58;alert(1)',
+		'javascript&colon;alert(1)',
+		'java&Tab;script&colon;alert(1)',
+		'&#106avascript:alert(1)',
+		'data&colon;text/html,test',
+	])('removes browser-decoded executable URLs: %s', (url) => {
+		expect(sanitizeHtml(`<a href="${url}">link</a>`)).toBe('<a>link</a>');
+		expect(sanitizeHtml(`<img src="${url}">`)).toBe('');
+	});
+
+	it('treats prototype property names as unknown HTML tags', () => {
+		expect(sanitizeHtml('<constructor href="javascript:alert(1)">texto</constructor>')).toBe('texto');
+	});
+
+	it('preserves safe encoded URLs and remains safe after repeated sanitization', () => {
+		const html = '<a href="/eventos?q=a&amp;b=c" title="A &quot; B">A &amp; B</a>';
+		expect(sanitizeHtml(html)).toBe(html);
+		expect(sanitizeHtml(sanitizeHtml(html))).toBe(html);
+	});
 	it('keeps the editorial tags a rich text block needs', () => {
 		const html =
 			'<h2>Título</h2><p>Um <strong>texto</strong> com <em>ênfase</em>, <a href="/eventos">link</a> e lista:</p><ul><li>um</li><li>dois</li></ul><blockquote>citação</blockquote>';
@@ -10,7 +30,8 @@ describe('sanitizeHtml', () => {
 	});
 
 	it('removes scripts, styles and iframes together with their content', () => {
-		const html = '<p>antes</p><script>alert(1)</script><style>p{display:none}</style><iframe src="x"></iframe><p>depois</p>';
+		const html =
+			'<p>antes</p><script>alert(1)</script><style>p{display:none}</style><iframe src="x"></iframe><p>depois</p>';
 
 		expect(sanitizeHtml(html)).toBe('<p>antes</p><p>depois</p>');
 	});
@@ -45,7 +66,7 @@ describe('sanitizeHtml', () => {
 
 	it('keeps images only with http(s) or relative sources and forces lazy loading', () => {
 		expect(sanitizeHtml('<img src="https://cdn.ex.com/a.png" alt="foto" width="10">')).toBe(
-			'<img src="https://cdn.ex.com/a.png" alt="foto" width="10" loading="lazy">',
+			'<img src="https://cdn.ex.com/a.png" alt="foto" width="10" loading="lazy" />',
 		);
 	});
 

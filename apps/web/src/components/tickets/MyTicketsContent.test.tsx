@@ -41,6 +41,27 @@ const gift = buildNominalTicket({
 });
 
 describe('MyTicketsContent', () => {
+	it('opens the ticket search and period together and filters only after applying', async () => {
+		const { user } = renderWithProviders(<MyTicketsContent tickets={[mine, pending, gift]} />);
+		await user.click(screen.getByRole('button', { name: /Filtros/ }));
+		await user.type(screen.getByLabelText('Buscar ingressos'), 'GIFT');
+		await user.click(screen.getByRole('combobox', { name: 'Período dos ingressos' }));
+		await user.click(screen.getByRole('option', { name: /Todos/ }));
+		await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }));
+		expect(screen.getByText('EVT-GIFT00000003')).toBeInTheDocument();
+		expect(screen.queryByText('EVT-PENDING00002')).not.toBeInTheDocument();
+	});
+	it('keeps the applied filters when switching between list and grid views', async () => {
+		const { user } = renderWithProviders(<MyTicketsContent tickets={[mine, pending, gift]} />);
+		await user.click(screen.getByRole('button', { name: /Filtros/ }));
+		await user.type(screen.getByLabelText('Buscar ingressos'), 'GIFT');
+		await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }));
+		for (const name of ['Visualização em lista', 'Visualização em grade']) {
+			await user.click(screen.getByRole('button', { name }));
+			expect(screen.getByText('EVT-GIFT00000003')).toBeInTheDocument();
+			expect(screen.queryByText('EVT-PENDING00002')).not.toBeInTheDocument();
+		}
+	});
 	it('invites the person to explore events when there are no tickets yet', () => {
 		const { container } = renderWithProviders(<MyTicketsContent tickets={[]} />);
 

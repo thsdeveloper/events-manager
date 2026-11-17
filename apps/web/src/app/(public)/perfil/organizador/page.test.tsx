@@ -103,3 +103,13 @@ describe('PerfilOrganizadorPage', () => {
 		expectAlignedWithHeader(container);
 	});
 });
+
+it('lets a pending organizer prepare an event while approval is pending', () => {
+	mockFetch([]);
+	session.mockReturnValue(auth({ organizerStatus: 'pending', hasPendingOrganizerRequest: true }));
+	renderWithProviders(<PerfilOrganizadorPage />);
+	expect(screen.getByRole('link', { name: 'Preparar evento em rascunho' })).toHaveAttribute(
+		'href',
+		'/perfil/organizador/rascunhos',
+	);
+});

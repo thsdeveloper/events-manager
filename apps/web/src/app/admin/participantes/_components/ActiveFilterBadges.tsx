@@ -90,19 +90,20 @@ export function ActiveFilterBadges({
 
 	return (
 		<div className="flex flex-wrap items-center gap-2">
-			<span className="text-sm font-medium text-gray-600 dark:text-gray-400">Filtros ativos:</span>
+			<span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Filtros ativos:</span>
 			{badges.map((badge, index) => (
-				<Badge key={`${badge.type}-${badge.value || index}`} variant="secondary" className="gap-1 pr-1">
+				<Badge key={`${badge.type}-${badge.value || index}`} variant="secondary" className="gap-1">
 					{badge.label}
-					<button
+					<Button
+						variant="ghost"
 						onClick={() => onRemoveFilter(badge.type, badge.value)}
-						className="ml-1 rounded-sm opacity-70 hover:opacity-100"
+						className="h-auto whitespace-normal ml-1"
 					>
 						<X className="size-3" />
-					</button>
+					</Button>
 				</Badge>
 			))}
-			<Button variant="ghost" size="sm" onClick={onClearAll} className="h-6 px-2 text-xs">
+			<Button variant="ghost" size="sm" onClick={onClearAll} className="h-6 px-2">
 				Limpar todos
 			</Button>
 		</div>

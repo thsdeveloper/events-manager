@@ -1,5 +1,6 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import {
 	closestCenter,
 	DndContext,
@@ -110,103 +111,108 @@ function SectionCard({
 	return (
 		<li
 			ref={setNodeRef}
+			className={isDragging ? 'relative z-10' : undefined}
 			id={`section-${section.id}`}
 			aria-label={`${meta.label}: ${summary}`}
 			style={{ transform: CSS.Transform.toString(transform), transition }}
-			className={cn(
-				'flex items-center gap-2 rounded-lg border bg-card p-2.5 shadow-sm transition-colors hover:border-primary/40',
-				section.hidden && 'opacity-60',
-				isDragging && 'z-10 border-primary shadow-md',
-			)}
 		>
-			<button
-				type="button"
-				ref={setActivatorNodeRef}
-				{...attributes}
-				{...listeners}
-				aria-label={`Arrastar ${meta.label}`}
-				className="cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
+			<Card
+				className={cn(
+					'flex items-center gap-2 p-2.5 transition-colors hover:border-primary/40',
+					section.hidden && 'opacity-60',
+					isDragging && 'z-10',
+				)}
 			>
-				<GripVertical className="size-4" aria-hidden />
-			</button>
-			<div className="flex flex-col">
 				<Button
-					size="icon"
 					variant="ghost"
-					className="size-6"
-					disabled={index === 0}
-					onClick={() => onMove(index, -1)}
-					aria-label={`Mover ${meta.label} para cima`}
+					type="button"
+					ref={setActivatorNodeRef}
+					{...attributes}
+					{...listeners}
+					aria-label={`Arrastar ${meta.label}`}
+					className="h-auto whitespace-normal cursor-grab touch-none rounded p-1 active:cursor-grabbing"
 				>
-					<ArrowUp className="size-3.5" />
+					<GripVertical className="size-4" aria-hidden />
 				</Button>
-				<Button
-					size="icon"
-					variant="ghost"
-					className="size-6"
-					disabled={index === total - 1}
-					onClick={() => onMove(index, 1)}
-					aria-label={`Mover ${meta.label} para baixo`}
-				>
-					<ArrowDown className="size-3.5" />
-				</Button>
-			</div>
-			<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-				<Icon className="size-4" aria-hidden />
-			</span>
-			<div className="min-w-0 flex-1">
-				<p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-					{meta.label}
-					{locked ? <Lock className="size-3" aria-label="Seção obrigatória" /> : null}
-					{section.hidden ? <span className="normal-case text-amber-600">oculta</span> : null}
-				</p>
-				<p className="truncate text-sm font-medium text-foreground">{summary}</p>
-				<p className="truncate text-xs text-muted-foreground">#{section.anchor}</p>
-			</div>
-			<div className="flex items-center gap-0.5">
-				<Button
-					size="icon"
-					variant="ghost"
-					className="size-8"
-					onClick={() => onEdit(section)}
-					aria-label={`Editar ${meta.label}`}
-				>
-					<Pencil className="size-4" />
-				</Button>
-				<Button
-					size="icon"
-					variant="ghost"
-					className="size-8"
-					disabled={locked}
-					title={locked ? 'A seção de ingressos não pode ficar oculta.' : undefined}
-					onClick={() => onToggleHidden(section)}
-					aria-label={section.hidden ? `Mostrar ${meta.label}` : `Ocultar ${meta.label}`}
-				>
-					{section.hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-				</Button>
-				{locked ? null : (
+				<div className="flex flex-col">
+					<Button
+						size="icon"
+						variant="ghost"
+						className="size-6"
+						disabled={index === 0}
+						onClick={() => onMove(index, -1)}
+						aria-label={`Mover ${meta.label} para cima`}
+					>
+						<ArrowUp className="size-3.5" />
+					</Button>
+					<Button
+						size="icon"
+						variant="ghost"
+						className="size-6"
+						disabled={index === total - 1}
+						onClick={() => onMove(index, 1)}
+						aria-label={`Mover ${meta.label} para baixo`}
+					>
+						<ArrowDown className="size-3.5" />
+					</Button>
+				</div>
+				<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+					<Icon className="size-4" aria-hidden />
+				</span>
+				<div className="min-w-0 flex-1">
+					<p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						{meta.label}
+						{locked ? <Lock className="size-3" aria-label="Seção obrigatória" /> : null}
+						{section.hidden ? <span className="normal-case text-muted-foreground">oculta</span> : null}
+					</p>
+					<p className="truncate text-sm font-medium text-foreground">{summary}</p>
+					<p className="truncate text-xs text-muted-foreground">#{section.anchor}</p>
+				</div>
+				<div className="flex items-center gap-0.5">
 					<Button
 						size="icon"
 						variant="ghost"
 						className="size-8"
-						onClick={() => onDuplicate(section)}
-						aria-label={`Duplicar ${meta.label}`}
+						onClick={() => onEdit(section)}
+						aria-label={`Editar ${meta.label}`}
 					>
-						<Copy className="size-4" />
+						<Pencil className="size-4" />
 					</Button>
-				)}
-				<Button
-					size="icon"
-					variant="ghost"
-					className="size-8 text-destructive hover:text-destructive"
-					disabled={locked}
-					title={locked ? 'A seção de ingressos é obrigatória: é por ela que se chega ao checkout.' : undefined}
-					onClick={() => onRemove(section)}
-					aria-label={`Remover ${meta.label}`}
-				>
-					<Trash2 className="size-4" />
-				</Button>
-			</div>
+					<Button
+						size="icon"
+						variant="ghost"
+						className="size-8"
+						disabled={locked}
+						title={locked ? 'A seção de ingressos não pode ficar oculta.' : undefined}
+						onClick={() => onToggleHidden(section)}
+						aria-label={section.hidden ? `Mostrar ${meta.label}` : `Ocultar ${meta.label}`}
+					>
+						{section.hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+					</Button>
+					{locked ? null : (
+						<Button
+							size="icon"
+							variant="ghost"
+							className="size-8"
+							onClick={() => onDuplicate(section)}
+							aria-label={`Duplicar ${meta.label}`}
+						>
+							<Copy className="size-4" />
+						</Button>
+					)}
+					<Button
+						size="icon"
+						variant="destructive"
+						className="size-8"
+						disabled={locked}
+						title={locked ? 'A seção de ingressos é obrigatória: é por ela que se chega ao checkout.' : undefined}
+						onClick={() => onRemove(section)}
+						aria-label={`Remover ${meta.label}`}
+					>
+						<Trash2 className="size-4" />
+					</Button>
+				</div>
+			</Card>
 		</li>
 	);
 }

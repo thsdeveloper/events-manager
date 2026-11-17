@@ -26,6 +26,8 @@ const contentSecurityPolicy = `
 `;
 
 const nextConfig: NextConfig = {
+	// Image generation has a 120s provider deadline; avoid the proxy's default 30s cutoff.
+	experimental: { proxyTimeout: 130_000 },
 	transpilePackages: ['@events-manager/contracts'],
 	images: {
 		dangerouslyAllowSVG: false,

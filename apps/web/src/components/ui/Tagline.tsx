@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils';
+
 interface TitleProps {
 	tagline?: string | null;
 	className?: string;
@@ -8,8 +10,9 @@ const Tagline = ({ tagline, className = '', as: Component = 'h2' }: TitleProps) 
 	if (!tagline) return null;
 
 	return (
-		<Component className={`font-heading text-accent font-normal uppercase ${className}
-         text-lg md:text-xl lg:text-tagline`}>
+		<Component
+			className={cn('font-heading text-link font-medium uppercase tracking-widest text-xs sm:text-xs', className)}
+		>
 			{tagline}
 		</Component>
 	);

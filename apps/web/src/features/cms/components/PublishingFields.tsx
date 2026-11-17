@@ -2,10 +2,9 @@
 
 import type { CmsContentStatus } from '@events-manager/contracts';
 import { useId } from 'react';
-import { Input } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { fromDateTimeLocal, toDateTimeLocal } from '../lib/dates';
 import { STATUS_OPTIONS } from '../lib/status';
 import { Field } from './FormPrimitives';
 
@@ -44,7 +43,7 @@ export function PublishingFields({
 						))}
 					</SelectContent>
 				</Select>
-				{current && <p className="text-xs text-slate-500">{current.description}</p>}
+				{current && <p className="text-xs text-muted-foreground">{current.description}</p>}
 			</div>
 			<Field
 				id={`${id}-published-at`}
@@ -56,11 +55,11 @@ export function PublishingFields({
 				}
 				error={error}
 			>
-				<Input
+				<DateTimePicker
 					id={`${id}-published-at`}
-					type="datetime-local"
-					value={toDateTimeLocal(publishedAt)}
-					onChange={(event) => onPublishedAtChange(fromDateTimeLocal(event.target.value))}
+					clearable
+					date={publishedAt ? new Date(publishedAt) : undefined}
+					setDate={(date) => onPublishedAtChange(date ? date.toISOString() : null)}
 				/>
 			</Field>
 		</div>

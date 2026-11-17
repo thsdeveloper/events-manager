@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { brandingAssetKeys, brandingAssetKind, type BrandingSettingsInput } from '@events-manager/contracts';
 import type { PaymentGateway } from '../payments/payment-gateway.js';
 import { ApiError } from '../../shared/errors.js';
 
@@ -69,7 +70,7 @@ export interface SuperAdminRepository {
 	}>;
 	getCategory(id: string): Promise<Row | null>;
 	getSiteSettings(): Promise<Row>;
-	isImageMedia(id: string): Promise<boolean>;
+	getBrandingMedia(id: string): Promise<{ type: string; metadata?: Record<string, unknown> | null } | null>;
 	listCategories(): Promise<Row[]>;
 	listOrganizerPage(query: OrganizerPageQuery): Promise<{
 		data: Row[];
@@ -301,13 +302,17 @@ export class SuperAdminService {
 				context,
 			});
 			return { success: true, payout: updated };
-		} catch (error) {
-			await this.repository.failPayout(
-				String(payout.id),
-				error instanceof Error ? error.message : 'Falha no provedor de pagamentos.',
-				this.now().toISOString(),
+		} catch {
+			// A timeout (or local persistence/audit failure) does not prove that
+			// money was not transferred. Keep the reservation until the signed
+			// provider webhook confirms the outcome, preventing a second payout.
+			throw new ApiError(
+				'O repasse foi registrado, mas precisa de conferência. Verifique seu status antes de tentar novamente.',
+				502,
+				'PAYOUT_RECONCILIATION_REQUIRED',
+				{ payoutId: String(payout.id) },
+				{ exposeDetail: true },
 			);
-			throw error;
 		}
 	}
 
@@ -404,17 +409,31 @@ export class SuperAdminService {
 		return { settings: await this.repository.getSiteSettings() };
 	}
 
-	async updateBrandingSettings(
-		actorId: string,
-		input: { logo: string | null; logo_dark_mode: string | null },
-		context: AuditContext,
-	) {
-		// The identifiers arrive from the client, so they are only trusted after we
-		// confirm they point at an image this platform actually stores.
-		for (const mediaId of [input.logo, input.logo_dark_mode]) {
-			if (mediaId && !(await this.repository.isImageMedia(mediaId))) {
-				throw new ApiError('A imagem selecionada não existe ou não é um arquivo de imagem.', 422, 'INVALID_LOGO_MEDIA');
-			}
+	async updateBrandingSettings(actorId: string, input: BrandingSettingsInput, context: AuditContext) {
+		const current = await this.repository.getSiteSettings();
+		for (const key of brandingAssetKeys) {
+			const mediaId = input[key];
+			if (!mediaId) continue;
+			const previous = current[key];
+			const previousId = previous && typeof previous === 'object' ? (previous as Row).id : previous;
+			// Previously saved raster logos remain usable until explicitly replaced.
+			if (previousId === mediaId) continue;
+			const media = await this.repository.getBrandingMedia(mediaId);
+			const kind = brandingAssetKind(key);
+			const validType =
+				kind === 'logo'
+					? media?.type === 'image/svg+xml'
+					: kind === 'app-icon'
+						? media?.type === 'image/png'
+						: ['image/svg+xml', 'image/png', 'image/x-icon'].includes(media?.type ?? '');
+			const validSize = kind !== 'app-icon' || (media?.metadata?.width === 1024 && media.metadata.height === 1024);
+			if (!validType || !validSize || media?.metadata?.branding_kind !== kind)
+				throw new ApiError(
+					'Envie um arquivo válido para este campo de identidade visual.',
+					422,
+					'INVALID_BRANDING_MEDIA',
+					{ field: key },
+				);
 		}
 		const result = await this.repository.updateSiteSettings(input);
 		await this.repository.recordAudit({

@@ -1,5 +1,7 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,9 +21,7 @@ interface WizardProgressBarProps {
  * and there is no per-frame handler competing with the sticky paint.
  */
 function readHeaderHeight() {
-	return (
-		Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue('--admin-header-height'), 10) || 0
-	);
+	return Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue('--admin-header-height'), 10) || 0;
 }
 
 function useIsStuck() {
@@ -78,7 +78,7 @@ export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSele
 					'sticky top-[var(--admin-header-height)] z-20 transition-all duration-300 ease-out',
 					// Opaque, not translucent: content scrolls underneath, and a see-through
 					// band makes those half-covered lines read as a rendering glitch.
-					isStuck && '-mx-4 border-b border-border bg-background shadow-md sm:-mx-6 lg:-mx-8',
+					isStuck && '-mx-4 border-b border-border bg-background sm:-mx-6 lg:-mx-8',
 				)}
 			>
 				{/* Step counter and time estimate: redundant once the bar is a thin strip,
@@ -108,17 +108,11 @@ export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSele
 				</div>
 
 				{/* Flush against the header once stuck — no gutter, no rounding. */}
-				<div
-					className={cn('h-1 overflow-hidden bg-secondary/50 transition-all duration-300', !isStuck && 'rounded-full')}
-				>
-					<div
-						className={cn(
-							'h-full bg-primary shadow-sm transition-all duration-500 ease-out',
-							!isStuck && 'rounded-full',
-						)}
-						style={{ width: `${progress}%` }}
-					/>
-				</div>
+				<Progress
+					value={progress}
+					aria-label="Progresso da criação do evento"
+					className={cn('h-1', isStuck && 'rounded-lg')}
+				/>
 
 				{/* pt-3 keeps a clear gap between the progress track and the circles so
 				    the two never read as one crowded strip. */}
@@ -142,12 +136,13 @@ export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSele
 								<li key={step.id} className="relative">
 									<Tooltip>
 										<TooltipTrigger asChild>
-											<button
+											<Button
+												variant={isActive ? 'secondary' : 'ghost'}
 												type="button"
 												onClick={() => isClickable && onStepSelect?.(index)}
 												disabled={!isClickable}
 												className={cn(
-													'group relative flex w-full flex-col items-center gap-1 text-center transition-all duration-200',
+													'group relative flex h-auto w-full flex-col items-center gap-1 p-0 text-center transition-all duration-200',
 													isClickable ? 'cursor-pointer' : 'cursor-default',
 												)}
 												aria-current={isActive ? 'step' : undefined}
@@ -155,24 +150,19 @@ export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSele
 											>
 												<div
 													className={cn(
-														'relative z-10 flex items-center justify-center rounded-full border-2 font-semibold shadow-sm transition-all duration-300',
+														'relative z-10 flex items-center justify-center rounded-md border font-semibold transition-all duration-300',
 														isStuck ? 'size-6 text-[10px]' : 'size-7 text-xs',
-														isActive &&
-															'scale-110 border-primary bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20',
+														isActive && 'border-primary bg-primary text-primary-foreground ',
 														isCompleted && !isActive && 'border-primary bg-primary text-primary-foreground',
 														isVisited && !isCompleted && !isActive && 'border-border bg-background text-foreground',
 														!isVisited && 'border-dashed border-muted-foreground/30 bg-muted text-muted-foreground',
-														isClickable && !isActive && 'group-hover:scale-105 group-hover:border-primary/50',
+														isClickable && !isActive && ' group-hover:border-primary/50',
 													)}
 												>
 													{isCompleted ? (
 														<Check className={cn(isStuck ? 'size-3' : 'size-3.5')} strokeWidth={3} />
 													) : (
 														<span>{index + 1}</span>
-													)}
-
-													{isActive && (
-														<span className="absolute inset-0 -z-10 animate-ping rounded-full bg-primary opacity-15" />
 													)}
 												</div>
 
@@ -209,7 +199,7 @@ export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSele
 														aria-hidden="true"
 													/>
 												)}
-											</button>
+											</Button>
 										</TooltipTrigger>
 										{/* Only while stuck: the labels are visible otherwise, and a tooltip
 										    repeating them would be noise. Omitting the content keeps the

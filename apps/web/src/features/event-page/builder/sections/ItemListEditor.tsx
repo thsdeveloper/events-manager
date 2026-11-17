@@ -1,5 +1,7 @@
 'use client';
 
+import { Empty } from '@/components/ui/empty';
+import { Card } from '@/components/ui/card';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
@@ -40,65 +42,67 @@ export function ItemListEditor<Item extends { id: string }>({
 	return (
 		<div className="space-y-3">
 			{items.length === 0 ? (
-				<p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
+				<Empty className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
 					Nenhum item ainda.
-				</p>
+				</Empty>
 			) : (
 				<ol className="space-y-3">
 					{items.map((item, index) => {
 						const name = label(item, index);
 
 						return (
-							<li key={item.id} className="rounded-lg border bg-muted/30 p-3">
-								<div className="mb-2 flex items-center justify-between gap-2">
-									<span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-										{index + 1}. {name}
-									</span>
-									<span className="flex items-center gap-1">
-										<Button
-											type="button"
-											size="icon"
-											variant="ghost"
-											className="size-7"
-											disabled={index === 0}
-											onClick={() => move(index, -1)}
-											aria-label={`Mover ${name} para cima`}
-										>
-											<ArrowUp className="size-4" />
-										</Button>
-										<Button
-											type="button"
-											size="icon"
-											variant="ghost"
-											className="size-7"
-											disabled={index === items.length - 1}
-											onClick={() => move(index, 1)}
-											aria-label={`Mover ${name} para baixo`}
-										>
-											<ArrowDown className="size-4" />
-										</Button>
-										<Button
-											type="button"
-											size="icon"
-											variant="ghost"
-											className="size-7 text-destructive hover:text-destructive"
-											onClick={() => onChange(items.filter((candidate) => candidate.id !== item.id))}
-											aria-label={`Remover ${name}`}
-										>
-											<Trash2 className="size-4" />
-										</Button>
-									</span>
-								</div>
-								<div className="grid gap-3">
-									{children(
-										item,
-										(patch) =>
-											onChange(
-												items.map((candidate) => (candidate.id === item.id ? { ...candidate, ...patch } : candidate)),
-											),
-										index,
-									)}
-								</div>
+							<li key={item.id}>
+								<Card className="p-3">
+									<div className="mb-2 flex items-center justify-between gap-2">
+										<span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+											{index + 1}. {name}
+										</span>
+										<span className="flex items-center gap-1">
+											<Button
+												type="button"
+												size="icon"
+												variant="ghost"
+												className="size-7"
+												disabled={index === 0}
+												onClick={() => move(index, -1)}
+												aria-label={`Mover ${name} para cima`}
+											>
+												<ArrowUp className="size-4" />
+											</Button>
+											<Button
+												type="button"
+												size="icon"
+												variant="ghost"
+												className="size-7"
+												disabled={index === items.length - 1}
+												onClick={() => move(index, 1)}
+												aria-label={`Mover ${name} para baixo`}
+											>
+												<ArrowDown className="size-4" />
+											</Button>
+											<Button
+												type="button"
+												size="icon"
+												variant="destructive"
+												className="size-7"
+												onClick={() => onChange(items.filter((candidate) => candidate.id !== item.id))}
+												aria-label={`Remover ${name}`}
+											>
+												<Trash2 className="size-4" />
+											</Button>
+										</span>
+									</div>
+									<div className="grid gap-3">
+										{children(
+											item,
+											(patch) =>
+												onChange(
+													items.map((candidate) => (candidate.id === item.id ? { ...candidate, ...patch } : candidate)),
+												),
+											index,
+										)}
+									</div>
+								</Card>
 							</li>
 						);
 					})}
@@ -108,7 +112,7 @@ export function ItemListEditor<Item extends { id: string }>({
 				type="button"
 				variant="outline"
 				size="sm"
-				className="w-full border-dashed"
+				className="w-full"
 				disabled={max !== undefined && items.length >= max}
 				onClick={() => onChange([...items, create()])}
 			>

@@ -1,5 +1,7 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card } from '@/components/ui/card';
 import { ArrowRight, Wallet } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { calculateFees, formatCurrency, type FeeConfig } from '@/lib/fees';
@@ -36,8 +38,17 @@ export const TicketFeeSummary = memo(function TicketFeeSummary({
 		);
 	}
 
+	if (serviceFeeType === 'absorbed' && fees.platformFee > price)
+		return (
+			<Alert variant="destructive" role="alert" className="border text-sm">
+				<AlertDescription>
+					O preço não cobre a taxa mínima. Aumente o preço ou repasse a taxa ao comprador.
+				</AlertDescription>
+			</Alert>
+		);
+
 	return (
-		<div className="rounded-lg border bg-muted/40 p-4">
+		<Card className="p-4">
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
 				<div>
 					<p className="text-xs text-muted-foreground">Comprador paga</p>
@@ -46,7 +57,9 @@ export const TicketFeeSummary = memo(function TicketFeeSummary({
 				<ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<div>
 					<p className="text-xs text-muted-foreground">Você recebe</p>
-					<p className="text-lg font-bold tabular-nums text-emerald-600">{formatCurrency(fees.organizerReceives)}</p>
+					<p className="text-lg font-bold tabular-nums text-muted-foreground">
+						{formatCurrency(fees.organizerReceives)}
+					</p>
 				</div>
 			</div>
 
@@ -67,6 +80,6 @@ export const TicketFeeSummary = memo(function TicketFeeSummary({
 					? 'Não foi possível carregar as taxas atuais; a estimativa usa os valores padrão. O valor final é recalculado ao salvar.'
 					: 'Estimativa. A tarifa efetiva do gateway é confirmada na liquidação do pagamento.'}
 			</p>
-		</div>
+		</Card>
 	);
 });

@@ -117,13 +117,13 @@ export function OrganizerLanding({ user }: OrganizerLandingProps) {
 							? {}
 							: { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4 } })}
 					>
-						<h1 className="font-heading text-4xl font-semibold leading-[1.1] tracking-tight text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
+						<h1 className="font-heading text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl">
 							Venda ingressos e fique com{' '}
 							<span className="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
 								mais do seu dinheiro
 							</span>
 						</h1>
-						<p className="mt-5 max-w-xl text-lg leading-8 text-slate-600 dark:text-slate-300">
+						<p className="mt-5 max-w-xl text-lg leading-8 text-muted-foreground">
 							Publique seu evento em minutos, venda com PIX e cartão e acompanhe participantes, check-in e repasses no
 							mesmo lugar. Tudo com a menor taxa por ingresso do mercado.
 						</p>
@@ -201,8 +201,8 @@ export function OrganizerLanding({ user }: OrganizerLandingProps) {
 							<span className="flex size-9 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300">
 								<Icon className="size-4" aria-hidden="true" />
 							</span>
-							<p className="mt-3 text-sm font-semibold text-slate-950 dark:text-white">{title}</p>
-							<p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{text}</p>
+							<p className="mt-3 text-sm font-semibold text-foreground">{title}</p>
+							<p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p>
 						</li>
 					))}
 				</motion.ul>
@@ -264,7 +264,7 @@ export function OrganizerLanding({ user }: OrganizerLandingProps) {
 				<Container className="py-12 sm:py-14 lg:py-16">
 					<div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)] lg:gap-10">
 						<motion.div {...reveal}>
-							<h2 className="font-heading text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+							<h2 className="font-heading text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
 								Quanto sobra para você em cada ingresso?
 							</h2>
 							<p className="mt-4 max-w-md text-sm leading-6 text-white/85">
@@ -331,8 +331,8 @@ export function OrganizerLanding({ user }: OrganizerLandingProps) {
 							<span className="flex size-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700 transition-colors group-hover:bg-violet-100 group-hover:text-violet-700 dark:bg-slate-800 dark:text-slate-200 dark:group-hover:bg-violet-950 dark:group-hover:text-violet-300">
 								<Icon className="size-5" aria-hidden="true" />
 							</span>
-							<p className="mt-4 font-semibold text-slate-950 dark:text-white">{title}</p>
-							<p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{text}</p>
+							<p className="mt-4 font-semibold text-foreground">{title}</p>
+							<p className="mt-1 text-sm leading-6 text-muted-foreground">{text}</p>
 						</motion.li>
 					))}
 				</ul>
@@ -359,7 +359,7 @@ export function OrganizerLanding({ user }: OrganizerLandingProps) {
 							<p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
 								{complete ? 'Tudo pronto' : 'Quase lá'}
 							</p>
-							<h2 className="mt-2 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+							<h2 className="mt-2 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
 								{complete
 									? 'Seu próximo evento começa agora.'
 									: `Faltam só ${missing.length} ${missing.length === 1 ? 'item' : 'itens'} do seu cadastro.`}
@@ -426,10 +426,7 @@ function ReadinessCard({
 						<p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
 							Seu cadastro
 						</p>
-						<h2
-							id="readiness-heading"
-							className="mt-1 font-heading text-xl font-semibold text-slate-950 dark:text-white"
-						>
+						<h2 id="readiness-heading" className="mt-1 font-heading text-xl font-semibold text-foreground">
 							{complete ? `Cadastro completo, ${firstName}.` : `Olá, ${firstName}. Quase lá.`}
 						</h2>
 					</div>
@@ -460,13 +457,13 @@ function ReadinessCard({
 				</div>
 
 				{complete ? (
-					<p className="mt-4 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+					<p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
 						<CalendarCheck2 className="size-4 text-emerald-600" aria-hidden="true" />
 						Você está pronto para criar sua conta de organizador.
 					</p>
 				) : (
 					<>
-						<p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+						<p className="mt-4 text-sm text-muted-foreground">
 							Faltam {missing.length} {missing.length === 1 ? 'item' : 'itens'} para criar sua conta:
 						</p>
 						<ul aria-label="O que falta no seu cadastro" className="mt-3 space-y-2">
@@ -531,8 +528,8 @@ function Step({
 					</span>
 				) : null}
 			</div>
-			<p className="mt-4 font-semibold text-slate-950 dark:text-white">{title}</p>
-			<p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{text}</p>
+			<p className="mt-4 font-semibold text-foreground">{title}</p>
+			<p className="mt-1 text-sm leading-6 text-muted-foreground">{text}</p>
 			{action ? <div className="mt-3">{action}</div> : null}
 		</li>
 	);
@@ -544,10 +541,8 @@ function SectionHeading({ eyebrow, title, text }: { eyebrow: string; title: stri
 			<p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
 				{eyebrow}
 			</p>
-			<h2 className="mt-2 font-heading text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
-				{title}
-			</h2>
-			<p className="mt-3 text-slate-600 dark:text-slate-300">{text}</p>
+			<h2 className="mt-2 font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{title}</h2>
+			<p className="mt-3 text-muted-foreground">{text}</p>
 		</div>
 	);
 }

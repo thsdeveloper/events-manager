@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { Crosshair, Loader2, MapPin, Search, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -135,7 +136,7 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 				<Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 				<Input
 					value={query}
-					onChange={event => setQuery(event.target.value)}
+					onChange={(event) => setQuery(event.target.value)}
 					placeholder="Busque pelo endereço ou nome do local"
 					autoComplete="off"
 					aria-label="Buscar endereço no mapa"
@@ -146,24 +147,23 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 				)}
 
 				{suggestions.length > 0 && (
-					<ul className="absolute inset-x-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-md border bg-background shadow-lg">
-						{suggestions.map(suggestion => (
+					<ul className="absolute inset-x-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-md border bg-background">
+						{suggestions.map((suggestion) => (
 							<li key={suggestion.placeId}>
-								<button
+								<Button
+									variant="ghost"
 									type="button"
 									onClick={() => handleSuggestion(suggestion)}
-									className="flex w-full items-start gap-2 border-b border-border/60 px-3 py-2 text-left last:border-none hover:bg-muted"
+									className="h-auto whitespace-normal flex w-full items-start gap-2 px-3 py-2 text-left"
 								>
 									<MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
 									<span className="min-w-0">
 										<span className="block truncate text-sm font-medium">{suggestion.mainText}</span>
 										{suggestion.secondaryText && (
-											<span className="block truncate text-xs text-muted-foreground">
-												{suggestion.secondaryText}
-											</span>
+											<span className="block truncate text-xs text-muted-foreground">{suggestion.secondaryText}</span>
 										)}
 									</span>
-								</button>
+								</Button>
 							</li>
 						))}
 					</ul>
@@ -185,14 +185,15 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 						: 'Clique no mapa ou busque um endereço para marcar o local.'}
 				</p>
 				{position && (
-					<button
+					<Button
+						variant="destructive"
 						type="button"
 						onClick={handleClear}
-						className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium text-destructive hover:bg-destructive/10"
+						className="h-auto whitespace-normal inline-flex items-center gap-1.5 px-2 py-1"
 					>
 						<Trash2 className="size-3.5" />
 						Remover pino
-					</button>
+					</Button>
 				)}
 			</div>
 

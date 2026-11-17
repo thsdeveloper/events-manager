@@ -34,7 +34,7 @@ const FormBlock = ({ data }: FormBlockProps) => {
 	}
 
 	return (
-		<section className="mx-auto">
+		<section className="min-w-0 space-y-4">
 			{tagline && <Tagline as="p" tagline={tagline} />}
 			{headline && <Headline as="h2" headline={headline} />}
 

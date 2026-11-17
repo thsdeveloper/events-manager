@@ -44,7 +44,7 @@ const Pricing = ({ data }: PricingProps) => {
 	})();
 
 	return (
-		<section>
+		<section className="space-y-4">
 			{tagline && <Tagline as="p" tagline={tagline} />}
 			{headline && <Headline as="h2" headline={headline} />}
 			<div className={`grid gap-6 mt-8 ${gridClasses}`}>

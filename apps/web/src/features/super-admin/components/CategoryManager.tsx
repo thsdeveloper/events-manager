@@ -1,5 +1,8 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
+import { Empty } from '@/components/ui/empty';
+import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Pencil, Plus, Tags, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { memo, useCallback, useState } from 'react';
@@ -31,37 +34,38 @@ const CategoryRow = memo(function CategoryRow({
 	const color = category.color ?? '#6644ff';
 
 	return (
-		<li className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-violet-300">
-			<div
-				className="flex size-11 shrink-0 items-center justify-center rounded-lg"
-				style={{ backgroundColor: `${color}1a`, color }}
-			>
-				<Icon className="size-5" />
-			</div>
-
-			<div className="min-w-0 flex-1">
-				<p className="truncate font-semibold text-slate-950">{category.name}</p>
-				<p className="truncate text-xs text-slate-500">{category.description || `/${category.slug}`}</p>
-			</div>
-
-			<span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-				{category.eventCount} {category.eventCount === 1 ? 'evento' : 'eventos'}
-			</span>
-
-			<div className="flex items-center gap-1">
-				<Button variant="ghost" size="icon" onClick={() => onEdit(category)} aria-label={`Editar ${category.name}`}>
-					<Pencil className="size-4" />
-				</Button>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={() => onDelete(category)}
-					aria-label={`Excluir ${category.name}`}
-					className="text-red-600 hover:bg-red-50 hover:text-red-700"
+		<li>
+			<Card className="flex flex-wrap items-center gap-3 p-4 transition-colors hover:border-border">
+				<div
+					className="flex size-11 shrink-0 items-center justify-center rounded-lg"
+					style={{ backgroundColor: `${color}1a`, color }}
 				>
-					<Trash2 className="size-4" />
-				</Button>
-			</div>
+					<Icon className="size-5" />
+				</div>
+
+				<div className="min-w-0 flex-1">
+					<p className="truncate font-semibold text-foreground">{category.name}</p>
+					<p className="truncate text-xs text-muted-foreground">{category.description || `/${category.slug}`}</p>
+				</div>
+
+				<Badge variant="secondary">
+					{category.eventCount} {category.eventCount === 1 ? 'evento' : 'eventos'}
+				</Badge>
+
+				<div className="flex items-center gap-1">
+					<Button variant="ghost" size="icon" onClick={() => onEdit(category)} aria-label={`Editar ${category.name}`}>
+						<Pencil className="size-4" />
+					</Button>
+					<Button
+						variant="destructive"
+						size="icon"
+						onClick={() => onDelete(category)}
+						aria-label={`Excluir ${category.name}`}
+					>
+						<Trash2 className="size-4" />
+					</Button>
+				</div>
+			</Card>
 		</li>
 	);
 });
@@ -118,7 +122,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Even
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-4">
-				<p className="text-sm text-slate-600">
+				<p className="text-sm text-muted-foreground">
 					{initialCategories.length} {initialCategories.length === 1 ? 'categoria' : 'categorias'} disponíveis para os
 					organizadores.
 				</p>
@@ -129,13 +133,13 @@ export function CategoryManager({ initialCategories }: { initialCategories: Even
 			</div>
 
 			{initialCategories.length === 0 ? (
-				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-slate-50 px-6 py-12 text-center">
-					<div className="flex size-12 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+				<Empty className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted px-6 py-12 text-center">
+					<div className="flex size-12 items-center justify-center rounded-full bg-accent text-primary">
 						<Tags className="size-6" />
 					</div>
 					<div>
-						<p className="font-medium text-slate-950">Nenhuma categoria cadastrada</p>
-						<p className="mt-1 text-sm text-slate-500">
+						<p className="font-medium text-foreground">Nenhuma categoria cadastrada</p>
+						<p className="mt-1 text-sm text-muted-foreground">
 							Sem categorias, os organizadores não conseguem concluir a etapa &ldquo;Básico&rdquo; do cadastro.
 						</p>
 					</div>
@@ -143,10 +147,10 @@ export function CategoryManager({ initialCategories }: { initialCategories: Even
 						<Plus className="mr-2 size-4" />
 						Cadastrar a primeira
 					</Button>
-				</div>
+				</Empty>
 			) : (
 				<ul className="space-y-2">
-					{initialCategories.map(category => (
+					{initialCategories.map((category) => (
 						<CategoryRow key={category.id} category={category} onEdit={handleEdit} onDelete={setToDelete} />
 					))}
 				</ul>
@@ -154,16 +158,16 @@ export function CategoryManager({ initialCategories }: { initialCategories: Even
 
 			<CategoryFormSheet open={sheetOpen} onOpenChange={setSheetOpen} category={editing} onSaved={handleSaved} />
 
-			<AlertDialog open={Boolean(toDelete)} onOpenChange={open => !open && setToDelete(null)}>
+			<AlertDialog open={Boolean(toDelete)} onOpenChange={(open) => !open && setToDelete(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Excluir &ldquo;{toDelete?.name}&rdquo;?</AlertDialogTitle>
 						<AlertDialogDescription>
 							{toDelete && toDelete.eventCount > 0 ? (
-								<span className="flex items-start gap-2 text-amber-700">
+								<span className="flex items-start gap-2 text-muted-foreground">
 									<AlertTriangle className="mt-0.5 size-4 shrink-0" />
-									{toDelete.eventCount} {toDelete.eventCount === 1 ? 'evento usa' : 'eventos usam'} esta categoria.
-									Eles não serão excluídos, mas ficarão sem categoria.
+									{toDelete.eventCount} {toDelete.eventCount === 1 ? 'evento usa' : 'eventos usam'} esta categoria. Eles
+									não serão excluídos, mas ficarão sem categoria.
 								</span>
 							) : (
 								'A categoria deixará de aparecer no cadastro de eventos.'

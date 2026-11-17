@@ -20,6 +20,10 @@ const session = {
 	expires_in: 3600,
 };
 
+function recoveryToken(method = 'recovery', subject = authUser.id) {
+	return `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({ sub: subject, amr: [{ method, timestamp: Math.floor(Date.now() / 1000) }] })).toString('base64url')}.provider-validated-signature`;
+}
+
 function createClients() {
 	const publicAuth = {
 		signUp: vi.fn(),
@@ -282,6 +286,7 @@ describe('email confirmation during registration', () => {
 	// auth.updateUser() depende da sessão interna do cliente, que no servidor está
 	// vazia, então a troca passa a validar o token e aplicar a senha pelo admin.
 	it('updates a password only after validating the recovery access token', async () => {
+		const token = recoveryToken();
 		const { clients, adminAuth } = createClients();
 		adminAuth.getUser.mockResolvedValue({ data: { user: authUser }, error: null });
 		adminAuth.admin.updateUserById.mockResolvedValue({ data: { user: authUser }, error: null });
@@ -290,14 +295,32 @@ describe('email confirmation during registration', () => {
 		const response = await app.inject({
 			method: 'POST',
 			url: '/api/auth/password/reset',
-			payload: { access_token: 'recovery-access-token', password: 'Qsesbs2006#@!' },
+			payload: { access_token: token, password: 'Qsesbs2006#@!' },
 		});
 		await app.close();
 
 		expect(response.statusCode).toBe(200);
-		expect(adminAuth.getUser).toHaveBeenCalledWith('recovery-access-token');
+		expect(adminAuth.getUser).toHaveBeenCalledWith(token);
 		expect(adminAuth.admin.updateUserById).toHaveBeenCalledWith(authUser.id, { password: 'Qsesbs2006#@!' });
 	});
+
+	it.each(['password', 'oauth', 'otp'])(
+		'cannot use a normal %s session to bypass the current password check',
+		async (method) => {
+			const { clients, adminAuth } = createClients();
+			adminAuth.getUser.mockResolvedValue({ data: { user: authUser }, error: null });
+			adminAuth.admin.updateUserById.mockResolvedValue({ data: { user: authUser }, error: null });
+			const app = await buildAuthTestApp(clients);
+			const response = await app.inject({
+				method: 'POST',
+				url: '/api/auth/password/reset',
+				payload: { access_token: recoveryToken(method), password: 'Qsesbs2006#@!' },
+			});
+			await app.close();
+			expect(response.statusCode).toBe(400);
+			expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
+		},
+	);
 
 	it('rejects a recovery token the provider does not recognise', async () => {
 		const { clients, adminAuth } = createClients();

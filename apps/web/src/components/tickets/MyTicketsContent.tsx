@@ -21,6 +21,8 @@ import { AccountEmptyState } from '@/components/account/AccountEmptyState';
 import { NameAttendeeDialog } from '@/features/tickets/components/NameAttendeeDialog';
 import { Ticket as AnimatedTicket } from '@/components/animate-ui/icons/ticket';
 import { Button } from '@/components/ui/button';
+import { FilterSheet } from '@/components/shared/FilterSheet';
+import { FilterInput, FilterSelect } from '@/components/shared/FilterFields';
 import { TicketCard } from './TicketCard';
 import { TicketDetailsModal } from './TicketDetailsModal';
 import { emptyIllustrations } from '@/lib/illustrations';
@@ -212,16 +214,33 @@ export function MyTicketsContent({ tickets: initialTickets }: MyTicketsContentPr
 
 			{/* Search and Filters */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div className="relative flex-1 sm:max-w-md">
-					<Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-					<input
-						type="text"
-						placeholder="Buscar por evento, código ou tipo..."
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-gray-700 dark:bg-gray-800"
-					/>
-				</div>
+				<FilterSheet
+					title="Filtros de ingressos"
+					values={{ search: searchQuery, period: selectedTab }}
+					defaultValues={{ search: '', period: 'upcoming' as TabType }}
+					activeCount={Number(Boolean(searchQuery)) + Number(selectedTab !== 'upcoming')}
+					onApply={(draft) => {
+						setSearchQuery(draft.search);
+						setSelectedTab(draft.period);
+					}}
+				>
+					{(draft, setDraft) => (
+						<>
+							<FilterInput
+								label="Buscar ingressos"
+								placeholder="Evento, código, tipo ou participante"
+								value={draft.search}
+								onChange={(event) => setDraft({ ...draft, search: event.target.value })}
+							/>
+							<FilterSelect
+								label="Período dos ingressos"
+								value={draft.period}
+								onChange={(period) => setDraft({ ...draft, period })}
+								options={tabs.map((tab) => ({ value: tab.key, label: `${tab.label} (${tab.count})` }))}
+							/>
+						</>
+					)}
+				</FilterSheet>
 
 				<div className="flex items-center gap-2">
 					<button
@@ -239,29 +258,6 @@ export function MyTicketsContent({ tickets: initialTickets }: MyTicketsContentPr
 						<List className="size-4" />
 					</button>
 				</div>
-			</div>
-
-			{/* Tabs */}
-			<div className="flex gap-2 overflow-x-auto pb-1">
-				{tabs.map((tab) => {
-					const Icon = tab.icon;
-
-					return (
-						<button
-							key={tab.key}
-							onClick={() => setSelectedTab(tab.key)}
-							className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${selectedTab === tab.key ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'}`}
-						>
-							<Icon className="size-4" />
-							{tab.label}
-							<span
-								className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${selectedTab === tab.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
-							>
-								{tab.count}
-							</span>
-						</button>
-					);
-				})}
 			</div>
 
 			{/* Tickets Grid/List */}

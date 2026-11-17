@@ -1,9 +1,10 @@
 'use client';
 
-import { ChevronDown, HelpCircle, Search } from 'lucide-react';
+import { ChevronDown, HelpCircle } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FilterSheet } from '@/components/shared/FilterSheet';
+import { FilterInput, FilterSelect } from '@/components/shared/FilterFields';
 import { cn } from '@/lib/utils';
 
 const faqs = [
@@ -128,43 +129,38 @@ export function FAQAccordion() {
 						O que você precisa saber antes de publicar o primeiro evento.
 					</p>
 				</div>
-				<div className="space-y-3">
-					<label htmlFor={`${id}-search`} className="sr-only">
-						Buscar pergunta
-					</label>
-					<div className="relative">
-						<Search
-							className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-							aria-hidden="true"
-						/>
-						<Input
-							id={`${id}-search`}
-							type="search"
-							placeholder="Buscar por palavra-chave"
-							value={searchTerm}
-							onChange={(event) => setSearchTerm(event.target.value)}
-							className="h-11 pl-10"
-						/>
-					</div>
-					<div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por categoria">
-						<Button
-							variant={selectedCategory === null ? 'default' : 'outline'}
-							size="sm"
-							onClick={() => setSelectedCategory(null)}
-						>
-							Todas
-						</Button>
-						{categories.map((category) => (
-							<Button
-								key={category}
-								variant={selectedCategory === category ? 'default' : 'outline'}
-								size="sm"
-								onClick={() => setSelectedCategory(category)}
-							>
-								{category}
-							</Button>
-						))}
-					</div>
+				<div className="flex justify-start lg:justify-end">
+					<FilterSheet
+						title="Filtros de perguntas"
+						values={{ search: searchTerm, category: selectedCategory ?? '' }}
+						defaultValues={{ search: '', category: '' }}
+						activeCount={Number(Boolean(searchTerm)) + Number(Boolean(selectedCategory))}
+						onApply={(draft) => {
+							setSearchTerm(draft.search);
+							setSelectedCategory(draft.category || null);
+						}}
+					>
+						{(draft, setDraft) => (
+							<>
+								<FilterInput
+									label="Buscar pergunta"
+									type="search"
+									placeholder="Buscar por palavra-chave"
+									value={draft.search}
+									onChange={(event) => setDraft({ ...draft, search: event.target.value })}
+								/>
+								<FilterSelect
+									label="Categoria"
+									value={draft.category}
+									onChange={(category) => setDraft({ ...draft, category })}
+									options={[
+										{ value: '', label: 'Todas' },
+										...categories.map((category) => ({ value: category, label: category })),
+									]}
+								/>
+							</>
+						)}
+					</FilterSheet>
 				</div>
 			</div>
 

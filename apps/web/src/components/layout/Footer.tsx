@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { forwardRef } from 'react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Container from '@/components/ui/container';
-import { getMediaAssetUrl } from '@/lib/media';
+import { getBrandLogoSources } from '@/lib/branding';
 
 interface FooterProps {
 	globals: Globals;
@@ -39,8 +39,7 @@ function navigationHref(item: NavigationItem) {
  */
 const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, ref) => {
 	const title = globals.title || 'Events Manager';
-	const lightLogoUrl = globals.logo ? getMediaAssetUrl(globals.logo) : '/images/logo.svg';
-	const darkLogoUrl = globals.logo_dark_mode ? getMediaAssetUrl(globals.logo_dark_mode) : null;
+	const { light: lightLogoUrl, dark: darkLogoUrl } = getBrandLogoSources(globals);
 	const socialLinks = (globals.social_links ?? []).filter((social) => /^https?:\/\//i.test(social.url));
 	const navigationItems = (navigation.items ?? []).filter(
 		(item): item is NavigationItem => typeof item !== 'string' && Boolean(navigationHref(item)),
@@ -126,10 +125,7 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 													{item.title}
 												</a>
 											) : (
-												<Link
-													className="text-muted-foreground transition-colors hover:text-foreground"
-													href={href}
-												>
+												<Link className="text-muted-foreground transition-colors hover:text-foreground" href={href}>
 													{item.title}
 												</Link>
 											)}
@@ -160,7 +156,7 @@ const Footer = forwardRef<HTMLElement, FooterProps>(({ globals, navigation }, re
 								Meu perfil
 							</Link>
 							<Link
-								className="inline-flex items-center gap-2 font-semibold text-primary transition-colors hover:text-primary/80"
+								className="inline-flex items-center gap-2 font-semibold text-link transition-colors hover:text-link/80"
 								href="/perfil/organizador/novo"
 							>
 								Quero organizar eventos

@@ -1,0 +1,678 @@
+{
+  "verifiedAt": "2026-11-17T22:07:17.071Z",
+  "environment": "local",
+  "created": 20,
+  "published": 20,
+  "existingPostsPreserved": 1,
+  "publicBlogTotal": 21,
+  "author": "Thiago Pereira",
+  "canonicalPolicy": "Automatic canonical based on the CMS site URL; no hardcoded development canonical in post SEO.",
+  "pressEditorialPolicy": "Institutional presentation and suggested topics; no unverified claims of external press coverage.",
+  "sourceReferences": [
+    "Kit-Flouvi/Guia-da-marca.pdf",
+    "packages/contracts/src/cms.ts",
+    "docs/CMS.md",
+    "docs/INGRESSOS_NOMINAIS.md",
+    "docs/PAGINA_DO_EVENTO.md",
+    "apps/web/src/app/admin/eventos/novo",
+    "apps/web/src/features/coupons",
+    "apps/web/src/app/admin/participantes"
+  ],
+  "posts": [
+    {
+      "title": "Nossa missão: criar espaço para encontros que importam",
+      "slug": "missao-flouvi-eventos-que-conectam-pessoas",
+      "id": "4eb9d8f1-d4d1-42c1-845a-706090d7be9d",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:18.323+00:00",
+      "publicUrl": "http://localhost:3003/blog/missao-flouvi-eventos-que-conectam-pessoas",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/4eb9d8f1-d4d1-42c1-845a-706090d7be9d",
+      "wordCount": 302,
+      "image": {
+        "id": "0951c4eb-c63c-46c8-8df6-295c3db3caf4",
+        "bytes": 60810,
+        "width": 1200,
+        "height": 630,
+        "sha256": "d4b2d9d5a9cc8ab389a7bff0fbcd78cbf25446eaff2b61ab70afd440990fc844"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Conheça a Flouvi: da ideia do evento ao encontro com o público",
+      "slug": "conheca-a-flouvi-plataforma-de-eventos",
+      "id": "337c7b20-3cb4-457e-8bd4-08e4207fb8aa",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:18.531+00:00",
+      "publicUrl": "http://localhost:3003/blog/conheca-a-flouvi-plataforma-de-eventos",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/337c7b20-3cb4-457e-8bd4-08e4207fb8aa",
+      "wordCount": 309,
+      "image": {
+        "id": "ca2173a8-b70f-4069-bff5-2fd64e40cdf8",
+        "bytes": 55755,
+        "width": 1200,
+        "height": 630,
+        "sha256": "99dd5dfc03a7836f077abb9e590712f2c94dbae6d6bd2f93a52e72af09e6a2f2"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Roda aberta: o significado da identidade visual da Flouvi",
+      "slug": "identidade-visual-flouvi-roda-aberta",
+      "id": "1dd26058-6e9c-4aae-abb9-a7d03af18852",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:18.699+00:00",
+      "publicUrl": "http://localhost:3003/blog/identidade-visual-flouvi-roda-aberta",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/1dd26058-6e9c-4aae-abb9-a7d03af18852",
+      "wordCount": 308,
+      "image": {
+        "id": "2362f5d4-ca81-462c-904d-398d3c32001c",
+        "bytes": 52683,
+        "width": 1200,
+        "height": 630,
+        "sha256": "77c70b6a96f8951d5cf4ca08a7797e3057d6209f5ab55e42eb9982bc14b6684d"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Flouvi para a imprensa: uma apresentação da plataforma",
+      "slug": "flouvi-para-imprensa-apresentacao-institucional",
+      "id": "4252dd3c-eb35-4a8b-bbb2-a60005acf426",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:18.894+00:00",
+      "publicUrl": "http://localhost:3003/blog/flouvi-para-imprensa-apresentacao-institucional",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/4252dd3c-eb35-4a8b-bbb2-a60005acf426",
+      "wordCount": 298,
+      "image": {
+        "id": "fd3416d0-ca51-4b90-bc50-e6ebfb81f42a",
+        "bytes": 45664,
+        "width": 1200,
+        "height": 630,
+        "sha256": "984125419e5d045c5d98fbf111897587e780bb82767c0c1a5138f712f7b168da"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Tecnologia e encontros: três pautas para conversar com a Flouvi",
+      "slug": "pautas-imprensa-tecnologia-e-encontros",
+      "id": "b57807ec-40ca-43f7-8d2b-d51deb9f1fee",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:19.081+00:00",
+      "publicUrl": "http://localhost:3003/blog/pautas-imprensa-tecnologia-e-encontros",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/b57807ec-40ca-43f7-8d2b-d51deb9f1fee",
+      "wordCount": 313,
+      "image": {
+        "id": "4ea17d3c-7beb-471a-8b1d-cecc2648991c",
+        "bytes": 57512,
+        "width": 1200,
+        "height": 630,
+        "sha256": "c9eda3f7758266b56e5693ef1e549f29db3ad310882fa898eb9a57accc34c778"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Cadastro em etapas: prepare seu evento com mais clareza",
+      "slug": "cadastro-de-eventos-em-etapas",
+      "id": "af324571-d7e2-4c91-a547-4a0136dcea88",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:19.253+00:00",
+      "publicUrl": "http://localhost:3003/blog/cadastro-de-eventos-em-etapas",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/af324571-d7e2-4c91-a547-4a0136dcea88",
+      "wordCount": 320,
+      "image": {
+        "id": "3c63d8fb-e294-4a0e-8b4f-439c4b4da9dc",
+        "bytes": 59333,
+        "width": 1200,
+        "height": 630,
+        "sha256": "2c9f5283a24f12af46e961a9e80031921a3f7b6a20f7708eb1fe6d8ed85c15e4"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Descrição com IA: transforme o contexto do evento em um primeiro texto",
+      "slug": "descricao-de-eventos-com-inteligencia-artificial",
+      "id": "6f9384f4-f7ec-4feb-a8d6-0e9e06fbd886",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:19.422+00:00",
+      "publicUrl": "http://localhost:3003/blog/descricao-de-eventos-com-inteligencia-artificial",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/6f9384f4-f7ec-4feb-a8d6-0e9e06fbd886",
+      "wordCount": 305,
+      "image": {
+        "id": "f3f39210-5299-45ee-82fd-8676a39e7392",
+        "bytes": 55670,
+        "width": 1200,
+        "height": 630,
+        "sha256": "da3356433d38db41e4db7f45534975f7023363662aa6e2c8be6b066d464d99de"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Capa com IA: uma imagem que começa na proposta do seu evento",
+      "slug": "capa-de-evento-com-ia",
+      "id": "af521cb6-d481-43fa-a068-551bddd26182",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:19.601+00:00",
+      "publicUrl": "http://localhost:3003/blog/capa-de-evento-com-ia",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/af521cb6-d481-43fa-a068-551bddd26182",
+      "wordCount": 313,
+      "image": {
+        "id": "709a77fa-7943-4dbc-a568-c44286264539",
+        "bytes": 50830,
+        "width": 1200,
+        "height": 630,
+        "sha256": "b6d5a9164be8548645ae41e1be3f0b97139f70844339615c7d79d3d8a1e003aa"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Por que o visual vem depois do conteúdo no cadastro do evento",
+      "slug": "etapa-visual-contexto-do-evento",
+      "id": "3020ca4d-247f-4e42-927f-c4fb2815d717",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:19.776+00:00",
+      "publicUrl": "http://localhost:3003/blog/etapa-visual-contexto-do-evento",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/3020ca4d-247f-4e42-927f-c4fb2815d717",
+      "wordCount": 304,
+      "image": {
+        "id": "86ee709b-7b13-4d41-bdb0-30d4b3e375f9",
+        "bytes": 68629,
+        "width": 1200,
+        "height": 630,
+        "sha256": "90310fd21539681676b6a96f7c3a5cd478729c1fe8481307251fa686b067dae6"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Página do evento: organize a informação que ajuda a participar",
+      "slug": "pagina-do-evento-informacao-que-convida",
+      "id": "5f487694-3ae7-4441-9d8f-7465640f988a",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:19.947+00:00",
+      "publicUrl": "http://localhost:3003/blog/pagina-do-evento-informacao-que-convida",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/5f487694-3ae7-4441-9d8f-7465640f988a",
+      "wordCount": 296,
+      "image": {
+        "id": "1770609a-6a56-4d9f-bc84-f9f983f1d7b6",
+        "bytes": 48930,
+        "width": 1200,
+        "height": 630,
+        "sha256": "51f0f548761e43dc15584d1e3a7923a6d7ce7d0cf751d335730c654e41ae661e"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Ingressos e lotes: um único lugar para definir o período de venda",
+      "slug": "ingressos-e-lotes-periodo-de-venda",
+      "id": "3068f8a6-0afb-46ae-aeca-ab0d0ef2676b",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:20.117+00:00",
+      "publicUrl": "http://localhost:3003/blog/ingressos-e-lotes-periodo-de-venda",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/3068f8a6-0afb-46ae-aeca-ab0d0ef2676b",
+      "wordCount": 298,
+      "image": {
+        "id": "75a6de08-60fe-4977-885c-5438ee3e6d78",
+        "bytes": 53921,
+        "width": 1200,
+        "height": 630,
+        "sha256": "da491a79c78ee6660961f24fe96e1596d323c8e843af5caf98fb129d700440ad"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Ingressos nominais: quem compra e quem participa são informações diferentes",
+      "slug": "ingressos-nominais-comprador-e-participante",
+      "id": "52dfff6d-4ec3-431c-bb8d-ef08dd6a1eb8",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:20.294+00:00",
+      "publicUrl": "http://localhost:3003/blog/ingressos-nominais-comprador-e-participante",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/52dfff6d-4ec3-431c-bb8d-ef08dd6a1eb8",
+      "wordCount": 294,
+      "image": {
+        "id": "166d22e4-51ab-4c9c-a274-9ae3c6921f1f",
+        "bytes": 81450,
+        "width": 1200,
+        "height": 630,
+        "sha256": "1410476ad962befd3ac6cb5415d93bc9d32bac6bd0260fbd7bb8831728d57ce0"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Da inscrição ao ingresso: uma jornada mais clara para o participante",
+      "slug": "jornada-do-participante-inscricao-ao-ingresso",
+      "id": "de72e906-3dd4-4a42-83aa-e298fdfa00fa",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:20.46+00:00",
+      "publicUrl": "http://localhost:3003/blog/jornada-do-participante-inscricao-ao-ingresso",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/de72e906-3dd4-4a42-83aa-e298fdfa00fa",
+      "wordCount": 287,
+      "image": {
+        "id": "7d92b690-b440-4728-aaed-3a5eef48031e",
+        "bytes": 58298,
+        "width": 1200,
+        "height": 630,
+        "sha256": "a0d731534ee73b76a4a288abf18e45ae37049687c2948bcb92fb6cd913b6d334"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Check-in na Flouvi: prepare a recepção antes de abrir as portas",
+      "slug": "check-in-participantes-no-dia-do-evento",
+      "id": "cf056705-e993-4a87-ab2e-b84ff004358d",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:20.626+00:00",
+      "publicUrl": "http://localhost:3003/blog/check-in-participantes-no-dia-do-evento",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/cf056705-e993-4a87-ab2e-b84ff004358d",
+      "wordCount": 294,
+      "image": {
+        "id": "3ec767b1-2462-46dc-afaa-48aa43c27d32",
+        "bytes": 52011,
+        "width": 1200,
+        "height": 630,
+        "sha256": "4200dc37d2d86bd07209977f4e21b08683c5150ba2c764ffb461a86a7c8774cb"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Dashboards da Flouvi: acompanhe os números sem perder o contexto",
+      "slug": "dashboards-flouvi-dados-com-contexto",
+      "id": "f4dff4e7-cd40-4543-a403-35b975423f91",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:20.809+00:00",
+      "publicUrl": "http://localhost:3003/blog/dashboards-flouvi-dados-com-contexto",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/f4dff4e7-cd40-4543-a403-35b975423f91",
+      "wordCount": 295,
+      "image": {
+        "id": "fb96786b-651a-4aed-ac4f-c10c197cf108",
+        "bytes": 56684,
+        "width": 1200,
+        "height": 630,
+        "sha256": "d05fe09460cff006faab4406788c2d52229d4ddfae8d23eab0eee48f4dff807d"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Painel financeiro: entenda o que consultar na operação do evento",
+      "slug": "painel-financeiro-eventos-status-e-consultas",
+      "id": "2f42e30a-40bb-4bc3-998f-e4a712b24a36",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:20.996+00:00",
+      "publicUrl": "http://localhost:3003/blog/painel-financeiro-eventos-status-e-consultas",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/2f42e30a-40bb-4bc3-998f-e4a712b24a36",
+      "wordCount": 295,
+      "image": {
+        "id": "decaa5ea-5c57-4b6e-80dd-74aebc1708a4",
+        "bytes": 52889,
+        "width": 1200,
+        "height": 630,
+        "sha256": "32600505d49c1e95ef0248c2f22d98c02ff4a67e977a8f6a5c4a8902bd48c6b4"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Filtros em um só painel: encontre o recorte que você precisa",
+      "slug": "filtros-painel-organizacao",
+      "id": "316e0785-6438-4487-87a4-dc4c6205619f",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:21.157+00:00",
+      "publicUrl": "http://localhost:3003/blog/filtros-painel-organizacao",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/316e0785-6438-4487-87a4-dc4c6205619f",
+      "wordCount": 282,
+      "image": {
+        "id": "32af8e79-445f-448d-9a42-2ef6cfc63473",
+        "bytes": 53107,
+        "width": 1200,
+        "height": 630,
+        "sha256": "e55332dc326440866d8c2d44704961bd8cebc94c1812519d1edd65640124bd15"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Cupons na Flouvi: prepare descontos com regras fáceis de entender",
+      "slug": "cupons-de-desconto-com-regras-claras",
+      "id": "51b25a39-35cf-437d-b2e6-409c36e7b708",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:21.332+00:00",
+      "publicUrl": "http://localhost:3003/blog/cupons-de-desconto-com-regras-claras",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/51b25a39-35cf-437d-b2e6-409c36e7b708",
+      "wordCount": 295,
+      "image": {
+        "id": "8c35da4a-164f-4bb0-a054-933c24a948ac",
+        "bytes": 70213,
+        "width": 1200,
+        "height": 630,
+        "sha256": "bd29de3c8d5ea38481b8a63df5a2e839932c1534459802aafc66d132dd2d70b6"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Eventos gratuitos também merecem uma inscrição bem organizada",
+      "slug": "eventos-gratuitos-inscricoes-organizadas",
+      "id": "a166f272-b16f-4285-8de6-0e6c2cebf3cf",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:21.512+00:00",
+      "publicUrl": "http://localhost:3003/blog/eventos-gratuitos-inscricoes-organizadas",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/a166f272-b16f-4285-8de6-0e6c2cebf3cf",
+      "wordCount": 281,
+      "image": {
+        "id": "4055eb36-d90d-4583-9b64-5104d148b2cc",
+        "bytes": 70964,
+        "width": 1200,
+        "height": 630,
+        "sha256": "c1ae4aba70765a042d816dc1a7e630a84d1b5c0e5397909d0b04e997a2dba89f"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    },
+    {
+      "title": "Antes de publicar: um checklist para revisar seu evento na Flouvi",
+      "slug": "checklist-antes-de-publicar-evento",
+      "id": "7afc8d0a-6779-4181-9988-655fd01da41a",
+      "status": "published",
+      "publishedAt": "2026-11-17T21:54:21.683+00:00",
+      "publicUrl": "http://localhost:3003/blog/checklist-antes-de-publicar-evento",
+      "editorUrl": "http://localhost:3003/super-admin/conteudo/blog/7afc8d0a-6779-4181-9988-655fd01da41a",
+      "wordCount": 321,
+      "image": {
+        "id": "72eeee06-43d0-41e5-877f-a35d996fb53e",
+        "bytes": 56985,
+        "width": 1200,
+        "height": 630,
+        "sha256": "102d628327d9e435b23ef130e57521739a0f549bd43774bbefc4727e260794ce"
+      },
+      "checks": {
+        "publicRead": true,
+        "storedContentMatches": true,
+        "author": true,
+        "seo": true,
+        "imageDownload": true,
+        "nextPageStatus": 200,
+        "seoDescriptionRendered": true,
+        "ogImageRendered": true,
+        "canonicalRendered": true
+      }
+    }
+  ],
+  "replacedCoverFilesRemoved": 20,
+  "browser": {
+    "publicPages": 3,
+    "postsAcrossPublicPages": 21,
+    "all20CoversLoaded": true,
+    "mobileOverflow": false,
+    "adminPages": 2,
+    "adminForwardAndBackNavigation": true,
+    "adminRuntimeErrors": 0
+  },
+  "relatedFixes": {
+    "pagination": "Renders Button asChild across the Next.js server/client boundary instead of calling a client-only function on the server.",
+    "categoryValidation": {
+      "created": 201,
+      "edited": 200,
+      "malformedRejected": 422,
+      "legacyCategoryPreserved": true,
+      "testEventRemoved": true,
+      "documentation": "https://zod.dev/api#uuids",
+      "affectedFlows": [
+        "event creation",
+        "event editing",
+        "AI context for description and cover",
+        "superadmin category editing and deletion"
+      ],
+      "databaseChanges": "None; existing identifiers and relationships preserved."
+    }
+  },
+  "tests": {
+    "totalPassed": 1571,
+    "web": 787,
+    "api": 608,
+    "contracts": 176,
+    "lint": {
+      "web": "passed",
+      "api": "passed",
+      "contracts": "passed"
+    },
+    "commands": [
+      "pnpm test --maxWorkers=4 (apps/web)",
+      "pnpm lint (apps/web)",
+      "pnpm test:coverage --maxWorkers=4 (apps/web)",
+      "pnpm test (apps/api)",
+      "pnpm lint (apps/api)",
+      "pnpm test:coverage (apps/api)",
+      "pnpm test (packages/contracts)",
+      "pnpm lint (packages/contracts)",
+      "pnpm test:coverage (packages/contracts)",
+      "pnpm --filter @events-manager/contracts build"
+    ],
+    "testFilesTouched": [
+      "apps/web/src/components/layout/PageBuilder.ssr.test.tsx",
+      "packages/contracts/src/schemas.test.ts",
+      "packages/contracts/src/event-ai.test.ts",
+      "apps/api/test/events.test.ts",
+      "apps/api/test/category-identifiers.test.ts"
+    ],
+    "redGreenEvidence": {
+      "pagination": "Reproduced the forbidden server call to buttonVariants before changing PaginationLink to render Button asChild.",
+      "categoryContract": "Two existing catalog-ID tests failed with Invalid UUID before using categoryIdSchema.",
+      "categoryRoutes": "Create returned 422 instead of 201, and category PATCH/DELETE returned 422 instead of 200 before the fix."
+    },
+    "executionNotes": "The first unrestricted web run hit three timeout/lazy-render failures under parallel load. Re-running the full suite with maxWorkers=4 passed all 787 tests without increasing timeouts."
+  },
+  "artifacts": [
+    "testsprite_tests/artifacts/flouvi-blog/blog-desktop.png",
+    "testsprite_tests/artifacts/flouvi-blog/blog-mobile-viewport.png",
+    "testsprite_tests/artifacts/flouvi-blog/cover-board.png"
+  ],
+  "coverage": {
+    "api": {
+      "status": "below-existing-gates",
+      "statements": 74.06,
+      "branches": 71.24,
+      "functions": 77.29,
+      "lines": 76.09
+    },
+    "contracts": {
+      "status": "passed",
+      "statements": 96.35,
+      "branches": 91.11,
+      "functions": 98.91,
+      "lines": 98.07
+    },
+    "web": {
+      "status": "below-existing-gates",
+      "statements": 66.9,
+      "branches": 61.57,
+      "functions": 69.47,
+      "lines": 68.09,
+      "testsPassed": 787
+    },
+    "thresholdsModified": false,
+    "note": "API and web coverage gates were already failing before these changes. Thresholds were preserved; contracts coverage passes. All test assertions and lint checks pass."
+  }
+}

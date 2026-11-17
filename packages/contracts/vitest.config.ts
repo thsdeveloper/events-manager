@@ -10,6 +10,8 @@ export default defineConfig({
 		include: ['src/**/*.test.ts'],
 		coverage: {
 			provider: 'v8',
+			// Ratchet after the branding schemas: these thresholds only increase.
+			thresholds: { lines: 95.3, statements: 95.3, branches: 88.4, functions: 94.3 },
 			reporter: ['text', 'html', 'lcov'],
 			include: ['src/**/*.ts'],
 			exclude: ['src/**/*.test.ts', 'src/database.types.ts', 'src/index.ts'],

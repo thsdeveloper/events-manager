@@ -1,0 +1,10 @@
+{
+	"name": "stormer123-mt5",
+	"version": "1.3.0",
+	"private": true,
+	"scripts": {
+		"test": "bash tests/run.sh",
+		"lint": "g++ -std=c++17 -Wall -Wextra -Werror -pedantic -fsyntax-only tests/core.test.cpp tests/ea.test.cpp",
+		"test:coverage": "bash tests/run.sh coverage"
+	}
+}

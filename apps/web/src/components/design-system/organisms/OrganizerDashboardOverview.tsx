@@ -1,14 +1,14 @@
 import type { OrganizerDashboard } from '@events-manager/contracts';
 import { CalendarDays, CircleDollarSign, MapPin, Ticket, UsersRound } from 'lucide-react';
 import Link from 'next/link';
-import { EmptyState } from '../molecules/EmptyState';
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty';
+import { OrganizerDashboardCharts } from './OrganizerDashboardCharts';
 import { MetricCard } from '../molecules/MetricCard';
 import { Heading } from '../atoms/Heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { formatCurrency, formatDateTime, formatInteger } from '@/lib/formatters';
-import { emptyIllustrations } from '@/lib/illustrations';
 
 const statusLabels: Record<OrganizerDashboard['recentEvents'][number]['status'], string> = {
 	archived: 'Arquivado',
@@ -56,6 +56,8 @@ export function OrganizerDashboardOverview({ dashboard }: { dashboard: Organizer
 					/>
 				</div>
 			</section>
+
+			<OrganizerDashboardCharts dashboard={dashboard} />
 
 			<section aria-labelledby="recent-events-heading">
 				<Card>
@@ -120,17 +122,24 @@ export function OrganizerDashboardOverview({ dashboard }: { dashboard: Organizer
 								))}
 							</ul>
 						) : (
-							<EmptyState
-								action={
+							<Empty role="status" aria-label="Nenhum evento recente">
+								<EmptyHeader>
+									<EmptyMedia variant="icon">
+										<CalendarDays aria-hidden="true" />
+									</EmptyMedia>
+									<EmptyTitle role="heading" aria-level={3}>
+										Sua agenda começa aqui
+									</EmptyTitle>
+									<EmptyDescription>
+										Quando você publicar eventos, os principais números aparecerão automaticamente nesta visão geral.
+									</EmptyDescription>
+								</EmptyHeader>
+								<EmptyContent>
 									<Button asChild>
 										<Link href="/admin/eventos/novo">Criar primeiro evento</Link>
 									</Button>
-								}
-								description="Quando você publicar eventos, os principais números aparecerão automaticamente nesta visão geral."
-								icon={<CalendarDays aria-hidden="true" className="size-6" />}
-								illustration={emptyIllustrations.overview}
-								title="Sua agenda começa aqui"
-							/>
+								</EmptyContent>
+							</Empty>
 						)}
 					</CardContent>
 				</Card>

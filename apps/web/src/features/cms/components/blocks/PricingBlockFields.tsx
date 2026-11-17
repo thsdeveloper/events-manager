@@ -58,7 +58,7 @@ function CardFields({
 	const name = `Plano ${index + 1}`;
 
 	return (
-		<fieldset aria-label={name} className="space-y-3 rounded-lg border border-slate-200 p-4">
+		<fieldset aria-label={name} className="space-y-3 rounded-lg border border-border p-4">
 			<div className="flex items-center justify-between gap-2">
 				<legend className="text-sm font-semibold">{name}</legend>
 				<div className="flex items-center gap-1">
@@ -82,14 +82,7 @@ function CardFields({
 					>
 						<ArrowDown className="size-4" />
 					</Button>
-					<Button
-						type="button"
-						size="icon"
-						variant="ghost"
-						onClick={onRemove}
-						aria-label={`Remover ${name}`}
-						className="text-red-600 hover:bg-red-50 hover:text-red-700"
-					>
+					<Button type="button" size="icon" variant="destructive" onClick={onRemove} aria-label={`Remover ${name}`}>
 						<Trash2 className="size-4" />
 					</Button>
 				</div>
@@ -124,13 +117,13 @@ function CardFields({
 						onChange={(event) => update({ badge: event.target.value })}
 					/>
 				</Field>
-				<label className="flex items-center gap-2 self-end pb-2 text-sm">
+				<Label className="flex items-center gap-2 self-end pb-2 text-sm">
 					<Checkbox
 						checked={card.is_highlighted}
 						onCheckedChange={(checked) => update({ is_highlighted: checked === true })}
 					/>
 					Destacar este plano
-				</label>
+				</Label>
 			</div>
 			<Field id={`${id}-description`} label="Descrição" error={firstError(errors, `${prefix}.description`)}>
 				<Textarea

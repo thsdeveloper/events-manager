@@ -1,3 +1,6 @@
+import { csvCell } from '../security/csv.js';
+import { ApiError } from '../../shared/errors.js';
+
 export interface FinanceEvent extends Record<string, unknown> {
 	id: string;
 	start_date?: string | null;
@@ -207,7 +210,13 @@ export class FinanceService {
 	}
 
 	async analytics(organizerId: string, query: FinanceAnalyticsFilter) {
-		const allRows = await this.repository.listRegistrations(organizerId);
+		const [allRows, events] = await Promise.all([
+			this.repository.listRegistrations(organizerId),
+			this.repository.listEvents(organizerId),
+		]);
+		if (query.event_id && !events.some((event) => event.id === query.event_id)) {
+			throw new ApiError('Evento não encontrado.', 404, 'EVENT_NOT_FOUND');
+		}
 		const start = query.start_date ? new Date(query.start_date) : new Date(this.now() - 29 * 86_400_000);
 		const end = query.end_date ? new Date(query.end_date) : new Date(this.now());
 		start.setHours(0, 0, 0, 0);
@@ -224,8 +233,7 @@ export class FinanceService {
 		const eventIds = [
 			...new Set((query.event_id ? [query.event_id] : allRows.map((row) => row.event_id?.id)).filter(isString)),
 		];
-		const [events, tickets, installments] = await Promise.all([
-			this.repository.listEvents(organizerId),
+		const [tickets, installments] = await Promise.all([
 			this.repository.listTickets(eventIds),
 			this.repository.listInstallments(rows.map((row) => row.id)),
 		]);
@@ -417,8 +425,4 @@ function eventSummary(event: FinanceEvent, tickets: FinanceTicket[], paid: Finan
 		),
 		status: rate >= 50 ? 'active' : rate >= 20 ? 'slow' : 'critical',
 	};
-}
-
-function csvCell(value: unknown) {
-	return `"${String(value ?? '').replaceAll('"', '""')}"`;
 }

@@ -1,4 +1,5 @@
 import type { OrganizerSignupInput } from '@events-manager/contracts';
+import type { MediaRepository } from '../media/media-service.js';
 import { ApiError } from '../../shared/errors.js';
 
 export interface OrganizerInput {
@@ -48,7 +49,7 @@ export interface OrganizerRepository {
 	existsForUser(userId: string): Promise<boolean>;
 	findByDocument(document: string): Promise<{ id: string; user_id: string } | null>;
 	findById(organizerId: string): Promise<unknown | null>;
-	setLogo(organizerId: string, mediaId: string): Promise<unknown>;
+	setLogo(organizerId: string, mediaId: string | null): Promise<unknown>;
 	stats(organizerId: string): Promise<OrganizerStats>;
 	updateById(organizerId: string, input: Partial<OrganizerInput>): Promise<unknown | null>;
 	updatePayout(
@@ -58,7 +59,10 @@ export interface OrganizerRepository {
 }
 
 export class OrganizerService {
-	constructor(private readonly repository: OrganizerRepository) {}
+	constructor(
+		private readonly repository: OrganizerRepository,
+		private readonly media?: Pick<MediaRepository, 'removeOwnedFile'>,
+	) {}
 
 	getProfile(organizerId: string) {
 		return this.repository.findById(organizerId);
@@ -117,8 +121,27 @@ export class OrganizerService {
 		return organizer;
 	}
 
-	setLogo(organizerId: string, mediaId: string) {
-		return this.repository.setLogo(organizerId, mediaId);
+	async setLogo(organizerId: string, mediaId: string | null, ownerId: string) {
+		const profile = (await this.repository.findById(organizerId)) as { logo?: string | { id: string } | null } | null;
+		if (!profile) throw new ApiError('Perfil de organizador não encontrado.', 404, 'ORGANIZER_NOT_FOUND');
+		const previous = typeof profile.logo === 'string' ? profile.logo : profile.logo?.id;
+		let organizer: unknown;
+		try {
+			organizer = await this.repository.setLogo(organizerId, mediaId);
+		} catch (error) {
+			// A failed replacement must preserve the existing image. Only the new orphan is removed.
+			if (mediaId && mediaId !== previous) await this.media?.removeOwnedFile(mediaId, ownerId).catch(() => undefined);
+			throw error;
+		}
+		let cleanupPending = false;
+		if (previous && previous !== mediaId && this.media) {
+			try {
+				cleanupPending = !(await this.media.removeOwnedFile(previous, ownerId));
+			} catch {
+				cleanupPending = true;
+			}
+		}
+		return { organizer, cleanupPending };
 	}
 
 	stats(organizerId: string) {

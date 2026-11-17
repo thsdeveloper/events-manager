@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useState, useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -125,7 +126,7 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 			<DialogContent className="sm:max-w-[500px]">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
-						<Pencil className="size-5 text-blue-600" />
+						<Pencil className="size-5 text-muted-foreground" />
 						{participant.attendee_name ? 'Editar Participante' : 'Informar Participante'}
 					</DialogTitle>
 					<DialogDescription>
@@ -138,13 +139,15 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 					// Regra de negócio: ingresso com check-in é imutável. A saída é
 					// desfazer o check-in, e isso fica registrado.
 					<div className="space-y-4 py-4">
-						<p
+						<Alert
 							role="alert"
-							className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+							className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground   "
 						>
-							Este ingresso já passou pelo check-in e não pode ser alterado. Desfaça o check-in para editar o
-							participante.
-						</p>
+							<AlertDescription>
+								Este ingresso já passou pelo check-in e não pode ser alterado. Desfaça o check-in para editar o
+								participante.
+							</AlertDescription>
+						</Alert>
 						<DialogFooter>
 							<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
 								Fechar
@@ -156,7 +159,7 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 						{/* Nome completo */}
 						<div className="space-y-2">
 							<Label htmlFor="participant_name">
-								Nome completo <span className="text-rose-600">*</span>
+								Nome completo <span className="text-destructive">*</span>
 							</Label>
 							<Input
 								id="participant_name"
@@ -164,13 +167,13 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 								disabled={isLoading}
 								placeholder="Ex: João Silva"
 							/>
-							{errors.participant_name && <p className="text-sm text-rose-600">{errors.participant_name.message}</p>}
+							{errors.participant_name && <p className="text-sm text-destructive">{errors.participant_name.message}</p>}
 						</div>
 
 						{/* Email */}
 						<div className="space-y-2">
 							<Label htmlFor="participant_email">
-								Email <span className="text-rose-600">*</span>
+								Email <span className="text-destructive">*</span>
 							</Label>
 							<Input
 								id="participant_email"
@@ -179,7 +182,9 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 								disabled={isLoading}
 								placeholder="email@exemplo.com"
 							/>
-							{errors.participant_email && <p className="text-sm text-rose-600">{errors.participant_email.message}</p>}
+							{errors.participant_email && (
+								<p className="text-sm text-destructive">{errors.participant_email.message}</p>
+							)}
 						</div>
 
 						{/* Telefone */}
@@ -199,7 +204,9 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 									/>
 								)}
 							/>
-							{errors.participant_phone && <p className="text-sm text-rose-600">{errors.participant_phone.message}</p>}
+							{errors.participant_phone && (
+								<p className="text-sm text-destructive">{errors.participant_phone.message}</p>
+							)}
 						</div>
 
 						{/* Documento */}
@@ -220,7 +227,7 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 								)}
 							/>
 							{errors.participant_document && (
-								<p className="text-sm text-rose-600">{errors.participant_document.message}</p>
+								<p className="text-sm text-destructive">{errors.participant_document.message}</p>
 							)}
 						</div>
 
@@ -234,8 +241,8 @@ export function EditParticipantDialog({ participant, open, onOpenChange, onSucce
 								placeholder="Notas internas visíveis apenas para você"
 								rows={3}
 							/>
-							{errors.notes && <p className="text-sm text-rose-600">{errors.notes.message}</p>}
-							<p className="text-xs text-gray-500">
+							{errors.notes && <p className="text-sm text-destructive">{errors.notes.message}</p>}
+							<p className="text-xs text-muted-foreground">
 								Estas observações são internas e não serão compartilhadas com o participante
 							</p>
 						</div>

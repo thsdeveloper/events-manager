@@ -7,6 +7,7 @@ export interface LandingContext {
 	checkoutHref: string;
 	event: Event;
 	mode: LandingMode;
+	previewCoverUrl?: string | null;
 	/** Âncora da seção de ingressos visível, alvo dos botões de compra; nula se não houver. */
 	ticketsAnchor: string | null;
 }

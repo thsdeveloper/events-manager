@@ -42,21 +42,21 @@ export function actorName(entry: CmsActivityEntry) {
 
 export function ActivityPanel({ entries }: { entries: CmsActivityEntry[] }) {
 	if (entries.length === 0) {
-		return <p className="text-sm text-slate-500">Nenhuma atividade registrada ainda.</p>;
+		return <p className="text-sm text-muted-foreground">Nenhuma atividade registrada ainda.</p>;
 	}
 
 	return (
 		<ol className="space-y-3" aria-label="Atividade recente">
 			{entries.map((entry) => (
 				<li key={entry.id} className="flex gap-3 text-sm">
-					<span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+					<span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
 						<History className="size-3.5" />
 					</span>
 					<div className="min-w-0">
-						<p className="text-slate-800">
-							<span className="font-medium text-slate-950">{actorName(entry)}</span> {describeActivity(entry)}
+						<p className="text-foreground">
+							<span className="font-medium text-foreground">{actorName(entry)}</span> {describeActivity(entry)}
 						</p>
-						<p className="text-xs text-slate-500">
+						<p className="text-xs text-muted-foreground">
 							<time dateTime={entry.date_created} title={new Date(entry.date_created).toLocaleString('pt-BR')}>
 								{formatRelativeDate(entry.date_created)}
 							</time>

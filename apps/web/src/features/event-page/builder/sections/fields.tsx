@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { RichTextEditor } from '@/features/cms/components/RichTextEditor';
+import { RichTextEditor } from '@/features/cms/components/LazyRichTextEditor';
 import { ItemListEditor } from './ItemListEditor';
 
 /** Contrato de cada formulário de seção: recebe a seção e devolve a seção alterada. */
@@ -41,10 +41,10 @@ function Toggle({
 	onChange: (checked: boolean) => void;
 }) {
 	return (
-		<label htmlFor={id} className="flex cursor-pointer items-center gap-2 text-sm">
+		<Label htmlFor={id} className="flex cursor-pointer items-center gap-2 text-sm">
 			<Checkbox id={id} checked={checked} onCheckedChange={(value) => onChange(value === true)} />
 			{label}
-		</label>
+		</Label>
 	);
 }
 

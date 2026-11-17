@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useState } from 'react';
 import type { NominalTicket } from '@events-manager/contracts';
 import { UserRoundPen } from 'lucide-react';
@@ -120,9 +121,9 @@ export function NameAttendeeDialog({ ticket, onClose, onSaved }: NameAttendeeDia
 					</div>
 
 					{error ? (
-						<p role="alert" className="text-sm font-medium text-destructive">
-							{error}
-						</p>
+						<Alert role="alert" className="text-sm font-medium text-destructive">
+							<AlertDescription>{error}</AlertDescription>
+						</Alert>
 					) : null}
 
 					<DialogFooter className="gap-2 sm:gap-0">

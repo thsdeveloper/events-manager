@@ -321,11 +321,16 @@ describe('external and health services', () => {
 		const result = await new EventCoverService(categories, generator, media).generate({
 			categoryId: 'category',
 			title: 'Conferência',
+			shortDescription: 'Resumo curto',
+			description: 'Oficinas práticas de robótica',
+			...{ tags: ['inovação'] },
 			userId: 'user',
 		});
 
 		expect(result).toMatchObject({ fileId: 'media', assetUrl: 'https://media' });
 		expect(generator.generate).toHaveBeenCalledWith(expect.stringContaining('Theme: Tecnologia'));
+		expect(generator.generate).toHaveBeenCalledWith(expect.stringContaining('Oficinas práticas de robótica'));
+		expect(generator.generate).toHaveBeenCalledWith(expect.stringContaining('inovação'));
 	});
 
 	it('reports a degraded health state without leaking infrastructure errors', async () => {

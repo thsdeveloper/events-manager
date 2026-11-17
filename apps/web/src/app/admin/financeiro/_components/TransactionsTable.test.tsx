@@ -4,7 +4,7 @@ import { renderWithProviders } from '@/test';
 import TransactionsTable from './TransactionsTable';
 
 describe('TransactionsTable', () => {
-	it('shows the receipt illustration when no transaction matches the filters', () => {
+	it('shows a standard empty state when no transaction matches the filters', () => {
 		const { container } = renderWithProviders(
 			<TransactionsTable
 				rows={[]}
@@ -18,6 +18,6 @@ describe('TransactionsTable', () => {
 		);
 
 		expect(screen.getByText(/nenhuma transação encontrada/i)).toBeInTheDocument();
-		expect(container.querySelector('img[aria-hidden="true"]')).toHaveAttribute('src', '/images/empty/transactions.svg');
+		expect(container.querySelector('img')).not.toBeInTheDocument();
 	});
 });

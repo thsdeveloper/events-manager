@@ -1,8 +1,8 @@
-import type { SafeParseReturnType, ZodTypeAny, z } from 'zod';
+import type { ZodSafeParseResult, ZodTypeAny, z } from 'zod';
 import type { FieldErrors } from '../api/client';
 
 /** Converte os issues do Zod em `{ 'buttons.1.label': ['mensagem'] }`. */
-export function fieldErrorsFromZod(result: SafeParseReturnType<unknown, unknown>): FieldErrors {
+export function fieldErrorsFromZod(result: ZodSafeParseResult<unknown>): FieldErrors {
 	if (result.success) return {};
 	const errors: FieldErrors = {};
 	for (const issue of result.error.issues) {

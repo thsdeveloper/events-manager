@@ -1,27 +1,25 @@
 import type { ReactNode } from 'react';
-import { Heading } from '../atoms/Heading';
+import { cn } from '@/lib/utils';
 
-export function PageHeader({
-	actions,
-	description,
-	eyebrow,
-	title,
-}: {
-	actions?: ReactNode;
-	description?: string;
+export interface PageHeaderProps {
+	title: ReactNode;
+	description?: ReactNode;
 	eyebrow?: string;
-	title: string;
-}) {
+	actions?: ReactNode;
+	className?: string;
+}
+
+export function PageHeader({ title, description, eyebrow, actions, className }: PageHeaderProps) {
 	return (
-		<header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-			<div className="max-w-3xl space-y-2">
-				{eyebrow ? <p className="text-sm font-semibold text-primary">{eyebrow}</p> : null}
-				<Heading level="h1">{title}</Heading>
-				{description ? (
-					<p className="text-pretty text-sm leading-6 text-muted-foreground sm:text-base">{description}</p>
-				) : null}
+		<header className={cn('flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>
+			<div className="flex min-w-0 items-start gap-3">
+				<div className="min-w-0 space-y-2">
+					{eyebrow ? <p className="text-sm font-medium text-muted-foreground">{eyebrow}</p> : null}
+					<h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+					{description ? <div className="max-w-3xl text-sm leading-6 text-muted-foreground">{description}</div> : null}
+				</div>
 			</div>
-			{actions ? <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div> : null}
+			{actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
 		</header>
 	);
 }

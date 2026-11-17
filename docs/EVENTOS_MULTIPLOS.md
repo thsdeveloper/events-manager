@@ -22,8 +22,9 @@ pelos contratos da API. Ingressos enviados com o evento passam pelas mesmas regr
 separadamente.
 
 Quando a criação solicita publicar um evento com ingressos, a API salva primeiro um rascunho, cria todos os ingressos e
-só então muda o status para publicado. Uma falha de criação ou publicação tenta remover o evento incompleto. Se essa
-remoção também falhar, o registro fica em rascunho e não aparece ao público.
+só então muda o status para publicado. A criação a partir de um snapshot também vincula o rascunho antes de publicar.
+Uma resposta incerta da publicação preserva o evento vinculado para recuperação sem duplicação. Consulte o fluxo
+completo e os limites em [SYMPLA_IMPLEMENTACAO.md](SYMPLA_IMPLEMENTACAO.md).
 
 ## Banco e execução
 
@@ -33,7 +34,7 @@ de leitura. Ela deve ser aplicada antes de executar a nova versão da API.
 Com o Supabase local ativo, na pasta do projeto no WSL:
 
 ```sh
-pnpm exec supabase migration up --local
+pnpm db:migrate
 pnpm --filter @events-manager/contracts build
 pnpm dev:apps
 ```
@@ -42,8 +43,9 @@ Isso aplica as migrações locais pendentes sem recriar o banco. Para um banco r
 do projeto e confira as migrações pendentes antes de aplicá-las.
 
 A alteração de status protege a publicação normal durante a requisição, mas não substitui uma transação entre evento e
-ingressos: a interrupção do processo pode deixar um rascunho incompleto para o organizador revisar. Não foram executadas
-migrações, cobranças ou chamadas a serviços reais durante a verificação.
+ingressos: a interrupção do processo pode deixar um rascunho incompleto para o organizador revisar. A verificação
+inicial desta etapa não executou migrações ou cobranças. A implementação posterior descrita em
+[SYMPLA_IMPLEMENTACAO.md](SYMPLA_IMPLEMENTACAO.md) acrescenta a migração 202610290002 e uma validação local do banco.
 
 ## Verificação
 

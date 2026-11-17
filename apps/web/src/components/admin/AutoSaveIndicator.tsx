@@ -1,5 +1,6 @@
 'use client';
 
+import { Spinner } from '@/components/ui/spinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Loader2, Cloud, CloudOff } from 'lucide-react';
 
@@ -31,35 +32,29 @@ export function AutoSaveIndicator({ status, lastSaved }: AutoSaveIndicatorProps)
 			>
 				{status === 'saving' && (
 					<>
-						<Loader2 className="size-4 animate-spin text-blue-600 dark:text-blue-400" />
-						<span className="text-blue-600 dark:text-blue-400 font-medium">
-							Salvando...
-						</span>
+						<Spinner className="size-4 animate-spin text-muted-foreground " />
+						<span className="text-muted-foreground  font-medium">Salvando...</span>
 					</>
 				)}
 
 				{status === 'saved' && (
 					<>
-						<Check className="size-4 text-green-600 dark:text-green-400" />
-						<span className="text-green-600 dark:text-green-400 font-medium">
-							Salvo {lastSaved && getTimeAgo(lastSaved)}
-						</span>
+						<Check className="size-4 text-muted-foreground " />
+						<span className="text-muted-foreground  font-medium">Salvo {lastSaved && getTimeAgo(lastSaved)}</span>
 					</>
 				)}
 
 				{status === 'error' && (
 					<>
-						<CloudOff className="size-4 text-red-600 dark:text-red-400" />
-						<span className="text-red-600 dark:text-red-400 font-medium">
-							Erro ao salvar
-						</span>
+						<CloudOff className="size-4 text-destructive " />
+						<span className="text-destructive  font-medium">Erro ao salvar</span>
 					</>
 				)}
 
 				{status === 'idle' && (
 					<>
-						<Cloud className="size-4 text-gray-400 dark:text-gray-500" />
-						<span className="text-gray-500 dark:text-gray-400">
+						<Cloud className="size-4 text-muted-foreground dark:text-muted-foreground" />
+						<span className="text-muted-foreground dark:text-muted-foreground">
 							{lastSaved ? `Salvo ${getTimeAgo(lastSaved)}` : 'Não salvo'}
 						</span>
 					</>

@@ -1,0 +1,235 @@
+STORMER 123 | Indicador visual para MetaTrader 5
+Versão 1.30 — 30/10/2026
+Implementação independente, sem afiliação ou endosso de Alexandre Wolwacz.
+
+ATUALIZAR O GRÁFICO
+O indicador foi atualizado na mesma pasta Stormer123 da instalação anterior.
+O gráfico aberto pode continuar executando a versão antiga em memória.
+1. Pressione Ctrl+I no gráfico, selecione o Stormer 123 e remova-o.
+2. No Navegador (Ctrl+N), clique com o botão direito em Indicadores > Atualizar.
+3. Arraste Stormer123 novamente para o gráfico. O card deve mostrar v1.30.
+Mantenha uma única instância por gráfico para evitar disputa de cores.
+Não é necessário habilitar negociação automática ou DLLs.
+
+INSTALAÇÃO EM OUTRO TERMINAL
+No MT5: Arquivo > Abrir Pasta de Dados > MQL5 > Indicators.
+Crie a pasta Stormer123 e copie Stormer123.ex5 para ela.
+Atualize o Navegador e arraste o indicador ao gráfico.
+Para editar, copie também Stormer123.mq5 e Stormer123Core.mqh para essa pasta.
+No MetaEditor, abra o .mq5 e pressione F7.
+
+UMA OPERAÇÃO POR VEZ — NOVO NA VERSÃO 1.20
+O histórico é processado da vela mais antiga para a mais recente.
+Depois que a entrada é acionada, o indicador ignora TODOS os novos padrões,
+na mesma direção ou na direção contrária, até encerrar a operação atual.
+O card permanece na operação ativa e informa "Novos sinais BLOQUEADOS".
+Sinais ignorados não geram setas, resultados ou alertas e não ficam em fila.
+
+Após GAIN ou LOSS, um novo padrão fechado pode ser aceito. O candle em que
+a saída ocorreu pode ser C3 do novo padrão, mas a próxima entrada só pode
+acontecer a partir da vela seguinte. Nunca há uma nova entrada retroativa.
+Se a saída/entrada for INCERTA, não se aceita novo padrão nessa mesma vela;
+a busca só volta em uma vela posterior, mantendo INCERTO sem atribuir GAIN/LOSS.
+Esse encerramento é a convenção conservadora de leitura OHLC do indicador,
+não a confirmação de uma posição real na conta.
+
+ANTES de uma entrada ser acionada, um novo padrão pode substituir o pendente.
+O pendente anterior fica SUBSTITUIDO, sem GAIN/LOSS. Expiração ou invalidação
+antes de entrar também libera a busca. A prioridade é avaliar os preços da
+vela antes de considerar um padrão conhecido no seu fechamento: se o sinal
+anterior entrou nessa vela e continua ativo, o novo padrão é ignorado.
+A parcial visual em 1R não encerra a operação nem libera um novo sinal.
+
+Os controles de visibilidade não alteram o bloqueio. PadroesVisiveis limita
+apenas o desenho; a sequência completa da janela é calculada antes do corte.
+HistoricoBarras define o ponto inicial da reconstrução ao colocar o indicador.
+Enquanto a instância estiver ativa, esse ponto inicial fica fixo: a janela
+pode crescer para não esquecer operações longas. Se faltarem os candles
+necessários, o card solicita mais histórico em vez de liberar outra operação.
+Ao recolocar o indicador ou mudar seus parâmetros/timeframe, a reconstrução
+recomeça com o histórico disponível e a janela configurada, presumindo que
+não havia operação antes desse início. Por isso mudar a janela pode alterar
+os sinais aceitos. Não há sincronização de posição entre gráficos/instâncias.
+
+NOVO VISUAL
+• Todos os candles de alta (fechamento acima da abertura) ficam VERDES;
+  candles de baixa ficam VERMELHOS, com corpo e contorno na mesma cor.
+  A cor do candle representa sua direção, não uma recomendação de compra/venda.
+• As setas verde/vermelha continuam identificando padrões 123 confirmados.
+  A seta em C3 indica formação fechada; não significa execução de entrada.
+• MME curta azul, espessura 1; MME longa violeta, espessura 3 por padrão.
+  O card identifica ambas por período e cor. Cores e espessura são configuráveis.
+• Histórico limitado aos 12 padrões mais recentes por padrão (incluindo o atual).
+  PadroesVisiveis permite de 1 a 50; HistoricoBarras controla a janela de busca.
+• Pontos azuis marcam o candle em que a entrada foi acionada sem ambiguidade.
+  Uma linha tracejada liga a entrada ao ponto de saída de sinais encerrados.
+• GAIN +xR aparece junto ao alvo atingido; LOSS -1R junto ao stop atingido.
+  A legenda usa o R efetivo após arredondamento dos níveis ao tick.
+• INCERTO indica toques cujo ordenamento não pode ser identificado pelo OHLC.
+  EXPIRADO e SEM ENTRADA não são contabilizados como LOSS.
+• Legendas de resultado procuram espaços livres na tela e se reposicionam ao
+  ampliar/reduzir ou deslocar o gráfico. Se não houver espaço, o marcador e seu
+  tooltip permanecem. Passe o mouse nos marcadores e linhas para ver detalhes.
+• A numeração 1/2/3 começa oculta para reduzir a sobreposição entre padrões.
+• Linhas completas de entrada, stop, alvo e parcial ficam apenas no sinal atual.
+  Ative Chart Shift no MT5 para abrir espaço às legendas à direita.
+
+BOTÕES DO CARD — CLIQUE SIMPLES
+Historico: mostra/oculta todos os padrões anteriores ao mais recente.
+Sinal atual: mostra/oculta o padrão mais recente no GRÁFICO, mesmo já encerrado.
+Medias: mostra/oculta as duas médias; a legenda colorida permanece no card.
+Numeracao: mostra/oculta os números 1/2/3 dos padrões visíveis.
+Resultados: mostra/oculta resultados, pontos de entrada/saída e trajetórias.
+Niveis: mostra/oculta entrada, stop, alvo e parcial do sinal atual.
+
+Os controles são independentes, atualizam imediatamente e não exigem novo tick.
+Sinal atual OFF também oculta os seus níveis. A leitura textual do último sinal
+continua no card. Ocultar médias não desliga o filtro de tendência.
+As escolhas valem para a instância atual. Ao recolocar o indicador ou mudar o
+período do gráfico, os valores iniciais voltam aos definidos nas propriedades.
+ColorirCandles=false desativa a mudança de cores. Ao remover o indicador, ele
+restaura as cores e o modo anteriores quando ainda estiverem com seus valores.
+
+REGRAS DO OPERACIONAL
+C1, C2 e C3 são três candles consecutivos e fechados.
+Compra: mínima(C2) < mínima(C1) e mínima(C2) < mínima(C3).
+Venda: máxima(C2) > máxima(C1) e máxima(C2) > máxima(C3).
+Igualdades não qualificam. C2 simultaneamente fundo e topo é descartado.
+A cor dos corpos não é exigida para formar o padrão.
+Com FiltroTendencia=true (padrão), o sinal exige NO FECHAMENTO DE C3:
+• Compra: MME curta > MME longa, e ambas subindo de C2 para C3.
+• Venda: MME curta < MME longa, e ambas caindo de C2 para C3.
+Médias iguais ou uma média plana rejeitam o sinal. Não é necessário um
+cruzamento novo nessa vela: alinhamento contínuo também é válido.
+A mesma regra usa os períodos configurados, inclusive se trocar a curta para 9.
+As médias da vela em formação não são usadas para liberar o padrão.
+FiltroTendencia=false desliga tanto alinhamento quanto inclinação, para testes.
+Uma operação já aberta mantém sua gestão de stop/alvo; cruzar médias depois
+não força uma saída. Validade do gatilho permanece conforme ValidadeBarras.
+O filtro não analisa outro timeframe.
+Inside Bar opcional: máxima(C3) < máxima(C2) e mínima(C3) > mínima(C2).
+IFR2 é informativo; a referência enviada não define condição objetiva para ele.
+
+Compra: entrada na máxima de C3 + margem em ticks. Venda: mínima de C3 − margem.
+Stop padrão: extremo de C2 mais a margem para fora. TipoStop permite escolher C3.
+MargemTicks aplica-se à entrada e ao stop. Usa tick real (SYMBOL_TRADE_TICK_SIZE).
+Alvo padrão: entrada ± 1,61 × risco (distância entre entrada e stop).
+TipoAlvo=ALVO_AMPLITUDE usa a amplitude total dos três candles vezes FatorAlvo,
+projetada a partir da entrada. FatorAlvo=1,0 corresponde à amplitude simples.
+Todos os níveis são arredondados ao tick. A parcial em 1R é apenas visual;
+não move stop nem executa encerramento parcial.
+ValidadeBarras=1 exige rompimento na barra imediatamente seguinte a C3.
+Depois de acionado, o sinal não expira por tempo. Stop antes da entrada invalida.
+
+O QUE GAIN/LOSS SIGNIFICA
+São resultados TEÓRICOS de uma sequência com uma operação por vez no gráfico.
+Não lê operações reais da conta e não envia ordens.
+Toque em preço não garante execução real. Não simula spread, slippage, taxas,
+preenchimento em gaps ou tamanho da posição. Os níveis permanecem planejados.
+Entrada e stop/alvo na mesma barra, ou stop e alvo na mesma barra após entrada,
+ficam INCERTOS. Não se inventa uma sequência para produzir GAIN ou LOSS.
+Resultados já encerrados não mudam por barras posteriores; correções de dados
+pelo provedor ou alterações de parâmetros podem mudar a reconstrução histórica.
+
+O detector nunca usa C0 para formar um padrão. A seta é desenhada sobre C3,
+mas só fica disponível no fechamento de C3. O estado do sinal inclui a barra
+em formação, podendo passar a INCERTO enquanto ela se desenvolve.
+Resultados históricos são conhecidos no momento de saída, não no momento de C3.
+Alertas e push, opcionais e desligados inicialmente, avisam apenas novos padrões
+fechados. Não avisam entrada/saída nem repetem histórico na instalação.
+
+PESQUISA E ESCOLHAS
+A pesquisa encontrou variações, não uma especificação oficial única verificável.
+Não se deve confundir o 123 de TRÊS CANDLES com o 123 de três swings/pivôs.
+O material abaixo foi consultado em 30/10/2026; a lista não pretende esgotar a web.
+Nenhum código de indicadores de terceiros foi copiado.
+
+1. QuantBrasil — 123 de Compra (referência principal solicitada)
+https://quantbrasil.com.br/estrategias/123-de-compra/
+Documenta rompimento de C3 no candle seguinte, filtro opcional de inclinação
+8/80, stop C2 ou C3 e alvo por amplitude ou risco. A introdução troca os nomes
+de compra/venda e a descrição textual de inside bar é inconsistente. Usamos a
+seção operacional e a definição geométrica convencional de inside bar.
+
+2. QuantBrasil — 123 de Venda
+https://quantbrasil.com.br/estrategias/123-de-venda/
+Descreve o espelho vendedor: entrada abaixo de C3 e opções de stop e alvo.
+
+3. QuantBrasil — Backtest da Estratégia 123 Utilizando Python
+https://quantbrasil.com.br/blog/backtest-da-estrategia-123-utilizando-python/
+Material complementar para estudo quantitativo da estratégia.
+
+4. QuantBrasil — Éden dos Traders
+https://quantbrasil.com.br/blog/criando-um-screening-dos-ativos-no-eden-dos-traders-utilizando-python/
+Material complementar para o contexto de tendência com médias.
+
+5. Fábrica de Setups — PC001: Setup 123 [3 Candles], 02/02/2016
+https://fabricadesetups.com.br/2016/02/02/setup-123/
+Apresenta uma variante com direção dos corpos, médias 8/80, entrada em C3,
+stop técnico e múltiplos de risco. As exigências de cor NÃO são padrão aqui.
+
+6. TradingView — Setup 123 Scalper, Cavuca-Trader, atualizado em 06/02/2023
+https://www.tradingview.com/script/w8h6Oynm/
+A descrição do autor confirma três candles, extremo central e filtro de tendência.
+Referência independente; não é publicação oficial do Stormer.
+
+7. TradingView — Técnicas e Táticas / Position Trade, Nico_holder14
+https://br.tradingview.com/chart/VALE3/tpdqXkZJ/
+Exemplo de variante semanal com MM9 e stop no segundo candle. Não extrapolamos
+resultados ou regras dessa publicação para todos os mercados.
+
+8. Anotações de terceiros — Setup 123 Stormer para Swing Trade
+https://www.scribd.com/document/693905371/SETUPS-E-ESTRATEGIAS
+O trecho público reproduz o resumo da imagem enviada: MME80, MME8/9, IFR2,
+fundo central e alvo 1,61. Não explica a âncora da projeção; por isso o guia
+explicita a escolha 1,61R em vez de apresentar essa interpretação como universal.
+
+9. Apostila atribuída ao Trader Estrategista, cópia em plataforma de terceiros
+https://fr.scribd.com/document/480358049/APOSTILA-Trader-Estrategista-pdf
+Trechos públicos citam pontos de swing, rompimento de C3, stop do conjunto e
+alvo 161 do risco. Não foi possível autenticar a origem ou a versão da cópia.
+
+10. Nelogica — Stormer Wave Surfer
+https://ajuda.nelogica.com.br/hc/pt-br/articles/56793186515483-Stormer-Wave-Surfer
+Produto diferente; consultado para distinguir o contexto de médias e a
+linguagem de cores. Suas regras proprietárias não foram reproduzidas.
+
+11. Traderbot — Setup 123 de compra e venda
+https://blog.traderbot.com.br/setup-123-de-compra-e-de-venda/
+Descreve três pivôs e rompimento do ponto 2. É outra interpretação de 123;
+NÃO foi misturada ao detector de três candles deste indicador.
+
+Documentação técnica primária:
+https://www.mql5.com/en/docs/customind
+https://www.mql5.com/en/docs/event_handlers/oncalculate
+https://www.mql5.com/en/docs/series/copybuffer
+https://www.mql5.com/en/docs/constants/objectconstants/enum_object
+
+VALIDAÇÃO DA VERSÃO 1.30
+Arquivo de teste: tests/core.test.cpp.
+TDD da operação única: 20 falhas esperadas na primeira execução, antes de
+implementar o motor cronológico. Suíte do operacional: 95 verificações aprovadas. O alinhamento teve quatro falhas esperadas antes da correção; foram acrescentadas dez verificações.
+Inclui bloqueio nos dois sentidos, card preservado, expiração, substituição
+antes da entrada, retomada após gain/loss, incerteza e replay de operação longa.
+O C++17 compila o MESMO Stormer123Core.mqh usado pelo indicador.
+pnpm test: aprovado.
+pnpm lint: aprovado (-Wall -Wextra -Werror -pedantic).
+pnpm test:coverage: 100% das linhas do núcleo, mantendo o limiar de 100%.
+Build.ps1: MetaEditor, zero erros e zero avisos. compile.log incluído.
+A cobertura não inclui o adaptador/visual MQL5. Não houve validação em gráfico
+ao vivo nesta atualização nem backtest de rentabilidade. Os resultados são
+simulações de toques OHLC, sem spread, slippage ou execução real.
+REPRODUZIR
+Linux/WSL, nesta pasta, com g++, gcov, Python3 e pnpm:
+  pnpm test
+  pnpm lint
+  pnpm test:coverage
+Windows, com MetaEditor: execute Build.ps1 em PowerShell.
+Parâmetro -MetaEditor permite apontar outra instalação.
+
+DOCUMENTAÇÃO TÉCNICA DOS NOVOS RECURSOS
+https://www.mql5.com/en/docs/constants/chartconstants/enum_chart_property
+https://www.mql5.com/en/docs/event_handlers/onchartevent
+https://www.mql5.com/en/docs/constants/objectconstants/enum_object/obj_button
+
+

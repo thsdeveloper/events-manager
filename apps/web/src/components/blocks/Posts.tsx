@@ -105,7 +105,7 @@ const Posts = ({ data }: PostsProps) => {
 	const paginationLinks = generatePagination();
 
 	return (
-		<div>
+		<div className="space-y-4">
 			{tagline && <Tagline as="p" tagline={tagline} />}
 			{headline && <Headline as="h2" headline={headline} />}
 
@@ -125,7 +125,7 @@ const Posts = ({ data }: PostsProps) => {
 								)}
 							</div>
 							<div className="p-4">
-								<h3 className="text-xl group-hover:text-accent font-heading transition-colors duration-300">
+								<h3 className="text-lg font-semibold group-hover:text-link font-heading transition-colors duration-300">
 									{post.title}
 								</h3>
 								{post.description && <p className="text-sm text-foreground mt-2">{post.description}</p>}
@@ -133,7 +133,7 @@ const Posts = ({ data }: PostsProps) => {
 						</Link>
 					))
 				) : (
-					<p className="text-center text-gray-500">No posts available.</p>
+					<p className="text-center text-muted-foreground">No posts available.</p>
 				)}
 			</div>
 

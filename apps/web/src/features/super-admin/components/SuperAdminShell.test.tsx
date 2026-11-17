@@ -1,14 +1,15 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
 import { SuperAdminShell } from './SuperAdminShell';
 
 const navigationState = vi.hoisted(() => ({ pathname: '/super-admin' }));
+const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 
 vi.mock('next/navigation', () => ({
 	usePathname: () => navigationState.pathname,
-	useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+	useRouter: () => router,
 }));
 vi.mock('next/link', () => ({
 	default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
@@ -28,6 +29,59 @@ const user = {
 };
 
 describe('SuperAdminShell', () => {
+	it('identifies an administrator by email when their name has not been filled in', () => {
+		renderWithProviders(
+			<SuperAdminShell user={{ ...user, first_name: null, last_name: null } as never} isOrganizer={false}>
+				<p>conteúdo</p>
+			</SuperAdminShell>,
+		);
+		expect(screen.getByText(user.email)).toBeInTheDocument();
+	});
+	it('ends the session from the sidebar and returns to login', async () => {
+		mockFetch([['/api/auth/logout', () => jsonResponse({})]]);
+		const { user: person } = renderWithProviders(
+			<SuperAdminShell user={user as never} isOrganizer={false}>
+				<p>conteúdo</p>
+			</SuperAdminShell>,
+		);
+		await person.click(screen.getByRole('button', { name: 'Sair' }));
+		await waitFor(() => expect(router.push).toHaveBeenCalledWith('/login'));
+		expect(router.refresh).toHaveBeenCalled();
+	});
+
+	it('closes mobile navigation after choosing a content section', async () => {
+		vi.stubGlobal('innerWidth', 390);
+		try {
+			const { user: person } = renderWithProviders(
+				<SuperAdminShell user={user as never} isOrganizer>
+					<p>conteúdo</p>
+				</SuperAdminShell>,
+			);
+			await person.click(screen.getByRole('button', { name: 'Alternar navegação' }));
+			const dialog = await screen.findByRole('dialog', { name: 'Navegação' });
+			await person.click(within(dialog).getByRole('link', { name: 'Páginas' }));
+			expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+	it('opens mobile navigation in a dismissible accessible panel', async () => {
+		vi.stubGlobal('innerWidth', 390);
+		try {
+			const { user: person } = renderWithProviders(
+				<SuperAdminShell user={user as never} isOrganizer={false}>
+					<p>conteúdo</p>
+				</SuperAdminShell>,
+			);
+			await person.click(screen.getByRole('button', { name: 'Alternar navegação' }));
+			expect(await screen.findByRole('dialog', { name: 'Navegação' })).toBeInTheDocument();
+			await person.keyboard('{Escape}');
+			expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
 	it('offers the content management section next to the platform links', () => {
 		renderWithProviders(
 			<SuperAdminShell user={user as never} isOrganizer={false}>
@@ -101,5 +155,27 @@ describe('SuperAdminShell', () => {
 		await person.click(screen.getByRole('button', { name: /conta de ana/i }));
 
 		expect(await screen.findByText('Organização')).toBeInTheDocument();
+	});
+	it('offers the organizer workspace directly in the main header', () => {
+		renderWithProviders(
+			<SuperAdminShell user={user as never} isOrganizer>
+				<p>conteúdo</p>
+			</SuperAdminShell>,
+		);
+		expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Painel do organizador' })).toHaveAttribute(
+			'href',
+			'/admin/dashboard',
+		);
+	});
+	it('guides a superadmin without an organization to organizer setup', () => {
+		renderWithProviders(
+			<SuperAdminShell user={user as never} isOrganizer={false}>
+				<p>conteúdo</p>
+			</SuperAdminShell>,
+		);
+		expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Organizar eventos' })).toHaveAttribute(
+			'href',
+			'/perfil/organizador',
+		);
 	});
 });

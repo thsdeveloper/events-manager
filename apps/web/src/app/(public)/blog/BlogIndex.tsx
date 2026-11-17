@@ -3,6 +3,8 @@ import { ArrowLeft, ArrowRight, Newspaper } from 'lucide-react';
 import Link from 'next/link';
 import MediaImage from '@/components/shared/MediaImage';
 import Container from '@/components/ui/container';
+import Headline from '@/components/ui/Headline';
+import Tagline from '@/components/ui/Tagline';
 import { cn } from '@/lib/utils';
 
 interface BlogIndexProps {
@@ -52,7 +54,7 @@ function PostCard({ post }: { post: Post }) {
 							{dateFormatter.format(published)}
 						</time>
 					)}
-					<h2 className="font-heading text-xl text-foreground transition-colors group-hover:text-accent">
+					<h2 className="font-heading font-semibold text-lg text-foreground transition-colors group-hover:text-link">
 						{post.title}
 					</h2>
 					{post.description && (
@@ -72,9 +74,9 @@ export default function BlogIndex({ posts, page, totalPages }: BlogIndexProps) {
 	return (
 		<Container className="py-12">
 			<header className="mb-10 max-w-2xl">
-				<p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">Blog</p>
-				<h1 className="mt-2 font-heading text-4xl text-foreground md:text-5xl">Novidades e bastidores</h1>
-				<p className="mt-4 text-lg text-muted-foreground">
+				<Tagline as="p" tagline="Blog" />
+				<Headline as="h1" headline="Novidades e bastidores" className="mt-3" />
+				<p className="mt-4 text-base leading-7 text-muted-foreground">
 					Dicas para organizadores, novidades da plataforma e histórias de quem faz eventos acontecerem.
 				</p>
 			</header>

@@ -1,11 +1,11 @@
 import { calculatePlatformFee, type PaymentFeeConfiguration } from './fees.js';
 
 export type CheckoutRule =
+	| 'fee_exceeds_price'
 	| 'duplicate_ticket'
 	| 'insufficient_stock'
 	| 'maximum_quantity'
 	| 'minimum_quantity'
-	| 'registration_closed'
 	| 'ticket_unavailable';
 
 export class CheckoutRuleViolation extends Error {
@@ -51,17 +51,14 @@ const money = (value: number) => Math.round(value * 100) / 100;
 export function buildCheckoutPlan({
 	configuration,
 	now = new Date(),
-	registrationWindow,
 	selections,
 	tickets,
 }: {
 	configuration: PaymentFeeConfiguration;
 	now?: Date;
-	registrationWindow?: { end: string | null; start: string | null };
 	selections: CheckoutSelection[];
 	tickets: CheckoutTicketSnapshot[];
 }): CheckoutPlanItem[] {
-	assertRegistrationOpen(registrationWindow, now);
 	const ticketsById = new Map(tickets.map((ticket) => [ticket.id, ticket]));
 	const selectedTicketIds = new Set<string>();
 
@@ -78,7 +75,9 @@ export function buildCheckoutPlan({
 		assertTicketAvailable(ticket, selection.quantity, now);
 
 		const baseAmount = money(ticket.price * selection.quantity);
-		const platformFee = calculatePlatformFee(baseAmount, configuration);
+		const platformFee = money(calculatePlatformFee(ticket.price, configuration) * selection.quantity);
+		if (ticket.price > 0 && ticket.serviceFeeType === 'absorbed' && platformFee > baseAmount)
+			throw new CheckoutRuleViolation('fee_exceeds_price', { ticketId: ticket.id });
 		const serviceFee = ticket.serviceFeeType === 'passed_to_buyer' ? platformFee : 0;
 
 		return {
@@ -90,15 +89,6 @@ export function buildCheckoutPlan({
 			totalAmount: money(baseAmount + serviceFee),
 		};
 	});
-}
-
-export function assertRegistrationOpen(
-	window: { end: string | null; start: string | null } | undefined,
-	now = new Date(),
-) {
-	if (!window) return;
-	if (window.start && new Date(window.start) > now) throw new CheckoutRuleViolation('registration_closed');
-	if (window.end && new Date(window.end) < now) throw new CheckoutRuleViolation('registration_closed');
 }
 
 export function assertTicketAvailable(ticket: CheckoutTicketSnapshot, quantity: number, now = new Date()) {
@@ -157,11 +147,18 @@ export function applyDiscountToPlan(plan: CheckoutPlanItem[], discount: number) 
 		leftover -= 1;
 	}
 
-	return withDiscount.map((item, index) => ({
-		...item,
-		discount: money(shares[index] / 100),
-		totalAmount: money((cents[index] - shares[index]) / 100),
-	}));
+	return withDiscount.map((item, index) => {
+		const totalAmount = money((cents[index] - shares[index]) / 100);
+		// Política do projeto: o desconto também limita as taxas à receita desta linha.
+		// O preço base permanece como referência; pedidos anteriores não são recalculados.
+		return {
+			...item,
+			discount: money(shares[index] / 100),
+			totalAmount,
+			platformFee: money(Math.min(item.platformFee, totalAmount)),
+			serviceFee: money(Math.min(item.serviceFee, totalAmount)),
+		};
+	});
 }
 
 /**

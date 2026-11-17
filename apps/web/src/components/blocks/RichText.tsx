@@ -20,14 +20,19 @@ const RichText = ({ data, className }: RichTextProps) => {
 	return (
 		<div
 			className={cn(
-				'mx-auto max-w-[600px] space-y-6',
+				'w-full min-w-0 space-y-4',
 				alignment === 'center' ? 'text-center' : alignment === 'right' ? 'text-right' : 'text-left',
 				className,
 			)}
 		>
 			{tagline && <Tagline as="p" tagline={tagline} />}
 			{headline && <Headline as="h2" headline={headline} />}
-			{content && <Text content={content} />}
+			{content && (
+				<Text
+					content={content}
+					className={alignment === 'center' ? 'text-center' : alignment === 'right' ? 'text-right' : 'text-left'}
+				/>
+			)}
 		</div>
 	);
 };

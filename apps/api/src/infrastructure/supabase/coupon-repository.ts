@@ -2,7 +2,8 @@ import type { CouponInput, CouponPatch } from '@events-manager/contracts';
 import type { Coupon, CouponRepository, TicketPrice } from '../../application/coupons/coupon-service.js';
 import type { SupabaseClients } from './clients.js';
 
-const couponSelection = 'id,event_id,code,description,discount_type,discount_value,status,starts_at,expires_at,max_uses,uses,date_created,date_updated';
+const couponSelection =
+	'id,event_id,code,description,discount_type,discount_value,status,starts_at,expires_at,max_uses,uses,date_created,date_updated';
 
 export class SupabaseCouponRepository implements CouponRepository {
 	constructor(private readonly clients: SupabaseClients) {}
@@ -21,10 +22,22 @@ export class SupabaseCouponRepository implements CouponRepository {
 		return (data ?? null) as Coupon | null;
 	}
 
+	async getFeeConfiguration() {
+		const { data, error } = await this.clients.admin
+			.from('event_configurations')
+			.select('platform_fee_percentage,platform_fee_minimum')
+			.eq('id', 1)
+			.single();
+		if (error) throw error;
+		return {
+			platform_fee_percentage: Number(data?.platform_fee_percentage ?? 0),
+			platform_fee_minimum: Number(data?.platform_fee_minimum ?? 0),
+		};
+	}
 	async findTicketPrices(eventId: string, ticketIds: string[]) {
 		const { data, error } = await this.clients.admin
 			.from('event_tickets')
-			.select('id,buyer_price,price')
+			.select('id,buyer_price,price,service_fee_type')
 			.eq('event_id', eventId)
 			.in('id', ticketIds);
 		if (error) throw error;

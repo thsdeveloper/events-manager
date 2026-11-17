@@ -4,11 +4,11 @@
 	"private": true,
 	"packageManager": "pnpm@10.14.0",
 	"engines": {
-		"node": ">=22.0.0"
+		"node": ">=22.21.0"
 	},
 	"scripts": {
 		"dev": "pnpm supabase:start && pnpm dev:apps",
-		"dev:apps": "concurrently -k -n api,web -c blue,green \"pnpm --filter @events-manager/api dev\" \"pnpm --filter @events-manager/web dev\"",
+		"dev:apps": "pnpm --filter @events-manager/contracts build && concurrently -k -n api,web -c blue,green \"pnpm --filter @events-manager/api dev\" \"pnpm --filter @events-manager/web dev\"",
 		"dev:api": "pnpm --filter @events-manager/api dev",
 		"dev:web": "pnpm --filter @events-manager/web dev",
 		"build": "pnpm -r --if-present build",
@@ -24,12 +24,39 @@
 		"supabase:status": "supabase status",
 		"db:reset": "supabase db reset",
 		"db:types": "supabase gen types typescript --local > packages/contracts/src/database.types.ts",
-		"admin:promote": "node scripts/promote-super-admin.mjs"
+		"admin:promote": "node scripts/promote-super-admin.mjs",
+		"db:migrate": "supabase migration up --local"
 	},
 	"devDependencies": {
 		"concurrently": "^9.2.0",
 		"prettier": "^3.5.3",
 		"supabase": "^2.34.3",
 		"typescript": "^5.8.3"
+	},
+	"pnpm": {
+		"overrides": {
+			"ajv@6": "^6.14.0",
+			"@humanfs/node": "^0.16.8",
+			"@fastify/busboy@3": "^3.2.2",
+			"brace-expansion@1": "^1.1.21",
+			"brace-expansion@2": "^2.1.7",
+			"fast-uri@3": "^3.1.9",
+			"fast-uri@4": "^4.2.3",
+			"fflate@0.8": "^0.8.3",
+			"flatted@3": "^3.4.2",
+			"js-yaml@4": "^4.3.2",
+			"lodash@4": "^4.18.0",
+			"minimatch@3": "^3.1.4",
+			"minimatch@9": "^11.0.1",
+			"picomatch@2": "^2.3.2",
+			"picomatch@4": "4.0.7",
+			"postcss@8": "^8.5.23",
+			"postcss-selector-parser@6": "^6.1.5",
+			"shell-quote": "^1.11.0",
+			"source-map-js": "^1.2.2",
+			"undici@8": "^8.12.2",
+			"vite@7": "^7.3.7",
+			"sucrase>glob": "^14.0.2"
+		}
 	}
 }

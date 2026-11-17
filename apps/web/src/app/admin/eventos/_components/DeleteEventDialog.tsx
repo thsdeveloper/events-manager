@@ -81,17 +81,17 @@ export function DeleteEventDialog({ eventId, eventTitle, participantsCount, onSu
 							</>
 						) : (
 							<>
-								Esta ação não pode ser desfeita. O evento <strong>&quot;{eventTitle}&quot;</strong> será
-								permanentemente removido do sistema.
+								Esta ação não pode ser desfeita. O evento <strong>&quot;{eventTitle}&quot;</strong> será permanentemente
+								removido do sistema.
 							</>
 						)}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 
 				{hasParticipants && (
-					<Alert variant="destructive" className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-						<AlertTriangle className="size-4 text-amber-600" />
-						<AlertDescription className="text-amber-800 dark:text-amber-200">
+					<Alert variant="destructive">
+						<AlertTriangle className="size-4 text-muted-foreground" />
+						<AlertDescription className="text-muted-foreground ">
 							<strong>Ação necessária:</strong> Cancele todas as inscrições antes de excluir o evento. Você pode
 							gerenciar as inscrições na página de participantes do evento.
 						</AlertDescription>
@@ -99,18 +99,16 @@ export function DeleteEventDialog({ eventId, eventTitle, participantsCount, onSu
 				)}
 
 				{!hasParticipants && participantsCount === 0 && (
-					<Alert className="border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20">
-						<Users className="size-4 text-emerald-600" />
-						<AlertDescription className="text-emerald-800 dark:text-emerald-200">
+					<Alert>
+						<Users className="size-4 text-muted-foreground" />
+						<AlertDescription className="text-muted-foreground ">
 							Este evento não possui participantes registrados e pode ser excluído com segurança.
 						</AlertDescription>
 					</Alert>
 				)}
 
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={isDeleting}>
-						{hasParticipants ? 'Fechar' : 'Cancelar'}
-					</AlertDialogCancel>
+					<AlertDialogCancel disabled={isDeleting}>{hasParticipants ? 'Fechar' : 'Cancelar'}</AlertDialogCancel>
 					{!hasParticipants && (
 						<AlertDialogAction
 							onClick={(e) => {

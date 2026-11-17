@@ -62,6 +62,26 @@ export class SupabaseAdminRepository implements AdminRepository {
 		return { data: data ?? [], total: count ?? 0 };
 	}
 
+	async nextTicketSort(eventId: string) {
+		const { data, error } = await this.clients.admin
+			.from('event_tickets')
+			.select('sort')
+			.eq('event_id', eventId)
+			.order('sort', { ascending: false, nullsFirst: false })
+			.limit(1);
+		if (error) throw error;
+		return data?.length ? Number(data[0].sort ?? -1) + 1 : 0;
+	}
+	async groupBelongsToEvent(groupId: string, eventId: string) {
+		const { data, error } = await this.clients.admin
+			.from('event_ticket_groups')
+			.select('id')
+			.eq('id', groupId)
+			.eq('event_id', eventId)
+			.maybeSingle();
+		if (error) throw error;
+		return Boolean(data);
+	}
 	async createTicket(input: TicketInput & { buyer_price: number; quantity_sold: number; sort: number }) {
 		const { data, error } = await this.clients.admin.from('event_tickets').insert(input).select('*').single();
 		if (error) throw error;

@@ -5,6 +5,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MoreHorizontal, Check } from 'lucide-react';
 import {
 	DropdownMenu,
@@ -21,9 +22,7 @@ import {
 	getInitials,
 	getParticipantFullName,
 	statusLabels,
-	statusBadgeClasses,
 	paymentStatusLabels,
-	paymentStatusBadgeClasses,
 	paymentMethodLabels,
 } from '../_lib/utils';
 
@@ -38,20 +37,16 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 	{
 		id: 'select',
 		header: ({ table }) => (
-			<input
-				type="checkbox"
-				checked={table.getIsAllPageRowsSelected()}
-				onChange={(e) => table.toggleAllPageRowsSelected(!!e.target.checked)}
-				className="rounded border-gray-300"
+			<Checkbox
+				checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+				onCheckedChange={(checked) => table.toggleAllPageRowsSelected(checked === true)}
 				aria-label="Selecionar todos os ingressos"
 			/>
 		),
 		cell: ({ row }) => (
-			<input
-				type="checkbox"
+			<Checkbox
 				checked={row.getIsSelected()}
-				onChange={(e) => row.toggleSelected(!!e.target.checked)}
-				className="rounded border-gray-300"
+				onCheckedChange={(checked) => row.toggleSelected(checked === true)}
 				aria-label={`Selecionar ${getParticipantFullName(row.original)}`}
 			/>
 		),
@@ -75,18 +70,18 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 					</Avatar>
 					<div className="flex flex-col">
 						{ticket.attendee_name ? (
-							<span className="font-medium text-gray-900 dark:text-white">{ticket.attendee_name}</span>
+							<span className="font-medium text-foreground">{ticket.attendee_name}</span>
 						) : (
-							<span className="font-medium italic text-amber-700 dark:text-amber-300">{name}</span>
+							<span className="font-medium italic text-muted-foreground ">{name}</span>
 						)}
 						{ticket.attendee_email && (
-							<span className="text-sm text-gray-500 dark:text-gray-400">{ticket.attendee_email}</span>
+							<span className="text-sm text-muted-foreground dark:text-muted-foreground">{ticket.attendee_email}</span>
 						)}
 						{ticket.attendee_phone && (
-							<span className="text-xs text-gray-400 dark:text-gray-500">{ticket.attendee_phone}</span>
+							<span className="text-xs text-muted-foreground dark:text-muted-foreground">{ticket.attendee_phone}</span>
 						)}
 						{!ticket.is_buyer && (
-							<span className="text-xs text-gray-500 dark:text-gray-400">
+							<span className="text-xs text-muted-foreground dark:text-muted-foreground">
 								Comprado por {ticket.registration.participant_name}
 							</span>
 						)}
@@ -103,8 +98,8 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 
 			return (
 				<div className="flex flex-col">
-					<span className="font-semibold text-gray-900 dark:text-white">{event.title}</span>
-					<span className="text-sm text-gray-600 dark:text-gray-400">
+					<span className="font-semibold text-foreground">{event.title}</span>
+					<span className="text-sm text-muted-foreground dark:text-muted-foreground">
 						{formatDate(event.start_date, 'dd MMM yyyy, HH:mm')}
 					</span>
 				</div>
@@ -119,11 +114,13 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 
 			return (
 				<div className="flex flex-col">
-					<span className="font-medium text-gray-900 dark:text-white">{ticket.ticket_type?.title ?? 'Ingresso'}</span>
-					<span className="text-sm text-gray-600 dark:text-gray-400">
+					<span className="font-medium text-foreground">{ticket.ticket_type?.title ?? 'Ingresso'}</span>
+					<span className="text-sm text-muted-foreground dark:text-muted-foreground">
 						Ingresso {ticket.sequence} de {ticket.registration.quantity}
 					</span>
-					<span className="font-mono text-xs text-gray-400 dark:text-gray-500">{ticket.ticket_code}</span>
+					<span className="font-mono text-xs text-muted-foreground dark:text-muted-foreground">
+						{ticket.ticket_code}
+					</span>
 				</div>
 			);
 		},
@@ -138,12 +135,12 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 
 			return (
 				<div className="flex flex-col gap-1">
-					<Badge className={paymentStatusBadgeClasses[status || ''] || ''}>
-						{paymentStatusLabels[status || ''] || status}
-					</Badge>
-					<span className="text-sm text-gray-700 dark:text-gray-300">{formatCurrency(ticket.total_amount)}</span>
+					<Badge variant="secondary">{paymentStatusLabels[status || ''] || status}</Badge>
+					<span className="text-sm text-foreground">{formatCurrency(ticket.total_amount)}</span>
 					{method && method !== 'free' && (
-						<span className="text-xs text-gray-500 dark:text-gray-400">{paymentMethodLabels[method] || method}</span>
+						<span className="text-xs text-muted-foreground dark:text-muted-foreground">
+							{paymentMethodLabels[method] || method}
+						</span>
 					)}
 				</div>
 			);
@@ -155,7 +152,7 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 		cell: ({ row }) => {
 			const status = deriveTicketStatus(row.original);
 
-			return <Badge className={statusBadgeClasses[status] || ''}>{statusLabels[status] || status}</Badge>;
+			return <Badge variant="secondary">{statusLabels[status] || status}</Badge>;
 		},
 	},
 	{
@@ -166,7 +163,7 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 
 			if (checkInDate) {
 				return (
-					<div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+					<div className="flex items-center gap-2 text-muted-foreground ">
 						<Check className="size-4" />
 						<span className="text-sm font-medium">{formatDate(checkInDate)}</span>
 					</div>
@@ -207,7 +204,7 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 							Reenviar email
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem className="text-rose-600" onClick={() => options?.onCancelClick?.(participant)}>
+						<DropdownMenuItem className="text-destructive" onClick={() => options?.onCancelClick?.(participant)}>
 							Cancelar pedido
 						</DropdownMenuItem>
 					</DropdownMenuContent>

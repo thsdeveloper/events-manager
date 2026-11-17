@@ -1,5 +1,6 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -40,18 +41,13 @@ export function NavigationDangerZone({ navigationId, title }: { navigationId: st
 	}
 
 	return (
-		<div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-			<p className="text-xs text-slate-500">
+		<Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+			<p className="text-xs text-muted-foreground">
 				{isProtected
 					? 'Menus do sistema (principal e rodapé) não podem ser excluídos.'
 					: 'Excluir o menu remove todos os seus itens.'}
 			</p>
-			<Button
-				variant="outline"
-				className="text-red-600 hover:text-red-700"
-				disabled={isProtected}
-				onClick={() => setOpen(true)}
-			>
+			<Button variant="destructive" disabled={isProtected} onClick={() => setOpen(true)}>
 				<Trash2 className="mr-2 size-4" />
 				Excluir menu
 			</Button>
@@ -67,6 +63,6 @@ export function NavigationDangerZone({ navigationId, title }: { navigationId: st
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</div>
+		</Card>
 	);
 }

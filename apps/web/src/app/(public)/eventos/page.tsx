@@ -1,11 +1,12 @@
+import Headline from '@/components/ui/Headline';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { CalendarDays, MapPin, Search, Ticket } from 'lucide-react';
+import { CalendarDays, MapPin, Ticket } from 'lucide-react';
 import type { MediaFile } from '@events-manager/contracts';
 import MediaImage from '@/components/shared/MediaImage';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { QueryFilterSheet } from '@/components/shared/QueryFilterSheet';
 import { backendFetch } from '@/lib/backend';
 
 export const dynamic = 'force-dynamic';
@@ -61,28 +62,26 @@ export default async function EventsPage({
 		<main id="main-content" className="mx-auto min-h-[70vh] max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
 			<header className="max-w-3xl">
 				<Badge variant="secondary">Agenda pública</Badge>
-				<h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Encontre seu próximo evento</h1>
-				<p className="mt-4 text-lg text-muted-foreground">
+				<Headline as="h1" headline="Encontre seu próximo evento" className="mt-3" />
+				<p className="mt-4 text-base leading-7 text-muted-foreground">
 					Consulte eventos publicados e confira datas, formato e disponibilidade de ingressos.
 				</p>
 			</header>
 
-			<form className="mt-8 flex max-w-xl gap-2" action="/eventos" method="get">
-				<div className="relative flex-1">
-					<Search
-						aria-hidden="true"
-						className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-					/>
-					<Input
-						className="pl-9"
-						defaultValue={search}
-						name="search"
-						placeholder="Buscar pelo nome do evento"
-						type="search"
-					/>
-				</div>
-				<Button type="submit">Buscar</Button>
-			</form>
+			<div className="mt-8">
+				<QueryFilterSheet
+					title="Filtros de eventos"
+					fields={[
+						{
+							name: 'search',
+							label: 'Buscar eventos',
+							type: 'search',
+							placeholder: 'Buscar pelo nome do evento',
+							maxLength: 100,
+						},
+					]}
+				/>
+			</div>
 
 			<div className="mt-6 flex items-center justify-between border-b pb-4 text-sm text-muted-foreground">
 				<p>{response.pagination.total} evento(s) encontrado(s)</p>
@@ -123,25 +122,23 @@ export default async function EventsPage({
 							<div className="space-y-4 p-5">
 								<div>
 									{event.category_id?.name ? (
-										<p className="text-xs font-semibold uppercase tracking-wide text-primary">
-											{event.category_id.name}
-										</p>
+										<p className="text-xs font-semibold uppercase tracking-wide text-link">{event.category_id.name}</p>
 									) : null}
-									<h2 className="mt-1 line-clamp-2 text-xl font-bold group-hover:text-primary">{event.title}</h2>
+									<h2 className="mt-1 line-clamp-2 text-lg font-semibold group-hover:text-link">{event.title}</h2>
 								</div>
 								{event.short_description ? (
 									<p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{event.short_description}</p>
 								) : null}
 								<div className="space-y-2 text-sm text-muted-foreground">
 									<p className="flex items-center gap-2">
-										<CalendarDays className="size-4 text-primary" />
+										<CalendarDays className="size-4 text-link" />
 										{new Date(event.start_date).toLocaleString('pt-BR', {
 											dateStyle: 'medium',
 											timeStyle: 'short',
 										})}
 									</p>
 									<p className="flex items-center gap-2">
-										<MapPin className="size-4 text-primary" />
+										<MapPin className="size-4 text-link" />
 										{event.event_type === 'online' ? 'Online' : event.location_name || 'Local a definir'}
 									</p>
 								</div>

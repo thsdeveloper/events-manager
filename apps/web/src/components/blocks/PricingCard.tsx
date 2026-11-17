@@ -24,12 +24,12 @@ export interface PricingCardProps {
 const PricingCard = ({ card }: PricingCardProps) => {
 	return (
 		<div
-			className={`flex flex-col max-w-[600px] md:min-h-[424px] border rounded-lg p-6 ${
-				card.is_highlighted ? 'border-accent' : 'border-input'
+			className={`flex flex-col min-w-0 bg-card text-card-foreground md:min-h-[424px] border rounded-lg p-6 ${
+				card.is_highlighted ? 'border-primary' : 'border-input'
 			}`}
 		>
 			<div className="flex justify-between items-start gap-2 mb-4">
-				<h3 className="text-xl font-heading text-foreground">{card.title}</h3>
+				<h3 className="text-lg font-semibold font-heading text-foreground">{card.title}</h3>
 				<div className="flex-shrink-0">
 					{card.badge && (
 						<Badge variant={card.is_highlighted ? 'secondary' : 'default'} className="text-xs font-medium uppercase">
@@ -49,7 +49,7 @@ const PricingCard = ({ card }: PricingCardProps) => {
 						{card.features.map((feature, index) => (
 							<li key={index} className="flex items-center gap-3 text-regular">
 								<div className="mt-1">
-									<CheckCircle2 className="size-4 text-gray-muted" />
+									<CheckCircle2 className="size-4 text-link" />
 								</div>
 								<p className="leading-relaxed">{feature}</p>
 							</li>

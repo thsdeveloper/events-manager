@@ -111,3 +111,13 @@ describe('CouponManager', () => {
 		await waitFor(() => expect(remove).toHaveBeenCalledWith('c-1'));
 	});
 });
+it('opens the coupon validity calendar and allows clearing an optional date', async () => {
+	render(<CouponManager coupons={[]} error={null} {...noop} />);
+	await userEvent.click(screen.getByRole('button', { name: 'Novo cupom' }));
+	await userEvent.click(screen.getByRole('button', { name: 'Início' }));
+	expect(screen.getByRole('grid')).toBeInTheDocument();
+	expect(screen.getByLabelText('Horário')).toBeInTheDocument();
+	await userEvent.click(screen.getByRole('button', { name: 'Concluir' }));
+	await userEvent.click(screen.getByRole('button', { name: 'Expiração' }));
+	expect(screen.getByRole('grid')).toBeInTheDocument();
+});

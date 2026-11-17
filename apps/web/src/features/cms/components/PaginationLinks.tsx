@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
 import type { CmsPagination } from '../types';
 
 /** Paginação por links, para listagens renderizadas no servidor. */
@@ -20,31 +20,40 @@ export function PaginationLinks({
 
 		return `${pathname}?${params}`;
 	};
-	const buttonClass =
-		'rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50';
 
 	return (
-		<nav aria-label="Paginação" className="flex items-center justify-between text-sm text-slate-500">
+		<Pagination
+			aria-label="Paginação"
+			className="flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground"
+		>
 			<span>
 				Página {pagination.page} de {pagination.pageCount} · {pagination.total}{' '}
 				{pagination.total === 1 ? 'item' : 'itens'}
 			</span>
-			<div className="flex gap-2">
-				<Link
-					href={link(Math.max(1, pagination.page - 1))}
-					aria-disabled={pagination.page <= 1}
-					className={cn(buttonClass, pagination.page <= 1 && 'pointer-events-none opacity-50')}
-				>
-					Anterior
-				</Link>
-				<Link
-					href={link(Math.min(pagination.pageCount, pagination.page + 1))}
-					aria-disabled={pagination.page >= pagination.pageCount}
-					className={cn(buttonClass, pagination.page >= pagination.pageCount && 'pointer-events-none opacity-50')}
-				>
-					Próxima
-				</Link>
-			</div>
-		</nav>
+			<PaginationContent>
+				<PaginationItem>
+					{pagination.page <= 1 ? (
+						<Button variant="outline" size="sm" disabled>
+							Anterior
+						</Button>
+					) : (
+						<PaginationLink size="sm" href={link(pagination.page - 1)}>
+							Anterior
+						</PaginationLink>
+					)}
+				</PaginationItem>
+				<PaginationItem>
+					{pagination.page >= pagination.pageCount ? (
+						<Button variant="outline" size="sm" disabled>
+							Próxima
+						</Button>
+					) : (
+						<PaginationLink size="sm" href={link(pagination.page + 1)}>
+							Próxima
+						</PaginationLink>
+					)}
+				</PaginationItem>
+			</PaginationContent>
+		</Pagination>
 	);
 }

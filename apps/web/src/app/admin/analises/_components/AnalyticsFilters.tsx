@@ -1,238 +1,118 @@
-'use client'
+'use client';
+import { useState } from 'react';
+import { endOfDay, format, startOfDay, subDays } from 'date-fns';
+import { FilterSheet } from '@/components/shared/FilterSheet';
+import { FilterDate, FilterSelect } from '@/components/shared/FilterFields';
+import type { AnalyticsFilters as Filters } from '../actions';
+function selectedRange(filters: Filters) {
+	if (!filters.startDate || !filters.endDate) return 'custom';
+	const { startDate, endDate } = filters;
 
-import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { CalendarIcon, Filter, RotateCcw } from 'lucide-react'
-import { format, subDays } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { cn } from '@/lib/utils'
-import type { AnalyticsFilters as Filters } from '../actions'
-
-interface AnalyticsFiltersProps {
-  onFilterChange: (filters: Filters) => void
-  events?: Array<{ id: string; title: string }>
-  organizers?: Array<{ id: string; name: string }>
+	return (
+		[7, 30, 90, 365].find((days) => subDays(endDate, days).getTime() === startDate.getTime())?.toString() ?? 'custom'
+	);
 }
-
-const QUICK_RANGES = [
-  { label: 'Últimos 7 dias', days: 7 },
-  { label: 'Últimos 30 dias', days: 30 },
-  { label: 'Últimos 90 dias', days: 90 },
-  { label: 'Últimos 12 meses', days: 365 }
-]
-
+interface AnalyticsFiltersProps {
+	onFilterChange: (filters: Filters) => void;
+	filters?: Filters;
+	events?: Array<{ id: string; title: string }>;
+	organizers?: Array<{ id: string; name: string }>;
+}
 export function AnalyticsFilters({
-  onFilterChange,
-  events = [],
-  organizers = []
+	onFilterChange,
+	filters: controlled,
+	events = [],
+	organizers = [],
 }: AnalyticsFiltersProps) {
-  const [filters, setFilters] = useState<Filters>({
-    startDate: subDays(new Date(), 30),
-    endDate: new Date()
-  })
+	const [applied, setApplied] = useState<Filters>({});
+	const filters = controlled ?? applied;
 
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: filters.startDate,
-    to: filters.endDate
-  })
+	return (
+		<FilterSheet
+			title="Filtros de análises"
+			values={filters}
+			defaultValues={{}}
+			activeCount={
+				Number(Boolean(filters.startDate || filters.endDate)) +
+				Number(Boolean(filters.eventId)) +
+				Number(Boolean(filters.organizerId))
+			}
+			onApply={(next) => {
+				setApplied(next);
+				onFilterChange(next);
+			}}
+			validate={(draft) =>
+				draft.startDate && draft.endDate && draft.endDate < draft.startDate
+					? 'A data final deve ser igual ou posterior à data inicial.'
+					: undefined
+			}
+		>
+			{(draft, setDraft) => (
+				<>
+					<FilterSelect
+						label="Período"
+						value={selectedRange(draft)}
+						onChange={(value) => {
+							if (value === 'custom') {
+								setDraft({ ...draft, startDate: undefined, endDate: undefined });
 
-  const handleQuickRange = (days: number) => {
-    const newFilters = {
-      ...filters,
-      startDate: subDays(new Date(), days),
-      endDate: new Date()
-    }
-    setFilters(newFilters)
-    setDateRange({ from: newFilters.startDate, to: newFilters.endDate })
-    onFilterChange(newFilters)
-  }
-
-  const handleDateRangeSelect = (range: { from: Date | undefined; to: Date | undefined }) => {
-    setDateRange(range)
-    if (range.from && range.to) {
-      const newFilters = {
-        ...filters,
-        startDate: range.from,
-        endDate: range.to
-      }
-      setFilters(newFilters)
-      onFilterChange(newFilters)
-    }
-  }
-
-  const handleEventChange = (eventId: string) => {
-    const newFilters = {
-      ...filters,
-      eventId: eventId === 'all' ? undefined : eventId
-    }
-    setFilters(newFilters)
-    onFilterChange(newFilters)
-  }
-
-  const handleOrganizerChange = (organizerId: string) => {
-    const newFilters = {
-      ...filters,
-      organizerId: organizerId === 'all' ? undefined : organizerId
-    }
-    setFilters(newFilters)
-    onFilterChange(newFilters)
-  }
-
-  const handleReset = () => {
-    const defaultFilters: Filters = {
-      startDate: subDays(new Date(), 30),
-      endDate: new Date()
-    }
-    setFilters(defaultFilters)
-    setDateRange({ from: defaultFilters.startDate, to: defaultFilters.endDate })
-    onFilterChange(defaultFilters)
-  }
-
-  const hasActiveFilters = filters.eventId || filters.organizerId
-
-  return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="size-4 text-muted-foreground" />
-          <h3 className="font-semibold">Filtros</h3>
-          {hasActiveFilters && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleReset}
-              className="ml-auto"
-            >
-              <RotateCcw className="size-3 mr-1" />
-              Limpar
-            </Button>
-          )}
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* Seletor de período rápido */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Período</label>
-            <Select onValueChange={(value) => handleQuickRange(Number(value))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o período" />
-              </SelectTrigger>
-              <SelectContent>
-                {QUICK_RANGES.map((range) => (
-                  <SelectItem key={range.days} value={range.days.toString()}>
-                    {range.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Seletor de data personalizado */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Data Personalizada</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !dateRange.from && !dateRange.to && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 size-4" />
-                  {dateRange.from ? (
-                    dateRange.to ? (
-                      <>
-                        {format(dateRange.from, 'dd/MM/yy', { locale: ptBR })} -{' '}
-                        {format(dateRange.to, 'dd/MM/yy', { locale: ptBR })}
-                      </>
-                    ) : (
-                      format(dateRange.from, 'dd/MM/yyyy', { locale: ptBR })
-                    )
-                  ) : (
-                    'Selecione as datas'
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="range"
-                  selected={{
-                    from: dateRange.from,
-                    to: dateRange.to
-                  }}
-                  onSelect={(range) => handleDateRangeSelect({
-                    from: range?.from,
-                    to: range?.to
-                  })}
-                  numberOfMonths={2}
-                  locale={ptBR}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Filtro por evento */}
-          {events.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Evento</label>
-              <Select
-                value={filters.eventId || 'all'}
-                onValueChange={handleEventChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os eventos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os eventos</SelectItem>
-                  {events.map((event) => (
-                    <SelectItem key={event.id} value={event.id}>
-                      {event.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Filtro por organizador (apenas para admins) */}
-          {organizers.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Organizador</label>
-              <Select
-                value={filters.organizerId || 'all'}
-                onValueChange={handleOrganizerChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os organizadores" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os organizadores</SelectItem>
-                  {organizers.map((organizer) => (
-                    <SelectItem key={organizer.id} value={organizer.id}>
-                      {organizer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
+								return;
+							}
+							const endDate = new Date();
+							setDraft({ ...draft, startDate: subDays(endDate, Number(value)), endDate });
+						}}
+						options={[
+							{ value: 'custom', label: 'Escolher datas' },
+							{ value: '7', label: 'Últimos 7 dias' },
+							{ value: '30', label: 'Últimos 30 dias' },
+							{ value: '90', label: 'Últimos 90 dias' },
+							{ value: '365', label: 'Últimos 12 meses' },
+						]}
+					/>
+					<FilterDate
+						label="Data inicial"
+						value={draft.startDate ? format(draft.startDate, 'yyyy-MM-dd') : ''}
+						onChange={(value) =>
+							setDraft({
+								...draft,
+								startDate: value ? startOfDay(new Date(value + 'T00:00:00')) : undefined,
+							})
+						}
+					/>
+					<FilterDate
+						label="Data final"
+						value={draft.endDate ? format(draft.endDate, 'yyyy-MM-dd') : ''}
+						onChange={(value) =>
+							setDraft({
+								...draft,
+								endDate: value ? endOfDay(new Date(value + 'T00:00:00')) : undefined,
+							})
+						}
+					/>
+					{events.length > 0 && (
+						<FilterSelect
+							label="Evento"
+							value={draft.eventId ?? ''}
+							onChange={(eventId) => setDraft({ ...draft, eventId: eventId || undefined })}
+							options={[
+								{ value: '', label: 'Todos os eventos' },
+								...events.map((event) => ({ value: event.id, label: event.title })),
+							]}
+						/>
+					)}
+					{organizers.length > 0 && (
+						<FilterSelect
+							label="Organizador"
+							value={draft.organizerId ?? ''}
+							onChange={(organizerId) => setDraft({ ...draft, organizerId: organizerId || undefined })}
+							options={[
+								{ value: '', label: 'Todos os organizadores' },
+								...organizers.map((organizer) => ({ value: organizer.id, label: organizer.name })),
+							]}
+						/>
+					)}
+				</>
+			)}
+		</FilterSheet>
+	);
 }

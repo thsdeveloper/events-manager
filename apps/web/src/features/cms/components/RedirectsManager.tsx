@@ -1,5 +1,10 @@
 'use client';
 
+import { RecordTable } from '@/components/ui/record-table';
+
+import { Empty } from '@/components/ui/empty';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { cmsRedirectInputSchema } from '@events-manager/contracts';
 import { ArrowRight, Pencil, Plus, Route, Save, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -171,7 +176,7 @@ export function RedirectsManager({ redirects }: { redirects: CmsRedirectRow[] })
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between gap-4">
-				<p className="text-sm text-slate-600">
+				<p className="text-sm text-muted-foreground">
 					{redirects.length} {redirects.length === 1 ? 'redirecionamento ativo' : 'redirecionamentos ativos'}.
 				</p>
 				<Button
@@ -186,78 +191,76 @@ export function RedirectsManager({ redirects }: { redirects: CmsRedirectRow[] })
 			</div>
 
 			{redirects.length === 0 ? (
-				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-slate-50 px-6 py-12 text-center">
-					<div className="flex size-12 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+				<Empty className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted px-6 py-12 text-center">
+					<div className="flex size-12 items-center justify-center rounded-full bg-accent text-primary">
 						<Route className="size-6" />
 					</div>
-					<p className="font-medium text-slate-950">Nenhum redirecionamento</p>
-					<p className="text-sm text-slate-500">
+					<p className="font-medium text-foreground">Nenhum redirecionamento</p>
+					<p className="text-sm text-muted-foreground">
 						Ao trocar o permalink de uma página, crie um daqui para não perder visitas.
 					</p>
-				</div>
+				</Empty>
 			) : (
-				<div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-					<table className="w-full text-left text-sm">
-						<thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-							<tr>
-								<th className="px-5 py-3">Origem</th>
-								<th className="px-5 py-3">Destino</th>
-								<th className="px-5 py-3">Tipo</th>
-								<th className="px-5 py-3">Nota</th>
-								<th className="px-5 py-3">Atualizado</th>
-								<th className="px-5 py-3 text-right">
-									<span className="sr-only">Ações</span>
-								</th>
-							</tr>
-						</thead>
-						<tbody className="divide-y divide-slate-100">
-							{redirects.map((redirect) => (
-								<tr key={redirect.id} className="hover:bg-slate-50">
-									<td className="px-5 py-3 font-mono text-xs text-slate-800">{redirect.url_from}</td>
-									<td className="px-5 py-3 font-mono text-xs text-slate-800">
-										<span className="inline-flex items-center gap-1">
-											<ArrowRight className="size-3 text-slate-400" />
-											{redirect.url_to}
-										</span>
-									</td>
-									<td className="px-5 py-3">
-										<span
-											className={`rounded-full px-2 py-0.5 text-xs font-semibold ${redirect.response_code === '301' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}
-										>
-											{redirect.response_code}
-										</span>
-									</td>
-									<td className="max-w-xs truncate px-5 py-3 text-slate-600">{redirect.note ?? '—'}</td>
-									<td className="px-5 py-3 text-slate-600">
-										{formatDateTime(redirect.date_updated ?? redirect.date_created)}
-									</td>
-									<td className="px-5 py-3 text-right">
-										<Button
-											size="icon"
-											variant="ghost"
-											onClick={() => {
-												setEditing(redirect);
-												setSheetOpen(true);
-											}}
-											aria-label={`Editar redirecionamento de ${redirect.url_from}`}
-										>
-											<Pencil className="size-4" />
-										</Button>
-										<Button
-											size="icon"
-											variant="ghost"
-											onClick={() => setToDelete(redirect)}
-											aria-label={`Excluir redirecionamento de ${redirect.url_from}`}
-											className="text-red-600 hover:bg-red-50 hover:text-red-700"
-										>
-											<Trash2 className="size-4" />
-										</Button>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
+				<Card className="overflow-x-auto">
+					<RecordTable
+						headers={[
+							'Origem',
+							'Destino',
+							'Tipo',
+							'Nota',
+							'Atualizado',
+							<>
+								<span className="sr-only">Ações</span>
+							</>,
+						]}
+						rows={redirects.map((redirect) => ({
+							id: String(redirect.id),
+							cells: [
+								<div key="column-0" className="font-mono text-foreground">
+									{redirect.url_from}
+								</div>,
+								<div key="column-1" className="font-mono text-foreground">
+									<span className="inline-flex items-center gap-1">
+										<ArrowRight className="size-3 text-muted-foreground" />
+										{redirect.url_to}
+									</span>
+								</div>,
+								<div key="column-2">
+									<Badge variant="secondary">{redirect.response_code}</Badge>
+								</div>,
+								<div key="column-3" className="max-w-xs truncate text-muted-foreground">
+									{redirect.note ?? '—'}
+								</div>,
+								<div key="column-4" className="text-muted-foreground">
+									{formatDateTime(redirect.date_updated ?? redirect.date_created)}
+								</div>,
+								<div key="column-5" className="text-right">
+									<Button
+										size="icon"
+										variant="ghost"
+										onClick={() => {
+											setEditing(redirect);
+											setSheetOpen(true);
+										}}
+										aria-label={`Editar redirecionamento de ${redirect.url_from}`}
+									>
+										<Pencil className="size-4" />
+									</Button>
+									<Button
+										size="icon"
+										variant="destructive"
+										onClick={() => setToDelete(redirect)}
+										aria-label={`Excluir redirecionamento de ${redirect.url_from}`}
+									>
+										<Trash2 className="size-4" />
+									</Button>
+								</div>,
+							],
+						}))}
+						paginate={false}
+						emptyMessage={undefined}
+					/>
+				</Card>
 			)}
 
 			<RedirectSheet open={sheetOpen} onOpenChange={setSheetOpen} redirect={editing} onSaved={afterSave} />

@@ -25,10 +25,10 @@ export function ProfileOverview({ user, completion, isOrganizer = false, onNavig
 				<div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
 					<div className="max-w-xl">
 						<p className="text-sm font-medium text-violet-700 dark:text-violet-300">Sua conta</p>
-						<h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+						<h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
 							Olá, {firstName}.
 						</h1>
-						<p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base">
+						<p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
 							Aqui você mantém seus dados atualizados e controla como sua conta funciona.
 						</p>
 					</div>
@@ -47,68 +47,66 @@ export function ProfileOverview({ user, completion, isOrganizer = false, onNavig
 			{completion >= 100 ? (
 				<NextSteps isOrganizer={isOrganizer} />
 			) : (
-			<section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-				<div className="flex items-start justify-between gap-4">
-					<div>
-						<p className="text-sm font-semibold text-slate-950 dark:text-white">Complete seu perfil</p>
-						<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-							Deixe sua conta pronta para inscrições mais rápidas.
-						</p>
+				<section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+					<div className="flex items-start justify-between gap-4">
+						<div>
+							<p className="text-sm font-semibold text-foreground">Complete seu perfil</p>
+							<p className="mt-1 text-xs text-muted-foreground">Deixe sua conta pronta para inscrições mais rápidas.</p>
+						</div>
+						<span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+							{completion}%
+						</span>
 					</div>
-					<span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-						{completion}%
-					</span>
-				</div>
 
-				<div className="my-5 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-					<div className="h-full rounded-full bg-violet-600 transition-all" style={{ width: `${completion}%` }} />
-				</div>
+					<div className="my-5 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+						<div className="h-full rounded-full bg-violet-600 transition-all" style={{ width: `${completion}%` }} />
+					</div>
 
-				<ul aria-label="Itens do perfil" className="grid gap-2 sm:grid-cols-2">
-					{checklist.map((item) => (
-						<li key={item.id}>
-							{/* Each item opens the section where it is filled in; done items stay
+					<ul aria-label="Itens do perfil" className="grid gap-2 sm:grid-cols-2">
+						{checklist.map((item) => (
+							<li key={item.id}>
+								{/* Each item opens the section where it is filled in; done items stay
 							    clickable so the person can review what they entered. */}
-							<button
-								type="button"
-								aria-label={`${item.label}, ${item.complete ? 'concluído' : 'pendente'}`}
-								onClick={() => onNavigate(item.section)}
-								className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
-							>
-								<span
-									aria-hidden="true"
-									className={cn(
-										'flex size-5 shrink-0 items-center justify-center rounded-full',
-										item.complete
-											? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-											: 'bg-slate-100 text-slate-400 dark:bg-slate-800',
-									)}
+								<button
+									type="button"
+									aria-label={`${item.label}, ${item.complete ? 'concluído' : 'pendente'}`}
+									onClick={() => onNavigate(item.section)}
+									className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
 								>
-									{item.complete ? <Check className="size-3" /> : <Circle className="size-2.5" />}
-								</span>
-								<span
-									className={
-										item.complete
-											? 'text-slate-500 line-through dark:text-slate-400'
-											: 'text-slate-700 dark:text-slate-200'
-									}
-								>
-									{item.label}
-								</span>
-							</button>
-						</li>
-					))}
-				</ul>
+									<span
+										aria-hidden="true"
+										className={cn(
+											'flex size-5 shrink-0 items-center justify-center rounded-full',
+											item.complete
+												? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+												: 'bg-slate-100 text-slate-400 dark:bg-slate-800',
+										)}
+									>
+										{item.complete ? <Check className="size-3" /> : <Circle className="size-2.5" />}
+									</span>
+									<span
+										className={
+											item.complete
+												? 'text-slate-500 line-through dark:text-slate-400'
+												: 'text-slate-700 dark:text-slate-200'
+										}
+									>
+										{item.label}
+									</span>
+								</button>
+							</li>
+						))}
+					</ul>
 
-				<button
-					type="button"
-					onClick={() => onNavigate('personal')}
-					className="mt-6 flex items-center gap-1 text-sm font-semibold text-violet-700 hover:text-violet-800 dark:text-violet-300"
-				>
-					Atualizar informações
-					<ArrowRight className="size-4" />
-				</button>
-			</section>
+					<button
+						type="button"
+						onClick={() => onNavigate('personal')}
+						className="mt-6 flex items-center gap-1 text-sm font-semibold text-violet-700 hover:text-violet-800 dark:text-violet-300"
+					>
+						Atualizar informações
+						<ArrowRight className="size-4" />
+					</button>
+				</section>
 			)}
 		</div>
 	);
@@ -120,12 +118,10 @@ function NextSteps({ isOrganizer }: { isOrganizer: boolean }) {
 			aria-labelledby="next-steps-heading"
 			className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
 		>
-			<p id="next-steps-heading" className="text-sm font-semibold text-slate-950 dark:text-white">
+			<p id="next-steps-heading" className="text-sm font-semibold text-foreground">
 				Perfil completo. E agora?
 			</p>
-			<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-				Sua conta está pronta. Escolha por onde começar.
-			</p>
+			<p className="mt-1 text-xs text-muted-foreground">Sua conta está pronta. Escolha por onde começar.</p>
 
 			<div className="mt-5 grid gap-3 sm:grid-cols-2">
 				<NextStepCard
@@ -174,11 +170,14 @@ function NextStepCard({
 				<Icon className="size-5" aria-hidden="true" />
 			</span>
 			<span className="min-w-0">
-				<span className="flex items-center gap-1 text-sm font-semibold text-slate-950 dark:text-white">
+				<span className="flex items-center gap-1 text-sm font-semibold text-foreground">
 					{title}
-					<ArrowRight className="size-4 text-violet-600 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+					<ArrowRight
+						className="size-4 text-violet-600 transition-transform group-hover:translate-x-0.5"
+						aria-hidden="true"
+					/>
 				</span>
-				<span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</span>
+				<span className="mt-1 block text-xs leading-5 text-muted-foreground">{description}</span>
 			</span>
 		</Link>
 	);

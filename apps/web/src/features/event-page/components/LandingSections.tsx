@@ -1,5 +1,6 @@
 import type { EventPageSection, EventTicket } from '@events-manager/contracts';
 import { CalendarDays, Clock, ExternalLink, MapPin, Ticket } from 'lucide-react';
+import Image from 'next/image';
 import MediaImage from '@/components/shared/MediaImage';
 import Text from '@/components/ui/Text';
 import { EventLocationView } from '@/components/map/EventLocationView';
@@ -23,14 +24,28 @@ export function HeroSection({ context, section }: Props<'hero'>) {
 	const image =
 		section.image ?? (event.cover_image && typeof event.cover_image === 'object' ? event.cover_image : null);
 	const date = formatEventDateRange(event.start_date, event.end_date);
-	const place = formatEventLocation(event.event_type, event.location_name, event.location_address);
+	const place = formatEventLocation(
+		event.event_type,
+		event.location_tbd ? 'Local a definir' : event.location_name,
+		event.location_tbd ? null : event.location_address,
+	);
 	const centered = section.align === 'center';
 
 	return (
 		<section id={section.anchor} className="relative isolate overflow-hidden">
-			{image ? (
+			{image || context.previewCoverUrl ? (
 				<div className="absolute inset-0 -z-10">
-					<MediaImage uuid={image} alt="" fill priority className="object-cover" />
+					{context.mode === 'preview' && context.previewCoverUrl ? (
+						<Image
+							src={context.previewCoverUrl}
+							alt={event.cover_image_alt ?? ''}
+							fill
+							unoptimized
+							className="object-cover"
+						/>
+					) : image ? (
+						<MediaImage uuid={image} alt={event.cover_image_alt ?? ''} fill priority className="object-cover" />
+					) : null}
 					<div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/55 to-slate-950/30" />
 				</div>
 			) : (
@@ -113,6 +128,11 @@ export function TicketsSection({ context, section }: Props<'tickets'>) {
 					{tickets.map((ticket) => {
 						const available = ticketAvailability(ticket);
 						const soldOut = available <= 0;
+						const group = event.ticket_groups?.find((group) => group.id === ticket.group_id);
+						const parent = group?.parent_id
+							? event.ticket_groups?.find((item) => item.id === group.parent_id)
+							: undefined;
+						const groupLabel = group ? [parent?.title, group.title].filter(Boolean).join(' / ') : null;
 
 						return (
 							<li
@@ -125,6 +145,10 @@ export function TicketsSection({ context, section }: Props<'tickets'>) {
 								<div className="flex items-start justify-between gap-3">
 									<div>
 										<h3 className="text-lg font-semibold">{ticket.title}</h3>
+										{groupLabel && <p className="text-sm opacity-75">{groupLabel}</p>}
+										{ticket.admission_type === 'half_price' && (
+											<span className="text-xs font-semibold">Meia-entrada</span>
+										)}
 										{ticket.description ? <p className="mt-1 text-sm opacity-75">{ticket.description}</p> : null}
 									</div>
 									<Ticket className="size-5 shrink-0 opacity-60" aria-hidden />
@@ -208,15 +232,27 @@ export function SpeakersSection({ section }: Props<'speakers'>) {
 
 export function LocationSection({ context, section }: Props<'location'>) {
 	const { event } = context;
-	const hasCoordinates = typeof event.latitude === 'number' && typeof event.longitude === 'number';
-	const query = encodeURIComponent([event.location_name, event.location_address].filter(Boolean).join(', '));
+	const hasCoordinates =
+		!event.location_tbd &&
+		event.show_map !== false &&
+		typeof event.latitude === 'number' &&
+		typeof event.longitude === 'number';
+	const query = event.location_tbd
+		? ''
+		: encodeURIComponent([event.location_name, event.location_address].filter(Boolean).join(', '));
 
 	return (
 		<SectionShell anchor={section.anchor} title={section.title} subtitle={section.note}>
 			<div className="grid gap-6 lg:grid-cols-2">
 				<div className="space-y-2">
-					{event.location_name ? <p className="text-lg font-semibold">{event.location_name}</p> : null}
-					{event.location_address ? <p className="opacity-80">{event.location_address}</p> : null}
+					{event.location_tbd ? (
+						<p className="text-lg font-semibold">Local a definir</p>
+					) : event.location_name ? (
+						<p className="text-lg font-semibold">{event.location_name}</p>
+					) : null}
+					{!event.location_tbd && event.location_address ? (
+						<p className="opacity-80">{event.location_address}</p>
+					) : null}
 					{event.event_type === 'online' || event.event_type === 'hybrid' ? (
 						<p className="opacity-80">Transmissão online para quem participa à distância.</p>
 					) : null}

@@ -5,23 +5,34 @@
 @layer base {
 	:root {
 		color-scheme: light;
+		/* Flouvi digital palette — Guia-da-marca.pdf. */
+		--link: 257.9348 90.1961% 60%;
+		--brand-apricot: 31.2245 100% 80.7843%;
 		/* Fallback for the first paint only — AdminHeader measures itself and
 		   overwrites this on mount. Anything sticking below the header reads it. */
 		--admin-header-height: 73px;
-		--background: 220 33% 98%;
-		--foreground: 222 47% 11%;
+		--sidebar-background: var(--card);
+		--sidebar-foreground: var(--foreground);
+		--sidebar-primary: var(--primary);
+		--sidebar-primary-foreground: var(--primary-foreground);
+		--sidebar-accent: var(--accent);
+		--sidebar-accent-foreground: var(--accent-foreground);
+		--sidebar-border: var(--border);
+		--sidebar-ring: var(--ring);
+		--background: 0 0% 100%;
+		--foreground: 261.6 32.4675% 15.098%;
 		--card: 0 0% 100%;
-		--card-foreground: 222 47% 11%;
+		--card-foreground: 261.6 32.4675% 15.098%;
 		--popover: 0 0% 100%;
-		--popover-foreground: 222 47% 11%;
-		--primary: 258 90% 60%;
+		--popover-foreground: 261.6 32.4675% 15.098%;
+		--primary: 257.9348 90.1961% 60%;
 		--primary-foreground: 0 0% 100%;
-		--secondary: 220 23% 95%;
-		--secondary-foreground: 222 47% 16%;
-		--muted: 220 23% 95%;
-		--muted-foreground: 215 16% 42%;
-		--accent: 258 52% 94%;
-		--accent-foreground: 258 72% 34%;
+		--secondary: 257.6471 100% 96.6667%;
+		--secondary-foreground: 261.6 32.4675% 15.098%;
+		--muted: 257.6471 100% 96.6667%;
+		--muted-foreground: 263.5714 12.7273% 43.1373%;
+		--accent: 257.6471 100% 96.6667%;
+		--accent-foreground: 259.5349 72.2689% 46.6667%;
 		--destructive: 0 72% 51%;
 		--destructive-foreground: 0 0% 100%;
 		--success: 160 84% 32%;
@@ -30,21 +41,19 @@
 		--info-foreground: 0 0% 100%;
 		--warning: 32 95% 40%;
 		--warning-foreground: 0 0% 100%;
-		--border: 220 17% 88%;
-		--input: 220 17% 84%;
-		--ring: 258 90% 60%;
-		--chart-1: 258 90% 60%;
+		--border: 270 30.7692% 89.8039%;
+		--input: 268.6957 29.1139% 84.5098%;
+		--ring: 257.9348 90.1961% 60%;
+		--chart-1: 257.9348 90.1961% 60%;
 		--chart-2: 199 89% 48%;
 		--chart-3: 160 84% 39%;
 		--chart-4: 38 92% 50%;
 		--chart-5: 330 81% 60%;
-		/* Square corners across the design system. Everything built on rounded-sm,
-		   rounded-md and rounded-lg derives from this token, so raising it here is
-		   the single switch that softens the whole interface again. */
-		--radius: 0rem;
+		/* Shared Shadcn radius, aligned with the rounded surfaces in the brand guide. */
+		--radius: 0.5rem;
 
 		/* Compatibility tokens used by CMS typography and dynamic site branding. */
-		--accent-color: #6644ff;
+		--accent-color: #743df5;
 		--accent-color-soft: color-mix(in srgb, var(--accent-color) 12%, transparent);
 		--background-color-muted: hsl(var(--muted));
 		--foreground-color: hsl(var(--foreground));
@@ -52,20 +61,21 @@
 
 	.dark {
 		color-scheme: dark;
-		--background: 222 47% 7%;
-		--foreground: 210 40% 98%;
-		--card: 222 40% 10%;
-		--card-foreground: 210 40% 98%;
-		--popover: 222 40% 10%;
-		--popover-foreground: 210 40% 98%;
-		--primary: 258 90% 70%;
-		--primary-foreground: 258 60% 10%;
-		--secondary: 217 26% 17%;
-		--secondary-foreground: 210 40% 98%;
-		--muted: 217 26% 17%;
-		--muted-foreground: 215 20% 68%;
-		--accent: 258 35% 20%;
-		--accent-foreground: 258 90% 85%;
+		--link: 257.8571 100% 83.5294%;
+		--background: 261.6 32.4675% 15.098%;
+		--foreground: 257.6471 100% 96.6667%;
+		--card: 262.7586 29.8969% 19.0196%;
+		--card-foreground: 257.6471 100% 96.6667%;
+		--popover: 262.7586 29.8969% 19.0196%;
+		--popover-foreground: 257.6471 100% 96.6667%;
+		--primary: 257.9348 90.1961% 60%;
+		--primary-foreground: 0 0% 100%;
+		--secondary: 268.8 23.3645% 20.9804%;
+		--secondary-foreground: 257.6471 100% 96.6667%;
+		--muted: 268.8 23.3645% 20.9804%;
+		--muted-foreground: 265.7143 24.5614% 77.6471%;
+		--accent: 272.7273 24.4444% 26.4706%;
+		--accent-foreground: 257.6471 100% 96.6667%;
 		--destructive: 0 62% 42%;
 		--destructive-foreground: 0 0% 100%;
 		--success: 160 70% 48%;
@@ -74,14 +84,100 @@
 		--info-foreground: 199 80% 8%;
 		--warning: 38 92% 60%;
 		--warning-foreground: 32 80% 8%;
-		--border: 217 24% 20%;
-		--input: 217 24% 24%;
-		--ring: 258 90% 70%;
-		--chart-1: 258 90% 70%;
+		--border: 265.9459 23.5669% 30.7843%;
+		--input: 272.3077 19.403% 39.4118%;
+		--ring: 257.0526 100% 81.3725%;
+		--chart-1: 257.0526 100% 81.3725%;
 		--chart-2: 199 89% 58%;
 		--chart-3: 160 70% 48%;
 		--chart-4: 38 92% 60%;
 		--chart-5: 330 81% 70%;
+		/* Recompute aliases inside a dark CMS section as well as on <html>. */
+		--foreground-color: hsl(var(--foreground));
+		--background-color-muted: hsl(var(--muted));
+	}
+
+	/* Shadcn default / Neutral (Tailwind 3). Body scope also covers Radix portals. */
+	body:has([data-admin-theme='neutral']) {
+		--link: var(--primary);
+		--background: 0 0% 100%;
+		--foreground: 0 0% 3.9%;
+		--card: 0 0% 100%;
+		--card-foreground: 0 0% 3.9%;
+		--popover: 0 0% 100%;
+		--popover-foreground: 0 0% 3.9%;
+		--primary: 0 0% 9%;
+		--primary-foreground: 0 0% 98%;
+		--secondary: 0 0% 96.1%;
+		--secondary-foreground: 0 0% 9%;
+		--muted: 0 0% 96.1%;
+		--muted-foreground: 0 0% 45.1%;
+		--accent: 0 0% 96.1%;
+		--accent-foreground: 0 0% 9%;
+		--destructive: 0 84.2% 60.2%;
+		--destructive-foreground: 0 0% 98%;
+		--border: 0 0% 89.8%;
+		--input: 0 0% 89.8%;
+		--ring: 0 0% 3.9%;
+		--chart-1: 12 76% 61%;
+		--chart-2: 173 58% 39%;
+		--chart-3: 197 37% 24%;
+		--chart-4: 43 74% 66%;
+		--chart-5: 27 87% 67%;
+		--radius: 0.5rem;
+		--sidebar-background: 0 0% 98%;
+		--sidebar-foreground: 240 5.3% 26.1%;
+		--sidebar-primary: 240 5.9% 10%;
+		--sidebar-primary-foreground: 0 0% 98%;
+		--sidebar-accent: 240 4.8% 95.9%;
+		--sidebar-accent-foreground: 240 5.9% 10%;
+		--sidebar-border: 220 13% 91%;
+		--sidebar-ring: 217.2 91.2% 59.8%;
+		--accent-color: hsl(var(--primary));
+		--accent-color-soft: hsl(var(--accent));
+		--foreground-color: hsl(var(--foreground));
+		--background-color-muted: hsl(var(--muted));
+	}
+
+	.dark body:has([data-admin-theme='neutral']) {
+		--link: var(--primary);
+		--background: 0 0% 3.9%;
+		--foreground: 0 0% 98%;
+		--card: 0 0% 3.9%;
+		--card-foreground: 0 0% 98%;
+		--popover: 0 0% 3.9%;
+		--popover-foreground: 0 0% 98%;
+		--primary: 0 0% 98%;
+		--primary-foreground: 0 0% 9%;
+		--secondary: 0 0% 14.9%;
+		--secondary-foreground: 0 0% 98%;
+		--muted: 0 0% 14.9%;
+		--muted-foreground: 0 0% 63.9%;
+		--accent: 0 0% 14.9%;
+		--accent-foreground: 0 0% 98%;
+		--destructive: 0 62.8% 30.6%;
+		--destructive-foreground: 0 0% 98%;
+		--border: 0 0% 14.9%;
+		--input: 0 0% 14.9%;
+		--ring: 0 0% 83.1%;
+		--chart-1: 220 70% 50%;
+		--chart-2: 160 60% 45%;
+		--chart-3: 30 80% 55%;
+		--chart-4: 280 65% 60%;
+		--chart-5: 340 75% 55%;
+		--sidebar-background: 240 5.9% 10%;
+		--sidebar-foreground: 240 4.8% 95.9%;
+		--sidebar-primary: 224.3 76.3% 48%;
+		--sidebar-primary-foreground: 0 0% 100%;
+		--sidebar-accent: 240 3.7% 15.9%;
+		--sidebar-accent-foreground: 240 4.8% 95.9%;
+		--sidebar-border: 240 3.7% 15.9%;
+		--sidebar-ring: 217.2 91.2% 59.8%;
+	}
+
+	/* Admin headings use the same sans family as the Shadcn controls. */
+	body:has([data-admin-theme='neutral']) .font-heading {
+		font-family: inherit;
 	}
 
 	* {
@@ -111,8 +207,28 @@
 }
 
 @layer components {
+	.sidebar-nav-link {
+		@apply transition-colors data-[active=true]:bg-sidebar-accent data-[active=true]:font-semibold;
+	}
+	.sidebar-nav-link:is(:hover, :focus-visible) [data-sidebar-icon] {
+		animation: sidebar-icon-hover 450ms ease-in-out;
+		transform-origin: center;
+	}
 	.skip-link {
 		@apply fixed left-4 top-4 z-[100] -translate-y-24 rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background shadow-lg transition-transform focus:translate-y-0;
+	}
+}
+
+@keyframes sidebar-icon-hover {
+	0%,
+	100% {
+		transform: translateY(0) rotate(0);
+	}
+	30% {
+		transform: translateY(-2px) rotate(-8deg);
+	}
+	65% {
+		transform: translateY(0) rotate(6deg);
 	}
 }
 

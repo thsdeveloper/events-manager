@@ -20,7 +20,15 @@ const percent = (value: number) => `${value.toLocaleString('pt-BR', { maximumFra
 
 function feeRows(fees: PublicFeeTable) {
 	return [
-		{ label: 'Taxa de serviço da plataforma', value: `${percent(fees.platform_fee_percentage)} do ingresso` },
+		{
+			label: 'Taxa de serviço da plataforma',
+			value:
+				percent(fees.platform_fee_percentage) +
+				' do ingresso' +
+				(Number(fees.platform_fee_minimum ?? 0) > 0
+					? ' · mínimo ' + formatCurrency(Number(fees.platform_fee_minimum)) + ' por ingresso'
+					: ''),
+		},
 		{ label: 'PIX', value: `${formatCurrency(fees.pix_fee_fixed)} por transação` },
 		{
 			label: 'Cartão à vista',

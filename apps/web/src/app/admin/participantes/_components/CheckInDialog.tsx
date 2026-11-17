@@ -1,5 +1,6 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import { useState } from 'react';
 import { CheckCircle, X, AlertTriangle } from 'lucide-react';
 import {
@@ -110,12 +111,12 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 					<DialogTitle className="flex items-center gap-2">
 						{hasCheckedIn ? (
 							<>
-								<X className="size-5 text-amber-600" />
+								<X className="size-5 text-muted-foreground" />
 								Desfazer Check-in
 							</>
 						) : (
 							<>
-								<CheckCircle className="size-5 text-emerald-600" />
+								<CheckCircle className="size-5 text-muted-foreground" />
 								Confirmar Check-in
 							</>
 						)}
@@ -129,65 +130,63 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 
 				<div className="space-y-4 py-4">
 					{/* Participant Info */}
-					<div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+					<Card className="p-4">
 						<div className="space-y-2">
 							<div>
-								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Participante</p>
-								<p className="text-base font-semibold text-gray-900 dark:text-white">
-									{getParticipantFullName(participant)}
-								</p>
+								<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Participante</p>
+								<p className="text-base font-semibold text-foreground">{getParticipantFullName(participant)}</p>
 							</div>
 							{participant.attendee_email && (
 								<div>
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</p>
-									<p className="text-sm text-gray-900 dark:text-white">{participant.attendee_email}</p>
+									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Email</p>
+									<p className="text-sm text-foreground">{participant.attendee_email}</p>
 								</div>
 							)}
 							<div>
-								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ingresso</p>
-								<p className="text-sm text-gray-900 dark:text-white">
+								<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Ingresso</p>
+								<p className="text-sm text-foreground">
 									{participant.ticket_type?.title ?? 'Ingresso'} · {participant.sequence} de{' '}
 									{participant.registration.quantity}
 								</p>
 							</div>
 							<div>
-								<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Código</p>
-								<p className="font-mono text-sm text-gray-900 dark:text-white">{participant.ticket_code}</p>
+								<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Código</p>
+								<p className="font-mono text-sm text-foreground">{participant.ticket_code}</p>
 							</div>
 						</div>
-					</div>
+					</Card>
 
 					{/* Warnings */}
 					{isUnnamed && !isCancelled && (
-						<div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-							<AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+						<Card className="flex items-start gap-3 p-4">
+							<AlertTriangle className="size-5 shrink-0 text-muted-foreground " />
 							<div>
-								<p className="font-medium text-amber-900 dark:text-amber-200">Sem participante</p>
-								<p className="text-sm text-amber-700 dark:text-amber-300">
+								<p className="font-medium text-muted-foreground ">Sem participante</p>
+								<p className="text-sm text-muted-foreground ">
 									Informe o participante antes do check-in: ingressos são nominais.
 								</p>
 							</div>
-						</div>
+						</Card>
 					)}
 
 					{isCancelled && (
-						<div className="flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 dark:border-rose-800 dark:bg-rose-900/20">
-							<AlertTriangle className="size-5 shrink-0 text-rose-600 dark:text-rose-400" />
+						<Card className="flex items-start gap-3 p-4">
+							<AlertTriangle className="size-5 shrink-0 text-destructive " />
 							<div>
-								<p className="font-medium text-rose-900 dark:text-rose-200">Pedido cancelado</p>
-								<p className="text-sm text-rose-700 dark:text-rose-300">
+								<p className="font-medium text-destructive ">Pedido cancelado</p>
+								<p className="text-sm text-destructive ">
 									Não é possível realizar check-in de um ingresso de pedido cancelado
 								</p>
 							</div>
-						</div>
+						</Card>
 					)}
 
 					{hasCheckedIn && !isCancelled && (
-						<div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-							<AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+						<Card className="flex items-start gap-3 p-4">
+							<AlertTriangle className="size-5 shrink-0 text-muted-foreground " />
 							<div>
-								<p className="font-medium text-amber-900 dark:text-amber-200">Check-in já realizado</p>
-								<p className="text-sm text-amber-700 dark:text-amber-300">
+								<p className="font-medium text-muted-foreground ">Check-in já realizado</p>
+								<p className="text-sm text-muted-foreground ">
 									Realizado em{' '}
 									{new Date(participant.check_in_date!).toLocaleString('pt-BR', {
 										dateStyle: 'short',
@@ -195,7 +194,7 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 									})}
 								</p>
 							</div>
-						</div>
+						</Card>
 					)}
 				</div>
 
@@ -210,10 +209,11 @@ export function CheckInDialog({ participant, open, onOpenChange, onSuccess }: Ch
 						</Button>
 					) : (
 						<Button
+							variant="default"
 							onClick={handleCheckIn}
 							loading={isLoading}
 							disabled={isCancelled || isUnnamed}
-							className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+							className="gap-2"
 						>
 							<CheckCircle className="size-4" />
 							Confirmar Check-in

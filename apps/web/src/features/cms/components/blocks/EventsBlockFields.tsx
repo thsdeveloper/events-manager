@@ -96,20 +96,20 @@ function EventsFields({ value, onChange, errors }: BlockFieldsProps<EventsState>
 				/>
 			</Field>
 			<div className="grid gap-3 sm:grid-cols-2">
-				<label className="flex items-center gap-2 text-sm">
+				<Label className="flex items-center gap-2 text-sm">
 					<Checkbox
 						checked={value.filter_featured}
 						onCheckedChange={(checked) => update({ filter_featured: checked === true })}
 					/>
 					Somente eventos em destaque
-				</label>
-				<label className="flex items-center gap-2 text-sm">
+				</Label>
+				<Label className="flex items-center gap-2 text-sm">
 					<Checkbox
 						checked={value.show_past_events}
 						onCheckedChange={(checked) => update({ show_past_events: checked === true })}
 					/>
 					Mostrar eventos passados
-				</label>
+				</Label>
 			</div>
 		</div>
 	);

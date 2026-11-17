@@ -38,6 +38,7 @@ interface EventCheckoutProps {
 		slug?: string | null;
 		startDate?: string | null;
 	};
+	ticketGroups?: Array<{ id: string; title: string; parent_id?: string | null }>;
 	eventId: string;
 	eventTitle: string;
 	tickets: EventTicket[];
@@ -65,6 +66,7 @@ export default function EventCheckout({
 	eventId,
 	eventTitle,
 	tickets,
+	ticketGroups = [],
 	userId,
 	defaultParticipantInfo,
 }: EventCheckoutProps) {
@@ -355,6 +357,7 @@ export default function EventCheckout({
 								<p className="text-sm text-muted-foreground">{ticketTypesLabel}</p>
 							</div>
 							<TicketSelection
+								groups={ticketGroups}
 								eventId={eventId}
 								tickets={tickets}
 								hideAction

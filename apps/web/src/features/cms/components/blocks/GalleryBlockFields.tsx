@@ -1,5 +1,7 @@
 'use client';
 
+import { Empty } from '@/components/ui/empty';
+import { Card } from '@/components/ui/card';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -73,52 +75,51 @@ function GalleryFields({ value, onChange, errors }: BlockFieldsProps<GalleryStat
 					</Button>
 				</div>
 				{value.items.length === 0 ? (
-					<p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+					<Empty className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
 						Nenhuma imagem na galeria.
-					</p>
+					</Empty>
 				) : (
 					<ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
 						{value.items.map((item, index) => (
-							<li
-								key={item.id ?? `${item.file.id}-${index}`}
-								className="space-y-1 rounded-lg border border-slate-200 p-1.5"
-							>
-								<MediaThumb media={item.file} className="aspect-square w-full rounded" />
-								<p className="truncate px-1 text-xs text-slate-600">{mediaLabel(item.file)}</p>
-								<div className="flex items-center justify-end gap-0.5">
-									<Button
-										type="button"
-										size="icon"
-										variant="ghost"
-										className="size-7"
-										disabled={index === 0}
-										onClick={() => move(index, index - 1)}
-										aria-label={`Mover imagem ${index + 1} para cima`}
-									>
-										<ArrowUp className="size-3.5" />
-									</Button>
-									<Button
-										type="button"
-										size="icon"
-										variant="ghost"
-										className="size-7"
-										disabled={index === value.items.length - 1}
-										onClick={() => move(index, index + 1)}
-										aria-label={`Mover imagem ${index + 1} para baixo`}
-									>
-										<ArrowDown className="size-3.5" />
-									</Button>
-									<Button
-										type="button"
-										size="icon"
-										variant="ghost"
-										className="size-7 text-red-600 hover:bg-red-50 hover:text-red-700"
-										onClick={() => update({ items: value.items.filter((_, i) => i !== index) })}
-										aria-label={`Remover imagem ${index + 1}`}
-									>
-										<Trash2 className="size-3.5" />
-									</Button>
-								</div>
+							<li key={item.id ?? `${item.file.id}-${index}`}>
+								<Card className="space-y-1 p-1.5">
+									<MediaThumb media={item.file} className="aspect-square w-full rounded" />
+									<p className="truncate px-1 text-xs text-muted-foreground">{mediaLabel(item.file)}</p>
+									<div className="flex items-center justify-end gap-0.5">
+										<Button
+											type="button"
+											size="icon"
+											variant="ghost"
+											className="size-7"
+											disabled={index === 0}
+											onClick={() => move(index, index - 1)}
+											aria-label={`Mover imagem ${index + 1} para cima`}
+										>
+											<ArrowUp className="size-3.5" />
+										</Button>
+										<Button
+											type="button"
+											size="icon"
+											variant="ghost"
+											className="size-7"
+											disabled={index === value.items.length - 1}
+											onClick={() => move(index, index + 1)}
+											aria-label={`Mover imagem ${index + 1} para baixo`}
+										>
+											<ArrowDown className="size-3.5" />
+										</Button>
+										<Button
+											type="button"
+											size="icon"
+											variant="destructive"
+											className="size-7"
+											onClick={() => update({ items: value.items.filter((_, i) => i !== index) })}
+											aria-label={`Remover imagem ${index + 1}`}
+										>
+											<Trash2 className="size-3.5" />
+										</Button>
+									</div>
+								</Card>
 							</li>
 						))}
 					</ul>

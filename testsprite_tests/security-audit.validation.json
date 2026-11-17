@@ -1,0 +1,312 @@
+{
+	"date": "2026-11-17",
+	"scope": "Revisão de código backend/frontend, dependências, migrations, permissões, autenticação, uploads, HTML, exportações e pagamentos; testes locais. Não foi realizado pentest na infraestrutura de produção.",
+	"fixes": [
+		{
+			"id": "SEC-01",
+			"severity": "alta",
+			"finding": "XSS em HTML editorial",
+			"correction": "Substituído o tokenizer por expressões regulares por sanitize-html com lista de permissões, decodificação de entidades antes de validar URLs, bloqueio de conteúdo ativo e limite de profundidade. Corrigida também a exceção provocada por tags com nomes de propriedades herdadas.",
+			"files": ["packages/contracts/src/html-sanitizer.ts", "packages/contracts/src/html-sanitizer.test.ts"]
+		},
+		{
+			"id": "SEC-02",
+			"severity": "alta",
+			"finding": "XSS na impressão de ingressos",
+			"correction": "Todos os dados interpolados no documento de impressão são escapados. Removido o script inline e isolado o window.opener.",
+			"files": ["apps/web/src/components/tickets/MyTickets.tsx", "apps/web/src/components/tickets/MyTickets.test.tsx"]
+		},
+		{
+			"id": "SEC-03",
+			"severity": "média",
+			"finding": "Redirecionamento externo após login",
+			"correction": "Recusados caminhos com barras invertidas, barras codificadas que viram //, controles e sequências inválidas; validação da origem resultante.",
+			"files": ["apps/web/src/lib/navigation.ts", "apps/web/src/lib/navigation.test.ts"]
+		},
+		{
+			"id": "SEC-04",
+			"severity": "alta",
+			"finding": "Requisições de alteração de origens não confiáveis",
+			"correction": "Validação global de Origin e Fetch Metadata antes dos handlers. Mantida a compatibilidade com clientes nativos, SSR e webhooks sem cabeçalhos de navegador.",
+			"files": ["apps/api/src/shared/http-security.ts", "apps/api/test/http-security.test.ts"]
+		},
+		{
+			"id": "SEC-05",
+			"severity": "média",
+			"finding": "Cache de respostas autenticadas",
+			"correction": "Respostas com credenciais ou Set-Cookie recebem private, no-store, inclusive quando um handler tenta definir cache público.",
+			"files": ["apps/api/src/shared/http-security.ts", "apps/api/test/http-security.test.ts"]
+		},
+		{
+			"id": "SEC-06",
+			"severity": "média",
+			"finding": "Segredos em URLs de logs e respostas de erro",
+			"correction": "Logs de requisição e o campo instance dos problemas RFC 7807 omitem query strings; redigidos cabeçalhos de credenciais. Isso protege, por exemplo, o segredo de webhook que chega na URL.",
+			"files": ["apps/api/src/app.ts", "apps/api/src/shared/errors.ts", "apps/api/test/http-security.test.ts"]
+		},
+		{
+			"id": "SEC-07",
+			"severity": "alta",
+			"finding": "Redefinição de senha com sessão comum",
+			"correction": "Após validar o token com Supabase Auth, exige-se que o subject corresponda ao usuário e que amr identifique recuperação. Sessões password, oauth e otp não podem usar esse atalho.",
+			"files": ["apps/api/src/infrastructure/supabase/auth-repository.ts", "apps/api/test/auth.test.ts"]
+		},
+		{
+			"id": "SEC-08",
+			"severity": "alta",
+			"finding": "Troca de e-mail verificado pelo perfil",
+			"correction": "A API recusa alterar o e-mail de login por campos comuns do perfil, impedindo que updateUserById administrativo contorne a confirmação do novo endereço. O formulário já exibia o campo desabilitado.",
+			"files": ["apps/api/src/application/auth/auth-service.ts", "apps/api/test/profile.test.ts"]
+		},
+		{
+			"id": "SEC-09",
+			"severity": "alta",
+			"finding": "Acesso direto ao banco fora das regras da API",
+			"correction": "Revogados acessos anon/authenticated a event_coupons, registration_tickets e event_pages reabertos por migrações posteriores. Preservados os acessos da API.",
+			"files": [
+				"supabase/migrations/202611170003_restore_api_security_boundaries.sql",
+				"supabase/tests/security_boundaries.sql"
+			]
+		},
+		{
+			"id": "SEC-10",
+			"severity": "alta",
+			"finding": "Uploads diretos sem inspeção da API",
+			"correction": "Removidas as políticas de escrita do navegador no bucket de mídia. Uploads passam pela autenticação, limites e validação de arquivos da API; leitura pública dos assets permanece disponível.",
+			"files": [
+				"supabase/migrations/202611170003_restore_api_security_boundaries.sql",
+				"supabase/tests/security_boundaries.sql"
+			]
+		},
+		{
+			"id": "SEC-11",
+			"severity": "média",
+			"finding": "Abuso do endpoint de upload",
+			"correction": "Limite persistente de 60 uploads por usuário por hora, verificado antes de ler e armazenar o arquivo, com resposta 429.",
+			"files": ["apps/api/src/routes/uploads.ts", "apps/api/test/upload-security.test.ts"]
+		},
+		{
+			"id": "SEC-12",
+			"severity": "alta",
+			"finding": "Consulta de métricas de outro organizador",
+			"correction": "A análise financeira valida a propriedade do evento antes de buscar métricas privadas de ingressos. IDs de eventos alheios retornam 404.",
+			"files": ["apps/api/src/application/finance/finance-service.ts", "apps/api/test/finance-security.test.ts"]
+		},
+		{
+			"id": "SEC-13",
+			"severity": "alta",
+			"finding": "Fórmulas injetadas em CSV",
+			"correction": "Exportações de participantes e finanças neutralizam campos de texto interpretáveis como fórmulas, preservando o escape de aspas, separadores e valores numéricos.",
+			"files": ["apps/api/src/application/security/csv.ts", "apps/api/test/csv-security.test.ts"]
+		},
+		{
+			"id": "SEC-14",
+			"severity": "alta",
+			"finding": "Saldo liberado após repasse de resultado incerto",
+			"correction": "Timeout, falha de persistência ou falha de auditoria após o envio não marcam mais o repasse como falho nem liberam o saldo reservado. A API informa o ID do repasse para conferência; a confirmação assinada do provedor determina o resultado.",
+			"files": ["apps/api/src/application/super-admin/super-admin-service.ts", "apps/api/test/payout-security.test.ts"]
+		},
+		{
+			"id": "SEC-15",
+			"severity": "alta",
+			"finding": "Configuração insegura em produção",
+			"correction": "A inicialização em produção rejeita pagamentos mock, segredo de cookies padrão/curto, WEB_URL sem HTTPS e falta das credenciais de pagamento/webhook.",
+			"files": ["apps/api/src/config/env.ts", "apps/api/test/env.test.ts"]
+		},
+		{
+			"id": "SEC-16",
+			"severity": "crítica/alta/média/baixa conforme advisory",
+			"finding": "Dependências com vulnerabilidades conhecidas",
+			"correction": "Atualizados Next/React, Fastify, Zod, jsPDF/AutoTable, Nodemailer, Vitest/Vite e transitivas afetadas. Overrides preservam versões corrigidas; o plugin de tipografia Tailwind foi corretamente classificado como dependência de desenvolvimento.",
+			"files": [
+				"package.json",
+				"apps/api/package.json",
+				"apps/web/package.json",
+				"packages/contracts/package.json",
+				"pnpm-lock.yaml"
+			]
+		}
+	],
+	"dependencyAudit": {
+		"before": {
+			"info": 0,
+			"low": 15,
+			"moderate": 90,
+			"high": 86,
+			"critical": 9
+		},
+		"afterAll": {
+			"info": 0,
+			"low": 0,
+			"moderate": 0,
+			"high": 2,
+			"critical": 0
+		},
+		"afterProduction": {
+			"info": 0,
+			"low": 0,
+			"moderate": 0,
+			"high": 0,
+			"critical": 0
+		},
+		"remaining": [
+			{
+				"package": "picomatch",
+				"severity": "high",
+				"advisory": "https://github.com/advisories/GHSA-fc5q-39xc-vjpf",
+				"patchedVersions": "<0.0.0",
+				"findings": [
+					{
+						"version": "4.0.7",
+						"paths": ["apps__api>vite>picomatch"]
+					},
+					{
+						"version": "2.3.2",
+						"paths": ["apps__web>@next/eslint-plugin-next>fast-glob>micromatch>picomatch"]
+					}
+				]
+			}
+		],
+		"remainingAssessment": "Um advisory do picomatch, contabilizado em duas versões de dependências de ferramentas. Não há versão corrigida publicada; os padrões usados são definidos pelo projeto. Não foi identificado caminho de entrada do usuário da aplicação para esses padrões. O alerta não foi suprimido."
+	},
+	"verification": {
+		"tests": {
+			"api": {
+				"passed": 599,
+				"files": 58
+			},
+			"web": {
+				"passed": 786,
+				"files": 188
+			},
+			"contracts": {
+				"passed": 166,
+				"files": 12
+			},
+			"totalPassed": 1551
+		},
+		"lint": "pnpm lint passou nos três pacotes",
+		"types": "TypeScript sem erros na API, contratos e frontend",
+		"build": {
+			"api": "tsc -p tsconfig.build.json --outDir /tmp/events-security-api-build passou",
+			"web": "Next.js 15.5.29: build de produção passou em cópia isolada, com API local de validação; sem sobrescrever .next do projeto",
+			"contracts": "pnpm --dir packages/contracts build passou"
+		},
+		"pdf": "Geração real com jsPDF/AutoTable: PDF válido de 4023 bytes",
+		"database": "Teste SQL falhou antes (authenticated com acesso direto a cupons) e passou após a migration; validado em transação e novamente depois da aplicação local",
+		"browser": {
+			"routes": [
+				{
+					"route": "/",
+					"status": 200,
+					"finalPath": "/"
+				},
+				{
+					"route": "/login",
+					"status": 200,
+					"finalPath": "/login"
+				},
+				{
+					"route": "/eventos",
+					"status": 200,
+					"finalPath": "/eventos"
+				},
+				{
+					"route": "/admin/dashboard",
+					"status": 200,
+					"finalPath": "/login"
+				},
+				{
+					"route": "/super-admin",
+					"status": 200,
+					"finalPath": "/login"
+				},
+				{
+					"route": "/auditoria-seguranca-nao-existe",
+					"status": 404,
+					"finalPath": "/auditoria-seguranca-nao-existe"
+				}
+			],
+			"csrfStatus": 403,
+			"anonymousSessionStatus": 401,
+			"sessionCacheControl": "private, no-store",
+			"pageErrors": []
+		},
+		"authorizationMatrix": "Todas as rotas /api/admin/**, /api/super-admin/** e /api/organizer/** registradas pelos oito plugins testados recusam usuário anônimo e participante sem privilégios (mais de 80 rotas).",
+		"coverage": {
+			"instrumentation": "Vitest atualizado de 3.2.7 para 4.1.12; o remapeamento V8 passou a ser baseado em AST. Os limiares não foram reduzidos e os relatórios não foram excluídos dos gates.",
+			"migrationReference": "https://v4.vitest.dev/guide/migration.html#v8-code-coverage-major-changes",
+			"contracts": {
+				"statements": 96.09,
+				"branches": 91.11,
+				"functions": 98.91,
+				"lines": 97.79,
+				"gate": "passed"
+			},
+			"api": {
+				"statements": 73.56,
+				"branches": 70.97,
+				"functions": 77,
+				"lines": 75.54,
+				"gate": "failed",
+				"unmet": ["statements >= 74.2", "branches >= 83.5"]
+			},
+			"web": {
+				"statements": 66.9,
+				"branches": 61.57,
+				"functions": 69.47,
+				"lines": 68.06,
+				"gate": "failed",
+				"unmet": ["statements >= 76.5", "branches >= 79.1", "functions >= 78.5", "lines >= 76.5"]
+			},
+			"pending": "Ampliar a cobertura para atender aos limiares existentes com a nova instrumentação. Testes funcionais aprovados não tornam o gate de cobertura aprovado."
+		}
+	},
+	"commands": [
+		"pnpm --dir apps/api exec vitest run --maxWorkers=2",
+		"pnpm --dir apps/web exec vitest run --coverage --maxWorkers=2",
+		"pnpm --dir packages/contracts exec vitest run --coverage",
+		"pnpm --dir apps/api exec vitest run --coverage --maxWorkers=2",
+		"pnpm lint",
+		"pnpm --dir apps/web exec tsc --noEmit",
+		"pnpm --dir packages/contracts build",
+		"pnpm --dir apps/api exec tsc -p tsconfig.build.json --outDir /tmp/events-security-api-build",
+		"next build (cópia isolada de apps/web; API_INTERNAL_URL apontando à API de validação em localhost)",
+		"pnpm audit --json",
+		"pnpm audit --prod --json",
+		"pnpm db:migrate",
+		"docker exec -i supabase_db_events-manager psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/security_boundaries.sql"
+	],
+	"rollout": {
+		"localMigrationApplied": "202611170003_restore_api_security_boundaries.sql",
+		"productionDeployed": false,
+		"requirements": [
+			"Node >= 22.21.0",
+			"Instalar dependências do lockfile e reiniciar frontend/API",
+			"Aplicar a nova migration nos demais ambientes",
+			"Produção requer WEB_URL HTTPS, COOKIE_SECRET exclusivo com pelo menos 32 caracteres e credenciais reais de pagamento/webhook"
+		],
+		"historicalLogs": "A correção de logs afeta novas requisições. Se os logs anteriores contiverem webhookSecret, avaliar a rotação coordenada desse segredo no provedor e na API."
+	},
+	"sources": [
+		"https://github.com/vercel/next.js/releases/tag/v15.5.29",
+		"https://supabase.com/docs/guides/auth/jwt-fields",
+		"https://github.com/advisories/GHSA-fc5q-39xc-vjpf"
+	],
+	"testFiles": [
+		"apps/api/test/auth.test.ts",
+		"apps/api/test/authorization-matrix.test.ts",
+		"apps/api/test/csv-security.test.ts",
+		"apps/api/test/env.test.ts",
+		"apps/api/test/finance-security.test.ts",
+		"apps/api/test/http-security.test.ts",
+		"apps/api/test/payout-security.test.ts",
+		"apps/api/test/profile.test.ts",
+		"apps/api/test/upload-security.test.ts",
+		"apps/web/src/components/tickets/MyTickets.test.tsx",
+		"apps/web/src/features/cms/components/NavigationTree.test.tsx",
+		"apps/web/src/lib/navigation.test.ts",
+		"packages/contracts/src/event-page.test.ts",
+		"packages/contracts/src/html-sanitizer.test.ts"
+	]
+}

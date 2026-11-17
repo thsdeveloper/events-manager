@@ -1,6 +1,10 @@
 'use client';
 
-import { FileText, ImageIcon, Loader2, Search, Trash2, Upload } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Spinner } from '@/components/ui/spinner';
+import { Label } from '@/components/ui/label';
+import { FileText, ImageIcon, Search, Trash2, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -28,14 +32,14 @@ interface MediaPickerProps {
 export function MediaThumb({ media, className }: { media: CmsMedia; className?: string }) {
 	if (!isImageMedia(media)) {
 		return (
-			<div className={cn('flex items-center justify-center bg-slate-100 text-slate-500', className)}>
+			<div className={cn('flex items-center justify-center bg-muted text-muted-foreground', className)}>
 				<FileText className="size-6" />
 			</div>
 		);
 	}
 
 	return (
-		<div className={cn('relative overflow-hidden bg-slate-100', className)}>
+		<div className={cn('relative overflow-hidden bg-muted', className)}>
 			<Image src={mediaUrl(media)} alt={mediaLabel(media)} fill sizes="240px" className="object-cover" unoptimized />
 		</div>
 	);
@@ -53,20 +57,20 @@ export function MediaPicker({
 	const lowerLabel = label.toLowerCase();
 
 	return (
-		<div className={cn('rounded-lg border border-slate-200 bg-white', compact ? 'p-3' : 'p-4')}>
+		<Card className={cn('', compact ? 'p-3' : 'p-4')}>
 			<div className="flex items-center gap-4">
 				{value ? (
 					<MediaThumb media={value} className="size-20 shrink-0 rounded-lg" />
 				) : (
-					<div className="flex size-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-slate-400">
+					<div className="flex size-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground">
 						<ImageIcon className="size-6" />
 					</div>
 				)}
 				<div className="min-w-0 flex-1">
-					<p className="truncate text-sm font-medium text-slate-900">
+					<p className="truncate text-sm font-medium text-foreground">
 						{value ? mediaLabel(value) : `Nenhuma ${lowerLabel} selecionada`}
 					</p>
-					{value && <p className="text-xs text-slate-500">{formatFileSize(value.filesize)}</p>}
+					{value && <p className="text-xs text-muted-foreground">{formatFileSize(value.filesize)}</p>}
 					<div className="mt-2 flex flex-wrap gap-2">
 						<Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
 							<Upload className="mr-2 size-4" />
@@ -76,8 +80,7 @@ export function MediaPicker({
 							<Button
 								type="button"
 								size="sm"
-								variant="ghost"
-								className="text-red-600 hover:bg-red-50 hover:text-red-700"
+								variant="destructive"
 								onClick={() => onChange(null)}
 								aria-label={`Remover ${lowerLabel}`}
 							>
@@ -97,7 +100,7 @@ export function MediaPicker({
 					setOpen(false);
 				}}
 			/>
-		</div>
+		</Card>
 	);
 }
 
@@ -162,10 +165,10 @@ function MediaLibraryGrid({ onSelect }: { onSelect: (media: CmsMedia) => void })
 	return (
 		<div className="space-y-3">
 			<div className="relative">
-				<Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-				<label htmlFor={searchId} className="sr-only">
+				<Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+				<Label htmlFor={searchId} className="sr-only">
 					Buscar na biblioteca
-				</label>
+				</Label>
 				<Input
 					id={searchId}
 					value={search}
@@ -178,34 +181,35 @@ function MediaLibraryGrid({ onSelect }: { onSelect: (media: CmsMedia) => void })
 				/>
 			</div>
 			{error && (
-				<p className="text-sm text-red-600" role="alert">
-					{error}
-				</p>
+				<Alert variant="destructive" className="text-sm" role="alert">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			)}
 			{loading && !result ? (
-				<div className="flex items-center justify-center py-12 text-slate-400">
-					<Loader2 className="size-6 animate-spin" />
+				<div className="flex items-center justify-center py-12 text-muted-foreground">
+					<Spinner className="size-6 animate-spin" />
 				</div>
 			) : result && result.data.length === 0 ? (
-				<p className="py-12 text-center text-sm text-slate-500">Nenhum arquivo encontrado.</p>
+				<p className="py-12 text-center text-sm text-muted-foreground">Nenhum arquivo encontrado.</p>
 			) : (
 				<ul className="grid max-h-[50vh] grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4 md:grid-cols-6">
 					{result?.data.map((media) => (
 						<li key={media.id}>
-							<button
+							<Button
+								variant="outline"
 								type="button"
 								onClick={() => onSelect(media)}
-								className="group flex w-full flex-col gap-1 rounded-lg border border-slate-200 p-1 text-left transition hover:border-violet-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+								className="h-auto whitespace-normal group flex w-full flex-col gap-1 p-1 text-left"
 							>
 								<MediaThumb media={media} className="aspect-square w-full rounded" />
-								<span className="truncate px-1 text-xs text-slate-600">{mediaLabel(media)}</span>
-							</button>
+								<span className="truncate px-1 text-xs text-muted-foreground">{mediaLabel(media)}</span>
+							</Button>
 						</li>
 					))}
 				</ul>
 			)}
 			{result && result.pagination.pageCount > 1 && (
-				<div className="flex items-center justify-between text-xs text-slate-500">
+				<div className="flex items-center justify-between text-xs text-muted-foreground">
 					<span>
 						Página {result.pagination.page} de {result.pagination.pageCount}
 					</span>
@@ -272,21 +276,21 @@ export function MediaUploadForm({
 
 	return (
 		<div className="space-y-3">
-			<label
+			<Label
 				htmlFor={inputId}
-				className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-600 transition hover:border-violet-400 hover:bg-violet-50/40"
+				className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted px-6 py-10 text-center text-sm text-muted-foreground transition hover:border-border hover:bg-accent/40"
 			>
 				{uploading ? (
-					<Loader2 className="size-6 animate-spin text-violet-600" />
+					<Spinner className="size-6 animate-spin text-primary" />
 				) : (
-					<Upload className="size-6 text-violet-600" />
+					<Upload className="size-6 text-primary" />
 				)}
-				<span className="font-medium text-slate-900">{uploading ? 'Enviando…' : 'Escolher arquivo'}</span>
-				<span className="text-xs text-slate-500">
+				<span className="font-medium text-foreground">{uploading ? 'Enviando…' : 'Escolher arquivo'}</span>
+				<span className="text-xs text-muted-foreground">
 					{allowDocuments ? 'PNG, JPEG, WebP, GIF ou PDF' : 'PNG, JPEG, WebP ou GIF'} até 20 MB
 				</span>
-			</label>
-			<input
+			</Label>
+			<Input
 				id={inputId}
 				type="file"
 				accept={accept}
@@ -295,9 +299,9 @@ export function MediaUploadForm({
 				disabled={uploading}
 			/>
 			{error && (
-				<p className="text-sm text-red-600" role="alert">
-					{error}
-				</p>
+				<Alert variant="destructive" className="text-sm" role="alert">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			)}
 		</div>
 	);

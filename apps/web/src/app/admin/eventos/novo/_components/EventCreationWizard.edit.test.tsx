@@ -18,12 +18,20 @@ beforeEach(() => {
 });
 
 const router = { push: vi.fn(), refresh: vi.fn() };
+vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 vi.mock('next/link', () => ({
 	default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
 }));
-vi.mock('next/dynamic', () => ({ default: () => () => null }));
-vi.mock('@/components/admin/AIImageGenerationModal', () => ({ AIImageGenerationModal: () => null }));
+// Exercise Next's real lazy loading for form steps; browser-only effects need a browser.
+vi.mock('next/dynamic', async () => {
+	const actual = await import('next/dist/shared/lib/app-dynamic');
+
+	return {
+		default: (loader: Parameters<typeof actual.default>[0], options?: Parameters<typeof actual.default>[1]) =>
+			options?.ssr === false ? () => null : actual.default(loader, options),
+	};
+});
 
 const CATEGORY_ID = '00000000-0000-4000-8000-000000000050';
 
@@ -52,19 +60,79 @@ function renderEdit() {
 		['/api/event-categories', () => jsonResponse({ data: [{ id: CATEGORY_ID, name: 'Religioso' }] })],
 		['/api/organizer/profile', () => jsonResponse({ id: 'org-1', name: 'ADEB', status: 'active' })],
 		['/api/events/e-1', () => jsonResponse({ ...event, title: 'Congresso de Jovens da ADEB' })],
+		['/api/ai/generate-cover', () => jsonResponse({ fileId: '00000000-0000-4000-8000-000000000099' })],
 	]);
 
 	return { fetchMock, ...renderWithProviders(<EventCreationWizard mode="edit" event={event} />) };
 }
 
 describe('EventCreationWizard em modo de edição', () => {
+	it('keeps visual as the last editing step and requires an explicit save after entering review', async () => {
+		const { fetchMock, user } = renderEdit();
+		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
+		const navigation = screen.getByRole('list');
+		expect(
+			within(navigation)
+				.getAllByRole('button')
+				.map((button) => button.textContent),
+		).toEqual([
+			expect.stringContaining('Básico'),
+			expect.stringContaining('Detalhes'),
+			expect.stringContaining('Agenda'),
+			expect.stringContaining('Local'),
+			expect.stringContaining('Ingressos'),
+			expect.stringContaining('Visual'),
+			expect.stringContaining('Revisão'),
+		]);
+		await user.click(screen.getByRole('button', { name: /^Visual:/ }));
+		await user.click(screen.getByRole('button', { name: 'Continuar' }));
+		await screen.findByRole('button', { name: 'Salvar alterações' });
+		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+		await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+		await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(1));
+	});
+
+	it('shows event dates in Agenda and leaves the sales period only on each ticket', async () => {
+		const { user } = renderEdit();
+		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
+		await user.click(screen.getByRole('button', { name: /^Agenda:/ }));
+		await screen.findByText('Início do evento');
+		expect(screen.queryByRole('button', { name: /Período de inscrições/ })).not.toBeInTheDocument();
+		expect(screen.getByText(/período de vendas.*ingresso/i)).toBeInTheDocument();
+	});
+
+	it('uses title, category, full description and tags when requesting a cover in the final editing step', async () => {
+		const { fetchMock, user } = renderEdit();
+		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
+		await user.click(screen.getByRole('button', { name: /^Visual:/ }));
+		await user.click(await screen.findByRole('button', { name: 'Gerar imagem com IA' }));
+		await waitFor(() =>
+			expect(fetchMock).toHaveBeenCalledWith('/api/ai/generate-cover', expect.objectContaining({ method: 'POST' })),
+		);
+		const call = fetchMock.mock.calls.find(([url]) => url === '/api/ai/generate-cover');
+		expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+			title: event.title,
+			categoryId: CATEGORY_ID,
+			tags: ['jovens'],
+			description: expect.stringContaining('Três dias'),
+		});
+		expect(await screen.findByRole('button', { name: 'Remover imagem' })).toBeInTheDocument();
+		expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+			'src',
+			'/api/media/00000000-0000-4000-8000-000000000099',
+		);
+		expect(fetchMock.mock.calls.some(([url, init]) => url === '/api/events/e-1' && init?.method === 'PATCH')).toBe(
+			false,
+		);
+	});
+
 	it('lets the organizer choose an unlisted event and saves that choice', async () => {
 		const { fetchMock, user } = renderEdit();
 		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
 		await user.click(screen.getByRole('button', { name: /^Ingressos:/ }));
-		await user.click(screen.getByRole('radio', { name: /Não listado/ }));
+		await user.click(await screen.findByRole('radio', { name: /Não listado/ }));
 		await user.click(screen.getByRole('button', { name: /^Revisão:/ }));
-		expect(screen.getByText('Não listado — acesso pelo link')).toBeInTheDocument();
+		expect(await screen.findByText('Não listado — acesso pelo link')).toBeInTheDocument();
 		await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
 		await waitFor(() =>
 			expect(fetchMock).toHaveBeenCalledWith('/api/events/e-1', expect.objectContaining({ method: 'PATCH' })),
@@ -105,7 +173,10 @@ describe('EventCreationWizard em modo de edição', () => {
 		await user.click(screen.getByRole('button', { name: /^Ingressos:/ }));
 
 		expect(screen.queryByRole('button', { name: /adicionar ingresso/i })).not.toBeInTheDocument();
-		expect(screen.getByRole('link', { name: /gerenciar ingressos/i })).toHaveAttribute('href', '/admin/eventos/e-1');
+		expect(await screen.findByRole('link', { name: /gerenciar ingressos/i })).toHaveAttribute(
+			'href',
+			'/admin/eventos/e-1',
+		);
 	});
 
 	it('saves the changes on the event itself and returns to its page', async () => {
@@ -206,6 +277,8 @@ describe('EventCreationWizard em modo de criação', () => {
 		expect(screen.getByRole('button', { name: /^Ingressos:/ })).toHaveAttribute('aria-current', 'step');
 		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
 		await user.click(screen.getByRole('button', { name: 'Continuar' }));
+		await screen.findByRole('heading', { name: 'Uma capa irresistível' });
+		await user.click(screen.getByRole('button', { name: 'Continuar' }));
 		await user.click(await screen.findByRole('button', { name: 'Criar evento' }));
 		await waitFor(() =>
 			expect(fetchMock).toHaveBeenCalledWith('/api/events', expect.objectContaining({ method: 'POST' })),
@@ -276,3 +349,150 @@ describe('EventCreationWizard em modo de criação', () => {
 		expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument();
 	});
 });
+
+describe('rascunhos e prévia', () => {
+	function setup(initialDraft?: { id: string; values: Record<string, unknown>; current_step: number }) {
+		const requests = mockFetch([
+			['/api/auth/me', () => jsonResponse({ user: { id: 'u-1', email: 'organizer@example.com' } })],
+			['/api/event-categories', () => jsonResponse({ data: [] })],
+			['/api/organizer/profile', () => jsonResponse({ organizer: { id: 'org-1', status: 'active' } })],
+			['/api/event-drafts', () => jsonResponse({ id: 'd-1', values: {}, current_step: 0 })],
+			['/api/event-drafts/d-1', () => jsonResponse({ id: 'd-1', values: {}, current_step: 0 })],
+		]);
+		const props = { mode: 'create' as const, initialDraft };
+
+		return { requests, ...renderWithProviders(<EventCreationWizard {...props} />) };
+	}
+	it('previews an incomplete event without publishing or navigating to checkout', async () => {
+		const { requests, user } = setup();
+		await user.type(await screen.findByRole('textbox', { name: /Nome do evento/ }), 'Encontro em preparação');
+		await user.click(screen.getByRole('button', { name: 'Prévia' }));
+		const preview = await screen.findByRole('dialog', { name: 'Prévia do evento' });
+		await waitFor(() => expect(screen.getByRole('heading', { name: 'Encontro em preparação' })).toBeInTheDocument(), {
+			timeout: 5000,
+		});
+		expect(within(preview).queryByRole('link', { name: /Comprar|Inscrever/ })).not.toBeInTheDocument();
+		expect(requests.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+	});
+	it('saves an incomplete draft separately from the event', async () => {
+		const { requests, user } = setup();
+		await user.type(await screen.findByRole('textbox', { name: /Nome do evento/ }), 'Ideia de evento');
+		await user.click(screen.getByRole('button', { name: 'Salvar rascunho' }));
+		await waitFor(() =>
+			expect(requests).toHaveBeenCalledWith('/api/event-drafts', expect.objectContaining({ method: 'POST' })),
+		);
+		const call = requests.mock.calls.find(([url, init]) => url === '/api/event-drafts' && init?.method === 'POST');
+		expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+			values: { title: 'Ideia de evento' },
+			current_step: 0,
+		});
+		expect(requests.mock.calls.some(([url, init]) => url === '/api/events' && init?.method === 'POST')).toBe(false);
+		expect(await screen.findByText('Rascunho salvo na sua conta.')).toBeInTheDocument();
+	});
+	it('resumes a server snapshot without overwriting it with another local draft', async () => {
+		window.localStorage.setItem('event-creation-wizard', JSON.stringify({ formData: { title: 'Outro rascunho' } }));
+		const { requests, user } = setup({ id: 'd-1', values: { title: 'Retomado da conta' }, current_step: 0 });
+		expect(await screen.findByDisplayValue('Retomado da conta')).toBeInTheDocument();
+		expect(screen.queryByDisplayValue('Outro rascunho')).not.toBeInTheDocument();
+		await user.click(screen.getByRole('button', { name: 'Salvar rascunho' }));
+		await waitFor(() =>
+			expect(requests).toHaveBeenCalledWith('/api/event-drafts/d-1', expect.objectContaining({ method: 'PUT' })),
+		);
+	});
+});
+
+it('allows a pending organizer to prepare a snapshot without creating an event', async () => {
+	const requests = mockFetch([
+		['/api/event-categories', () => jsonResponse({ data: [] })],
+		['/api/organizer/profile', () => jsonResponse({ organizer: { id: 'org-pending', status: 'pending' } })],
+		[
+			'/api/event-drafts/d-pending',
+			() => jsonResponse({ id: 'd-pending', values: { title: 'Preparado' }, current_step: 6 }),
+		],
+	]);
+	const { user } = renderWithProviders(
+		<EventCreationWizard
+			draftOnly
+			initialDraft={{ id: 'd-pending', values: { title: 'Preparado' }, current_step: 6 }}
+		/>,
+	);
+	expect(await screen.findByText(/A publicação fica disponível após a aprovação/)).toBeInTheDocument();
+	expect(screen.queryByRole('button', { name: 'Criar evento' })).not.toBeInTheDocument();
+	await user.click(screen.getByRole('button', { name: 'Salvar rascunho' }));
+	await waitFor(() =>
+		expect(requests).toHaveBeenCalledWith('/api/event-drafts/d-pending', expect.objectContaining({ method: 'PUT' })),
+	);
+	expect(requests.mock.calls.some(([url, init]) => url === '/api/events' && init?.method === 'POST')).toBe(false);
+});
+it('preserves local changes when snapshot saving fails and retries without losing edits', async () => {
+	let attempts = 0;
+	const requests = mockFetch([
+		['/api/event-categories', () => jsonResponse({ data: [] })],
+		['/api/organizer/profile', () => jsonResponse({ organizer: { id: 'org-1', status: 'active' } })],
+		[
+			'/api/event-drafts',
+			() =>
+				++attempts === 1
+					? new Response(JSON.stringify({ detail: 'Serviço indisponível' }), { status: 503 })
+					: jsonResponse({ id: 'd-retry', values: {}, current_step: 0 }),
+		],
+	]);
+	const { user } = renderWithProviders(<EventCreationWizard />);
+	await user.type(await screen.findByRole('textbox', { name: /Nome do evento/ }), 'Meu encontro');
+	await user.click(screen.getByRole('button', { name: 'Salvar rascunho' }));
+	expect(await screen.findByText('Serviço indisponível')).toBeInTheDocument();
+	expect(JSON.parse(window.localStorage.getItem('event-creation-wizard') ?? '{}').formData.title).toBe('Meu encontro');
+	await user.type(screen.getByRole('textbox', { name: /Nome do evento/ }), ' atualizado');
+	await user.click(screen.getByRole('button', { name: 'Tentar salvar novamente' }));
+	expect(await screen.findByText('Rascunho salvo na sua conta.')).toBeInTheDocument();
+	const call = requests.mock.calls
+		.filter(([url, init]) => url === '/api/event-drafts' && init?.method === 'POST')
+		.at(-1);
+	expect(JSON.parse(String(call?.[1]?.body)).values.title).toBe('Meu encontro atualizado');
+});
+
+it.each(['draft', 'cancelled', 'archived'] as const)(
+	'reports the returned %s state when retrying a converted snapshot requested as published',
+	async (status) => {
+		const draftId = '00000000-0000-4000-8000-000000000091';
+		const requests = mockFetch([
+			['/api/auth/me', () => jsonResponse({ user: { id: 'u-1', email: 'organizer@example.com' } })],
+			['/api/event-categories', () => jsonResponse({ data: [{ id: CATEGORY_ID, name: 'Religioso' }] })],
+			['/api/organizer/profile', () => jsonResponse({ organizer: { id: 'org-1', status: 'active' } })],
+			['/api/events', () => jsonResponse({ id: 'existing-event', status })],
+		]);
+		const { user } = renderWithProviders(
+			<>
+				<EventCreationWizard
+					initialDraft={{
+						id: draftId,
+						values: {
+							...event,
+							category_id: CATEGORY_ID,
+							cover_image: '',
+							tickets: [],
+							tags: [],
+							status: 'published',
+							publish_after_create: false,
+						},
+						current_step: 6,
+					}}
+				/>
+				<Toaster />
+			</>,
+		);
+		const create = await screen.findByRole('button', { name: 'Criar evento' });
+		await waitFor(() => expect(create).toBeEnabled());
+		await user.click(create);
+		const message =
+			status === 'draft'
+				? 'O evento foi salvo como rascunho. Publique quando estiver pronto.'
+				: status === 'cancelled'
+					? 'O evento existente está cancelado. Você pode revisá-lo no painel.'
+					: 'O evento existente está arquivado. Você pode revisá-lo no painel.';
+		expect(await screen.findByText(message)).toBeInTheDocument();
+		expect(screen.queryByText('Seu evento está no ar. Que tal compartilhar agora?')).not.toBeInTheDocument();
+		const call = requests.mock.calls.find(([url, init]) => url === '/api/events' && init?.method === 'POST');
+		expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({ draft_id: draftId, status: 'published' });
+	},
+);

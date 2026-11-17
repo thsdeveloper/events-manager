@@ -74,6 +74,7 @@ export interface PublicFeeTable {
 	payout_fee_fixed: number;
 	pix_fee_fixed: number;
 	platform_fee_percentage: number;
+	platform_fee_minimum?: number;
 }
 
 export interface ContentRepository {

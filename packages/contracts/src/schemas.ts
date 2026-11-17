@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { categoryIdSchema } from './category-id.js';
+import { eventTicketGroupDraftSchema, addTicketGroupIssues } from './ticket-groups.js';
 import { isValidCNPJ, isValidCPF, isValidDocument, isValidPhone, onlyDigits } from './br-documents.js';
 
 export const PASSWORD_MIN_LENGTH = 8;
@@ -162,34 +164,86 @@ const isoDateTimeSchema = z
 	.refine((value) => !Number.isNaN(new Date(value).getTime()), 'Data e hora inválidas')
 	.transform((value) => new Date(value).toISOString());
 
-const eventFieldsSchema = z.object({
-	title: z.string().trim().min(3),
-	slug: z
-		.string()
-		.trim()
-		.min(3)
-		.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-	description: z.string().nullable().optional(),
-	short_description: z.string().nullable().optional(),
-	cover_image: z.string().uuid().nullable().optional(),
-	category_id: z.string().uuid().nullable().optional(),
-	event_type: z.enum(['in_person', 'online', 'hybrid']).nullable().optional(),
-	start_date: isoDateTimeSchema,
-	end_date: isoDateTimeSchema,
-	location_name: z.string().nullable().optional(),
-	location_address: z.string().nullable().optional(),
-	latitude: z.coerce.number().min(-90).max(90).nullable().optional(),
-	longitude: z.coerce.number().min(-180).max(180).nullable().optional(),
-	online_url: httpUrlSchema.nullable().optional(),
-	max_attendees: z.number().int().positive().nullable().optional(),
-	registration_start: isoDateTimeSchema.nullable().optional(),
-	registration_end: isoDateTimeSchema.nullable().optional(),
-	is_free: z.boolean().optional(),
-	featured: z.boolean().optional(),
-	tags: z.array(z.string()).optional(),
-	status: eventStatusSchema.optional(),
-	visibility: eventVisibilitySchema.optional(),
+export const onlinePlatformSchema = z.enum(['custom', 'youtube', 'zoom', 'google_meet', 'microsoft_teams', 'vimeo']);
+export type OnlinePlatform = z.infer<typeof onlinePlatformSchema>;
+const platformHosts: Record<Exclude<OnlinePlatform, 'custom'>, string[]> = {
+	youtube: ['youtube.com', 'youtu.be'],
+	zoom: ['zoom.us', 'zoom.com'],
+	google_meet: ['meet.google.com'],
+	microsoft_teams: ['teams.microsoft.com', 'teams.live.com', 'teams.cloud.microsoft'],
+	vimeo: ['vimeo.com'],
+};
+/** Syntactic host validation only; no provider request or availability claim. */
+export function isOnlinePlatformUrl(platform: string | null | undefined, value: string) {
+	try {
+		const url = new URL(value);
+		if (!['http:', 'https:'].includes(url.protocol)) return false;
+		if (!platform || platform === 'custom') return true;
+		const hosts = platformHosts[platform as Exclude<OnlinePlatform, 'custom'>];
+		return Boolean(hosts?.some((host) => url.hostname === host || url.hostname.endsWith('.' + host)));
+	} catch {
+		return false;
+	}
+}
+const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
+export const eventMetadataSchema = z.object({
+	cover_image_alt: optionalText(240),
+	description_en: z.string().max(100000).nullable().optional(),
+	description_es: z.string().max(100000).nullable().optional(),
+	location_tbd: z.boolean().optional(),
+	show_map: z.boolean().optional(),
+	location_street: optionalText(200),
+	location_number: optionalText(30),
+	location_complement: optionalText(200),
+	location_neighborhood: optionalText(100),
+	location_city: optionalText(100),
+	location_state: optionalText(80),
+	location_postal_code: optionalText(20),
+	online_platform: onlinePlatformSchema.nullable().optional(),
 });
+function addOnlinePlatformIssue(
+	event: { online_url?: string | null; online_platform?: OnlinePlatform | null },
+	context: z.RefinementCtx,
+) {
+	if (event.online_url && !isOnlinePlatformUrl(event.online_platform, event.online_url)) {
+		context.addIssue({
+			code: 'custom',
+			path: ['online_url'],
+			message: 'O link não corresponde à plataforma selecionada.',
+		});
+	}
+}
+
+const eventFieldsSchema = z
+	.object({
+		title: z.string().trim().min(3),
+		slug: z
+			.string()
+			.trim()
+			.min(3)
+			.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+		description: z.string().nullable().optional(),
+		short_description: z.string().nullable().optional(),
+		cover_image: z.string().uuid().nullable().optional(),
+		category_id: categoryIdSchema.nullable().optional(),
+		event_type: z.enum(['in_person', 'online', 'hybrid']).nullable().optional(),
+		start_date: isoDateTimeSchema,
+		end_date: isoDateTimeSchema,
+		location_name: z.string().nullable().optional(),
+		location_address: z.string().nullable().optional(),
+		latitude: z.coerce.number().min(-90).max(90).nullable().optional(),
+		longitude: z.coerce.number().min(-180).max(180).nullable().optional(),
+		online_url: httpUrlSchema.nullable().optional(),
+		max_attendees: z.number().int().positive().nullable().optional(),
+		registration_start: z.never({ error: 'Defina o período de venda no ingresso/lote.' }).optional(),
+		registration_end: z.never({ error: 'Defina o período de venda no ingresso/lote.' }).optional(),
+		is_free: z.boolean().optional(),
+		featured: z.boolean().optional(),
+		tags: z.array(z.string()).optional(),
+		status: eventStatusSchema.optional(),
+		visibility: eventVisibilitySchema.optional(),
+	})
+	.merge(eventMetadataSchema);
 
 function addDateOrderIssue(
 	context: z.RefinementCtx,
@@ -222,11 +276,12 @@ function addCoordinatePairIssue(
 
 export const eventInputSchema = eventFieldsSchema.superRefine((event, context) => {
 	addDateOrderIssue(context, event.start_date, event.end_date, 'end_date');
-	addDateOrderIssue(context, event.registration_start, event.registration_end, 'registration_end');
 	addCoordinatePairIssue(context, event.latitude, event.longitude);
+	addOnlinePlatformIssue(event, context);
 });
 
 export const eventPatchSchema = eventFieldsSchema.partial().superRefine((event, context) => {
+	addOnlinePlatformIssue(event, context);
 	if ('latitude' in event || 'longitude' in event) {
 		addCoordinatePairIssue(context, event.latitude, event.longitude);
 	}
@@ -248,6 +303,8 @@ const ticketFieldsSchema = z.object({
 	allow_installments: z.boolean().optional(),
 	max_installments: z.number().int().min(2).max(12).nullable().optional(),
 	min_amount_for_installments: z.number().finite().nonnegative().nullable().optional(),
+	group_id: z.string().uuid().nullable().optional(),
+	admission_type: z.enum(['standard', 'half_price']).optional(),
 });
 
 function addTicketIssues(ticket: Omit<z.infer<typeof ticketFieldsSchema>, 'event_id'>, context: z.RefinementCtx) {
@@ -285,11 +342,16 @@ export const eventTicketDraftSchema = ticketFieldsSchema.omit({ event_id: true }
  * up front instead of leaving a half-built event behind.
  */
 export const eventCreateSchema = eventFieldsSchema
-	.extend({ tickets: z.array(eventTicketDraftSchema).default([]) })
+	.extend({
+		tickets: z.array(eventTicketDraftSchema).default([]),
+		ticket_groups: z.array(eventTicketGroupDraftSchema).max(100).optional(),
+		draft_id: z.string().uuid().optional(),
+	})
 	.superRefine((event, context) => {
 		addDateOrderIssue(context, event.start_date, event.end_date, 'end_date');
-		addDateOrderIssue(context, event.registration_start, event.registration_end, 'registration_end');
 		addCoordinatePairIssue(context, event.latitude, event.longitude);
+		addOnlinePlatformIssue(event, context);
+		addTicketGroupIssues(event.ticket_groups ?? [], event.tickets, context);
 		if (event.is_free === false && event.tickets.length === 0) {
 			context.addIssue({
 				code: 'custom',
@@ -411,7 +473,7 @@ const organizerSignupBase = {
 		.transform((value) => value || null)
 		.pipe(httpUrlSchema.nullable()),
 	accept_terms: z.literal(true, {
-		errorMap: () => ({ message: 'Confirme que as informações são verdadeiras para continuar.' }),
+		error: () => ({ message: 'Confirme que as informações são verdadeiras para continuar.' }),
 	}),
 };
 

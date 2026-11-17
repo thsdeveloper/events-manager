@@ -1,0 +1,146 @@
+{
+  "date": "2026-11-17",
+  "scope": [
+    "Sidebar com animação, recolhimento em ícones, tooltips e preferência persistida",
+    "Cabeçalhos unificados no admin, super admin e CMS",
+    "Análises ocupando toda a largura disponível",
+    "Recorte quadrado e ciclo de vida da logo",
+    "React Query global e cache privado isolado por usuário e organização",
+    "Tabelas administrativas com TanStack Table e primitivas shadcn",
+    "Carregamento sob demanda de etapas, editores, recortadores e gráficos; fonte local otimizada; autenticação deduplicada por requisição"
+  ],
+  "commands": [
+    {
+      "command": "pnpm --dir apps/web test --maxWorkers=3",
+      "status": "passed",
+      "tests": 707,
+      "note": "A suíte final com os três cenários adicionais de upload também passou via test:coverage."
+    },
+    {
+      "command": "pnpm --dir apps/web test:coverage --maxWorkers=3",
+      "status": "passed",
+      "tests": 710,
+      "files": 168,
+      "coverage": {
+        "lines": 71.84,
+        "statements": 71.84,
+        "branches": 77.94,
+        "functions": 77.05
+      }
+    },
+    {
+      "command": "pnpm --dir apps/web lint",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm exec next build",
+      "cwd": "/tmp/events-admin-build/apps/web",
+      "status": "passed",
+      "note": "Cópia isolada do frontend atual para preservar o servidor de desenvolvimento."
+    },
+    {
+      "command": "pnpm --dir apps/api test --maxWorkers=3",
+      "status": "passed",
+      "tests": 509
+    },
+    {
+      "command": "pnpm --dir apps/api test:coverage --maxWorkers=3",
+      "status": "passed",
+      "tests": 509,
+      "coverage": {
+        "lines": 72.51,
+        "statements": 72.51,
+        "branches": 83.18,
+        "functions": 75.85
+      }
+    },
+    {
+      "command": "pnpm --dir apps/api lint",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --dir apps/api exec tsc -p tsconfig.build.json --outDir /tmp/events-improvements-api-dist",
+      "status": "passed"
+    }
+  ],
+  "firstLoadJsKB": {
+    "/admin/eventos/novo": {
+      "before": 426,
+      "after": 220
+    },
+    "/admin/analises": {
+      "before": 300,
+      "after": 199
+    },
+    "/admin/configuracoes": {
+      "before": 164,
+      "after": 157
+    },
+    "/admin/participantes": {
+      "before": 258,
+      "after": 267
+    }
+  },
+  "performanceNote": "Tamanho inicial de JavaScript reportado pelo build Next.js, não uma medição de tempo de carregamento. Bibliotecas adiadas são carregadas ao usar a etapa ou aproximar o gráfico da área visível.",
+  "testsTouched": [
+    "apps/web/src/components/DeferredContent.test.tsx",
+    "apps/web/src/app/admin/participantes/_lib/useParticipants.test.tsx",
+    "apps/web/src/app/admin/eventos/novo/page.test.tsx",
+    "apps/web/src/app/admin/eventos/novo/_components/EventCreationWizard.edit.test.tsx",
+    "apps/web/src/components/admin/AdminSidebar.test.tsx",
+    "apps/web/src/components/ui/data-table.test.tsx",
+    "apps/web/src/components/ui/image-cropper-dialog.test.tsx",
+    "apps/web/src/components/design-system/molecules/PageHeader.test.tsx",
+    "apps/web/src/features/organizer-settings/components/OrganizerLogoField.test.tsx",
+    "apps/web/src/features/event-page/builder/sections/fields.test.tsx",
+    "apps/web/src/features/checkout/api/usePaymentMethods.test.tsx",
+    "apps/api/test/organizer-logo-routes.test.ts",
+    "apps/api/test/organizer-logo.test.ts",
+    "testsprite_tests/admin-workspace.browser.js"
+  ],
+  "browser": {
+    "workspace": {
+      "content": {
+        "width": 1808,
+        "parent": 1808
+      },
+      "expanded": 255,
+      "collapsed": 47,
+      "animation": "sidebar-icon-hover",
+      "mobile": true,
+      "errors": []
+    },
+    "upload": {
+      "first": {
+        "width": 512,
+        "height": 512
+      },
+      "second": {
+        "width": 512,
+        "height": 512
+      },
+      "replacementDeletedOldRecord": 404,
+      "replacementDeletedOldObject": 400,
+      "removalDeletedObject": 400
+    },
+    "extra": {
+      "superAdminTooltip": true,
+      "wizardLoaded": true,
+      "font": "inter, \"inter Fallback\", Inter, sans-serif",
+      "preloadedFont": 1,
+      "errors": []
+    },
+    "deferredChart": true
+  },
+  "screenshots": [
+    "testsprite_tests/tmp/admin-improvements/analytics-desktop.png",
+    "testsprite_tests/tmp/admin-improvements/avatar-saved.png",
+    "testsprite_tests/tmp/admin-improvements/event-wizard.png",
+    "testsprite_tests/tmp/admin-improvements/sidebar-collapsed.png",
+    "testsprite_tests/tmp/admin-improvements/sidebar-mobile.png",
+    "testsprite_tests/tmp/admin-improvements/square-crop.png",
+    "testsprite_tests/tmp/admin-improvements/super-admin.png"
+  ],
+  "databaseMigrations": false,
+  "environmentChanges": false
+}

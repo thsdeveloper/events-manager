@@ -54,6 +54,24 @@ describe('newPasswordSchema', () => {
 });
 
 describe('eventCreateSchema', () => {
+	it.each(['50000000-0000-0000-0000-000000000001', '550e8400-e29b-41d4-a716-446655440000'])(
+		'preserves a catalog category identifier on creation and editing: %s',
+		(category_id) => {
+			expect(eventCreateSchema.parse({ ...validEvent, category_id, is_free: true }).category_id).toBe(category_id);
+			expect(eventPatchSchema.parse({ category_id }).category_id).toBe(category_id);
+		},
+	);
+
+	it.each(['tecnologia', '', '50000000-0000-0000-0000-00000000000z'])(
+		'rejects malformed category identifiers on creation and editing: %s',
+		(category_id) => {
+			expect(issuePaths(eventCreateSchema.safeParse({ ...validEvent, category_id, is_free: true }))).toContain(
+				'category_id',
+			);
+			expect(issuePaths(eventPatchSchema.safeParse({ category_id }))).toContain('category_id');
+		},
+	);
+
 	it('accepts a free event without tickets', () => {
 		const result = eventCreateSchema.safeParse({ ...validEvent, is_free: true });
 
@@ -290,5 +308,12 @@ describe('tickets created with an event', () => {
 		const ticket = { ...validTicket, ...patch };
 		const result = eventCreateSchema.safeParse({ ...validEvent, is_free: false, tickets: [ticket] });
 		expect(issuePaths(result)).toContain('tickets.0.' + field);
+	});
+});
+
+describe('one sales period per ticket', () => {
+	it.each(['registration_start', 'registration_end'])('rejects the retired event-level %s setting', (field) => {
+		expect(eventCreateSchema.safeParse({ ...validEvent, [field]: '2026-09-01T12:00:00Z' }).success).toBe(false);
+		expect(eventPatchSchema.safeParse({ [field]: '2026-09-01T12:00:00Z' }).success).toBe(false);
 	});
 });

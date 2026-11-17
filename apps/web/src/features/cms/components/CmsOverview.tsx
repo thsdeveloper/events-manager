@@ -1,9 +1,10 @@
+import { Card } from '@/components/ui/card';
 import { FileText, FormInput, Images, Inbox, ListTree, Newspaper, Route } from 'lucide-react';
 import Link from 'next/link';
 import { statusLabel } from '../lib/status';
 import type { CmsOverview as CmsOverviewData } from '../types';
 
-function Card({
+function OverviewMetricCard({
 	title,
 	href,
 	icon: Icon,
@@ -17,18 +18,17 @@ function Card({
 	detail?: React.ReactNode;
 }) {
 	return (
-		<Link
-			href={href}
-			className="flex flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-violet-300 hover:shadow"
-		>
-			<div className="flex items-center justify-between">
-				<p className="text-sm font-medium text-slate-600">{title}</p>
-				<span className="flex size-9 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
-					<Icon className="size-4" />
-				</span>
-			</div>
-			<p className="mt-3 text-3xl font-bold tracking-tight">{value}</p>
-			{detail && <div className="mt-2 text-xs text-slate-500">{detail}</div>}
+		<Link href={href} className="block">
+			<Card className="h-full p-5 transition-colors hover:bg-accent/40">
+				<div className="flex items-center justify-between">
+					<p className="text-sm font-medium text-muted-foreground">{title}</p>
+					<span className="flex size-9 items-center justify-center rounded-lg bg-accent text-primary">
+						<Icon className="size-4" />
+					</span>
+				</div>
+				<p className="mt-3 text-3xl font-bold tracking-tight">{value}</p>
+				{detail && <div className="mt-2 text-xs text-muted-foreground">{detail}</div>}
+			</Card>
 		</Link>
 	);
 }
@@ -51,49 +51,49 @@ export function CmsOverview({ data }: { data: CmsOverviewData }) {
 
 	return (
 		<section aria-label="Resumo do conteúdo" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<Card
+			<OverviewMetricCard
 				title="Páginas"
 				href="/super-admin/conteudo/paginas"
 				icon={FileText}
 				value={pages}
 				detail={statusBreakdown(data.pages)}
 			/>
-			<Card
+			<OverviewMetricCard
 				title="Posts do blog"
 				href="/super-admin/conteudo/blog"
 				icon={Newspaper}
 				value={posts}
 				detail={statusBreakdown(data.posts)}
 			/>
-			<Card
+			<OverviewMetricCard
 				title="Formulários"
 				href="/super-admin/conteudo/formularios"
 				icon={FormInput}
 				value={data.forms}
 				detail={`${data.submissions} ${data.submissions === 1 ? 'resposta recebida' : 'respostas recebidas'}`}
 			/>
-			<Card
+			<OverviewMetricCard
 				title="Respostas"
 				href="/super-admin/conteudo/formularios"
 				icon={Inbox}
 				value={data.submissions}
 				detail="Enviadas pelos formulários do site"
 			/>
-			<Card
+			<OverviewMetricCard
 				title="Menus"
 				href="/super-admin/conteudo/menus"
 				icon={ListTree}
 				value={data.navigations}
 				detail="Navegação principal, rodapé e outros"
 			/>
-			<Card
+			<OverviewMetricCard
 				title="Redirecionamentos"
 				href="/super-admin/conteudo/redirecionamentos"
 				icon={Route}
 				value={data.redirects}
 				detail="URLs antigas apontando para novas"
 			/>
-			<Card
+			<OverviewMetricCard
 				title="Arquivos de mídia"
 				href="/super-admin/conteudo/midia"
 				icon={Images}

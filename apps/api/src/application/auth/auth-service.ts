@@ -262,7 +262,12 @@ export class AuthService {
 	 * devolver erro para uma foto que já foi atualizada.
 	 */
 	async updateProfile(user: AuthIdentity, input: UserProfileInput, context: ProfileUpdateContext = {}) {
-		const { current_password: currentPassword, ...profileInput } = input;
+		const { current_password: currentPassword, email, ...profileInput } = input;
+		// Email is a verified identity, not editable profile text. Admin updates
+		// bypass the provider's confirmation flow and must never accept this field.
+		if (email !== undefined && email !== user.email) {
+			throw new ApiError('O e-mail de acesso não pode ser alterado pelo perfil.', 422, 'EMAIL_CHANGE_NOT_ALLOWED');
+		}
 		// Um telefone novo ainda não foi confirmado; só confirmPhoneVerification marca.
 		if (profileInput.phone !== undefined) profileInput.phone_verified_at = null;
 		const documentChange = await this.authorizeDocumentChange(user, profileInput.document, currentPassword);

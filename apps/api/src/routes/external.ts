@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { EventCoverService, PlacesService } from '../application/external/external-service.js';
+import { eventAIContextSchema } from '@events-manager/contracts';
+import { OpenAIDescriptionGenerator } from '../infrastructure/external/openai-description-generator.js';
+import { EventDescriptionService, EventCoverService, PlacesService } from '../application/external/external-service.js';
 import { MediaService } from '../application/media/media-service.js';
 import { EnforceRateLimit, RateLimitExceeded } from '../application/security/rate-limit.js';
 import { SupabaseRateLimitRepository } from '../infrastructure/supabase/rate-limit-repository.js';
@@ -48,28 +50,38 @@ export async function externalRoutes(app: FastifyInstance, options: { env: ApiEn
 		return places.reverse(lat, lon);
 	});
 
-	app.post('/api/ai/generate-cover', async (request) => {
-		const context = await requireOrganizer(request, auth);
-		if (!env.OPENAI_API_KEY) throw new ApiError('OpenAI não está configurada.', 503, 'OPENAI_NOT_CONFIGURED');
-		const input = z
-			.object({
-				title: z.string().trim().min(1),
-				short_description: z.string().optional(),
-				description: z.string().optional(),
-				categoryId: z.string().uuid().optional(),
-			})
-			.parse(request.body);
-		const covers = new EventCoverService(
-			new SupabaseEventCategoryReader(clients),
-			new OpenAICoverGenerator(env.OPENAI_API_KEY),
-			new MediaService(new SupabaseMediaRepository(clients)),
-		);
-		return covers.generate({
-			categoryId: input.categoryId,
-			description: input.description,
-			shortDescription: input.short_description,
-			title: input.title,
-			userId: context.user.id,
+	for (const action of ['generate-cover', 'generate-description'] as const) {
+		app.post('/api/ai/' + action, async (request) => {
+			const context = await requireOrganizer(request, auth);
+			const input = eventAIContextSchema.parse(request.body);
+			if (!env.OPENAI_API_KEY) throw new ApiError('OpenAI não está configurada.', 503, 'OPENAI_NOT_CONFIGURED');
+			try {
+				await rateLimit.execute({
+					scope: 'event-ai-' + action,
+					subject: context.user.id,
+					limit: action === 'generate-cover' ? 6 : 20,
+					windowSeconds: 3600,
+				});
+			} catch (error) {
+				if (error instanceof RateLimitExceeded)
+					throw new ApiError(
+						'Limite de gerações atingido. Tente mais tarde ou preencha manualmente.',
+						429,
+						'RATE_LIMITED',
+					);
+				throw error;
+			}
+			const categories = new SupabaseEventCategoryReader(clients);
+			if (action === 'generate-description') {
+				return new EventDescriptionService(categories, new OpenAIDescriptionGenerator(env.OPENAI_API_KEY)).generate(
+					input,
+				);
+			}
+			return new EventCoverService(
+				categories,
+				new OpenAICoverGenerator(env.OPENAI_API_KEY),
+				new MediaService(new SupabaseMediaRepository(clients)),
+			).generate({ ...input, userId: context.user.id });
 		});
-	});
+	}
 }

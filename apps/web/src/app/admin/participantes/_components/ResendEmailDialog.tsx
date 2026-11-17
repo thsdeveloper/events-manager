@@ -1,5 +1,6 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import { useState } from 'react';
 import { Mail, AlertTriangle } from 'lucide-react';
 import {
@@ -91,8 +92,8 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 			<DialogContent className="max-w-md">
 				<DialogHeader>
 					<div className="flex items-center gap-3">
-						<div className="flex size-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/20">
-							<Mail className="size-5 text-blue-600 dark:text-blue-400" />
+						<div className="flex size-10 items-center justify-center rounded-full bg-muted ">
+							<Mail className="size-5 text-muted-foreground " />
 						</div>
 						<div>
 							<DialogTitle>{participant.is_buyer ? 'Reenviar Recibo da Compra' : 'Reenviar Ingresso'}</DialogTitle>
@@ -106,62 +107,60 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 				</DialogHeader>
 
 				<div className="space-y-4">
-					<div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-						<h4 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Detalhes do Email</h4>
+					<Card className="p-4">
+						<h4 className="mb-3 text-sm font-semibold text-foreground">Detalhes do Email</h4>
 						<dl className="space-y-2 text-sm">
 							<div className="flex justify-between">
-								<dt className="text-gray-600 dark:text-gray-400">Destinatário:</dt>
-								<dd className="font-medium text-gray-900 dark:text-white">{recipientName ?? '—'}</dd>
+								<dt className="text-muted-foreground dark:text-muted-foreground">Destinatário:</dt>
+								<dd className="font-medium text-foreground">{recipientName ?? '—'}</dd>
 							</div>
 							<div className="flex justify-between">
-								<dt className="text-gray-600 dark:text-gray-400">Email:</dt>
-								<dd className="font-medium text-gray-900 dark:text-white">{recipientEmail ?? '—'}</dd>
+								<dt className="text-muted-foreground dark:text-muted-foreground">Email:</dt>
+								<dd className="font-medium text-foreground">{recipientEmail ?? '—'}</dd>
 							</div>
 							<div className="flex justify-between">
-								<dt className="text-gray-600 dark:text-gray-400">Evento:</dt>
-								<dd className="font-medium text-gray-900 dark:text-white">{participant.event.title}</dd>
+								<dt className="text-muted-foreground dark:text-muted-foreground">Evento:</dt>
+								<dd className="font-medium text-foreground">{participant.event.title}</dd>
 							</div>
 							<div className="flex justify-between">
-								<dt className="text-gray-600 dark:text-gray-400">Código do Ingresso:</dt>
-								<dd className="font-mono text-xs font-medium text-gray-900 dark:text-white">
-									{participant.ticket_code}
-								</dd>
+								<dt className="text-muted-foreground dark:text-muted-foreground">Código do Ingresso:</dt>
+								<dd className="font-mono text-xs font-medium text-foreground">{participant.ticket_code}</dd>
 							</div>
 						</dl>
-					</div>
+					</Card>
 
 					{isUnnamed && (
-						<div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+						<Card className="p-4">
 							<div className="flex items-start gap-2">
-								<AlertTriangle className="mt-0.5 size-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+								<AlertTriangle className="mt-0.5 size-4 flex-shrink-0 text-muted-foreground " />
 								<div>
-									<p className="text-sm font-medium text-amber-900 dark:text-amber-200">Sem participante</p>
-									<p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+									<p className="text-sm font-medium text-muted-foreground ">Sem participante</p>
+									<p className="mt-1 text-sm text-muted-foreground ">
 										Informe quem vai usar este ingresso antes de reenviar.
 									</p>
 								</div>
 							</div>
-						</div>
+						</Card>
 					)}
 
 					{isCancelled && (
-						<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+						<Card className="p-4">
 							<div className="flex items-start gap-2">
-								<AlertTriangle className="mt-0.5 size-4 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
+								<AlertTriangle className="mt-0.5 size-4 flex-shrink-0 text-muted-foreground " />
 								<div>
-									<p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">Pedido Cancelado</p>
-									<p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+									<p className="text-sm font-medium text-muted-foreground ">Pedido Cancelado</p>
+									<p className="mt-1 text-sm text-muted-foreground ">
 										Este pedido foi cancelado. O email será enviado normalmente, mas o participante não poderá fazer
 										check-in.
 									</p>
 								</div>
 							</div>
-						</div>
+						</Card>
 					)}
 
-					<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-						<h4 className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-200">O email incluirá:</h4>
-						<ul className="list-inside list-disc space-y-1 text-sm text-blue-700 dark:text-blue-300">
+					<Card className="p-4">
+						<h4 className="mb-2 text-sm font-semibold text-muted-foreground ">O email incluirá:</h4>
+						<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground ">
 							{participant.is_buyer ? (
 								<>
 									<li>Todos os ingressos do pedido e seus participantes</li>
@@ -176,7 +175,7 @@ export function ResendEmailDialog({ open, onOpenChange, participant, onSuccess }
 								</>
 							)}
 						</ul>
-					</div>
+					</Card>
 				</div>
 
 				<DialogFooter>

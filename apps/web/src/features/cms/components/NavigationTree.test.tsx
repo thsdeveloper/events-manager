@@ -11,8 +11,8 @@ vi.mock('../api/actions', () => ({ revalidateCmsContent: revalidate }));
 
 afterEach(() => vi.unstubAllGlobals());
 
-const parentId = '30000000-0000-0000-0000-000000000001';
-const siblingId = '30000000-0000-0000-0000-000000000002';
+const parentId = '30000000-0000-4000-8000-000000000001';
+const siblingId = '30000000-0000-4000-8000-000000000002';
 
 const navigation: CmsNavigationDetail = {
 	id: 'main',

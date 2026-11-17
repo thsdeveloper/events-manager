@@ -13,6 +13,7 @@ interface StepNavigationProps {
 	isLoadingOrganizer?: boolean;
 	onBack: () => void;
 	onNext: () => void;
+	onConfirm: () => void;
 	disableNext?: boolean;
 }
 
@@ -25,14 +26,15 @@ export function StepNavigation({
 	isLoadingOrganizer,
 	onBack,
 	onNext,
+	onConfirm,
 	disableNext,
 }: StepNavigationProps) {
 	const isProcessing = isSubmitting || !!isLoadingOrganizer;
 	const nextDisabled = disableNext || isProcessing;
 
-	// lg:left-72 offsets the bar by the sidebar width so it lines up with the content column.
+	// Keep the actions aligned with the content when the sidebar is expanded or collapsed.
 	return (
-		<div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/85 lg:left-72">
+		<div className="sticky bottom-0 z-30 -mx-4 border-t bg-background p-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
 			<div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
 				<Button type="button" variant="outline" size="sm" onClick={onBack} disabled={isFirstStep || isProcessing}>
 					Voltar
@@ -44,11 +46,11 @@ export function StepNavigation({
 						</Button>
 					)}
 					{isLastStep ? (
-						<Button type="submit" size="sm" disabled={nextDisabled}>
+						<Button key="confirm" type="button" size="sm" onClick={onConfirm} disabled={nextDisabled}>
 							{isSubmitting ? 'Salvando...' : submitLabel}
 						</Button>
 					) : (
-						<Button type="button" size="sm" onClick={onNext} disabled={nextDisabled}>
+						<Button key="continue" type="button" size="sm" onClick={onNext} disabled={nextDisabled}>
 							Continuar
 						</Button>
 					)}

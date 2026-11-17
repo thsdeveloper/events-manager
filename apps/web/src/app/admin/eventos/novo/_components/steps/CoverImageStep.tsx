@@ -1,10 +1,13 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import { forwardRef } from 'react';
 import { Wand2 } from 'lucide-react';
 import ImageUpload from '@/components/admin/ImageUpload';
 import type { EventWizardFormValues } from '../types';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,22 +22,16 @@ interface CoverImageStepProps {
 
 export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 	(
-		{
-			onChangeCoverImage,
-			onCoverFileSelected,
-			pendingPreviewUrl,
-			onGenerateCoverImage,
-			isGeneratingImage,
-			aiError,
-		},
+		{ onChangeCoverImage, onCoverFileSelected, pendingPreviewUrl, onGenerateCoverImage, isGeneratingImage, aiError },
 		ref,
 	) => {
 		const form = useFormContext<EventWizardFormValues>();
 		const { toast } = useToast();
+		const cover = useWatch({ control: form.control, name: 'cover_image' });
 
 		return (
 			<div ref={ref} className="space-y-8">
-				<div className="rounded-lg border bg-card p-6 shadow-sm">
+				<Card className="p-6">
 					<div className="flex flex-col gap-2">
 						<div className="flex items-start justify-between gap-4">
 							<div>
@@ -50,8 +47,8 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 								uploadOnSelect={false}
 								onFileSelected={onCoverFileSelected}
 								pendingPreviewUrl={pendingPreviewUrl}
-								value={form.watch('cover_image')}
-								onChange={value => {
+								value={cover}
+								onChange={(value) => {
 									onChangeCoverImage(value);
 									if (value) {
 										form.setValue('cover_image', value, { shouldValidate: true });
@@ -70,6 +67,27 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 								description="Recomendado 1200x630px. Aceita JPG, PNG ou GIF até 5MB. A imagem só é enviada ao servidor quando você finalizar o cadastro do evento."
 							/>
 
+							<FormField
+								control={form.control}
+								name="cover_image_alt"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Texto alternativo da capa</FormLabel>
+										<FormControl>
+											<Input
+												{...field}
+												value={field.value ?? ''}
+												maxLength={240}
+												placeholder="Descreva o conteúdo da imagem"
+											/>
+										</FormControl>
+										<p className="text-xs text-muted-foreground">
+											Ajuda quem usa leitor de tela a entender a imagem. Opcional.
+										</p>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 							{form.formState.errors.cover_image?.message && (
 								<p className="text-sm font-medium text-destructive">{form.formState.errors.cover_image.message}</p>
 							)}
@@ -89,24 +107,29 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 										Geração inteligente
 									</p>
 									<p className="mt-1 text-xs text-muted-foreground">
-										Geramos uma capa automaticamente com base no título e na descrição do evento. Ajuste depois se quiser.
+										Use o nome, a categoria, a descrição completa e as tags para criar uma capa que combine com seu
+										evento.
 									</p>
 									<Button
 										type="button"
 										variant="outline"
 										size="sm"
-										className="mt-3 border-dashed"
+										className="mt-3"
 										onClick={onGenerateCoverImage}
 										disabled={isGeneratingImage}
 									>
 										{isGeneratingImage ? 'Gerando...' : 'Gerar imagem com IA'}
 									</Button>
-									{aiError && <p className="mt-2 text-xs text-destructive">{aiError}</p>}
+									{aiError && (
+										<p role="alert" className="mt-2 text-xs text-destructive">
+											{aiError}
+										</p>
+									)}
 								</div>
 							</div>
 						</div>
 					</div>
-				</div>
+				</Card>
 			</div>
 		);
 	},

@@ -10,6 +10,7 @@ import { OverlayFact } from '../molecules/OverlayFact';
 export interface EventHeroProps {
 	category: Pick<EventCategory, 'name' | 'icon' | 'color'> | null;
 	coverImage?: string | MediaFile | null;
+	coverImageAlt?: string | null;
 	dateLabel: string;
 	formatLabel: string;
 	isFree?: boolean;
@@ -22,11 +23,20 @@ export interface EventHeroProps {
  * `Container` do restante da página, para que o título comece exatamente na
  * coluna dos cards abaixo dele.
  */
-export function EventHero({ category, coverImage, dateLabel, formatLabel, isFree, timeLabel, title }: EventHeroProps) {
+export function EventHero({
+	category,
+	coverImage,
+	coverImageAlt,
+	dateLabel,
+	formatLabel,
+	isFree,
+	timeLabel,
+	title,
+}: EventHeroProps) {
 	return (
 		<div className="relative h-[420px] overflow-hidden md:h-[520px]">
 			{coverImage ? (
-				<MediaImage uuid={coverImage} alt={title} fill priority className="object-cover" />
+				<MediaImage uuid={coverImage} alt={coverImageAlt?.trim() || title} fill priority className="object-cover" />
 			) : (
 				<div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary via-indigo-600 to-blue-600">
 					<Calendar className="size-32 text-white opacity-30" aria-hidden />
@@ -53,11 +63,7 @@ export function EventHero({ category, coverImage, dateLabel, formatLabel, isFree
 						)}
 					</div>
 
-					<Heading
-						as="h1"
-						level="h1"
-						className="text-white drop-shadow-lg sm:text-4xl md:text-5xl md:font-bold"
-					>
+					<Heading as="h1" level="h1" className="text-white drop-shadow-lg sm:text-4xl md:text-5xl md:font-bold">
 						{title}
 					</Heading>
 

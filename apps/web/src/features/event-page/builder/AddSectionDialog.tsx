@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import {
 	EVENT_PAGE_SECTION_META,
 	EVENT_PAGE_SECTION_TYPES,
@@ -33,16 +34,14 @@ export function AddSectionDialog({ open, sections, onPick, onOpenChange }: AddSe
 						const allowed = canAddSectionType(type, sections);
 
 						return (
-							<button
+							<Button
+								variant="outline"
 								key={type}
 								type="button"
 								disabled={!allowed}
 								onClick={() => onPick(type)}
 								title={allowed ? undefined : 'Esta seção só pode aparecer uma vez.'}
-								className={cn(
-									'flex items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-primary/5',
-									'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-transparent',
-								)}
+								className="h-auto items-start gap-3 whitespace-normal p-3 text-left"
 							>
 								<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
 									<Icon className="size-4" aria-hidden />
@@ -51,7 +50,7 @@ export function AddSectionDialog({ open, sections, onPick, onOpenChange }: AddSe
 									<span className="block text-sm font-semibold text-foreground">{meta.label}</span>
 									<span className="block text-xs text-muted-foreground">{meta.description}</span>
 								</span>
-							</button>
+							</Button>
 						);
 					})}
 				</div>

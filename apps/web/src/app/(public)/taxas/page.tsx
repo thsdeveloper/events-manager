@@ -53,10 +53,10 @@ export default function TaxasPage() {
 						<BadgePercent className="size-4" aria-hidden="true" />
 						Transparência total
 					</p>
-					<h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-4xl lg:text-5xl">
+					<h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
 						Quanto você paga de taxas
 					</h1>
-					<p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">
+					<p className="mt-4 text-base leading-7 text-muted-foreground">
 						Sem mensalidade, sem fidelidade e sem surpresa no repasse. Informe o valor do ingresso, escolha quem paga a
 						taxa de serviço e a forma de pagamento do comprador para ver o valor exato que sobra para você.
 					</p>
@@ -114,7 +114,7 @@ export default function TaxasPage() {
 					/>
 				</div>
 				<div>
-					<h2 id="fee-steps-heading" className="font-heading text-2xl font-semibold text-slate-950 dark:text-white">
+					<h2 id="fee-steps-heading" className="font-heading text-2xl font-semibold text-foreground">
 						Como a taxa funciona
 					</h2>
 					<ol aria-labelledby="fee-steps-heading" className="mt-6 space-y-5">
@@ -127,8 +127,8 @@ export default function TaxasPage() {
 									{index + 1}
 								</span>
 								<div>
-									<p className="font-semibold text-slate-950 dark:text-white">{step.title}</p>
-									<p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{step.detail}</p>
+									<p className="font-semibold text-foreground">{step.title}</p>
+									<p className="mt-1 text-sm leading-6 text-muted-foreground">{step.detail}</p>
 								</div>
 							</li>
 						))}
@@ -138,10 +138,8 @@ export default function TaxasPage() {
 
 			<div className="mt-10">
 				<div className="mb-4 flex items-baseline justify-between gap-4">
-					<h2 className="font-heading text-2xl font-semibold text-slate-950 dark:text-white">Simule seu evento</h2>
-					<p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
-						As mesmas contas do formulário de ingressos.
-					</p>
+					<h2 className="font-heading text-2xl font-semibold text-foreground">Simule seu evento</h2>
+					<p className="hidden text-sm text-muted-foreground sm:block">As mesmas contas do formulário de ingressos.</p>
 				</div>
 				<ReactQueryProvider>
 					<FeeCalculator />
@@ -153,10 +151,10 @@ export default function TaxasPage() {
 				className="mt-10 grid gap-8 rounded-2xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900/60 sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-12"
 			>
 				<div>
-					<h2 id="buyers-heading" className="font-heading text-2xl font-semibold text-slate-950 dark:text-white">
+					<h2 id="buyers-heading" className="font-heading text-2xl font-semibold text-foreground">
 						Para quem compra
 					</h2>
-					<p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+					<p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
 						Seu público paga como preferir e vê o valor final antes de confirmar. As tarifas de cada forma valem para
 						todos os eventos e são as mesmas da tabela acima.
 					</p>
@@ -167,8 +165,8 @@ export default function TaxasPage() {
 								className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
 							>
 								<Icon className="size-5 text-violet-600 dark:text-violet-300" aria-hidden="true" />
-								<p className="mt-3 font-semibold text-slate-950 dark:text-white">{title}</p>
-								<p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">{detail}</p>
+								<p className="mt-3 font-semibold text-foreground">{title}</p>
+								<p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
 							</li>
 						))}
 					</ul>

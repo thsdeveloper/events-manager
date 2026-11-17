@@ -1,3 +1,4 @@
+import { calculateUnitBuyerPrice, type TicketPricingConfiguration } from '@events-manager/contracts';
 import type { CouponInput, CouponPatch } from '@events-manager/contracts';
 
 export type CouponDiscountType = 'percentage' | 'fixed';
@@ -18,10 +19,12 @@ export interface Coupon {
 export interface TicketPrice {
 	id: string;
 	buyer_price: number | string | null;
+	service_fee_type?: string;
 	price: number | string;
 }
 
 export interface CouponRepository {
+	getFeeConfiguration?(): Promise<TicketPricingConfiguration>;
 	createForEvent(eventId: string, input: CouponInput): Promise<Coupon>;
 	deleteForEvent(eventId: string, couponId: string): Promise<boolean>;
 	findActiveByCode(eventId: string, code: string): Promise<Coupon | null>;
@@ -93,12 +96,19 @@ export class CouponService {
 		const ticketIds = [...new Set(input.items.map((item) => item.ticketId))];
 		const prices = await this.repository.findTicketPrices(input.eventId, ticketIds);
 
+		const configuration = this.repository.getFeeConfiguration ? await this.repository.getFeeConfiguration() : null;
 		const subtotal = money(
 			input.items.reduce((total, item) => {
 				const ticket = prices.find((price) => price.id === item.ticketId);
 				if (!ticket) throw new TicketNotInEvent();
 
-				return total + Number(ticket.buyer_price ?? ticket.price) * item.quantity;
+				return (
+					total +
+					(configuration && ticket.service_fee_type
+						? calculateUnitBuyerPrice(Number(ticket.price), ticket.service_fee_type, configuration)
+						: Number(ticket.buyer_price ?? ticket.price)) *
+						item.quantity
+				);
 			}, 0),
 		);
 

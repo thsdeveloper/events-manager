@@ -149,6 +149,15 @@ export class SupabaseAuthRepository implements AuthRepository {
 		const { data, error } = await this.clients.admin.auth.getUser(accessToken);
 		if (error) throw providerError(error);
 		if (!data.user) throw providerError({ message: 'Token de recuperação inválido.', status: 401 });
+		// Only inspect claims after Auth validates the token's signature and expiry.
+		// A normal login token must not bypass the current-password requirement.
+		const claims = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString('utf8'));
+		if (
+			claims.sub !== data.user.id ||
+			!Array.isArray(claims.amr) ||
+			!claims.amr.some((entry: { method?: unknown }) => entry?.method === 'recovery')
+		)
+			throw providerError({ message: 'Token de recuperação inválido.', status: 401 });
 
 		const { error: updateError } = await this.clients.admin.auth.admin.updateUserById(data.user.id, { password });
 		if (updateError) throw providerError(updateError);

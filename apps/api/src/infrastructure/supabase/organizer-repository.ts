@@ -63,7 +63,7 @@ export class SupabaseOrganizerRepository implements OrganizerRepository {
 		return data;
 	}
 
-	async setLogo(organizerId: string, mediaId: string) {
+	async setLogo(organizerId: string, mediaId: string | null) {
 		const { data, error } = await this.clients.admin
 			.from('organizers')
 			.update({ logo: mediaId })

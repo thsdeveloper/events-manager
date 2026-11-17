@@ -1,3 +1,4 @@
+import { calculateUnitPlatformFee } from '@events-manager/contracts';
 /**
  * Funções utilitárias para cálculo de taxas de ingressos
  *
@@ -7,7 +8,8 @@
  */
 
 export interface FeeConfig {
-	platformFeePercentage: number; // Taxa da plataforma (ex: 5 = 5%)
+	platformFeePercentage: number;
+	platformFeeMinimum?: number; // Taxa da plataforma (ex: 5 = 5%)
 	providerPercentageFee: number;
 	providerFixedFee: number;
 }
@@ -26,7 +28,10 @@ export interface FeeCalculation {
  * A taxa de conveniência é a taxa da plataforma repassada ao comprador.
  */
 export function calculateConvenienceFee(ticketPrice: number, config: FeeConfig): number {
-	return Math.round(ticketPrice * (config.platformFeePercentage / 100) * 100) / 100;
+	return calculateUnitPlatformFee(ticketPrice, {
+		platform_fee_percentage: config.platformFeePercentage,
+		platform_fee_minimum: config.platformFeeMinimum,
+	});
 }
 
 /**
@@ -54,7 +59,7 @@ export function calculateFees(
 		providerFee = (buyerPrice * providerPercentageFee) / 100 + providerFixedFee;
 
 		// Taxa da plataforma sobre o preço base
-		platformFee = (ticketPrice * platformFeePercentage) / 100;
+		platformFee = calculateConvenienceFee(ticketPrice, config);
 
 		// O comprador já cobriu a taxa da plataforma.
 		organizerReceives = ticketPrice - providerFee;
@@ -66,7 +71,7 @@ export function calculateFees(
 		providerFee = (buyerPrice * providerPercentageFee) / 100 + providerFixedFee;
 
 		// Taxa da plataforma sobre o preço base
-		platformFee = (ticketPrice * platformFeePercentage) / 100;
+		platformFee = calculateConvenienceFee(ticketPrice, config);
 
 		// Organizador recebe o valor menos todas as taxas
 		organizerReceives = buyerPrice - providerFee - platformFee;
@@ -136,11 +141,13 @@ export interface PublicFeeTable {
 	payout_fee_fixed: number;
 	pix_fee_fixed: number;
 	platform_fee_percentage: number;
+	platform_fee_minimum?: number;
 }
 
 /** Valores publicados; usados quando a API não responde. */
 export const DEFAULT_PUBLIC_FEES: PublicFeeTable = {
 	platform_fee_percentage: 5,
+	platform_fee_minimum: 0,
 	pix_fee_fixed: 0.8,
 	card_fee_percentage: 3.5,
 	card_fee_fixed: 0.6,
@@ -190,10 +197,11 @@ export function calculateFeesForMethod(
 ): FeeCalculation {
 	const config: FeeConfig = {
 		platformFeePercentage: table.platform_fee_percentage,
+		platformFeeMinimum: table.platform_fee_minimum ?? 0,
 		providerPercentageFee: table.card_fee_percentage,
 		providerFixedFee: table.card_fee_fixed,
 	};
-	const platformFee = (ticketPrice * table.platform_fee_percentage) / 100;
+	const platformFee = calculateConvenienceFee(ticketPrice, config);
 	const convenienceFee = serviceFeeType === 'passed_to_buyer' ? calculateConvenienceFee(ticketPrice, config) : 0;
 	const buyerPrice = ticketPrice + convenienceFee;
 	const providerFee = calculateProviderFee(buyerPrice, method, table);

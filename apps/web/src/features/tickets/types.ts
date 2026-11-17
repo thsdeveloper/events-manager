@@ -7,8 +7,11 @@ export type TicketVisibility = 'public' | 'invited_only' | 'manual';
  * wizard (`clientId` only), so a single sheet covers both callers.
  */
 export interface TicketDraft {
+	status?: 'active' | 'inactive' | 'sold_out';
 	id?: string;
 	clientId?: string;
+	group_id?: string | null;
+	admission_type?: 'standard' | 'half_price';
 	title: string;
 	description?: string | null;
 	quantity: number;

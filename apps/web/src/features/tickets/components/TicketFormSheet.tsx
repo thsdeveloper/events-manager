@@ -1,5 +1,8 @@
 'use client';
 
+import { Label } from '@/components/ui/label';
+import { calculateUnitPlatformFee } from '@events-manager/contracts';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarClock, CreditCard, Eye, Save, Tag, Users } from 'lucide-react';
 import { useCallback, useEffect, useId, useMemo } from 'react';
@@ -9,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -20,18 +24,24 @@ import { TicketFeeSummary } from './TicketFeeSummary';
 
 const ticketFormSchema = z
 	.object({
+		group_id: z.string().optional(),
+		admission_type: z.enum(['standard', 'half_price']),
 		title: z.string().trim().min(1, 'Informe o nome do ingresso').max(255, 'Máximo de 255 caracteres'),
 		description: z.string().max(500, 'Máximo de 500 caracteres').optional(),
-		quantity: z.coerce.number().int('Use um número inteiro').min(1, 'Mínimo de 1').max(1_000_000, 'Quantidade alta demais'),
-		price: z.coerce.number().min(0, 'O valor não pode ser negativo'),
+		quantity: z.coerce
+			.number<number>()
+			.int('Use um número inteiro')
+			.min(1, 'Mínimo de 1')
+			.max(1_000_000, 'Quantidade alta demais'),
+		price: z.coerce.number<number>().min(0, 'O valor não pode ser negativo'),
 		service_fee_type: z.enum(['absorbed', 'passed_to_buyer']),
 		visibility: z.enum(['public', 'invited_only', 'manual']),
 		sale_start_date: z.string().optional(),
 		sale_end_date: z.string().optional(),
-		min_quantity_per_purchase: z.coerce.number().int().min(1, 'Mínimo de 1').max(100, 'Máximo de 100'),
-		max_quantity_per_purchase: z.coerce.number().int().min(1, 'Mínimo de 1').max(100, 'Máximo de 100'),
+		min_quantity_per_purchase: z.coerce.number<number>().int().min(1, 'Mínimo de 1').max(100, 'Máximo de 100'),
+		max_quantity_per_purchase: z.coerce.number<number>().int().min(1, 'Mínimo de 1').max(100, 'Máximo de 100'),
 		allow_installments: z.boolean(),
-		max_installments: z.coerce.number().int().min(2, 'Mínimo de 2').max(12, 'Máximo de 12').optional(),
+		max_installments: z.coerce.number<number>().int().min(2, 'Mínimo de 2').max(12, 'Máximo de 12').optional(),
 	})
 	.superRefine((values, context) => {
 		if (values.max_quantity_per_purchase < values.min_quantity_per_purchase) {
@@ -41,7 +51,11 @@ const ticketFormSchema = z
 				path: ['max_quantity_per_purchase'],
 			});
 		}
-		if (values.sale_start_date && values.sale_end_date && values.sale_end_date <= values.sale_start_date) {
+		if (
+			values.sale_start_date &&
+			values.sale_end_date &&
+			Date.parse(values.sale_end_date) <= Date.parse(values.sale_start_date)
+		) {
 			context.addIssue({
 				code: 'custom',
 				message: 'O fim das vendas deve ser depois do início',
@@ -56,6 +70,8 @@ const ticketFormSchema = z
 type TicketFormValues = z.infer<typeof ticketFormSchema>;
 
 const emptyValues: TicketFormValues = {
+	group_id: '',
+	admission_type: 'standard',
 	title: '',
 	description: '',
 	quantity: 100,
@@ -74,14 +90,16 @@ function toFormValues(ticket: TicketDraft | null): TicketFormValues {
 	if (!ticket) return emptyValues;
 
 	return {
+		group_id: ticket.group_id ?? '',
+		admission_type: ticket.admission_type ?? 'standard',
 		title: ticket.title ?? '',
 		description: ticket.description ?? '',
 		quantity: ticket.quantity ?? 100,
 		price: Number(ticket.price ?? 0),
 		service_fee_type: ticket.service_fee_type ?? 'passed_to_buyer',
 		visibility: ticket.visibility ?? 'public',
-		sale_start_date: ticket.sale_start_date?.slice(0, 16) ?? '',
-		sale_end_date: ticket.sale_end_date?.slice(0, 16) ?? '',
+		sale_start_date: ticket.sale_start_date ?? '',
+		sale_end_date: ticket.sale_end_date ?? '',
 		min_quantity_per_purchase: ticket.min_quantity_per_purchase ?? 1,
 		max_quantity_per_purchase: ticket.max_quantity_per_purchase ?? 5,
 		allow_installments: ticket.allow_installments ?? false,
@@ -90,6 +108,7 @@ function toFormValues(ticket: TicketDraft | null): TicketFormValues {
 }
 
 export interface TicketFormSheetProps {
+	groups?: Array<{ id: string; title: string; parent_id?: string | null }>;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	/** Free events skip pricing entirely. */
@@ -105,7 +124,15 @@ export interface TicketFormSheetProps {
 	onSaved: (ticket: TicketDraft) => void;
 }
 
-export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, onSaved }: TicketFormSheetProps) {
+export function TicketFormSheet({
+	open,
+	onOpenChange,
+	pricing,
+	eventId,
+	ticket,
+	onSaved,
+	groups = [],
+}: TicketFormSheetProps) {
 	const { toast } = useToast();
 	const { feeConfig, isFallback } = useFeeConfig();
 	const formId = useId();
@@ -133,14 +160,32 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 
 	const submit = useCallback(
 		async (values: TicketFormValues) => {
+			if (
+				!isFree &&
+				values.price > 0 &&
+				values.service_fee_type === 'absorbed' &&
+				calculateUnitPlatformFee(values.price, {
+					platform_fee_percentage: feeConfig.platformFeePercentage,
+					platform_fee_minimum: feeConfig.platformFeeMinimum,
+				}) > values.price
+			) {
+				form.setError('price', {
+					message: 'O preço não cobre a taxa mínima. Aumente o preço ou repasse a taxa ao comprador.',
+				});
+
+				return;
+			}
 			const payload: TicketDraft = {
 				...ticket,
+				group_id: values.group_id || null,
+				admission_type: values.admission_type,
 				title: values.title.trim(),
 				description: values.description?.trim() || null,
 				quantity: values.quantity,
 				price: isFree ? 0 : values.price,
 				service_fee_type: isFree ? 'absorbed' : values.service_fee_type,
 				visibility: values.visibility,
+				status: ticket?.status,
 				sale_start_date: values.sale_start_date ? new Date(values.sale_start_date).toISOString() : null,
 				sale_end_date: values.sale_end_date ? new Date(values.sale_end_date).toISOString() : null,
 				min_quantity_per_purchase: values.min_quantity_per_purchase,
@@ -179,7 +224,7 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 				});
 			}
 		},
-		[eventId, isFree, onOpenChange, onSaved, ticket, toast],
+		[eventId, isFree, onOpenChange, onSaved, ticket, toast, feeConfig, form],
 	);
 
 	return (
@@ -198,12 +243,60 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 				</SheetHeader>
 
 				<Form {...form}>
-					<form
-						id={formId}
-						onSubmit={form.handleSubmit(submit)}
-						className="flex-1 space-y-8 overflow-y-auto p-6"
-					>
+					<form id={formId} onSubmit={form.handleSubmit(submit)} className="flex-1 space-y-8 overflow-y-auto p-6">
 						<section className="space-y-4">
+							<FormField
+								control={form.control}
+								name="admission_type"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Categoria do ingresso</FormLabel>
+
+										<Select value={field.value} onValueChange={field.onChange}>
+											<FormControl>
+												<SelectTrigger ref={field.ref} onBlur={field.onBlur}>
+													<SelectValue />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value="standard">Inteira / padrão</SelectItem>
+												<SelectItem value="half_price">Meia-entrada</SelectItem>
+											</SelectContent>
+										</Select>
+
+										<FormDescription>A meia-entrada tem preço e estoque próprios, definidos abaixo.</FormDescription>
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="group_id"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Grupo ou subgrupo</FormLabel>
+
+										<Select
+											value={field.value || 'none'}
+											onValueChange={(value) => field.onChange(value === 'none' ? '' : value)}
+										>
+											<FormControl>
+												<SelectTrigger ref={field.ref} onBlur={field.onBlur}>
+													<SelectValue />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value="none">Sem grupo</SelectItem>
+												{groups.map((group) => (
+													<SelectItem key={group.id} value={group.id}>
+														{group.parent_id ? '↳ ' : ''}
+														{group.title}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</FormItem>
+								)}
+							/>
 							<h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
 								<Tag className="size-4 text-muted-foreground" />
 								Identificação
@@ -280,8 +373,8 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 															label: 'Você absorve a taxa',
 															hint: 'O preço anunciado é o final, e a taxa sai do seu repasse.',
 														},
-													].map(option => (
-														<label
+													].map((option) => (
+														<Label
 															key={option.value}
 															className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
 																field.value === option.value
@@ -294,7 +387,7 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 																<span className="block text-sm font-medium">{option.label}</span>
 																<span className="block text-xs text-muted-foreground">{option.hint}</span>
 															</span>
-														</label>
+														</Label>
 													))}
 												</RadioGroup>
 											</FormControl>
@@ -413,8 +506,8 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 											</FormControl>
 											<SelectContent>
 												<SelectItem value="public">Público — qualquer pessoa vê e compra</SelectItem>
-												<SelectItem value="invited_only">Apenas convidados — exige link direto</SelectItem>
-												<SelectItem value="manual">Manual — só você emite</SelectItem>
+												<SelectItem value="invited_only">Apenas convidados — venda online indisponível</SelectItem>
+												<SelectItem value="manual">Manual — emissão indisponível</SelectItem>
 											</SelectContent>
 										</Select>
 										<FormMessage />
@@ -436,7 +529,13 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 										<FormItem>
 											<FormLabel>Início</FormLabel>
 											<FormControl>
-												<Input {...field} type="datetime-local" />
+												<DateTimePicker
+													ref={field.ref}
+													onBlur={field.onBlur}
+													date={field.value ? new Date(field.value) : undefined}
+													setDate={(date) => field.onChange(date?.toISOString() ?? '')}
+													placeholder="Sem limite de data"
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -449,7 +548,13 @@ export function TicketFormSheet({ open, onOpenChange, pricing, eventId, ticket, 
 										<FormItem>
 											<FormLabel>Fim</FormLabel>
 											<FormControl>
-												<Input {...field} type="datetime-local" />
+												<DateTimePicker
+													ref={field.ref}
+													onBlur={field.onBlur}
+													date={field.value ? new Date(field.value) : undefined}
+													setDate={(date) => field.onChange(date?.toISOString() ?? '')}
+													placeholder="Sem limite de data"
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>

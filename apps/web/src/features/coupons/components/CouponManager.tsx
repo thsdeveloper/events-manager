@@ -1,5 +1,10 @@
 'use client';
 
+import { Empty } from '@/components/ui/empty';
+import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import type { Coupon, CouponInput } from '@events-manager/contracts';
 import { Plus, Power, Tag, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -14,6 +19,7 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Heading } from '@/components/design-system/atoms/Heading';
@@ -42,7 +48,8 @@ function describeUses(coupon: Coupon) {
 
 function describeWindow(coupon: Coupon) {
 	const format = (value: string) => new Date(value).toLocaleDateString('pt-BR');
-	if (coupon.starts_at && coupon.expires_at) return `Vale de ${format(coupon.starts_at)} a ${format(coupon.expires_at)}`;
+	if (coupon.starts_at && coupon.expires_at)
+		return `Vale de ${format(coupon.starts_at)} a ${format(coupon.expires_at)}`;
 	if (coupon.expires_at) return `Vale até ${format(coupon.expires_at)}`;
 	if (coupon.starts_at) return `Vale a partir de ${format(coupon.starts_at)}`;
 
@@ -97,9 +104,7 @@ export function CouponManager({ coupons, create, error, isSaving, remove, setSta
 					<Heading as="h2" level="h3">
 						Cupons de desconto
 					</Heading>
-					<p className="text-sm text-muted-foreground">
-						O desconto é conferido pelo servidor na hora da compra.
-					</p>
+					<p className="text-sm text-muted-foreground">O desconto é conferido pelo servidor na hora da compra.</p>
 				</div>
 				<Button onClick={() => setFormOpen((open) => !open)} type="button" variant={isFormOpen ? 'outline' : 'default'}>
 					<Plus className="size-4" aria-hidden />
@@ -108,9 +113,9 @@ export function CouponManager({ coupons, create, error, isSaving, remove, setSta
 			</div>
 
 			{error ? (
-				<p role="alert" className="rounded-none border border-destructive/40 bg-destructive/5 p-3 text-sm font-medium text-destructive">
-					{error}
-				</p>
+				<Alert variant="destructive" role="alert" className="border text-sm">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			) : null}
 
 			{isFormOpen ? (
@@ -128,17 +133,15 @@ export function CouponManager({ coupons, create, error, isSaving, remove, setSta
 
 					<div className="space-y-2">
 						<Label htmlFor="coupon-type">Tipo de desconto</Label>
-						<select
+						<NativeSelect
 							id="coupon-type"
-							className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+							className="h-10 w-full border px-3 text-sm"
 							value={form.discount_type}
-							onChange={(event) =>
-								setForm({ ...form, discount_type: event.target.value as 'percentage' | 'fixed' })
-							}
+							onChange={(event) => setForm({ ...form, discount_type: event.target.value as 'percentage' | 'fixed' })}
 						>
-							<option value="percentage">Percentual (%)</option>
-							<option value="fixed">Valor fixo (R$)</option>
-						</select>
+							<NativeSelectOption value="percentage">Percentual (%)</NativeSelectOption>
+							<NativeSelectOption value="fixed">Valor fixo (R$)</NativeSelectOption>
+						</NativeSelect>
 					</div>
 
 					<div className="space-y-2">
@@ -170,21 +173,21 @@ export function CouponManager({ coupons, create, error, isSaving, remove, setSta
 
 					<div className="space-y-2">
 						<Label htmlFor="coupon-starts">Início</Label>
-						<Input
+						<DateTimePicker
 							id="coupon-starts"
-							type="datetime-local"
-							value={form.starts_at}
-							onChange={(event) => setForm({ ...form, starts_at: event.target.value })}
+							clearable
+							date={form.starts_at ? new Date(form.starts_at) : undefined}
+							setDate={(date) => setForm({ ...form, starts_at: date ? date.toISOString() : '' })}
 						/>
 					</div>
 
 					<div className="space-y-2">
 						<Label htmlFor="coupon-expires">Expiração</Label>
-						<Input
+						<DateTimePicker
 							id="coupon-expires"
-							type="datetime-local"
-							value={form.expires_at}
-							onChange={(event) => setForm({ ...form, expires_at: event.target.value })}
+							clearable
+							date={form.expires_at ? new Date(form.expires_at) : undefined}
+							setDate={(date) => setForm({ ...form, expires_at: date ? date.toISOString() : '' })}
 						/>
 					</div>
 
@@ -208,60 +211,53 @@ export function CouponManager({ coupons, create, error, isSaving, remove, setSta
 			) : null}
 
 			{coupons.length === 0 ? (
-				<div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
+				<Empty className="rounded-lg border border-dashed bg-muted/20 p-8 text-center">
 					<Tag className="mx-auto size-8 text-muted-foreground" aria-hidden />
 					<p className="mt-3 text-sm text-muted-foreground">
 						Nenhum cupom cadastrado ainda. Crie um para oferecer desconto neste evento.
 					</p>
-				</div>
+				</Empty>
 			) : (
 				<ul className="space-y-3">
 					{coupons.map((coupon) => (
-						<li
-							key={coupon.id}
-							className={cn(
-								'flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4',
-								coupon.status === 'inactive' && 'opacity-70',
-							)}
-						>
-							<div className="min-w-0 flex-1">
-								<div className="flex flex-wrap items-center gap-2">
-									<span className="font-semibold text-foreground">{coupon.code}</span>
-									{coupon.status === 'inactive' ? (
-										<span className="rounded-none bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-											Inativo
-										</span>
-									) : null}
+						<li key={coupon.id}>
+							<Card
+								className={cn('flex flex-wrap items-center gap-3 p-4', coupon.status === 'inactive' && 'opacity-70')}
+							>
+								<div className="min-w-0 flex-1">
+									<div className="flex flex-wrap items-center gap-2">
+										<span className="font-semibold text-foreground">{coupon.code}</span>
+										{coupon.status === 'inactive' ? <Badge variant="secondary">Inativo</Badge> : null}
+									</div>
+									<p className="text-sm text-muted-foreground">{describeDiscount(coupon)}</p>
+									<p className="text-xs text-muted-foreground">
+										<span>{describeUses(coupon)}</span>
+										<span aria-hidden> · </span>
+										<span>{describeWindow(coupon)}</span>
+									</p>
 								</div>
-								<p className="text-sm text-muted-foreground">{describeDiscount(coupon)}</p>
-								<p className="text-xs text-muted-foreground">
-									<span>{describeUses(coupon)}</span>
-									<span aria-hidden> · </span>
-									<span>{describeWindow(coupon)}</span>
-								</p>
-							</div>
 
-							<div className="flex items-center gap-1">
-								<Button
-									aria-label={`${coupon.status === 'active' ? 'Desativar' : 'Ativar'} ${coupon.code}`}
-									onClick={() => setStatus(coupon.id, coupon.status === 'active' ? 'inactive' : 'active')}
-									size="icon"
-									type="button"
-									variant="ghost"
-								>
-									<Power className="size-4" aria-hidden />
-								</Button>
-								<Button
-									aria-label={`Excluir ${coupon.code}`}
-									className="text-destructive hover:bg-destructive/10"
-									onClick={() => setToDelete(coupon)}
-									size="icon"
-									type="button"
-									variant="ghost"
-								>
-									<Trash2 className="size-4" aria-hidden />
-								</Button>
-							</div>
+								<div className="flex items-center gap-1">
+									<Button
+										aria-label={`${coupon.status === 'active' ? 'Desativar' : 'Ativar'} ${coupon.code}`}
+										onClick={() => setStatus(coupon.id, coupon.status === 'active' ? 'inactive' : 'active')}
+										size="icon"
+										type="button"
+										variant="ghost"
+									>
+										<Power className="size-4" aria-hidden />
+									</Button>
+									<Button
+										aria-label={`Excluir ${coupon.code}`}
+										onClick={() => setToDelete(coupon)}
+										size="icon"
+										type="button"
+										variant="destructive"
+									>
+										<Trash2 className="size-4" aria-hidden />
+									</Button>
+								</div>
+							</Card>
 						</li>
 					))}
 				</ul>

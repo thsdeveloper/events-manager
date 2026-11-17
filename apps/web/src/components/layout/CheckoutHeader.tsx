@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { UserMenu } from '@/components/layout/UserMenu';
 import Container from '@/components/ui/container';
 import { useServerAuth } from '@/hooks/useServerAuth';
-import { getMediaAssetUrl } from '@/lib/media';
+import { getBrandLogoSources } from '@/lib/branding';
 
 interface CheckoutHeaderProps {
 	/** Página do evento, para quem quer conferir algo antes de pagar. */
@@ -23,8 +23,7 @@ interface CheckoutHeaderProps {
 export function CheckoutHeader({ backHref, globals }: CheckoutHeaderProps) {
 	const { isOrganizer, isSuperAdmin, user, logout } = useServerAuth();
 	const siteTitle = globals?.title || 'Events Manager';
-	const lightLogoUrl = globals?.logo ? getMediaAssetUrl(globals.logo) : '/images/logo.svg';
-	const darkLogoUrl = globals?.logo_dark_mode ? getMediaAssetUrl(globals.logo_dark_mode) : '';
+	const { light: lightLogoUrl, dark: darkLogoUrl } = getBrandLogoSources(globals);
 
 	return (
 		<header className="sticky top-0 z-40 w-full border-b bg-background/90 backdrop-blur">

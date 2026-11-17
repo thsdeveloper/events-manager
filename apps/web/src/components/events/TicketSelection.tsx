@@ -14,6 +14,7 @@ export interface TicketSelectionItem {
 }
 
 interface TicketSelectionProps {
+	groups?: Array<{ id: string; title: string; parent_id?: string | null }>;
 	eventId: string;
 	tickets: EventTicket[];
 	onCheckout: (selectedTickets: TicketSelectionItem[]) => void;
@@ -55,6 +56,7 @@ function describeLimits(ticket: EventTicket) {
 export default function TicketSelection({
 	eventId: _eventId,
 	tickets,
+	groups = [],
 	onCheckout,
 	onSelectionChange,
 	hideAction = false,
@@ -70,6 +72,7 @@ export default function TicketSelection({
 
 		return tickets.filter((ticket) => {
 			if (ticket.status !== 'active') return false;
+			if (ticket.visibility && ticket.visibility !== 'public') return false;
 			if (describeLimits(ticket).available <= 0) return false;
 			if (ticket.sale_start_date && new Date(ticket.sale_start_date) > now) return false;
 			if (ticket.sale_end_date && new Date(ticket.sale_end_date) < now) return false;
@@ -172,6 +175,19 @@ export default function TicketSelection({
 									<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 										<div className="min-w-0 flex-1 space-y-1">
 											<h3 className="text-lg font-semibold leading-tight text-foreground">{ticket.title}</h3>
+											{ticket.admission_type === 'half_price' && <p className="text-sm font-medium">Meia-entrada</p>}
+											{ticket.group_id && (
+												<p className="text-xs text-muted-foreground">
+													{
+														groups.find(
+															(group) =>
+																group.id === groups.find((candidate) => candidate.id === ticket.group_id)?.parent_id,
+														)?.title
+													}
+													{groups.find((group) => group.id === ticket.group_id)?.parent_id ? ' › ' : ''}
+													{groups.find((group) => group.id === ticket.group_id)?.title}
+												</p>
+											)}
 											{ticket.description ? (
 												<p className="text-sm text-muted-foreground">{ticket.description}</p>
 											) : null}

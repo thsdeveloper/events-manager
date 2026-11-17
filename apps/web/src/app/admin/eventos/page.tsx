@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHeader } from '@/components/design-system/molecules/PageHeader';
+
 import Link from 'next/link';
 import { Plus, Calendar, Users, Clock, LayoutGrid, Table2, MapPin, ArrowRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -10,8 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+
 import { EventsEmptyState } from './_components/EventsEmptyState';
+import { EventDraftList } from './_components/EventDraftList';
 import { EventsTable } from './_components/EventsTable';
 import { PageErrorState } from '@/components/design-system/molecules/PageErrorState';
 import { PageLoadingState } from '@/components/design-system/molecules/PageLoadingState';
@@ -104,37 +107,34 @@ export default function EventosPage() {
 
 	return (
 		<div className="space-y-8">
-			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-				<div className="space-y-1">
-					<h1 className="text-3xl font-bold tracking-tight text-foreground">Meus Eventos</h1>
-					<p className="text-muted-foreground">Acompanhe o desempenho e crie novas experiências.</p>
-				</div>
-				<Button asChild className="gap-2">
-					<Link href="/admin/eventos/novo">
-						<Plus className="size-4" />
-						Criar evento
-					</Link>
-				</Button>
-			</div>
+			<PageHeader
+				title="Meus Eventos"
+				description="Acompanhe o desempenho e crie novas experiências."
+				actions={
+					<Button asChild className="gap-2">
+						<Link href="/admin/eventos/novo">
+							<Plus className="size-4" />
+							Criar evento
+						</Link>
+					</Button>
+				}
+			/>
 
+			<EventDraftList enabled={Boolean(user)} />
 			{preparedEvents.length > 0 && (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-					<Card className="border-dashed">
+					<Card className="">
 						<CardHeader className="pb-2">
 							<CardDescription>Total de eventos</CardDescription>
 							<CardTitle className="text-3xl">{eventStats.total}</CardTitle>
 						</CardHeader>
 						<CardContent className="flex items-center gap-2 pt-0 text-xs text-muted-foreground">
-							<Badge variant="outline" className="border-transparent bg-muted/60 text-muted-foreground">
-								Publicados {eventStats.published}
-							</Badge>
-							<Badge variant="outline" className="border-transparent bg-muted/60 text-muted-foreground">
-								Rascunhos {eventStats.drafts}
-							</Badge>
+							<Badge variant="outline">Publicados {eventStats.published}</Badge>
+							<Badge variant="outline">Rascunhos {eventStats.drafts}</Badge>
 						</CardContent>
 					</Card>
 
-					<Card className="border-dashed">
+					<Card className="">
 						<CardHeader className="pb-2">
 							<CardDescription>Próximos 30 dias</CardDescription>
 							<CardTitle className="text-3xl">{eventStats.upcoming}</CardTitle>
@@ -145,7 +145,7 @@ export default function EventosPage() {
 						</CardContent>
 					</Card>
 
-					<Card className="border-dashed">
+					<Card className="">
 						<CardHeader className="pb-2">
 							<CardDescription>Participantes confirmados</CardDescription>
 							<CardTitle className="text-3xl">{eventStats.participants}</CardTitle>
@@ -156,15 +156,13 @@ export default function EventosPage() {
 						</CardContent>
 					</Card>
 
-					<Card className="border-dashed">
+					<Card className="">
 						<CardHeader className="pb-2">
 							<CardDescription>Eventos em destaque</CardDescription>
 							<CardTitle className="text-3xl">{preparedEvents.filter(({ event }) => event.featured).length}</CardTitle>
 						</CardHeader>
 						<CardContent className="flex items-center gap-2 pt-0 text-xs text-muted-foreground">
-							<Badge variant="secondary" className="border-transparent">
-								Destaque ativo
-							</Badge>
+							<Badge variant="secondary">Destaque ativo</Badge>
 							<span>Usado para destacar na vitrine</span>
 						</CardContent>
 					</Card>
@@ -227,38 +225,24 @@ function EventCard({ event, participantsCount }: EventCardProps) {
 	};
 
 	const getStatusBadge = (status?: string) => {
-		const statusMap: Record<string, { label: string; className: string }> = {
+		const statusMap: Record<string, { label: string }> = {
 			published: {
 				label: 'Publicado',
-				className:
-					'border-transparent bg-emerald-500/10 text-emerald-700 shadow-none dark:bg-emerald-400/10 dark:text-emerald-200',
 			},
 			draft: {
 				label: 'Rascunho',
-				className:
-					'border-transparent bg-muted text-muted-foreground shadow-none dark:bg-muted/40 dark:text-muted-foreground',
 			},
 			cancelled: {
 				label: 'Cancelado',
-				className: 'border-transparent bg-red-500/10 text-red-600 shadow-none dark:bg-red-500/20 dark:text-red-200',
 			},
 			archived: {
 				label: 'Arquivado',
-				className:
-					'border-transparent bg-amber-500/10 text-amber-700 shadow-none dark:bg-amber-500/20 dark:text-amber-200',
 			},
 		};
 
 		const statusInfo = statusMap[status || 'draft'];
 
-		return (
-			<Badge
-				variant="outline"
-				className={cn('whitespace-nowrap border border-transparent text-xs font-medium', statusInfo.className)}
-			>
-				{statusInfo.label}
-			</Badge>
-		);
+		return <Badge variant="outline">{statusInfo.label}</Badge>;
 	};
 
 	const getLocation = () => {
@@ -283,7 +267,7 @@ function EventCard({ event, participantsCount }: EventCardProps) {
 
 	return (
 		<Link href={`/admin/eventos/${event.id}`} className="group h-full">
-			<Card className="flex h-full flex-col transition-all hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2">
+			<Card className="flex h-full flex-col transition-all hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2">
 				<CardHeader className="space-y-3">
 					<div className="flex items-start justify-between gap-3">
 						<div className="space-y-1">
@@ -299,16 +283,8 @@ function EventCard({ event, participantsCount }: EventCardProps) {
 						<Badge variant="secondary" className="capitalize">
 							{eventTypeLabel}
 						</Badge>
-						{event.featured ? (
-							<Badge variant="outline" className="border-primary/40 bg-primary/5 text-primary">
-								Destaque
-							</Badge>
-						) : null}
-						{event.is_free ? (
-							<Badge variant="outline" className="border-emerald-300 bg-emerald-500/10 text-emerald-600">
-								Gratuito
-							</Badge>
-						) : null}
+						{event.featured ? <Badge variant="outline">Destaque</Badge> : null}
+						{event.is_free ? <Badge variant="outline">Gratuito</Badge> : null}
 					</div>
 				</CardHeader>
 
@@ -333,11 +309,7 @@ function EventCard({ event, participantsCount }: EventCardProps) {
 								{participantsCount} participante{participantsCount !== 1 ? 's' : ''}
 							</span>
 						</div>
-						{event.max_attendees ? (
-							<Badge variant="outline" className="border-transparent bg-muted/60 text-xs text-muted-foreground">
-								Limite {event.max_attendees}
-							</Badge>
-						) : null}
+						{event.max_attendees ? <Badge variant="outline">Limite {event.max_attendees}</Badge> : null}
 					</div>
 				</CardContent>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -46,7 +47,8 @@ interface ToolbarButtonProps {
 
 function ToolbarButton({ label, active = false, disabled = false, onClick, children }: ToolbarButtonProps) {
 	return (
-		<button
+		<Button
+			variant={active ? 'secondary' : 'ghost'}
 			type="button"
 			aria-label={label}
 			title={label}
@@ -54,13 +56,11 @@ function ToolbarButton({ label, active = false, disabled = false, onClick, child
 			disabled={disabled}
 			onMouseDown={(event) => event.preventDefault()}
 			onClick={onClick}
-			className={cn(
-				'flex size-8 items-center justify-center rounded-md text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 disabled:opacity-40',
-				active && 'bg-violet-100 text-violet-800',
-			)}
+			size="icon"
+			className="size-8"
 		>
 			{children}
-		</button>
+		</Button>
 	);
 }
 
@@ -98,7 +98,7 @@ export function RichTextEditor({
 				'aria-multiline': 'true',
 				'aria-label': label,
 				class: cn(
-					'prose prose-slate max-w-none px-4 py-3 text-sm focus:outline-none prose-headings:font-semibold prose-a:text-violet-700',
+					'prose prose-slate max-w-none px-4 py-3 text-sm focus:outline-none prose-headings:font-semibold prose-a:text-primary',
 					minHeightClassName,
 				),
 			},
@@ -129,7 +129,7 @@ export function RichTextEditor({
 	}, [editor, value]);
 
 	if (!editor || !state) {
-		return <div className={cn('animate-pulse rounded-lg border border-slate-200 bg-slate-50', minHeightClassName)} />;
+		return <Card className={cn('animate-pulse', minHeightClassName)} />;
 	}
 
 	function applyLink() {
@@ -145,11 +145,11 @@ export function RichTextEditor({
 	}
 
 	return (
-		<div className="rounded-lg border border-slate-200 bg-white shadow-sm focus-within:border-violet-400">
+		<Card className="focus-within:border-border">
 			<div
 				role="toolbar"
 				aria-label="Formatação"
-				className="flex flex-wrap items-center gap-0.5 border-b border-slate-200 p-1.5"
+				className="flex flex-wrap items-center gap-0.5 border-b border-border p-1.5"
 			>
 				<ToolbarButton label="Negrito" active={state.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
 					<Bold className="size-4" />
@@ -161,7 +161,7 @@ export function RichTextEditor({
 				>
 					<Italic className="size-4" />
 				</ToolbarButton>
-				<span className="mx-1 h-5 w-px bg-slate-200" />
+				<span className="mx-1 h-5 w-px bg-muted" />
 				<ToolbarButton
 					label="Título (H2)"
 					active={state.h2}
@@ -176,7 +176,7 @@ export function RichTextEditor({
 				>
 					<Heading3 className="size-4" />
 				</ToolbarButton>
-				<span className="mx-1 h-5 w-px bg-slate-200" />
+				<span className="mx-1 h-5 w-px bg-muted" />
 				<ToolbarButton
 					label="Lista"
 					active={state.bulletList}
@@ -205,7 +205,7 @@ export function RichTextEditor({
 				>
 					<Code className="size-4" />
 				</ToolbarButton>
-				<span className="mx-1 h-5 w-px bg-slate-200" />
+				<span className="mx-1 h-5 w-px bg-muted" />
 				<ToolbarButton
 					label={state.link ? 'Editar link' : 'Inserir link'}
 					active={state.link}
@@ -236,7 +236,7 @@ export function RichTextEditor({
 				</span>
 			</div>
 			{linkOpen && (
-				<div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+				<div className="flex items-center gap-2 border-b border-border bg-muted px-3 py-2">
 					<Input
 						aria-label="Endereço do link"
 						value={linkUrl}
@@ -273,6 +273,6 @@ export function RichTextEditor({
 					}}
 				/>
 			)}
-		</div>
+		</Card>
 	);
 }

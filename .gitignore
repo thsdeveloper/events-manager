@@ -48,3 +48,8 @@ Thumbs.db
 
 # Test files
 testsprite_tests/tmp/
+
+# Generated artifacts and private browser sessions
+dist/
+*.tsbuildinfo
+.playwright-cli/

@@ -1,4 +1,11 @@
 import '@/styles/globals.css';
+import localFont from 'next/font/local';
+const dmSans = localFont({
+	src: '../../public/fonts/dm-sans-latina.woff2',
+	variable: '--font-dm-sans',
+	display: 'swap',
+	weight: '100 1000',
+});
 import '@/styles/fonts.css';
 import { ReactNode } from 'react';
 import { Metadata } from 'next';
@@ -6,10 +13,11 @@ import { Metadata } from 'next';
 import { ThemeProvider } from '@/components/ui/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { ToastConfig } from '@/components/ToastConfig';
+import { ReactQueryProvider } from '@/contexts/ReactQueryProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppProgressProvider } from '@/contexts/ProgressProvider';
 import { fetchSiteData } from '@/lib/content/fetchers';
-import { getMediaAssetUrl } from '@/lib/media';
+import { getBrandingIcons, getBrandAccentColor } from '@/lib/branding';
 import { resolveSiteUrl } from '@/lib/seo/site-url';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,7 +25,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 	const siteTitle = globals?.title || 'Events Manager';
 	const siteDescription = globals?.description || 'Plataforma de gestão de eventos.';
-	const faviconURL = globals?.favicon ? getMediaAssetUrl(globals.favicon) : '/favicon.ico';
 
 	return {
 		// Base para URLs relativas em Open Graph, canonical e ícones.
@@ -27,29 +34,35 @@ export async function generateMetadata(): Promise<Metadata> {
 			template: `%s | ${siteTitle}`,
 		},
 		description: siteDescription,
-		icons: {
-			icon: faviconURL,
-		},
+		icons: getBrandingIcons(globals),
+		manifest: '/manifest.webmanifest',
 	};
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
 	const { globals } = await fetchSiteData();
-	const accentColor = globals?.accent_color || '#6644ff';
+	const accentColor = getBrandAccentColor(globals?.accent_color);
 
 	return (
-		<html lang="pt-BR" style={{ '--accent-color': accentColor } as React.CSSProperties} suppressHydrationWarning>
+		<html
+			className={dmSans.variable}
+			lang="pt-BR"
+			style={{ '--accent-color': accentColor } as React.CSSProperties}
+			suppressHydrationWarning
+		>
 			<body className="antialiased font-sans flex flex-col min-h-screen">
 				<a className="skip-link" href="#main-content">
 					Pular para o conteúdo principal
 				</a>
 				<AppProgressProvider>
 					<ThemeProvider>
-						<AuthProvider>
-							<ToastConfig />
-							{children}
-							<Toaster />
-						</AuthProvider>
+						<ReactQueryProvider>
+							<AuthProvider>
+								<ToastConfig />
+								{children}
+								<Toaster />
+							</AuthProvider>
+						</ReactQueryProvider>
 					</ThemeProvider>
 				</AppProgressProvider>
 			</body>

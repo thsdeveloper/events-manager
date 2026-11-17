@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useServerAuth } from '@/hooks/useServerAuth';
@@ -25,7 +27,7 @@ export default function PerfilOrganizadorPage() {
 		return (
 			<div className="flex min-h-[60vh] items-center justify-center" role="status">
 				<div className="text-center">
-					<Loader2 className="mx-auto mb-4 size-10 animate-spin text-primary" aria-hidden="true" />
+					<Loader2 className="mx-auto mb-4 size-10 animate-spin text-link" aria-hidden="true" />
 					<p className="text-muted-foreground">Carregando...</p>
 				</div>
 			</div>
@@ -50,6 +52,9 @@ export default function PerfilOrganizadorPage() {
 		return (
 			<Container as="section" className="py-8 lg:py-12">
 				<StatusTimeline />
+				<Button asChild className="mt-6">
+					<Link href="/perfil/organizador/rascunhos">Preparar evento em rascunho</Link>
+				</Button>
 				<div className="mt-16">
 					<FAQAccordion />
 				</div>

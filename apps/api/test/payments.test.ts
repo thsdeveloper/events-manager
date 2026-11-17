@@ -138,16 +138,16 @@ describe('checkout plan', () => {
 		}
 	});
 
-	it('rejects a checkout outside the event registration window', () => {
+	it('uses only the ticket sales period, ignoring a legacy event window', () => {
 		expect(() =>
 			buildCheckoutPlan({
 				configuration,
 				now: new Date('2026-08-06T12:00:00.000Z'),
-				registrationWindow: { end: null, start: '2026-08-07T12:00:00.000Z' },
+				...{ registrationWindow: { end: null, start: '2026-08-07T12:00:00.000Z' } },
 				selections: [{ ticketId: ticket.id, quantity: 1 }],
 				tickets: [ticket],
 			}),
-		).toThrowError(expect.objectContaining({ rule: 'registration_closed' }));
+		).not.toThrow();
 	});
 });
 

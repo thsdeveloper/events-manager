@@ -4,7 +4,7 @@ import type {
 	SuperAdminRepository,
 	TransactionPageQuery,
 } from '../../application/super-admin/super-admin-service.js';
-import type { Json } from '@events-manager/contracts';
+import { brandingAssetKeys, type Json } from '@events-manager/contracts';
 import type { SupabaseClients } from './clients.js';
 import { sanitizePostgrestOrTerm } from './search.js';
 
@@ -14,8 +14,9 @@ type Row = Record<string, unknown>;
 // next/image cannot optimise an image served through the /api/media redirect.
 const siteSettingsColumns =
 	'id,title,date_updated,' +
-	'logo:media_files!site_settings_logo_fkey(id,bucket,path),' +
-	'logo_dark_mode:media_files!site_settings_logo_dark_mode_fkey(id,bucket,path)';
+	brandingAssetKeys
+		.map((key) => `${key}:media_files!site_settings_${key}_fkey(id,bucket,path,type,metadata)`)
+		.join(',');
 
 export class SupabaseSuperAdminRepository implements SuperAdminRepository {
 	constructor(private readonly clients: SupabaseClients) {}
@@ -228,10 +229,14 @@ export class SupabaseSuperAdminRepository implements SuperAdminRepository {
 		return { before, data: data as unknown as Row };
 	}
 
-	async isImageMedia(id: string) {
-		const { data, error } = await this.clients.admin.from('media_files').select('type').eq('id', id).maybeSingle();
+	async getBrandingMedia(id: string) {
+		const { data, error } = await this.clients.admin
+			.from('media_files')
+			.select('type,metadata')
+			.eq('id', id)
+			.maybeSingle();
 		if (error) throw error;
-		return typeof data?.type === 'string' && data.type.startsWith('image/');
+		return data ? { type: data.type ?? '', metadata: data.metadata as Record<string, unknown> | null } : null;
 	}
 
 	async listCategories() {
@@ -271,11 +276,7 @@ export class SupabaseSuperAdminRepository implements SuperAdminRepository {
 	}
 
 	async getCategory(id: string) {
-		const { data, error } = await this.clients.admin
-			.from('event_categories')
-			.select('*')
-			.eq('id', id)
-			.maybeSingle();
+		const { data, error } = await this.clients.admin.from('event_categories').select('*').eq('id', id).maybeSingle();
 		if (error) throw error;
 		return (data ?? null) as Row | null;
 	}

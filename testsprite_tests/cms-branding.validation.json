@@ -1,0 +1,827 @@
+{
+	"status": "passed",
+	"date": "2026-11-17",
+	"scope": [
+		"Alinhamento e temas das páginas públicas e de todos os blocos CMS",
+		"Identidade visual com logos SVG, favicons e variantes de ícones de aplicativo",
+		"Aplicação do manual Flouvi: DM Sans local, paleta oficial e títulos menores em peso 600"
+	],
+	"brand_reference": "/mnt/e/Ello4/Flouvi/Kit-Flouvi/Guia-da-marca.pdf",
+	"tests": {
+		"web": {
+			"tests": 752,
+			"files": 181,
+			"statements": 75.93,
+			"branches": 78.77,
+			"functions": 78.13,
+			"lines": 75.93
+		},
+		"api": {
+			"tests": 549,
+			"files": 52,
+			"statements": 74.26,
+			"branches": 83.51,
+			"functions": 77.01,
+			"lines": 74.26
+		},
+		"contracts": {
+			"tests": 146,
+			"files": 12,
+			"statements": 95.36,
+			"branches": 88.46,
+			"functions": 94.33,
+			"lines": 95.36
+		}
+	},
+	"coverage_baseline": {
+		"web": {
+			"statements": 72.82,
+			"branches": 78.71,
+			"functions": 77.49,
+			"lines": 72.82
+		},
+		"api": {
+			"statements": 73.02,
+			"branches": 83.36,
+			"functions": 76.08,
+			"lines": 73.02
+		},
+		"contracts": {
+			"statements": 95.28,
+			"branches": 88.21,
+			"functions": 94.23,
+			"lines": 95.28
+		}
+	},
+	"commands": [
+		"pnpm --dir apps/web test:coverage --maxWorkers=2",
+		"pnpm --dir apps/api test:coverage --maxWorkers=2",
+		"pnpm --dir packages/contracts test:coverage",
+		"pnpm --dir apps/web lint",
+		"pnpm --dir apps/api lint",
+		"pnpm --dir packages/contracts lint",
+		"pnpm --dir apps/web exec tsc --noEmit --incremental false",
+		"pnpm --dir packages/contracts build",
+		"pnpm --dir apps/api exec tsc -p tsconfig.build.json --outDir /tmp/events-branding-api-build",
+		"pnpm --dir /tmp/events-wizard-build/apps/web build",
+		"node testsprite_tests/branding-assets.migration.cjs"
+	],
+	"test_files_changed": [
+		"apps/web/src/lib/branding.test.ts",
+		"apps/web/src/components/ui/Text.ssr.test.tsx",
+		"apps/web/src/components/layout/PageBuilder.ssr.test.tsx",
+		"apps/web/src/components/layout/PageBuilder.test.tsx",
+		"apps/web/src/components/blocks/CmsBlocks.test.tsx",
+		"apps/web/src/features/super-admin/components/BrandingSettingsForm.test.tsx",
+		"apps/api/test/branding-routes.test.ts",
+		"apps/api/test/branding-assets.test.ts",
+		"packages/contracts/src/branding.test.ts",
+		"apps/web/src/features/super-admin/components/BrandingAssetUploadField.test.tsx"
+	],
+	"browser": {
+		"cases": 54,
+		"results": [
+			{
+				"path": "/",
+				"width": 1440,
+				"theme": "light",
+				"problems": [],
+				"checked": 24,
+				"sections": 4,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/sobre",
+				"width": 1440,
+				"theme": "light",
+				"problems": [],
+				"checked": 4,
+				"sections": 1,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/contato",
+				"width": 1440,
+				"theme": "light",
+				"problems": [],
+				"checked": 7,
+				"sections": 2,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/politicas-de-uso",
+				"width": 1440,
+				"theme": "light",
+				"problems": [],
+				"checked": 3,
+				"sections": 1,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/blog",
+				"width": 1440,
+				"theme": "light",
+				"problems": [],
+				"checked": 5,
+				"sections": 0,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/blog/bem-vindo-ao-blog",
+				"width": 1440,
+				"theme": "light",
+				"problems": [],
+				"checked": 7,
+				"sections": 0,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/cms-layout-check",
+				"width": 1440,
+				"theme": "light",
+				"problems": [],
+				"checked": 74,
+				"sections": 14,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/eventos",
+				"width": 1440,
+				"theme": "light",
+				"problems": [],
+				"checked": 13,
+				"sections": 0,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/taxas",
+				"width": 1440,
+				"theme": "light",
+				"problems": [],
+				"checked": 55,
+				"sections": 0,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/",
+				"width": 1440,
+				"theme": "dark",
+				"problems": [],
+				"checked": 24,
+				"sections": 4,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/sobre",
+				"width": 1440,
+				"theme": "dark",
+				"problems": [],
+				"checked": 4,
+				"sections": 1,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/contato",
+				"width": 1440,
+				"theme": "dark",
+				"problems": [],
+				"checked": 7,
+				"sections": 2,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/politicas-de-uso",
+				"width": 1440,
+				"theme": "dark",
+				"problems": [],
+				"checked": 3,
+				"sections": 1,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/blog",
+				"width": 1440,
+				"theme": "dark",
+				"problems": [],
+				"checked": 5,
+				"sections": 0,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/blog/bem-vindo-ao-blog",
+				"width": 1440,
+				"theme": "dark",
+				"problems": [],
+				"checked": 7,
+				"sections": 0,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/cms-layout-check",
+				"width": 1440,
+				"theme": "dark",
+				"problems": [],
+				"checked": 74,
+				"sections": 14,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/eventos",
+				"width": 1440,
+				"theme": "dark",
+				"problems": [],
+				"checked": 13,
+				"sections": 0,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/taxas",
+				"width": 1440,
+				"theme": "dark",
+				"problems": [],
+				"checked": 55,
+				"sections": 0,
+				"edges": [112, 1328]
+			},
+			{
+				"path": "/",
+				"width": 768,
+				"theme": "light",
+				"problems": [],
+				"checked": 24,
+				"sections": 4,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/sobre",
+				"width": 768,
+				"theme": "light",
+				"problems": [],
+				"checked": 4,
+				"sections": 1,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/contato",
+				"width": 768,
+				"theme": "light",
+				"problems": [],
+				"checked": 7,
+				"sections": 2,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/politicas-de-uso",
+				"width": 768,
+				"theme": "light",
+				"problems": [],
+				"checked": 3,
+				"sections": 1,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/blog",
+				"width": 768,
+				"theme": "light",
+				"problems": [],
+				"checked": 5,
+				"sections": 0,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/blog/bem-vindo-ao-blog",
+				"width": 768,
+				"theme": "light",
+				"problems": [],
+				"checked": 7,
+				"sections": 0,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/cms-layout-check",
+				"width": 768,
+				"theme": "light",
+				"problems": [],
+				"checked": 74,
+				"sections": 14,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/eventos",
+				"width": 768,
+				"theme": "light",
+				"problems": [],
+				"checked": 13,
+				"sections": 0,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/taxas",
+				"width": 768,
+				"theme": "light",
+				"problems": [],
+				"checked": 55,
+				"sections": 0,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/",
+				"width": 768,
+				"theme": "dark",
+				"problems": [],
+				"checked": 24,
+				"sections": 4,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/sobre",
+				"width": 768,
+				"theme": "dark",
+				"problems": [],
+				"checked": 4,
+				"sections": 1,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/contato",
+				"width": 768,
+				"theme": "dark",
+				"problems": [],
+				"checked": 7,
+				"sections": 2,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/politicas-de-uso",
+				"width": 768,
+				"theme": "dark",
+				"problems": [],
+				"checked": 3,
+				"sections": 1,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/blog",
+				"width": 768,
+				"theme": "dark",
+				"problems": [],
+				"checked": 5,
+				"sections": 0,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/blog/bem-vindo-ao-blog",
+				"width": 768,
+				"theme": "dark",
+				"problems": [],
+				"checked": 7,
+				"sections": 0,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/cms-layout-check",
+				"width": 768,
+				"theme": "dark",
+				"problems": [],
+				"checked": 74,
+				"sections": 14,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/eventos",
+				"width": 768,
+				"theme": "dark",
+				"problems": [],
+				"checked": 13,
+				"sections": 0,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/taxas",
+				"width": 768,
+				"theme": "dark",
+				"problems": [],
+				"checked": 55,
+				"sections": 0,
+				"edges": [24, 744]
+			},
+			{
+				"path": "/",
+				"width": 390,
+				"theme": "light",
+				"problems": [],
+				"checked": 24,
+				"sections": 4,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/sobre",
+				"width": 390,
+				"theme": "light",
+				"problems": [],
+				"checked": 4,
+				"sections": 1,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/contato",
+				"width": 390,
+				"theme": "light",
+				"problems": [],
+				"checked": 7,
+				"sections": 2,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/politicas-de-uso",
+				"width": 390,
+				"theme": "light",
+				"problems": [],
+				"checked": 3,
+				"sections": 1,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/blog",
+				"width": 390,
+				"theme": "light",
+				"problems": [],
+				"checked": 5,
+				"sections": 0,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/blog/bem-vindo-ao-blog",
+				"width": 390,
+				"theme": "light",
+				"problems": [],
+				"checked": 7,
+				"sections": 0,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/cms-layout-check",
+				"width": 390,
+				"theme": "light",
+				"problems": [],
+				"checked": 74,
+				"sections": 14,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/eventos",
+				"width": 390,
+				"theme": "light",
+				"problems": [],
+				"checked": 13,
+				"sections": 0,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/taxas",
+				"width": 390,
+				"theme": "light",
+				"problems": [],
+				"checked": 54,
+				"sections": 0,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/",
+				"width": 390,
+				"theme": "dark",
+				"problems": [],
+				"checked": 24,
+				"sections": 4,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/sobre",
+				"width": 390,
+				"theme": "dark",
+				"problems": [],
+				"checked": 4,
+				"sections": 1,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/contato",
+				"width": 390,
+				"theme": "dark",
+				"problems": [],
+				"checked": 7,
+				"sections": 2,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/politicas-de-uso",
+				"width": 390,
+				"theme": "dark",
+				"problems": [],
+				"checked": 3,
+				"sections": 1,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/blog",
+				"width": 390,
+				"theme": "dark",
+				"problems": [],
+				"checked": 5,
+				"sections": 0,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/blog/bem-vindo-ao-blog",
+				"width": 390,
+				"theme": "dark",
+				"problems": [],
+				"checked": 7,
+				"sections": 0,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/cms-layout-check",
+				"width": 390,
+				"theme": "dark",
+				"problems": [],
+				"checked": 74,
+				"sections": 14,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/eventos",
+				"width": 390,
+				"theme": "dark",
+				"problems": [],
+				"checked": 13,
+				"sections": 0,
+				"edges": [16, 374]
+			},
+			{
+				"path": "/taxas",
+				"width": 390,
+				"theme": "dark",
+				"problems": [],
+				"checked": 54,
+				"sections": 0,
+				"edges": [16, 374]
+			}
+		],
+		"failures": []
+	},
+	"branding_upload_browser": {
+		"uploads": [
+			{
+				"label": "Logo (tema claro)",
+				"type": "image/svg+xml",
+				"dimensions": {
+					"width": 533,
+					"height": 170,
+					"branding_kind": "logo"
+				}
+			},
+			{
+				"label": "Logo (tema escuro)",
+				"type": "image/svg+xml",
+				"dimensions": {
+					"width": 533,
+					"height": 170,
+					"branding_kind": "logo"
+				}
+			},
+			{
+				"label": "Favicon padrão",
+				"type": "image/x-icon",
+				"dimensions": {
+					"width": 48,
+					"height": 48,
+					"branding_kind": "favicon"
+				}
+			},
+			{
+				"label": "Favicon escuro",
+				"type": "image/svg+xml",
+				"dimensions": {
+					"width": 256,
+					"height": 256,
+					"branding_kind": "favicon"
+				}
+			},
+			{
+				"label": "Ícone padrão",
+				"type": "image/png",
+				"dimensions": {
+					"width": 1024,
+					"height": 1024,
+					"branding_kind": "app-icon"
+				}
+			},
+			{
+				"label": "Ícone escuro",
+				"type": "image/png",
+				"dimensions": {
+					"width": 1024,
+					"height": 1024,
+					"branding_kind": "app-icon"
+				}
+			},
+			{
+				"label": "Ícone tonal",
+				"type": "image/png",
+				"dimensions": {
+					"width": 1024,
+					"height": 1024,
+					"branding_kind": "app-icon"
+				}
+			}
+		],
+		"previews": [
+			{
+				"label": "Prévia: Logo (tema claro)",
+				"loaded": true
+			},
+			{
+				"label": "Prévia: Logo (tema escuro)",
+				"loaded": true
+			},
+			{
+				"label": "Prévia: Favicon padrão",
+				"loaded": true
+			},
+			{
+				"label": "Prévia: Favicon escuro",
+				"loaded": true
+			},
+			{
+				"label": "Prévia: Ícone padrão",
+				"loaded": true
+			},
+			{
+				"label": "Prévia: Ícone escuro",
+				"loaded": true
+			},
+			{
+				"label": "Prévia: Ícone tonal",
+				"loaded": true
+			}
+		],
+		"save": "PATCH intercepted; all seven fields submitted; current settings preserved"
+	},
+	"public_metadata_browser": {
+		"icons": [
+			{
+				"status": 200,
+				"type": "image/svg+xml"
+			},
+			{
+				"status": 200,
+				"type": "image/svg+xml"
+			}
+		],
+		"manifest": {
+			"status": 200,
+			"theme": "#743df5",
+			"icons": 1
+		}
+	},
+	"small_mobile_check": {
+		"width": 320,
+		"scrollWidth": 320,
+		"overflow": []
+	},
+	"tdd_regressions": [
+		"CMS sem alinhamento/contraste/peso correto: comparação no navegador antes da correção",
+		"Seções CMS sem regiões acessíveis",
+		"Formulário CMS sem associação correta entre rótulos e controles, e botão de envio que não submetia",
+		"Contratos sem novos campos de identidade visual",
+		"Upload SVG rejeitado e imagens de aplicativo sem validação de dimensões",
+		"Campos de identidade visual e metadados inexistentes",
+		"Títulos com Poppins 48px/700 e cor fora do manual",
+		"Fallback de logo escura ausente"
+	],
+	"migration": {
+		"file": "supabase/migrations/202611170002_branding_assets.sql",
+		"applied_to": "Supabase local events-manager",
+		"production_applied": false,
+		"isolated_database_test": "passed: preservation of existing settings, MIME allowlists and media referential integrity"
+	},
+	"limitations": [
+		"No browser upload test changed the current site settings: its PATCH response was intercepted; real upload/storage and cleanup were exercised. PATCH authorization and validation are covered by API tests.",
+		"Dark and tinted application icons are stored for native integration; the web manifest uses the standard icon.",
+		"Production build and CMS fixture were isolated in /tmp to preserve the running development environment."
+	],
+	"cleanup": {
+		"temporary_uploaded_assets": "deleted by their returned IDs",
+		"temporary_user_and_organization": "removed",
+		"disposable_migration_database": "dropped"
+	},
+	"environment_changes": [],
+	"dependencies_added": ["@xmldom/xmldom (API)", "sharp (API)"],
+	"screenshots": [
+		"testsprite_tests/tmp/flouvi-eventos-dark-390.png",
+		"testsprite_tests/tmp/flouvi-eventos-light-390.png",
+		"testsprite_tests/tmp/flouvi-blog-dark-390.png",
+		"testsprite_tests/tmp/flouvi-politicas-de-uso-light-1440.png",
+		"testsprite_tests/tmp/flouvi-politicas-de-uso-dark-1440.png",
+		"testsprite_tests/tmp/flouvi-eventos-dark-1440.png",
+		"testsprite_tests/tmp/flouvi-blog-light-1440.png",
+		"testsprite_tests/tmp/flouvi-eventos-light-1440.png",
+		"testsprite_tests/tmp/flouvi-politicas-de-uso-dark-390.png",
+		"testsprite_tests/tmp/flouvi-sobre-dark-1440.png",
+		"testsprite_tests/tmp/flouvi-sobre-light-1440.png",
+		"testsprite_tests/tmp/flouvi-contato-dark-1440.png",
+		"testsprite_tests/tmp/flouvi-contato-dark-390.png",
+		"testsprite_tests/tmp/flouvi-contato-light-1440.png",
+		"testsprite_tests/tmp/flouvi-contato-light-390.png",
+		"testsprite_tests/tmp/flouvi-sobre-dark-390.png",
+		"testsprite_tests/tmp/flouvi-blog-dark-1440.png",
+		"testsprite_tests/tmp/flouvi-blog-light-390.png",
+		"testsprite_tests/tmp/flouvi-sobre-light-390.png",
+		"testsprite_tests/tmp/flouvi-politicas-de-uso-light-390.png",
+		"testsprite_tests/tmp/branding-desktop.png",
+		"testsprite_tests/tmp/branding-mobile.png"
+	],
+	"documentation": "docs/IDENTIDADE_VISUAL.md",
+	"changed_files": [
+		"apps/api/package.json",
+		"apps/api/src/application/media/branding-asset-service.ts",
+		"apps/api/src/application/super-admin/super-admin-service.ts",
+		"apps/api/src/infrastructure/supabase/content-repository.ts",
+		"apps/api/src/infrastructure/supabase/super-admin-repository.ts",
+		"apps/api/src/routes/super-admin.ts",
+		"apps/api/test/branding-assets.test.ts",
+		"apps/api/test/branding-routes.test.ts",
+		"apps/api/vitest.config.ts",
+		"apps/web/public/favicon.ico",
+		"apps/web/public/fonts/OFL-DM-Sans.txt",
+		"apps/web/public/fonts/dm-sans-latina.woff2",
+		"apps/web/public/images/logo-dark.svg",
+		"apps/web/public/images/logo.svg",
+		"apps/web/src/app/(public)/blog/BlogIndex.tsx",
+		"apps/web/src/app/(public)/blog/[slug]/BlogPostClient.tsx",
+		"apps/web/src/app/(public)/eventos/page.tsx",
+		"apps/web/src/app/(public)/perfil/_components/ProfileOverview.tsx",
+		"apps/web/src/app/(public)/perfil/organizador/novo/page.tsx",
+		"apps/web/src/app/(public)/perfil/organizador/page.tsx",
+		"apps/web/src/app/(public)/taxas/page.tsx",
+		"apps/web/src/app/layout.tsx",
+		"apps/web/src/app/manifest.ts",
+		"apps/web/src/app/super-admin/identidade-visual/page.tsx",
+		"apps/web/src/components/auth/AuthLayout.tsx",
+		"apps/web/src/components/blocks/BaseBlock.tsx",
+		"apps/web/src/components/blocks/Button.tsx",
+		"apps/web/src/components/blocks/CmsBlocks.test.tsx",
+		"apps/web/src/components/blocks/Events.tsx",
+		"apps/web/src/components/blocks/Form.tsx",
+		"apps/web/src/components/blocks/Gallery.tsx",
+		"apps/web/src/components/blocks/Hero.tsx",
+		"apps/web/src/components/blocks/Posts.tsx",
+		"apps/web/src/components/blocks/Pricing.tsx",
+		"apps/web/src/components/blocks/PricingCard.tsx",
+		"apps/web/src/components/blocks/RichText.tsx",
+		"apps/web/src/components/forms/FormBuilder.tsx",
+		"apps/web/src/components/forms/FormField.tsx",
+		"apps/web/src/components/layout/CheckoutHeader.tsx",
+		"apps/web/src/components/layout/Footer.tsx",
+		"apps/web/src/components/layout/NavigationBar.tsx",
+		"apps/web/src/components/layout/PageBuilder.ssr.test.tsx",
+		"apps/web/src/components/layout/PageBuilder.test.tsx",
+		"apps/web/src/components/layout/PageBuilder.tsx",
+		"apps/web/src/components/ui/Headline.tsx",
+		"apps/web/src/components/ui/Tagline.tsx",
+		"apps/web/src/components/ui/Text.ssr.test.tsx",
+		"apps/web/src/components/ui/Text.tsx",
+		"apps/web/src/features/organizer-landing/components/OrganizerLanding.tsx",
+		"apps/web/src/features/super-admin/api/server.ts",
+		"apps/web/src/features/super-admin/components/BrandingAssetUploadField.test.tsx",
+		"apps/web/src/features/super-admin/components/BrandingAssetUploadField.tsx",
+		"apps/web/src/features/super-admin/components/BrandingSettingsForm.test.tsx",
+		"apps/web/src/features/super-admin/components/BrandingSettingsForm.tsx",
+		"apps/web/src/features/super-admin/components/LogoUploadField.tsx",
+		"apps/web/src/lib/branding.test.ts",
+		"apps/web/src/lib/branding.ts",
+		"apps/web/src/styles/fonts.css",
+		"apps/web/src/styles/globals.css",
+		"apps/web/tailwind.config.ts",
+		"apps/web/vitest.config.ts",
+		"docs/IDENTIDADE_VISUAL.md",
+		"packages/contracts/src/branding.test.ts",
+		"packages/contracts/src/branding.ts",
+		"packages/contracts/src/database.types.ts",
+		"packages/contracts/src/domain.ts",
+		"packages/contracts/src/index.ts",
+		"packages/contracts/vitest.config.ts",
+		"pnpm-lock.yaml",
+		"supabase/migrations/202611170002_branding_assets.sql",
+		"testsprite_tests/branding-assets.browser.js",
+		"testsprite_tests/branding-assets.migration.cjs",
+		"testsprite_tests/cms-layout.browser.js",
+		"testsprite_tests/fixtures/cms-layout-page.tsx"
+	],
+	"sources": [
+		"https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest/Reference/icons",
+		"https://sharp.pixelplumbing.com/api-input/",
+		"https://github.com/xmldom/xmldom"
+	]
+}

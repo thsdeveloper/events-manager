@@ -63,7 +63,6 @@ const Field = ({ field, form }: FieldProps) => {
 				render={({ field: formField }) => (
 					<FormItem>
 						<FormLabel
-							htmlFor={field.name!}
 							className={cn(
 								'text-sm font-medium flex items-center justify-between',
 								field.type === 'checkbox' || field.type === 'radio' ? 'space-x-2' : '',
@@ -76,14 +75,14 @@ const Field = ({ field, form }: FieldProps) => {
 									<TooltipProvider>
 										<Tooltip>
 											<TooltipTrigger asChild>
-												<Info className="size-4 text-gray-500 cursor-pointer" />
+												<Info className="size-4 text-muted-foreground cursor-pointer" />
 											</TooltipTrigger>
 											<TooltipContent>{field.help}</TooltipContent>
 										</Tooltip>
 									</TooltipProvider>
 								)}
 							</div>
-							{field.required && <span className="text-sm text-gray-500">*Obrigatório</span>}
+							{field.required && <span className="text-sm text-muted-foreground">*Obrigatório</span>}
 						</FormLabel>
 						<FormControl>{fieldElement}</FormControl>
 						<FormMessage className="text-red-500 italic text-sm" />

@@ -79,13 +79,11 @@ describe('PageBuilder (server render)', () => {
 		expect(markup).toContain('Do cadastro ao check-in');
 	});
 
-	it('paints dark sections with a dark background and light text, keeping the data attribute', () => {
+	it('preserves the editorial background choice on the rendered sections', () => {
 		const markup = renderToStaticMarkup(<PageBuilder sections={[hero, richText]} />);
 
-		expect(markup).toMatch(/data-background="dark"[^>]*class="[^"]*bg-slate-950[^"]*text-white/);
-		expect(markup).toMatch(
-			/class="[^"]*"[^>]*data-background="light"|data-background="light"[^>]*class="(?![^"]*bg-slate-950)/,
-		);
+		expect(markup).toContain('data-background="dark"');
+		expect(markup).toContain('data-background="light"');
 	});
 });
 
@@ -109,9 +107,12 @@ describe('static blocks stay on the server', () => {
 		expect(source).not.toMatch(/^\s*['"]use client['"]/m);
 	});
 
-	it('the block Button never calls buttonVariants(), a client-only function that breaks the server render', () => {
-		const source = readFileSync(join(process.cwd(), 'src/components/blocks/Button.tsx'), 'utf8');
+	it.each(['src/components/blocks/Button.tsx', 'src/components/ui/pagination.tsx'])(
+		'%s never calls buttonVariants(), a client-only function that breaks the server render',
+		(file) => {
+			const source = readFileSync(join(process.cwd(), file), 'utf8');
 
-		expect(source).not.toMatch(/buttonVariants\(/);
-	});
+			expect(source).not.toMatch(/buttonVariants\(/);
+		},
+	);
 });

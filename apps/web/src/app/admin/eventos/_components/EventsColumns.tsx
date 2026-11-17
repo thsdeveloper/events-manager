@@ -14,7 +14,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+
 import { DeleteEventDialog } from './DeleteEventDialog';
 
 export type EventWithStats = {
@@ -26,8 +26,8 @@ const formatDate = (dateString: string | null | undefined) => {
 	if (!dateString) return 'Não definida';
 
 	const date = new Date(dateString);
-	
-return date.toLocaleDateString('pt-BR', {
+
+	return date.toLocaleDateString('pt-BR', {
 		day: '2-digit',
 		month: '2-digit',
 		year: 'numeric',
@@ -38,8 +38,8 @@ const formatDateTime = (dateString: string | null | undefined) => {
 	if (!dateString) return 'Não definida';
 
 	const date = new Date(dateString);
-	
-return date.toLocaleDateString('pt-BR', {
+
+	return date.toLocaleDateString('pt-BR', {
 		day: '2-digit',
 		month: '2-digit',
 		year: 'numeric',
@@ -49,38 +49,24 @@ return date.toLocaleDateString('pt-BR', {
 };
 
 const getStatusBadge = (status?: string) => {
-	const statusMap: Record<string, { label: string; className: string }> = {
+	const statusMap: Record<string, { label: string }> = {
 		published: {
 			label: 'Publicado',
-			className:
-				'border-transparent bg-emerald-500/10 text-emerald-700 shadow-none dark:bg-emerald-400/10 dark:text-emerald-200',
 		},
 		draft: {
 			label: 'Rascunho',
-			className:
-				'border-transparent bg-muted text-muted-foreground shadow-none dark:bg-muted/40 dark:text-muted-foreground',
 		},
 		cancelled: {
 			label: 'Cancelado',
-			className: 'border-transparent bg-red-500/10 text-red-600 shadow-none dark:bg-red-500/20 dark:text-red-200',
 		},
 		archived: {
 			label: 'Arquivado',
-			className:
-				'border-transparent bg-amber-500/10 text-amber-700 shadow-none dark:bg-amber-500/20 dark:text-amber-200',
 		},
 	};
 
 	const statusInfo = statusMap[status || 'draft'];
 
-	return (
-		<Badge
-			variant="outline"
-			className={cn('whitespace-nowrap border border-transparent text-xs font-medium', statusInfo.className)}
-		>
-			{statusInfo.label}
-		</Badge>
-	);
+	return <Badge variant="outline">{statusInfo.label}</Badge>;
 };
 
 export const getEventsColumns = (onEventDeleted?: () => void): ColumnDef<EventWithStats>[] => [
@@ -98,12 +84,9 @@ export const getEventsColumns = (onEventDeleted?: () => void): ColumnDef<EventWi
 		cell: ({ row }) => {
 			const event = row.original.event;
 
-return (
+			return (
 				<div className="min-w-[200px]">
-					<Link
-						href={`/admin/eventos/${event.id}`}
-						className="font-medium hover:text-primary hover:underline"
-					>
+					<Link href={`/admin/eventos/${event.id}`} className="font-medium hover:text-primary hover:underline">
 						{event.title}
 					</Link>
 					{event.short_description && (
@@ -129,29 +112,22 @@ return (
 		accessorFn: (row) => row.event.event_type,
 		header: 'Tipo',
 		cell: ({ row }) => {
-			const eventTypeMap: Record<string, { label: string; className: string }> = {
+			const eventTypeMap: Record<string, { label: string }> = {
 				online: {
 					label: 'Online',
-					className: 'border-blue-300 bg-blue-500/10 text-blue-600',
 				},
 				hybrid: {
 					label: 'Híbrido',
-					className: 'border-purple-300 bg-purple-500/10 text-purple-600',
 				},
 				in_person: {
 					label: 'Presencial',
-					className: 'border-green-300 bg-green-500/10 text-green-600',
 				},
 			};
 
 			const eventType = row.original.event.event_type ?? '';
-			const typeInfo = eventTypeMap[eventType] || { label: 'N/A', className: '' };
+			const typeInfo = eventTypeMap[eventType] || { label: 'N/A' };
 
-			return (
-				<Badge variant="outline" className={cn('capitalize', typeInfo.className)}>
-					{typeInfo.label}
-				</Badge>
-			);
+			return <Badge variant="outline">{typeInfo.label}</Badge>;
 		},
 	},
 	{
@@ -197,15 +173,7 @@ return (
 		accessorFn: (row) => row.event.is_free,
 		header: 'Gratuito',
 		cell: ({ row }) => {
-			return row.original.event.is_free ? (
-				<Badge variant="outline" className="border-emerald-300 bg-emerald-500/10 text-emerald-600">
-					Sim
-				</Badge>
-			) : (
-				<Badge variant="outline" className="border-gray-300 bg-gray-500/10 text-gray-600">
-					Não
-				</Badge>
-			);
+			return row.original.event.is_free ? <Badge variant="outline">Sim</Badge> : <Badge variant="outline">Não</Badge>;
 		},
 	},
 	{
@@ -214,9 +182,7 @@ return (
 		header: 'Destaque',
 		cell: ({ row }) => {
 			return row.original.event.featured ? (
-				<Badge variant="outline" className="border-primary/40 bg-primary/5 text-primary">
-					Sim
-				</Badge>
+				<Badge variant="outline">Sim</Badge>
 			) : (
 				<span className="text-muted-foreground">-</span>
 			);

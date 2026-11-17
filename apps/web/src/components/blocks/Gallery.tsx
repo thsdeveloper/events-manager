@@ -75,7 +75,7 @@ const Gallery = ({ data }: GalleryProps) => {
 	}, [isLightboxOpen]);
 
 	return (
-		<section className="relative">
+		<section className="relative space-y-4">
 			{tagline && <Tagline as="p" tagline={tagline} />}
 			{headline && <Headline as="h2" headline={headline} />}
 
@@ -97,7 +97,9 @@ const Gallery = ({ data }: GalleryProps) => {
 									className="w-full h-auto object-cover rounded-lg"
 								/>
 							) : (
-								<div className="flex items-center justify-center h-full text-sm text-gray-500">Image not available</div>
+								<div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+									Image not available
+								</div>
 							)}
 							<div className="absolute inset-0 bg-white bg-opacity-60 opacity-0 group-hover:opacity-100 flex justify-center items-center transition-opacity duration-300">
 								<ZoomIn className="size-10 text-gray-800" />

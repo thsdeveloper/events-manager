@@ -1,5 +1,7 @@
 'use client';
 
+import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Save } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -55,9 +57,7 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSaved }: Cat
 		setSaving(true);
 		setError(null);
 		try {
-			const endpoint = category
-				? `/api/super-admin/categories/${category.id}`
-				: '/api/super-admin/categories';
+			const endpoint = category ? `/api/super-admin/categories/${category.id}` : '/api/super-admin/categories';
 			const response = await fetch(endpoint, {
 				method: category ? 'PATCH' : 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -85,14 +85,12 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSaved }: Cat
 			<SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
 				<SheetHeader className="space-y-1 border-b px-6 py-5 text-left">
 					<SheetTitle>{category ? 'Editar categoria' : 'Nova categoria'}</SheetTitle>
-					<SheetDescription>
-						Categorias aparecem na etapa &ldquo;Básico&rdquo; do cadastro de eventos.
-					</SheetDescription>
+					<SheetDescription>Categorias aparecem na etapa &ldquo;Básico&rdquo; do cadastro de eventos.</SheetDescription>
 				</SheetHeader>
 
 				<form id={formId} onSubmit={submit} className="flex-1 space-y-6 overflow-y-auto p-6">
 					{/* Shows exactly what the organiser will see in the wizard. */}
-					<div className="flex items-center gap-3 rounded-lg border bg-muted/40 p-4">
+					<Card className="flex items-center gap-3 p-4">
 						<div
 							className="flex size-11 items-center justify-center rounded-lg"
 							style={{ backgroundColor: `${color}1a`, color }}
@@ -101,18 +99,16 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSaved }: Cat
 						</div>
 						<div className="min-w-0">
 							<p className="truncate font-semibold text-foreground">{name.trim() || 'Nome da categoria'}</p>
-							<p className="truncate text-xs text-muted-foreground">
-								{description.trim() || 'Descrição opcional'}
-							</p>
+							<p className="truncate text-xs text-muted-foreground">{description.trim() || 'Descrição opcional'}</p>
 						</div>
-					</div>
+					</Card>
 
 					<div className="space-y-2">
 						<Label htmlFor={`${formId}-name`}>Nome *</Label>
 						<Input
 							id={`${formId}-name`}
 							value={name}
-							onChange={event => setName(event.target.value)}
+							onChange={(event) => setName(event.target.value)}
 							placeholder="Ex: Gastronomia"
 							maxLength={60}
 							required
@@ -126,7 +122,7 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSaved }: Cat
 						<Textarea
 							id={`${formId}-description`}
 							value={description}
-							onChange={event => setDescription(event.target.value)}
+							onChange={(event) => setDescription(event.target.value)}
 							rows={2}
 							maxLength={200}
 							placeholder="Ajuda o organizador a escolher a categoria certa"
@@ -137,25 +133,24 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSaved }: Cat
 					<fieldset className="space-y-2">
 						<legend className="text-sm font-medium">Ícone</legend>
 						<div className="grid grid-cols-6 gap-2">
-							{CATEGORY_ICON_NAMES.map(name => {
+							{CATEGORY_ICON_NAMES.map((name) => {
 								const { Icon, label } = CATEGORY_ICONS[name];
 								const isSelected = icon === name;
 
 								return (
-									<button
+									<Button
+										variant={isSelected ? 'secondary' : 'outline'}
 										key={name}
 										type="button"
 										onClick={() => setIcon(name)}
 										title={label}
 										aria-label={label}
 										aria-pressed={isSelected}
-										className={cn(
-											'flex aspect-square items-center justify-center rounded-lg border transition-colors',
-											isSelected ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted',
-										)}
+										size="icon"
+										className="w-full"
 									>
 										<Icon className="size-4" />
-									</button>
+									</Button>
 								);
 							})}
 						</div>
@@ -164,8 +159,9 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSaved }: Cat
 					<fieldset className="space-y-2">
 						<legend className="text-sm font-medium">Cor</legend>
 						<div className="flex flex-wrap gap-2">
-							{CATEGORY_COLORS.map(option => (
-								<button
+							{CATEGORY_COLORS.map((option) => (
+								<Button
+									variant="ghost"
 									key={option}
 									type="button"
 									onClick={() => setColor(option)}
@@ -178,23 +174,23 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSaved }: Cat
 									)}
 								/>
 							))}
-							<label className="flex items-center gap-2 rounded-lg border px-2 text-xs text-muted-foreground">
-								<input
+							<Label className="flex items-center gap-2 rounded-lg border px-2 text-xs text-muted-foreground">
+								<Input
 									type="color"
 									value={color}
-									onChange={event => setColor(event.target.value)}
-									className="size-6 cursor-pointer border-0 bg-transparent p-0"
+									onChange={(event) => setColor(event.target.value)}
+									className="size-6 cursor-pointer p-0"
 									aria-label="Escolher outra cor"
 								/>
 								{color}
-							</label>
+							</Label>
 						</div>
 					</fieldset>
 
 					{error && (
-						<p className="text-sm text-destructive" role="alert">
-							{error}
-						</p>
+						<Alert variant="destructive" className="text-sm" role="alert">
+							<AlertDescription>{error}</AlertDescription>
+						</Alert>
 					)}
 				</form>
 
