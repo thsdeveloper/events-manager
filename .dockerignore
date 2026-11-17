@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+.git
+.github
+.vercel
+.playwright-cli
+testsprite_tests
+docs
+supabase
+apps/web
+*.log

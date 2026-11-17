@@ -1,6 +1,7 @@
--- Run with psql -v ON_ERROR_STOP=1 against the local migrated database.
+-- TAP output for `supabase test db --local/--linked`; also works with psql.
 -- Read-only assertions; no application fixtures or remote services required.
 begin;
+select '1..1';
 do $$
 declare target_table text; target_role text;
 begin
@@ -21,4 +22,5 @@ begin
     raise exception 'Browser uploads can bypass API file validation';
   end if;
 end $$;
+select 'ok 1 - API security boundaries and storage upload restrictions are intact';
 rollback;

@@ -50,3 +50,31 @@ describe('production security configuration', () => {
 		expect(() => loadEnv({ ...production, ...overrides })).toThrow(/Configuração inválida/);
 	});
 });
+
+describe('cloud development configuration', () => {
+	const development = {
+		...base,
+		NODE_ENV: 'production',
+		APP_ENV: 'development',
+		WEB_URL: 'https://flouvi-dev-ello4-solutions.vercel.app',
+		COOKIE_SECRET: 'a-random-development-secret-with-32-characters',
+		PAYMENTS_MODE: 'mock',
+	};
+
+	it('runs an optimized server with simulated payments in the development deployment', () => {
+		expect(loadEnv(development)).toMatchObject({
+			NODE_ENV: 'production',
+			APP_ENV: 'development',
+			PAYMENTS_MODE: 'mock',
+		});
+	});
+
+	it.each([{ COOKIE_SECRET: undefined }, { WEB_URL: 'http://flouvi-dev-ello4-solutions.vercel.app' }])(
+		'keeps HTTPS and strong cookie secrets mandatory: %j',
+		(overrides) => expect(() => loadEnv({ ...development, ...overrides })).toThrow(/Configuração inválida/),
+	);
+
+	it('requires provider credentials when real payments are enabled even in development', () => {
+		expect(() => loadEnv({ ...development, PAYMENTS_MODE: 'abacatepay' })).toThrow(/ABACATEPAY_API_KEY/);
+	});
+});

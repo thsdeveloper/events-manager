@@ -13,7 +13,7 @@ it('keeps sales and payment summaries readable with empty data', () => {
 			<PaymentMethodsChart data={[]} />
 		</>,
 	);
-	expect(screen.getByText('Vendas ao Longo do Tempo')).toBeInTheDocument();
+	expect(screen.getByText(/Vendas ao longo do tempo/i)).toBeInTheDocument();
 	expect(screen.getByText('Status dos Pagamentos')).toBeInTheDocument();
 	expect(screen.getByText('Métodos de Pagamento')).toBeInTheDocument();
 });

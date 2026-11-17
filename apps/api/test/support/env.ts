@@ -9,6 +9,7 @@ import type { ApiEnv } from '../../src/config/env.js';
  */
 export const TEST_ENV: ApiEnv = Object.freeze({
 	NODE_ENV: 'test',
+	APP_ENV: 'development',
 	API_HOST: '127.0.0.1',
 	API_PORT: 3333,
 	TRUST_PROXY_HOPS: 0,

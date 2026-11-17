@@ -1,0 +1,42 @@
+# Development API. Toronto is close to Supabase ca-central-1 (Montreal); Fly yul is deprecated.
+app = "flouvi-api-dev"
+primary_region = "yyz"
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "apps/api/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  APP_ENV = "development"
+  API_HOST = "0.0.0.0"
+  API_PORT = "8080"
+  TRUST_PROXY_HOPS = "1"
+  PAYMENTS_MODE = "mock"
+  WEB_URL = "https://flouvi-dev-ello4-solutions.vercel.app"
+  SUPABASE_URL = "https://yqjkujwugetsffldkisd.supabase.co"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 20
+    hard_limit = 30
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"

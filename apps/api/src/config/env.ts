@@ -11,6 +11,8 @@ config();
 const envSchema = z
 	.object({
 		NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+		// The deployment stage is independent of Node's production optimizations.
+		APP_ENV: z.enum(['development', 'production']).default('production'),
 		API_HOST: z.string().default('0.0.0.0'),
 		API_PORT: z.coerce.number().int().positive().default(3333),
 		TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
@@ -73,10 +75,11 @@ const envSchema = z
 		);
 		requireSetting(new URL(env.WEB_URL).protocol === 'https:', 'WEB_URL', 'HTTPS é obrigatório em produção.');
 		requireSetting(
-			env.PAYMENTS_MODE !== 'mock',
+			env.APP_ENV === 'development' || env.PAYMENTS_MODE !== 'mock',
 			'PAYMENTS_MODE',
 			'Pagamentos simulados não são permitidos em produção.',
 		);
+		if (env.PAYMENTS_MODE === 'mock' && env.APP_ENV === 'development') return;
 		requireSetting(
 			Boolean(env.ABACATEPAY_API_KEY?.trim()),
 			'ABACATEPAY_API_KEY',
