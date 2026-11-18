@@ -4,11 +4,11 @@ O push da `main` executa `.github/workflows/ci-deploy.yml`. Pull requests execut
 infraestrutura. O deploy segue a ordem: validação → migrations → API → frontend. A concorrência serializa os deploys;
 não interrompa uma execução durante uma migration.
 
-| Serviço                        | Destino                                                                                                                |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Frontend Next.js               | https://flouvi-dev.vercel.app — projeto Vercel `flouvi-dev`, equipe `ello4-solutions`, raiz `apps/web` |
-| API Fastify                    | https://flouvi-api-dev.fly.dev — app Fly `flouvi-api-dev`, região `yyz` (Toronto, próxima ao banco em Montreal)        |
-| Banco, autenticação e arquivos | Supabase `EventsFlow`, referência `yqjkujwugetsffldkisd`, região `ca-central-1`                                        |
+| Serviço                        | Destino                                                                                                         |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Frontend Next.js               | https://flouvi-dev.vercel.app — projeto Vercel `flouvi-dev`, equipe `ello4-solutions`, raiz `apps/web`          |
+| API Fastify                    | https://flouvi-api-dev.fly.dev — app Fly `flouvi-api-dev`, região `yyz` (Toronto, próxima ao banco em Montreal) |
+| Banco, autenticação e arquivos | Supabase `EventsFlow`, referência `yqjkujwugetsffldkisd`, região `ca-central-1`                                 |
 
 O slot chamado `production` pela Vercel pertence ao projeto **de desenvolvimento**. A API usa `NODE_ENV=production` para
 otimizações e cookies seguros, com `APP_ENV=development` e `PAYMENTS_MODE=mock`. Não há cobrança real neste ambiente. O
@@ -76,9 +76,9 @@ pnpm exec supabase link --project-ref yqjkujwugetsffldkisd --yes
 pnpm exec supabase db push --linked --dry-run
 ```
 
-O Supabase Auth permite retornos para `https://flouvi-dev.vercel.app/**` e `http://localhost:3003/**`.
-Cadastre o usuário na instância remota antes de promover um superadmin; o script `pnpm admin:promote` deve receber as
-credenciais do ambiente correto, sem reutilizar implicitamente o banco local.
+O Supabase Auth permite retornos para `https://flouvi-dev.vercel.app/**` e `http://localhost:3003/**`. Cadastre o
+usuário na instância remota antes de promover um superadmin; o script `pnpm admin:promote` deve receber as credenciais
+do ambiente correto, sem reutilizar implicitamente o banco local.
 
 ## Integrações e manutenção
 
