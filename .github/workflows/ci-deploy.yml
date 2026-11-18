@@ -38,7 +38,7 @@ jobs:
       - run: pnpm build
         env:
           API_INTERNAL_URL: http://127.0.0.1:3333
-          NEXT_PUBLIC_SITE_URL: https://flouvi-dev-ello4-solutions.vercel.app
+          NEXT_PUBLIC_SITE_URL: https://flouvi-dev.vercel.app
           NEXT_PUBLIC_SUPABASE_URL: https://yqjkujwugetsffldkisd.supabase.co
       - run: pnpm audit --prod --audit-level=high
       - name: Validar imagem da API
@@ -96,7 +96,7 @@ jobs:
     timeout-minutes: 20
     environment:
       name: development
-      url: https://flouvi-dev-ello4-solutions.vercel.app
+      url: https://flouvi-dev.vercel.app
     env:
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
@@ -115,5 +115,5 @@ jobs:
       - run: pnpm dlx vercel@65.17.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
       - name: Verificar frontend e proxy da API
         run: |
-          curl --fail --silent --show-error --retry 3 https://flouvi-dev-ello4-solutions.vercel.app/ -o /dev/null
-          curl --fail --silent --show-error --retry 3 https://flouvi-dev-ello4-solutions.vercel.app/api/event-categories | jq -e 'type == "array" or has("data")'
+          curl --fail --silent --show-error --retry 3 https://flouvi-dev.vercel.app/ -o /dev/null
+          curl --fail --silent --show-error --retry 3 https://flouvi-dev.vercel.app/api/event-categories | jq -e 'type == "array" or has("data")'

@@ -56,7 +56,7 @@ describe('cloud development configuration', () => {
 		...base,
 		NODE_ENV: 'production',
 		APP_ENV: 'development',
-		WEB_URL: 'https://flouvi-dev-ello4-solutions.vercel.app',
+		WEB_URL: 'https://flouvi-dev.vercel.app',
 		COOKIE_SECRET: 'a-random-development-secret-with-32-characters',
 		PAYMENTS_MODE: 'mock',
 	};
@@ -69,7 +69,7 @@ describe('cloud development configuration', () => {
 		});
 	});
 
-	it.each([{ COOKIE_SECRET: undefined }, { WEB_URL: 'http://flouvi-dev-ello4-solutions.vercel.app' }])(
+	it.each([{ COOKIE_SECRET: undefined }, { WEB_URL: 'http://flouvi-dev.vercel.app' }])(
 		'keeps HTTPS and strong cookie secrets mandatory: %j',
 		(overrides) => expect(() => loadEnv({ ...development, ...overrides })).toThrow(/Configuração inválida/),
 	);

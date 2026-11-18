@@ -6,7 +6,7 @@ não interrompa uma execução durante uma migration.
 
 | Serviço                        | Destino                                                                                                                |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Frontend Next.js               | https://flouvi-dev-ello4-solutions.vercel.app — projeto Vercel `flouvi-dev`, equipe `ello4-solutions`, raiz `apps/web` |
+| Frontend Next.js               | https://flouvi-dev.vercel.app — projeto Vercel `flouvi-dev`, equipe `ello4-solutions`, raiz `apps/web` |
 | API Fastify                    | https://flouvi-api-dev.fly.dev — app Fly `flouvi-api-dev`, região `yyz` (Toronto, próxima ao banco em Montreal)        |
 | Banco, autenticação e arquivos | Supabase `EventsFlow`, referência `yqjkujwugetsffldkisd`, região `ca-central-1`                                        |
 
@@ -76,7 +76,7 @@ pnpm exec supabase link --project-ref yqjkujwugetsffldkisd --yes
 pnpm exec supabase db push --linked --dry-run
 ```
 
-O Supabase Auth permite retornos para `https://flouvi-dev-ello4-solutions.vercel.app/**` e `http://localhost:3003/**`.
+O Supabase Auth permite retornos para `https://flouvi-dev.vercel.app/**` e `http://localhost:3003/**`.
 Cadastre o usuário na instância remota antes de promover um superadmin; o script `pnpm admin:promote` deve receber as
 credenciais do ambiente correto, sem reutilizar implicitamente o banco local.
 
