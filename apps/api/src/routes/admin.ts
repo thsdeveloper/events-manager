@@ -1,3 +1,5 @@
+import { authorizedEventIds } from './iam-authorization.js';
+import type { FastifyRequest } from 'fastify';
 import { brDocumentSchema, brPhoneSchema } from '@events-manager/contracts';
 import { ticketInputSchema, ticketPatchSchema } from '@events-manager/contracts';
 import type { FastifyInstance } from 'fastify';
@@ -45,30 +47,34 @@ export async function adminRoutes(
 ) {
 	const { clients, payments } = options;
 	const auth = createSupabaseAuthService(clients);
-	const admin = new AdminService(
-		new SupabaseAdminRepository(clients),
-		payments ? new RefundRegistration(payments, new SupabasePaymentRepository(clients, payments.provider)) : undefined,
-	);
-	const dashboard = new GetOrganizerDashboard(new SupabaseOrganizerDashboardRepository(clients.admin));
+	const adminFor = (request: FastifyRequest) =>
+		new AdminService(
+			new SupabaseAdminRepository(clients, authorizedEventIds(request)),
+			payments
+				? new RefundRegistration(payments, new SupabasePaymentRepository(clients, payments.provider))
+				: undefined,
+		);
+	const dashboardFor = (request: FastifyRequest) =>
+		new GetOrganizerDashboard(new SupabaseOrganizerDashboardRepository(clients.admin, authorizedEventIds(request)));
 
 	app.get('/api/admin/dashboard', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return dashboard.execute(context.organizer.id, context.eventId ?? undefined);
+		return dashboardFor(request).execute(context.organizer.id, context.eventId ?? undefined);
 	});
 
 	app.get('/api/admin/event-configurations', async (request) => {
 		await requireOrganizer(request, auth);
-		return admin.getConfiguration();
+		return adminFor(request).getConfiguration();
 	});
 
 	app.get('/api/admin/ingressos/filter-options', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return admin.eventFilterOptions(context.organizer.id, context.eventId ?? undefined);
+		return adminFor(request).eventFilterOptions(context.organizer.id, context.eventId ?? undefined);
 	});
 
 	app.get('/api/admin/ingressos', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return admin.listTickets(context.organizer.id, {
+		return adminFor(request).listTickets(context.organizer.id, {
 			...ticketQuery.parse(request.query),
 			...(context.eventId ? { eventIds: context.eventId } : {}),
 		});
@@ -76,36 +82,38 @@ export async function adminRoutes(
 
 	app.post('/api/admin/ingressos', async (request, reply) => {
 		const context = await requireOrganizer(request, auth);
-		return reply.code(201).send(await admin.createTicket(context.organizer.id, ticketInputSchema.parse(request.body)));
+		return reply
+			.code(201)
+			.send(await adminFor(request).createTicket(context.organizer.id, ticketInputSchema.parse(request.body)));
 	});
 
 	app.patch('/api/admin/ingressos/:id', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		return admin.updateTicket(context.organizer.id, id, ticketPatchSchema.parse(request.body));
+		return adminFor(request).updateTicket(context.organizer.id, id, ticketPatchSchema.parse(request.body));
 	});
 
 	app.delete('/api/admin/ingressos/:id', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		await admin.deleteTicket(context.organizer.id, id);
+		await adminFor(request).deleteTicket(context.organizer.id, id);
 		return { success: true };
 	});
 
 	app.post('/api/admin/ingressos/:id/duplicate', async (request, reply) => {
 		const context = await requireOrganizer(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		return reply.code(201).send(await admin.duplicateTicket(context.organizer.id, id));
+		return reply.code(201).send(await adminFor(request).duplicateTicket(context.organizer.id, id));
 	});
 
 	app.get('/api/admin/participantes/filter-options', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return admin.participantFilterOptions(context.organizer.id, context.eventId ?? undefined);
+		return adminFor(request).participantFilterOptions(context.organizer.id, context.eventId ?? undefined);
 	});
 
 	app.get('/api/admin/participantes', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return admin.listParticipants(context.organizer.id, {
+		return adminFor(request).listParticipants(context.organizer.id, {
 			...participantQuery.parse(request.query),
 			...(context.eventId ? { eventIds: context.eventId } : {}),
 		});
@@ -117,7 +125,7 @@ export async function adminRoutes(
 			.type('text/csv; charset=utf-8')
 			.header('content-disposition', 'attachment; filename="participantes.csv"')
 			.send(
-				await admin.exportParticipants(context.organizer.id, {
+				await adminFor(request).exportParticipants(context.organizer.id, {
 					...participantQuery.parse(request.query),
 					...(context.eventId ? { eventIds: context.eventId } : {}),
 				}),
@@ -127,25 +135,25 @@ export async function adminRoutes(
 	app.get('/api/admin/participantes/:id', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		return admin.getParticipant(context.organizer.id, id, context.eventId ?? undefined);
+		return adminFor(request).getParticipant(context.organizer.id, id, context.eventId ?? undefined);
 	});
 
 	app.patch('/api/admin/participantes/:id/edit', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		return admin.editParticipant(context.organizer.id, id, participantInput.parse(request.body));
+		return adminFor(request).editParticipant(context.organizer.id, id, participantInput.parse(request.body));
 	});
 
 	app.post('/api/admin/participantes/:id/checkin', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		return admin.checkIn(context.organizer.id, id);
+		return adminFor(request).checkIn(context.organizer.id, id);
 	});
 
 	app.delete('/api/admin/participantes/:id/checkin', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		return admin.undoCheckIn(context.organizer.id, id);
+		return adminFor(request).undoCheckIn(context.organizer.id, id);
 	});
 
 	app.post('/api/admin/participantes/:id/cancel', async (request) => {
@@ -154,6 +162,6 @@ export async function adminRoutes(
 		const { reason, refund } = z
 			.object({ reason: z.string().trim().min(3), refund: z.boolean().optional() })
 			.parse(request.body);
-		return admin.cancelParticipant(context.organizer.id, id, reason, { refund });
+		return adminFor(request).cancelParticipant(context.organizer.id, id, reason, { refund });
 	});
 }

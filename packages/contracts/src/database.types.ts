@@ -1,84 +1,8 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-	graphql_public: {
-		Tables: {
-			[_ in never]: never;
-		};
-		Views: {
-			[_ in never]: never;
-		};
-		Functions: {
-			graphql: {
-				Args: {
-					extensions?: Json;
-					operationName?: string;
-					query?: string;
-					variables?: Json;
-				};
-				Returns: Json;
-			};
-		};
-		Enums: {
-			[_ in never]: never;
-		};
-		CompositeTypes: {
-			[_ in never]: never;
-		};
-	};
 	public: {
 		Tables: {
-			checkout_attempts: {
-				Row: {
-					amount: number;
-					charge: Json | null;
-					confirmation_url: string | null;
-					created_at: string;
-					error_message: string | null;
-					fee_confirmed: boolean;
-					fingerprint: string;
-					id: string;
-					method: string;
-					provider_id: string | null;
-					registration_ids: string[];
-					status: string;
-					updated_at: string;
-					user_id: string;
-				};
-				Insert: {
-					amount: number;
-					charge?: Json | null;
-					confirmation_url?: string | null;
-					created_at?: string;
-					error_message?: string | null;
-					fee_confirmed?: boolean;
-					fingerprint: string;
-					id: string;
-					method: string;
-					provider_id?: string | null;
-					registration_ids?: string[];
-					status?: string;
-					updated_at?: string;
-					user_id: string;
-				};
-				Update: {
-					amount?: number;
-					charge?: Json | null;
-					confirmation_url?: string | null;
-					created_at?: string;
-					error_message?: string | null;
-					fee_confirmed?: boolean;
-					fingerprint?: string;
-					id?: string;
-					method?: string;
-					provider_id?: string | null;
-					registration_ids?: string[];
-					status?: string;
-					updated_at?: string;
-					user_id?: string;
-				};
-				Relationships: [];
-			};
 			audit_logs: {
 				Row: {
 					action: string;
@@ -88,6 +12,7 @@ export type Database = {
 					date_created: string;
 					id: string;
 					metadata: Json;
+					organization_id: string | null;
 					resource_id: string | null;
 					resource_type: string;
 				};
@@ -99,6 +24,7 @@ export type Database = {
 					date_created?: string;
 					id?: string;
 					metadata?: Json;
+					organization_id?: string | null;
 					resource_id?: string | null;
 					resource_type: string;
 				};
@@ -110,6 +36,7 @@ export type Database = {
 					date_created?: string;
 					id?: string;
 					metadata?: Json;
+					organization_id?: string | null;
 					resource_id?: string | null;
 					resource_type?: string;
 				};
@@ -119,6 +46,13 @@ export type Database = {
 						columns: ['actor_id'];
 						isOneToOne: false;
 						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'audit_logs_organization_id_fkey';
+						columns: ['organization_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizers';
 						referencedColumns: ['id'];
 					},
 				];
@@ -565,6 +499,57 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			checkout_attempts: {
+				Row: {
+					amount: number;
+					charge: Json | null;
+					confirmation_url: string | null;
+					created_at: string;
+					error_message: string | null;
+					fee_confirmed: boolean;
+					fingerprint: string;
+					id: string;
+					method: string;
+					provider_id: string | null;
+					registration_ids: string[];
+					status: string;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					amount: number;
+					charge?: Json | null;
+					confirmation_url?: string | null;
+					created_at?: string;
+					error_message?: string | null;
+					fee_confirmed?: boolean;
+					fingerprint: string;
+					id: string;
+					method: string;
+					provider_id?: string | null;
+					registration_ids?: string[];
+					status?: string;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					amount?: number;
+					charge?: Json | null;
+					confirmation_url?: string | null;
+					created_at?: string;
+					error_message?: string | null;
+					fee_confirmed?: boolean;
+					fingerprint?: string;
+					id?: string;
+					method?: string;
+					provider_id?: string | null;
+					registration_ids?: string[];
+					status?: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [];
+			};
 			cities: {
 				Row: {
 					id: number;
@@ -668,93 +653,93 @@ export type Database = {
 			};
 			event_configurations: {
 				Row: {
-					card_rates: Json;
-					gateway_card_settlement_period: string;
-					debit_fee_percentage: number;
-					debit_fee_fixed: number;
-					payout_pix_monthly_limit: number;
-					payout_pix_excess_fee: number;
-					ted_fee_fixed: number;
-					monthly_fee: number;
-					pix_qr_fee: number;
-					boleto_issue_fee: number;
 					allow_free_events: boolean;
 					boleto_fee_fixed: number;
+					boleto_issue_fee: number;
 					card_fee_fixed: number;
 					card_fee_percentage: number;
 					card_installment_2_6_percentage: number;
 					card_installment_7_12_percentage: number;
+					card_rates: Json;
 					convenience_fee_calculation_method: string;
+					debit_fee_fixed: number;
+					debit_fee_percentage: number;
+					gateway_card_settlement_period: string;
 					id: number;
 					max_tickets_per_event: number | null;
 					minimum_payout: number;
+					monthly_fee: number;
 					payment_gateway: string;
 					payout_fee_fixed: number;
+					payout_pix_excess_fee: number;
+					payout_pix_monthly_limit: number;
 					payouts_enabled: boolean;
 					pix_fee_fixed: number;
+					pix_qr_fee: number;
 					platform_fee_minimum: number;
 					platform_fee_percentage: number;
 					registration_confirmation_email: boolean;
+					ted_fee_fixed: number;
 					ticket_code_prefix: string;
 				};
 				Insert: {
-					card_rates?: Json;
-					gateway_card_settlement_period?: string;
-					debit_fee_percentage?: number;
-					debit_fee_fixed?: number;
-					payout_pix_monthly_limit?: number;
-					payout_pix_excess_fee?: number;
-					ted_fee_fixed?: number;
-					monthly_fee?: number;
-					pix_qr_fee?: number;
-					boleto_issue_fee?: number;
 					allow_free_events?: boolean;
 					boleto_fee_fixed?: number;
+					boleto_issue_fee?: number;
 					card_fee_fixed?: number;
 					card_fee_percentage?: number;
 					card_installment_2_6_percentage?: number;
 					card_installment_7_12_percentage?: number;
+					card_rates?: Json;
 					convenience_fee_calculation_method?: string;
+					debit_fee_fixed?: number;
+					debit_fee_percentage?: number;
+					gateway_card_settlement_period?: string;
 					id?: number;
 					max_tickets_per_event?: number | null;
 					minimum_payout?: number;
+					monthly_fee?: number;
 					payment_gateway?: string;
 					payout_fee_fixed?: number;
+					payout_pix_excess_fee?: number;
+					payout_pix_monthly_limit?: number;
 					payouts_enabled?: boolean;
 					pix_fee_fixed?: number;
+					pix_qr_fee?: number;
 					platform_fee_minimum?: number;
 					platform_fee_percentage?: number;
 					registration_confirmation_email?: boolean;
+					ted_fee_fixed?: number;
 					ticket_code_prefix?: string;
 				};
 				Update: {
-					card_rates?: Json;
-					gateway_card_settlement_period?: string;
-					debit_fee_percentage?: number;
-					debit_fee_fixed?: number;
-					payout_pix_monthly_limit?: number;
-					payout_pix_excess_fee?: number;
-					ted_fee_fixed?: number;
-					monthly_fee?: number;
-					pix_qr_fee?: number;
-					boleto_issue_fee?: number;
 					allow_free_events?: boolean;
 					boleto_fee_fixed?: number;
+					boleto_issue_fee?: number;
 					card_fee_fixed?: number;
 					card_fee_percentage?: number;
 					card_installment_2_6_percentage?: number;
 					card_installment_7_12_percentage?: number;
+					card_rates?: Json;
 					convenience_fee_calculation_method?: string;
+					debit_fee_fixed?: number;
+					debit_fee_percentage?: number;
+					gateway_card_settlement_period?: string;
 					id?: number;
 					max_tickets_per_event?: number | null;
 					minimum_payout?: number;
+					monthly_fee?: number;
 					payment_gateway?: string;
 					payout_fee_fixed?: number;
+					payout_pix_excess_fee?: number;
+					payout_pix_monthly_limit?: number;
 					payouts_enabled?: boolean;
 					pix_fee_fixed?: number;
+					pix_qr_fee?: number;
 					platform_fee_minimum?: number;
 					platform_fee_percentage?: number;
 					registration_confirmation_email?: boolean;
+					ted_fee_fixed?: number;
 					ticket_code_prefix?: string;
 				};
 				Relationships: [];
@@ -1666,6 +1651,48 @@ export type Database = {
 					},
 				];
 			};
+			organization_members: {
+				Row: {
+					created_at: string;
+					id: string;
+					organization_id: string;
+					status: string;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					created_at?: string;
+					id?: string;
+					organization_id: string;
+					status?: string;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					created_at?: string;
+					id?: string;
+					organization_id?: string;
+					status?: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'organization_members_organization_id_fkey';
+						columns: ['organization_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizers';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'organization_members_user_id_fkey';
+						columns: ['user_id'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
 			organizer_payout_receipts: {
 				Row: {
 					filename: string;
@@ -2244,6 +2271,27 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			permissions: {
+				Row: {
+					key: string;
+					label: string;
+					module: string;
+					scope: string;
+				};
+				Insert: {
+					key: string;
+					label: string;
+					module: string;
+					scope: string;
+				};
+				Update: {
+					key?: string;
+					label?: string;
+					module?: string;
+					scope?: string;
+				};
+				Relationships: [];
+			};
 			posts: {
 				Row: {
 					author: string | null;
@@ -2543,6 +2591,150 @@ export type Database = {
 					},
 				];
 			};
+			role_assignments: {
+				Row: {
+					created_at: string;
+					event_id: string | null;
+					granted_by: string | null;
+					id: string;
+					member_id: string;
+					organization_id: string;
+					role_id: string;
+				};
+				Insert: {
+					created_at?: string;
+					event_id?: string | null;
+					granted_by?: string | null;
+					id?: string;
+					member_id: string;
+					organization_id: string;
+					role_id: string;
+				};
+				Update: {
+					created_at?: string;
+					event_id?: string | null;
+					granted_by?: string | null;
+					id?: string;
+					member_id?: string;
+					organization_id?: string;
+					role_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'role_assignments_event_id_organization_id_fkey';
+						columns: ['event_id', 'organization_id'];
+						isOneToOne: false;
+						referencedRelation: 'events';
+						referencedColumns: ['id', 'organizer_id'];
+					},
+					{
+						foreignKeyName: 'role_assignments_granted_by_fkey';
+						columns: ['granted_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'role_assignments_member_id_organization_id_fkey';
+						columns: ['member_id', 'organization_id'];
+						isOneToOne: false;
+						referencedRelation: 'organization_members';
+						referencedColumns: ['id', 'organization_id'];
+					},
+					{
+						foreignKeyName: 'role_assignments_organization_id_fkey';
+						columns: ['organization_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizers';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'role_assignments_role_id_fkey';
+						columns: ['role_id'];
+						isOneToOne: false;
+						referencedRelation: 'roles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			role_permissions: {
+				Row: {
+					permission: string;
+					role_id: string;
+				};
+				Insert: {
+					permission: string;
+					role_id: string;
+				};
+				Update: {
+					permission?: string;
+					role_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'role_permissions_permission_fkey';
+						columns: ['permission'];
+						isOneToOne: false;
+						referencedRelation: 'permissions';
+						referencedColumns: ['key'];
+					},
+					{
+						foreignKeyName: 'role_permissions_role_id_fkey';
+						columns: ['role_id'];
+						isOneToOne: false;
+						referencedRelation: 'roles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			roles: {
+				Row: {
+					created_at: string;
+					created_by: string | null;
+					description: string;
+					id: string;
+					key: string | null;
+					name: string;
+					organization_id: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					created_by?: string | null;
+					description?: string;
+					id?: string;
+					key?: string | null;
+					name: string;
+					organization_id?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					created_by?: string | null;
+					description?: string;
+					id?: string;
+					key?: string | null;
+					name?: string;
+					organization_id?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'roles_created_by_fkey';
+						columns: ['created_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'roles_organization_id_fkey';
+						columns: ['organization_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizers';
+						referencedColumns: ['id'];
+					},
+				];
+			};
 			site_settings: {
 				Row: {
 					accent_color: string;
@@ -2716,28 +2908,75 @@ export type Database = {
 					},
 				];
 			};
+			user_invitations: {
+				Row: {
+					accepted_at: string | null;
+					accepted_by: string | null;
+					assignments: Json;
+					created_at: string;
+					email: string;
+					expires_at: string;
+					id: string;
+					invited_by: string;
+					organization_id: string;
+					status: string;
+					token_hash: string;
+				};
+				Insert: {
+					accepted_at?: string | null;
+					accepted_by?: string | null;
+					assignments: Json;
+					created_at?: string;
+					email: string;
+					expires_at?: string;
+					id?: string;
+					invited_by: string;
+					organization_id: string;
+					status?: string;
+					token_hash: string;
+				};
+				Update: {
+					accepted_at?: string | null;
+					accepted_by?: string | null;
+					assignments?: Json;
+					created_at?: string;
+					email?: string;
+					expires_at?: string;
+					id?: string;
+					invited_by?: string;
+					organization_id?: string;
+					status?: string;
+					token_hash?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'user_invitations_accepted_by_fkey';
+						columns: ['accepted_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'user_invitations_invited_by_fkey';
+						columns: ['invited_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'user_invitations_organization_id_fkey';
+						columns: ['organization_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizers';
+						referencedColumns: ['id'];
+					},
+				];
+			};
 		};
 		Views: {
 			[_ in never]: never;
 		};
 		Functions: {
-			settle_transparent_checkout: {
-				Args: {
-					target_attempt: string;
-					target_charge: Json;
-					target_event?: string;
-				};
-				Returns: undefined;
-			};
-			prepare_transparent_checkout: {
-				Args: {
-					target_amount: number;
-					target_attempt: string;
-					target_registrations: string[];
-				};
-				Returns: undefined;
-			};
-			valid_card_fee_rates: { Args: { value: Json }; Returns: boolean };
 			add_organizer_support_note: {
 				Args: {
 					target_actor: string;
@@ -2847,6 +3086,10 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			get_iam_dashboard: {
+				Args: { allowed_events: string[]; target_organizer: string };
+				Returns: Json;
+			};
 			get_organizer_available_balance: {
 				Args: { target_organizer: string };
 				Returns: number;
@@ -2866,6 +3109,45 @@ export type Database = {
 					target_limit?: number;
 					target_organizer: string;
 					target_page?: number;
+				};
+				Returns: Json;
+			};
+			iam_accept_invitation: {
+				Args: { actor: string; invitation_hash: string };
+				Returns: Json;
+			};
+			iam_access_context: {
+				Args: { actor: string; organization: string };
+				Returns: Json;
+			};
+			iam_assert_delegable: {
+				Args: { actor: string; assignments: Json; organization: string };
+				Returns: undefined;
+			};
+			iam_assert_permission: {
+				Args: {
+					actor: string;
+					organization: string;
+					permission_key: string;
+					target_event?: string;
+				};
+				Returns: undefined;
+			};
+			iam_has_permission: {
+				Args: {
+					actor: string;
+					organization: string;
+					permission_key: string;
+					target_event?: string;
+				};
+				Returns: boolean;
+			};
+			iam_manage: {
+				Args: {
+					actor: string;
+					input: Json;
+					operation: string;
+					organization: string;
 				};
 				Returns: Json;
 			};
@@ -2936,6 +3218,14 @@ export type Database = {
 				Returns: Json;
 			};
 			owns_event: { Args: { target_event: string }; Returns: boolean };
+			prepare_transparent_checkout: {
+				Args: {
+					target_amount: number;
+					target_attempt: string;
+					target_registrations: string[];
+				};
+				Returns: undefined;
+			};
 			receiving_request_json: {
 				Args: { target_request: string };
 				Returns: Json;
@@ -2984,6 +3274,14 @@ export type Database = {
 				};
 				Returns: undefined;
 			};
+			settle_transparent_checkout: {
+				Args: {
+					target_attempt: string;
+					target_charge: Json;
+					target_event?: string;
+				};
+				Returns: undefined;
+			};
 			submit_receiving_account: {
 				Args: {
 					target_account: Json;
@@ -3005,6 +3303,7 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			valid_card_fee_rates: { Args: { value: Json }; Returns: boolean };
 		};
 		Enums: {
 			[_ in never]: never;
@@ -3125,9 +3424,6 @@ export type CompositeTypes<
 		: never;
 
 export const Constants = {
-	graphql_public: {
-		Enums: {},
-	},
 	public: {
 		Enums: {},
 	},

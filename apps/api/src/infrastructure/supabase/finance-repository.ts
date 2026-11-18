@@ -9,25 +9,36 @@ import type {
 import type { SupabaseClients } from './clients.js';
 
 export class SupabaseFinanceRepository implements FinanceRepository {
-	constructor(private readonly clients: SupabaseClients) {}
+	constructor(
+		private readonly clients: SupabaseClients,
+		private readonly allowedEventIds: string[] | null = null,
+	) {}
 
 	async listRegistrations(organizerId: string) {
-		const { data, error } = await this.clients.admin
+		let query = this.clients.admin
 			.from('event_registrations')
 			.select('*,event_id:events!inner(id,title,organizer_id),ticket_type_id:event_tickets(id,title)')
 			.eq('event_id.organizer_id', organizerId);
+		if (this.allowedEventIds !== null) query = query.in('event_id.id', this.allowedEventIds);
+		const { data, error } = await query;
 		if (error) throw error;
-		return (data ?? []) as unknown as FinanceRegistration[];
+		return ((data ?? []) as unknown as FinanceRegistration[]).filter(
+			(row) => this.allowedEventIds === null || this.allowedEventIds.includes(row.event_id?.id ?? ''),
+		);
 	}
 
 	async listEvents(organizerId: string) {
-		const { data, error } = await this.clients.admin
+		let query = this.clients.admin
 			.from('events')
 			.select('id,title,start_date,status')
 			.eq('organizer_id', organizerId)
 			.order('title');
+		if (this.allowedEventIds !== null) query = query.in('id', this.allowedEventIds);
+		const { data, error } = await query;
 		if (error) throw error;
-		return (data ?? []) as FinanceEvent[];
+		return ((data ?? []) as FinanceEvent[]).filter(
+			(row) => this.allowedEventIds === null || this.allowedEventIds.includes(row.id),
+		);
 	}
 
 	async listTransactions(

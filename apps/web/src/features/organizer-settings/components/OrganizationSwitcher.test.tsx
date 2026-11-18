@@ -13,18 +13,28 @@ const organizations = [
 ];
 
 describe('OrganizationSwitcher', () => {
+	it('can reactivate the displayed workspace after a stale organization cookie', async () => {
+		const fetchMock = mockFetch([
+			['/api/organizer/organizations/org-1/activate', () => jsonResponse({ success: true })],
+		]);
+		const { user } = renderWithProviders(<OrganizationSwitcher organizations={organizations} activeId="org-1" />);
+		await user.click(screen.getByRole('button', { name: 'Organização: Produtora A' }));
+		await user.click(screen.getByRole('menuitem', { name: /Produtora A/ }));
+		await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+		expect(router.replace).toHaveBeenCalledWith('/admin');
+	});
 	it('opens additional-account signup from the workspace menu', async () => {
 		const { user } = renderWithProviders(<OrganizationSwitcher organizations={organizations} activeId="org-1" />);
 		await user.click(screen.getByRole('button', { name: 'Organização: Produtora A' }));
 		await user.click(screen.getByRole('menuitem', { name: 'Cadastrar nova conta' }));
 		expect(router.push).toHaveBeenCalledWith('/perfil/organizador/novo');
 	});
-	it('returns to the dashboard after changing organization so old event URLs are not reused', async () => {
+	it('resolves an authorized destination after changing organization so old event URLs are not reused', async () => {
 		mockFetch([['/api/organizer/organizations/org-2/activate', () => jsonResponse({ success: true })]]);
 		const { user } = renderWithProviders(<OrganizationSwitcher organizations={organizations} activeId="org-1" />);
 		await user.click(screen.getByRole('button', { name: 'Organização: Produtora A' }));
 		await user.click(screen.getByRole('menuitem', { name: 'Produtora B' }));
-		await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin/dashboard'));
+		await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin'));
 		expect(router.refresh).toHaveBeenCalled();
 	});
 	it('lists pending accounts without offering to activate them', async () => {

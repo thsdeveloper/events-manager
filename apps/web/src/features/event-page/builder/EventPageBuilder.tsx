@@ -1,4 +1,5 @@
 'use client';
+import { Can } from '@/components/auth/PermissionsProvider';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
 import { Badge } from '@/components/ui/badge';
@@ -228,9 +229,11 @@ export function EventPageBuilder({ event, initialPage, autosaveDelayMs = 1500 }:
 						<Button variant="outline" size="sm" onClick={() => void saveDraft()} disabled={saving}>
 							Salvar rascunho
 						</Button>
-						<Button size="sm" onClick={() => void publish()} loading={publishing}>
-							{status.kind === 'changed' ? 'Publicar alterações' : 'Publicar'}
-						</Button>
+						<Can permission="event_pages.publish" eventId={event.id}>
+							<Button size="sm" onClick={() => void publish()} loading={publishing}>
+								{status.kind === 'changed' ? 'Publicar alterações' : 'Publicar'}
+							</Button>
+						</Can>
 					</div>
 				}
 			/>

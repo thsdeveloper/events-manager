@@ -1,3 +1,4 @@
+import { hasPermission } from '@events-manager/contracts';
 import {
 	brDocumentSchema,
 	brPhoneSchema,
@@ -59,13 +60,22 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 	app.get('/api/organizer/event-selection', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		const { events } = await admin.eventFilterOptions(context.organizer.id);
-		return { events, selectedEventId: context.eventId };
+		return {
+			events: request.iam
+				? events.filter((event) => hasPermission(request.iam!.access, 'events.read', event.id))
+				: events,
+			selectedEventId: context.eventId,
+		};
 	});
 
 	app.post('/api/organizer/event-selection', async (request, reply) => {
 		const context = await requireOrganizer(request, auth);
 		const { eventId } = z.object({ eventId: z.string().uuid().nullable() }).parse(request.body);
-		if (eventId) await auth.assertOrganizerOwnsEvent(context.organizer.id, eventId);
+		if (eventId) {
+			await auth.assertOrganizerOwnsEvent(context.organizer.id, eventId);
+			if (request.iam && !hasPermission(request.iam.access, 'events.read', eventId))
+				throw new ApiError('Você não tem acesso a este evento.', 403, 'PERMISSION_DENIED');
+		}
 		setActiveEventCookie(reply, env, context.organizer.id, eventId);
 		return { selectedEventId: eventId };
 	});

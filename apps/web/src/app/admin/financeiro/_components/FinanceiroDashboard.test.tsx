@@ -1,3 +1,4 @@
+import { TestPermissions, ownerAccess } from '@/test/permissions';
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
@@ -20,21 +21,38 @@ const transactions = { data: [], pagination: { page: 1, limit: 20, total: 0, pag
 const payouts = { balance: { available: 9000, pending: 0, currency: 'brl' }, payouts: [] };
 const events = [{ id: 'event-a', title: 'Congresso' }];
 
-function view(selectedEventId: string | null) {
+function view(selectedEventId: string | null, access = ownerAccess) {
 	return (
-		<AdminEventScope scopeKey="user:org" selection={{ events, selectedEventId }}>
-			<FinanceiroDashboard
-				organizer={{ payout_status: 'enabled' } as never}
-				initialEvents={events}
-				initialOverview={metrics}
-				initialTransactions={transactions}
-				initialPayouts={selectedEventId ? null : payouts}
-			/>
-		</AdminEventScope>
+		<TestPermissions access={access}>
+			<AdminEventScope scopeKey="user:org" selection={{ events, selectedEventId }}>
+				<FinanceiroDashboard
+					organizer={{ payout_status: 'enabled' } as never}
+					initialEvents={events}
+					initialOverview={metrics}
+					initialTransactions={transactions}
+					initialPayouts={selectedEventId ? null : payouts}
+				/>
+			</AdminEventScope>
+		</TestPermissions>
 	);
 }
 
 describe('Financeiro por evento', () => {
+	it('does not expose or fetch organization payouts to event-only finance members', () => {
+		const fetchMock = mockFetch([['/api/organizer/finance', () => jsonResponse(transactions)]]);
+		renderWithProviders(
+			view(null, {
+				...ownerAccess,
+				isOwner: false,
+				permissions: [],
+				events: [{ eventId: 'event-a', permissions: ['finance.read'] }],
+			}),
+		);
+		expect(screen.queryByRole('button', { name: 'Atualizar repasses' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Exportar CSV' })).not.toBeInTheDocument();
+		expect(screen.queryByText('Repasses', { exact: true })).not.toBeInTheDocument();
+		expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/payouts'))).toBe(false);
+	});
 	it('mostra as vendas e oculta saldo e saques sem consultar repasses ao selecionar um evento', async () => {
 		const fetchMock = mockFetch([
 			['/api/organizer/finance/transactions', () => jsonResponse(transactions)],

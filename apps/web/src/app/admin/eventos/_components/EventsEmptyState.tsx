@@ -1,3 +1,4 @@
+import { Can } from '@/components/auth/PermissionsProvider';
 import { CalendarDays, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -16,12 +17,14 @@ export function EventsEmptyState() {
 				<EmptyDescription>Crie seu primeiro evento e acompanhe tudo por aqui.</EmptyDescription>
 			</EmptyHeader>
 			<EmptyContent>
-				<Button asChild>
-					<Link href="/admin/eventos/novo">
-						<Plus />
-						Criar primeiro evento
-					</Link>
-				</Button>
+				<Can permission={'events.create'}>
+					<Button asChild>
+						<Link href="/admin/eventos/novo">
+							<Plus />
+							Criar primeiro evento
+						</Link>
+					</Button>
+				</Can>
 			</EmptyContent>
 		</Empty>
 	);

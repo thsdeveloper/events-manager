@@ -10,6 +10,7 @@ export interface TicketGroupOption {
 	parent_id?: string | null;
 }
 interface TicketListProps {
+	permissions?: { create: boolean; update: boolean; remove: boolean };
 	tickets: TicketDraft[];
 	isFree: boolean;
 	onAdd: () => void;
@@ -30,6 +31,7 @@ export function TicketList({
 	onReorder,
 	onDuplicate,
 	groups = [],
+	permissions = { create: true, update: true, remove: true },
 }: TicketListProps) {
 	const move = (index: number, direction: -1 | 1) => {
 		const next = [...tickets];
@@ -49,9 +51,11 @@ export function TicketList({
 					<p className="text-sm text-muted-foreground">
 						{emptyHint ?? 'Cadastre pelo menos um tipo de ingresso para o público conseguir se inscrever.'}
 					</p>
-					<Button type="button" onClick={onAdd}>
-						Adicionar ingresso
-					</Button>
+					{permissions.create && (
+						<Button type="button" onClick={onAdd}>
+							Adicionar ingresso
+						</Button>
+					)}
 				</Empty>
 			) : (
 				<ul className="space-y-2">
@@ -84,7 +88,7 @@ export function TicketList({
 									)}
 								</div>
 								<div className="flex flex-wrap gap-1">
-									{onReorder && (
+									{permissions.update && onReorder && (
 										<>
 											<Button
 												type="button"
@@ -106,15 +110,17 @@ export function TicketList({
 											</Button>
 										</>
 									)}
-									<Button
-										type="button"
-										variant="ghost"
-										aria-label={'Editar ' + ticket.title}
-										onClick={() => onEdit(ticket)}
-									>
-										Editar
-									</Button>
-									{onDuplicate && (
+									{permissions.update && (
+										<Button
+											type="button"
+											variant="ghost"
+											aria-label={'Editar ' + ticket.title}
+											onClick={() => onEdit(ticket)}
+										>
+											Editar
+										</Button>
+									)}
+									{permissions.create && onDuplicate && (
 										<Button
 											type="button"
 											variant="ghost"
@@ -124,21 +130,23 @@ export function TicketList({
 											Duplicar
 										</Button>
 									)}
-									<Button
-										type="button"
-										variant="ghost"
-										aria-label={'Remover ' + ticket.title}
-										onClick={() => onRemove(ticket)}
-									>
-										Remover
-									</Button>
+									{permissions.remove && (
+										<Button
+											type="button"
+											variant="ghost"
+											aria-label={'Remover ' + ticket.title}
+											onClick={() => onRemove(ticket)}
+										>
+											Remover
+										</Button>
+									)}
 								</div>
 							</Card>
 						</li>
 					))}
 				</ul>
 			)}
-			{tickets.length > 0 && (
+			{permissions.create && tickets.length > 0 && (
 				<Button type="button" variant="outline" onClick={onAdd}>
 					Adicionar outro ingresso
 				</Button>

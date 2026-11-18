@@ -1,4 +1,5 @@
 'use client';
+import { Can } from '@/components/auth/PermissionsProvider';
 
 import { EventCreatedFeedback } from '@/features/event-creation';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
@@ -260,36 +261,44 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 								</Link>
 							</Button>
 						)}
-						<Button variant="outline" size="sm" asChild>
-							<Link href={`/admin/eventos/${evento_id}/pagina`}>
-								<LayoutTemplate className="mr-2 size-4" />
-								Página do evento
-							</Link>
-						</Button>
-						<Button variant="outline" size="sm" asChild>
-							<Link href={`/admin/eventos/${evento_id}/configuracoes`}>
-								<Settings className="mr-2 size-4" />
-								Configurações
-							</Link>
-						</Button>
-						<Button size="sm" asChild>
-							<Link href={`/admin/eventos/${evento_id}/editar`}>
-								<Edit className="mr-2 size-4" />
-								Editar
-							</Link>
-						</Button>
-						{event.status === 'draft' && (
-							<Button
-								variant="default"
-								size="sm"
-								onClick={() => {
-									setPublishError(null);
-									setPublishOpen(true);
-								}}
-							>
-								<Rocket className="mr-2 size-4" />
-								Publicar
+						<Can permission={'event_pages.update'} eventId={evento_id}>
+							<Button variant="outline" size="sm" asChild>
+								<Link href={`/admin/eventos/${evento_id}/pagina`}>
+									<LayoutTemplate className="mr-2 size-4" />
+									Página do evento
+								</Link>
 							</Button>
+						</Can>
+						<Can permission={'events.update'} eventId={evento_id}>
+							<Button variant="outline" size="sm" asChild>
+								<Link href={`/admin/eventos/${evento_id}/configuracoes`}>
+									<Settings className="mr-2 size-4" />
+									Configurações
+								</Link>
+							</Button>
+						</Can>
+						<Can permission={'events.update'} eventId={evento_id}>
+							<Button size="sm" asChild>
+								<Link href={`/admin/eventos/${evento_id}/editar`}>
+									<Edit className="mr-2 size-4" />
+									Editar
+								</Link>
+							</Button>
+						</Can>
+						{event.status === 'draft' && (
+							<Can permission={'events.publish'} eventId={evento_id}>
+								<Button
+									variant="default"
+									size="sm"
+									onClick={() => {
+										setPublishError(null);
+										setPublishOpen(true);
+									}}
+								>
+									<Rocket className="mr-2 size-4" />
+									Publicar
+								</Button>
+							</Can>
 						)}
 						{event.status === 'published' && (
 							<>
@@ -298,23 +307,27 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 										Prévia
 									</Link>
 								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => {
-										setUnpublishError(null);
-										setUnpublishOpen(true);
-									}}
-									disabled={busy}
-								>
-									Despublicar
-								</Button>
+								<Can permission={'events.publish'} eventId={evento_id}>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											setUnpublishError(null);
+											setUnpublishOpen(true);
+										}}
+										disabled={busy}
+									>
+										Despublicar
+									</Button>
+								</Can>
 							</>
 						)}
-						<Button variant="destructive" size="sm" onClick={requestDeleteEvent}>
-							<Trash2 className="mr-2 size-4" />
-							Excluir
-						</Button>
+						<Can permission={'events.delete'} eventId={evento_id}>
+							<Button variant="destructive" size="sm" onClick={requestDeleteEvent}>
+								<Trash2 className="mr-2 size-4" />
+								Excluir
+							</Button>
+						</Can>
 					</div>
 				}
 			/>
@@ -328,7 +341,9 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 					hint={stats.totalQuantity > 0 ? `de ${stats.totalQuantity.toLocaleString('pt-BR')} disponíveis` : undefined}
 				/>
 				<MetricCard icon={Ticket} label="Reservados" value={metrics.reserved.toLocaleString('pt-BR')} />
-				<MetricCard icon={TrendingUp} label="Receita bruta" value={formatCurrency(metrics.revenue)} />
+				<Can permission="finance.read" eventId={evento_id}>
+					<MetricCard icon={TrendingUp} label="Receita bruta" value={formatCurrency(metrics.revenue)} />
+				</Can>
 				<MetricCard
 					icon={Users}
 					label="Capacidade"
@@ -342,24 +357,30 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 						<Info className="size-4" />
 						Informações
 					</TabsTrigger>
-					<TabsTrigger value="ingressos" className="gap-1.5">
-						<Ticket className="size-4" />
-						Ingressos
-						{storedTickets.length > 0 && (
-							<Badge variant="secondary" className="tabular-nums">
-								{storedTickets.length}
-							</Badge>
-						)}
-					</TabsTrigger>
-					<TabsTrigger value="cupons" className="gap-1.5">
-						<TicketPercent className="size-4" />
-						Cupons
-					</TabsTrigger>
+					<Can permission={'tickets.read'} eventId={evento_id}>
+						<TabsTrigger value="ingressos" className="gap-1.5">
+							<Ticket className="size-4" />
+							Ingressos
+							{storedTickets.length > 0 && (
+								<Badge variant="secondary" className="tabular-nums">
+									{storedTickets.length}
+								</Badge>
+							)}
+						</TabsTrigger>
+					</Can>
+					<Can permission={'coupons.read'} eventId={evento_id}>
+						<TabsTrigger value="cupons" className="gap-1.5">
+							<TicketPercent className="size-4" />
+							Cupons
+						</TabsTrigger>
+					</Can>
 				</TabsList>
 
-				<TabsContent value="cupons" className="space-y-4">
-					<EventCoupons eventId={evento_id} />
-				</TabsContent>
+				<Can permission={'coupons.read'} eventId={evento_id}>
+					<TabsContent value="cupons" className="space-y-4">
+						<EventCoupons eventId={evento_id} />
+					</TabsContent>
+				</Can>
 
 				<TabsContent value="informacoes" className="space-y-4">
 					<div className="grid gap-4 lg:grid-cols-3">
@@ -396,15 +417,17 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 					</div>
 				</TabsContent>
 
-				<TabsContent value="ingressos" className="space-y-4">
-					<EventTicketManager
-						eventId={evento_id}
-						tickets={storedTickets}
-						registrations={registrations}
-						isFree={isFree}
-						onChanged={() => router.refresh()}
-					/>
-				</TabsContent>
+				<Can permission={'tickets.read'} eventId={evento_id}>
+					<TabsContent value="ingressos" className="space-y-4">
+						<EventTicketManager
+							eventId={evento_id}
+							tickets={storedTickets}
+							registrations={registrations}
+							isFree={isFree}
+							onChanged={() => router.refresh()}
+						/>
+					</TabsContent>
+				</Can>
 			</Tabs>
 
 			<AlertDialog open={publishOpen} onOpenChange={setPublishOpen}>

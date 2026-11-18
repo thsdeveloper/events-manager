@@ -1,4 +1,5 @@
 'use client';
+import { usePermissions } from '@/components/auth/PermissionsProvider';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useCallback, useEffect, useState } from 'react';
@@ -69,6 +70,9 @@ export function EventTicketManager({ eventId, tickets, registrations = [], isFre
 	const [items, setItems] = useState<TicketDraft[]>(() =>
 		[...tickets].sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(asDraft),
 	);
+	const { can } = usePermissions();
+	const groupEditing =
+		can('tickets.create', eventId) && can('tickets.update', eventId) && can('tickets.delete', eventId);
 	const [groups, setGroups] = useState<StoredGroup[]>([]);
 	const [drafts, setDrafts] = useState<EventTicketGroupDraft[]>([]);
 	const [busy, setBusy] = useState(false);
@@ -203,12 +207,14 @@ export function EventTicketManager({ eventId, tickets, registrations = [], isFre
 					{ label: 'Cancelados / liberados', value: metrics.cancelled },
 					{ label: 'Disponíveis', value: available },
 					{ label: 'Recebido', value: formatCurrency(metrics.revenue) },
-				].map((metric) => (
-					<Card key={metric.label} className="p-3">
-						<p className="text-xs text-muted-foreground">{metric.label}</p>
-						<p className="text-xl font-semibold">{metric.value}</p>
-					</Card>
-				))}
+				]
+					.filter((metric) => metric.label !== 'Recebido' || can('finance.read', eventId))
+					.map((metric) => (
+						<Card key={metric.label} className="p-3">
+							<p className="text-xs text-muted-foreground">{metric.label}</p>
+							<p className="text-xl font-semibold">{metric.value}</p>
+						</Card>
+					))}
 			</div>
 			{error && (
 				<Alert variant="destructive" role="alert" className="border text-sm">
@@ -219,8 +225,8 @@ export function EventTicketManager({ eventId, tickets, registrations = [], isFre
 				<p role="status">Carregando grupos...</p>
 			) : (
 				<>
-					<TicketGroupingEditor groups={drafts} onChange={setDrafts} disabled={busy} />
-					{dirty && (
+					<TicketGroupingEditor groups={drafts} onChange={setDrafts} disabled={busy || !groupEditing} />
+					{dirty && groupEditing && (
 						<div className="flex items-center gap-3">
 							<Button type="button" onClick={() => void saveGroups()} disabled={busy}>
 								Salvar grupos
@@ -234,6 +240,11 @@ export function EventTicketManager({ eventId, tickets, registrations = [], isFre
 			)}
 			<fieldset disabled={busy}>
 				<TicketList
+					permissions={{
+						create: can('tickets.create', eventId),
+						update: can('tickets.update', eventId),
+						remove: can('tickets.delete', eventId),
+					}}
 					tickets={items}
 					isFree={isFree}
 					groups={groups}

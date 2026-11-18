@@ -1,6 +1,7 @@
+import { renderAsOwner } from '@/test/permissions';
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch } from '@/test';
 import { CancelRegistrationDialog } from './CancelRegistrationDialog';
 import { nominalTicket } from '../_lib/fixtures';
 import type { NominalTicket } from '@events-manager/contracts';
@@ -13,7 +14,7 @@ function participant(overrides: Partial<NominalTicket['registration']> = {}) {
 describe('CancelRegistrationDialog', () => {
 	it('offers to refund a paid registration and sends the choice along with the reason', async () => {
 		const fetchMock = mockFetch([['/api/admin/participantes/reg-1/cancel', () => jsonResponse({ success: true })]]);
-		const { user } = renderWithProviders(
+		const { user } = renderAsOwner(
 			<CancelRegistrationDialog open onOpenChange={vi.fn()} participant={participant()} />,
 		);
 
@@ -30,7 +31,7 @@ describe('CancelRegistrationDialog', () => {
 
 	it('cancels without a refund unless the organizer asks for one', async () => {
 		const fetchMock = mockFetch([['/api/admin/participantes/reg-1/cancel', () => jsonResponse({ success: true })]]);
-		const { user } = renderWithProviders(
+		const { user } = renderAsOwner(
 			<CancelRegistrationDialog open onOpenChange={vi.fn()} participant={participant()} />,
 		);
 
@@ -42,7 +43,7 @@ describe('CancelRegistrationDialog', () => {
 	});
 
 	it('does not offer a refund when nothing was paid', () => {
-		renderWithProviders(
+		renderAsOwner(
 			<CancelRegistrationDialog
 				open
 				onOpenChange={vi.fn()}
@@ -54,7 +55,7 @@ describe('CancelRegistrationDialog', () => {
 	});
 
 	it('warns that the whole order goes, with how many tickets and who bought them', () => {
-		renderWithProviders(<CancelRegistrationDialog open onOpenChange={vi.fn()} participant={participant()} />);
+		renderAsOwner(<CancelRegistrationDialog open onOpenChange={vi.fn()} participant={participant()} />);
 
 		expect(screen.getByText(/todos os 5 ingressos/i)).toBeInTheDocument();
 		expect(screen.getByText(/Ana Souza/)).toBeInTheDocument();

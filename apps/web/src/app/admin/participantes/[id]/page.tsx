@@ -1,4 +1,5 @@
 'use client';
+import { Can } from '@/components/auth/PermissionsProvider';
 
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
@@ -159,32 +160,38 @@ export default function ParticipantDetailsPage() {
 				description={<>Participantes / {attendeeName}</>}
 				actions={
 					<div className="flex flex-wrap gap-2 sm:flex-nowrap">
-						<Button
-							variant="outline"
-							size="sm"
-							className="flex-1 sm:flex-initial"
-							onClick={() => setActiveDialog('resend')}
-							disabled={!participant.attendee_email}
-						>
-							Reenviar Email
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							className="flex-1 sm:flex-initial"
-							onClick={() => setActiveDialog('edit')}
-						>
-							{participant.attendee_name ? 'Editar' : 'Informar participante'}
-						</Button>
-						<Button
-							variant="destructive"
-							size="sm"
-							className="flex-1 sm:flex-initial"
-							onClick={() => setActiveDialog('cancel')}
-							disabled={isCancelled}
-						>
-							Cancelar Pedido
-						</Button>
+						<Can permission={'participants.update'} eventId={participant.event.id}>
+							<Button
+								variant="outline"
+								size="sm"
+								className="flex-1 sm:flex-initial"
+								onClick={() => setActiveDialog('resend')}
+								disabled={!participant.attendee_email}
+							>
+								Reenviar Email
+							</Button>
+						</Can>
+						<Can permission={'participants.update'} eventId={participant.event.id}>
+							<Button
+								variant="outline"
+								size="sm"
+								className="flex-1 sm:flex-initial"
+								onClick={() => setActiveDialog('edit')}
+							>
+								{participant.attendee_name ? 'Editar' : 'Informar participante'}
+							</Button>
+						</Can>
+						<Can permission={'participants.cancel'} eventId={participant.event.id}>
+							<Button
+								variant="destructive"
+								size="sm"
+								className="flex-1 sm:flex-initial"
+								onClick={() => setActiveDialog('cancel')}
+								disabled={isCancelled}
+							>
+								Cancelar Pedido
+							</Button>
+						</Can>
 					</div>
 				}
 			/>
@@ -303,104 +310,108 @@ export default function ParticipantDetailsPage() {
 					</Card>
 
 					{/* Seção: Pedido e pagamento */}
-					<Card className="p-6">
-						<div className="mb-4 flex items-center gap-2">
-							<CreditCard className="size-5 text-muted-foreground dark:text-muted-foreground" />
-							<h2 className="text-lg font-semibold text-foreground">Pedido e Pagamento</h2>
-						</div>
-
-						<div className="space-y-4">
-							<div className="grid gap-4 sm:grid-cols-2">
-								<div>
-									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Comprado por</p>
-									<p className="text-base text-foreground">{registration.participant_name}</p>
-									<p className="text-sm text-muted-foreground dark:text-muted-foreground">
-										{registration.participant_email}
-									</p>
-								</div>
-								<div>
-									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Data da Compra</p>
-									<p className="text-base text-foreground">
-										{formatDate(registration.date_created, 'dd MMM yyyy, HH:mm')}
-									</p>
-								</div>
-								<div>
-									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
-										Status do Pagamento
-									</p>
-									<Badge variant="secondary">
-										{paymentStatusLabels[registration.payment_status || ''] || registration.payment_status}
-									</Badge>
-								</div>
-								<div>
-									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
-										Método de Pagamento
-									</p>
-									<p className="text-base text-foreground">
-										{registration.payment_method
-											? paymentMethodLabels[registration.payment_method] || registration.payment_method
-											: '—'}
-									</p>
-								</div>
+					<Can permission={'finance.read'} eventId={participant.event.id}>
+						<Card className="p-6">
+							<div className="mb-4 flex items-center gap-2">
+								<CreditCard className="size-5 text-muted-foreground dark:text-muted-foreground" />
+								<h2 className="text-lg font-semibold text-foreground">Pedido e Pagamento</h2>
 							</div>
 
-							<div className="rounded-lg bg-muted p-4">
-								<div className="grid gap-3">
-									<div className="flex justify-between">
-										<span className="text-muted-foreground dark:text-muted-foreground">Preço Unitário</span>
-										<span className="font-medium text-foreground">{formatCurrency(participant.unit_price)}</span>
+							<div className="space-y-4">
+								<div className="grid gap-4 sm:grid-cols-2">
+									<div>
+										<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Comprado por</p>
+										<p className="text-base text-foreground">{registration.participant_name}</p>
+										<p className="text-sm text-muted-foreground dark:text-muted-foreground">
+											{registration.participant_email}
+										</p>
 									</div>
-									{participant.service_fee > 0 && (
+									<div>
+										<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+											Data da Compra
+										</p>
+										<p className="text-base text-foreground">
+											{formatDate(registration.date_created, 'dd MMM yyyy, HH:mm')}
+										</p>
+									</div>
+									<div>
+										<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+											Status do Pagamento
+										</p>
+										<Badge variant="secondary">
+											{paymentStatusLabels[registration.payment_status || ''] || registration.payment_status}
+										</Badge>
+									</div>
+									<div>
+										<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+											Método de Pagamento
+										</p>
+										<p className="text-base text-foreground">
+											{registration.payment_method
+												? paymentMethodLabels[registration.payment_method] || registration.payment_method
+												: '—'}
+										</p>
+									</div>
+								</div>
+
+								<div className="rounded-lg bg-muted p-4">
+									<div className="grid gap-3">
 										<div className="flex justify-between">
-											<span className="text-muted-foreground dark:text-muted-foreground">Taxa de Serviço</span>
-											<span className="font-medium text-foreground">{formatCurrency(participant.service_fee)}</span>
+											<span className="text-muted-foreground dark:text-muted-foreground">Preço Unitário</span>
+											<span className="font-medium text-foreground">{formatCurrency(participant.unit_price)}</span>
 										</div>
-									)}
-									{participant.discount > 0 && (
-										<div className="flex justify-between">
-											<span className="text-muted-foreground dark:text-muted-foreground">Desconto</span>
-											<span className="font-medium text-foreground">- {formatCurrency(participant.discount)}</span>
-										</div>
-									)}
-									<div className="border-t border-border pt-3">
-										<div className="flex justify-between">
-											<span className="text-lg font-semibold text-foreground">Este ingresso</span>
-											<span className="text-lg font-bold text-foreground">
-												{formatCurrency(participant.total_amount)}
-											</span>
-										</div>
-										<div className="mt-1 flex justify-between text-sm">
-											<span className="text-muted-foreground dark:text-muted-foreground">
-												Pedido inteiro ({registration.quantity} ingresso{registration.quantity > 1 ? 's' : ''})
-											</span>
-											<span className="text-foreground">{formatCurrency(registration.total_amount)}</span>
+										{participant.service_fee > 0 && (
+											<div className="flex justify-between">
+												<span className="text-muted-foreground dark:text-muted-foreground">Taxa de Serviço</span>
+												<span className="font-medium text-foreground">{formatCurrency(participant.service_fee)}</span>
+											</div>
+										)}
+										{participant.discount > 0 && (
+											<div className="flex justify-between">
+												<span className="text-muted-foreground dark:text-muted-foreground">Desconto</span>
+												<span className="font-medium text-foreground">- {formatCurrency(participant.discount)}</span>
+											</div>
+										)}
+										<div className="border-t border-border pt-3">
+											<div className="flex justify-between">
+												<span className="text-lg font-semibold text-foreground">Este ingresso</span>
+												<span className="text-lg font-bold text-foreground">
+													{formatCurrency(participant.total_amount)}
+												</span>
+											</div>
+											<div className="mt-1 flex justify-between text-sm">
+												<span className="text-muted-foreground dark:text-muted-foreground">
+													Pedido inteiro ({registration.quantity} ingresso{registration.quantity > 1 ? 's' : ''})
+												</span>
+												<span className="text-foreground">{formatCurrency(registration.total_amount)}</span>
+											</div>
 										</div>
 									</div>
 								</div>
+
+								{registration.receipt_url && (
+									<a
+										href={registration.receipt_url}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:underline "
+									>
+										<FileText className="size-4" />
+										Ver comprovante de pagamento
+									</a>
+								)}
+
+								{registration.notes && (
+									<div>
+										<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
+											Observações do pedido
+										</p>
+										<p className="whitespace-pre-line text-base text-foreground">{registration.notes}</p>
+									</div>
+								)}
 							</div>
-
-							{registration.receipt_url && (
-								<a
-									href={registration.receipt_url}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:underline "
-								>
-									<FileText className="size-4" />
-									Ver comprovante de pagamento
-								</a>
-							)}
-
-							{registration.notes && (
-								<div>
-									<p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">
-										Observações do pedido
-									</p>
-									<p className="whitespace-pre-line text-base text-foreground">{registration.notes}</p>
-								</div>
-							)}
-						</div>
-					</Card>
+						</Card>
+					</Can>
 				</div>
 
 				{/* Coluna Lateral */}
@@ -424,9 +435,14 @@ export default function ParticipantDetailsPage() {
 										{formatDate(participant.check_in_date, 'dd MMM yyyy, HH:mm')}
 									</p>
 								</div>
-								<Button variant="outline" className="w-full" size="sm" onClick={() => setActiveDialog('checkin')}>
-									Desfazer Check-in
-								</Button>
+								<Can
+									permission={participant.check_in_date ? 'checkin.undo' : 'checkin.execute'}
+									eventId={participant.event.id}
+								>
+									<Button variant="outline" className="w-full" size="sm" onClick={() => setActiveDialog('checkin')}>
+										Desfazer Check-in
+									</Button>
+								</Can>
 							</div>
 						) : (
 							<div className="space-y-3">
@@ -435,15 +451,20 @@ export default function ParticipantDetailsPage() {
 										? 'Check-in ainda não realizado'
 										: 'Informe o participante antes do check-in'}
 								</p>
-								<Button
-									variant="default"
-									className="w-full"
-									size="sm"
-									onClick={() => setActiveDialog('checkin')}
-									disabled={isCancelled || !participant.attendee_name}
+								<Can
+									permission={participant.check_in_date ? 'checkin.undo' : 'checkin.execute'}
+									eventId={participant.event.id}
 								>
-									Fazer Check-in
-								</Button>
+									<Button
+										variant="default"
+										className="w-full"
+										size="sm"
+										onClick={() => setActiveDialog('checkin')}
+										disabled={isCancelled || !participant.attendee_name}
+									>
+										Fazer Check-in
+									</Button>
+								</Can>
 							</div>
 						)}
 					</Card>
@@ -456,15 +477,17 @@ export default function ParticipantDetailsPage() {
 						</div>
 
 						<div className="space-y-2">
-							<Button
-								variant="outline"
-								className="w-full justify-start"
-								size="sm"
-								onClick={() => setActiveDialog('resend')}
-								disabled={!participant.attendee_email}
-							>
-								{participant.is_buyer ? 'Reenviar Recibo da Compra' : 'Reenviar Ingresso'}
-							</Button>
+							<Can permission={'participants.update'} eventId={participant.event.id}>
+								<Button
+									variant="outline"
+									className="w-full justify-start"
+									size="sm"
+									onClick={() => setActiveDialog('resend')}
+									disabled={!participant.attendee_email}
+								>
+									{participant.is_buyer ? 'Reenviar Recibo da Compra' : 'Reenviar Ingresso'}
+								</Button>
+							</Can>
 							<Button
 								variant="outline"
 								className="w-full justify-start"
@@ -474,23 +497,27 @@ export default function ParticipantDetailsPage() {
 							>
 								{isDownloading ? 'Gerando PDF...' : 'Baixar Ingresso (PDF)'}
 							</Button>
-							<Button
-								variant="outline"
-								className="w-full justify-start"
-								size="sm"
-								onClick={() => setActiveDialog('edit')}
-							>
-								{participant.attendee_name ? 'Editar Participante' : 'Informar Participante'}
-							</Button>
-							<Button
-								variant="destructive"
-								className="w-full justify-start"
-								size="sm"
-								onClick={() => setActiveDialog('cancel')}
-								disabled={isCancelled}
-							>
-								Cancelar Pedido
-							</Button>
+							<Can permission={'participants.update'} eventId={participant.event.id}>
+								<Button
+									variant="outline"
+									className="w-full justify-start"
+									size="sm"
+									onClick={() => setActiveDialog('edit')}
+								>
+									{participant.attendee_name ? 'Editar Participante' : 'Informar Participante'}
+								</Button>
+							</Can>
+							<Can permission={'participants.cancel'} eventId={participant.event.id}>
+								<Button
+									variant="destructive"
+									className="w-full justify-start"
+									size="sm"
+									onClick={() => setActiveDialog('cancel')}
+									disabled={isCancelled}
+								>
+									Cancelar Pedido
+								</Button>
+							</Can>
 						</div>
 					</Card>
 				</div>

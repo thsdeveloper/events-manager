@@ -76,7 +76,7 @@ export function createSupabaseClientsStub(options: SupabaseStubOptions = {}) {
 
 	const admin = {
 		from,
-		rpc: vi.fn(async () => ({ data: null, error: null, ...rpc })),
+		rpc: vi.fn(async (_name: string, _args?: Record<string, unknown>) => ({ data: null, error: null, ...rpc })),
 		auth: { getUser, admin: { signOut: vi.fn(), updateUserById: vi.fn() } },
 		storage,
 	};
@@ -100,6 +100,7 @@ export function createSupabaseClientsStub(options: SupabaseStubOptions = {}) {
 
 	return {
 		clients: { admin, public: publicClient, forAccessToken } as unknown as SupabaseClients,
+		rpc: admin.rpc,
 		from,
 		getUser,
 		signInWithPassword,

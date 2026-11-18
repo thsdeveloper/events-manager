@@ -1,3 +1,5 @@
+import { iamRoutes } from './routes/iam.js';
+import { installIamAuthorization } from './routes/iam-authorization.js';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
@@ -55,10 +57,12 @@ export async function buildApp(env: ApiEnv) {
 
 	installErrorHandler(app);
 	installHttpSecurity(app, env.WEB_URL);
+	installIamAuthorization(app, clients);
 
 	app.get('/health', () => checkHealth.execute());
 
 	await app.register(authRoutes, { env, clients });
+	await app.register(iamRoutes, { env, clients });
 	await app.register(contentRoutes, { env, clients });
 	await app.register(couponRoutes, { clients });
 	await app.register(eventRoutes, { clients });

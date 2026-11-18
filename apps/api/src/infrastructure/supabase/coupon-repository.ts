@@ -1,3 +1,4 @@
+import { memberOrganizations } from './member-organizations.js';
 import type { CouponInput, CouponPatch } from '@events-manager/contracts';
 import type { Coupon, CouponRepository, TicketPrice } from '../../application/coupons/coupon-service.js';
 import type { SupabaseClients } from './clients.js';
@@ -54,7 +55,20 @@ export class SupabaseCouponRepository implements CouponRepository {
 			.maybeSingle();
 		if (error) throw error;
 
-		return data !== null;
+		if (data) return true;
+		const memberships = await memberOrganizations(this.clients, userId);
+		if (!memberships.length) return false;
+		const membershipEvent = await this.clients.admin
+			.from('events')
+			.select('id')
+			.eq('id', eventId)
+			.in(
+				'organizer_id',
+				memberships.map((org) => org.id),
+			)
+			.maybeSingle();
+		if (membershipEvent.error) throw membershipEvent.error;
+		return Boolean(membershipEvent.data);
 	}
 
 	async listByEvent(eventId: string) {

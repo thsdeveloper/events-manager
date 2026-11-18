@@ -1,4 +1,5 @@
 'use client';
+import { Can, usePermissions } from '@/components/auth/PermissionsProvider';
 
 import { useAdminEventScope } from '@/features/event-scope/components/AdminEventScope';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
@@ -85,6 +86,8 @@ export default function FinanceiroDashboard({
 	initialPayouts,
 }: FinanceiroDashboardProps) {
 	const { selectedEventId } = useAdminEventScope();
+	const { can, access } = usePermissions();
+	const showPayouts = !selectedEventId && can('payouts.read');
 	const [filters, setFilters] = useState<AppliedFilters>(defaultFilters);
 	const [paginationState, setPaginationState] = useState<Pick<PaginationState, 'page' | 'limit'>>({
 		page: initialTransactions.pagination?.page ?? DEFAULT_PAGINATION.page,
@@ -114,7 +117,7 @@ export default function FinanceiroDashboard({
 
 	const payoutsQuery = usePayouts({
 		initialData: initialPayouts ?? undefined,
-		enabled: !selectedEventId,
+		enabled: showPayouts,
 	});
 
 	const overviewLoading = overviewQuery.isPending;
@@ -214,23 +217,25 @@ export default function FinanceiroDashboard({
 				}
 				actions={
 					<div className="flex flex-wrap gap-2">
-						{!selectedEventId && (
+						{showPayouts && (
 							<Button variant="outline" onClick={loadPayouts} disabled={payoutsQuery.isFetching}>
 								<RefreshCcw className="mr-2 size-4" />
 								Atualizar repasses
 							</Button>
 						)}
-						<Button onClick={handleExport} disabled={exporting}>
-							<Download className="mr-2 size-4" />
-							Exportar CSV
-						</Button>
+						<Can permission={'finance.export'} anyEvent>
+							<Button onClick={handleExport} disabled={exporting}>
+								<Download className="mr-2 size-4" />
+								Exportar CSV
+							</Button>
+						</Can>
 					</div>
 				}
 			/>
 
 			<FinanceFilters events={initialEvents} filters={filters} onApply={handleFiltersApply} />
 
-			{!selectedEventId && <PaymentAccountStatus organizer={organizer} payoutSummary={payoutSummary} />}
+			{showPayouts && access?.isOwner && <PaymentAccountStatus organizer={organizer} payoutSummary={payoutSummary} />}
 
 			<FinanceOverview isLoading={overviewLoading} metrics={metrics} currencyFormatter={currencyFormatter} />
 
@@ -255,7 +260,7 @@ export default function FinanceiroDashboard({
 				</CardContent>
 			</Card>
 
-			{!selectedEventId && (
+			{showPayouts && (
 				<PayoutHistory isLoading={payoutLoading} summary={payoutSummary} currencyFormatter={currencyFormatter} />
 			)}
 		</div>

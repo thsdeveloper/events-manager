@@ -28,6 +28,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 interface CouponManagerProps {
+	permissions?: { create: boolean; update: boolean; remove: boolean };
 	coupons: Coupon[];
 	create: (input: CouponInput) => Promise<boolean | void>;
 	error: string | null;
@@ -75,7 +76,15 @@ const emptyForm: {
 	max_uses: '',
 };
 
-export function CouponManager({ coupons, create, error, isSaving, remove, setStatus }: CouponManagerProps) {
+export function CouponManager({
+	coupons,
+	create,
+	error,
+	isSaving,
+	remove,
+	setStatus,
+	permissions = { create: true, update: true, remove: true },
+}: CouponManagerProps) {
 	const [isFormOpen, setFormOpen] = useState(false);
 	const [form, setForm] = useState(emptyForm);
 	const [toDelete, setToDelete] = useState<Coupon | null>(null);
@@ -107,10 +116,16 @@ export function CouponManager({ coupons, create, error, isSaving, remove, setSta
 					</Heading>
 					<p className="text-sm text-muted-foreground">O desconto é conferido pelo servidor na hora da compra.</p>
 				</div>
-				<Button onClick={() => setFormOpen((open) => !open)} type="button" variant={isFormOpen ? 'outline' : 'default'}>
-					<Plus className="size-4" aria-hidden />
-					{isFormOpen ? 'Cancelar' : 'Novo cupom'}
-				</Button>
+				{permissions.create && (
+					<Button
+						onClick={() => setFormOpen((open) => !open)}
+						type="button"
+						variant={isFormOpen ? 'outline' : 'default'}
+					>
+						<Plus className="size-4" aria-hidden />
+						{isFormOpen ? 'Cancelar' : 'Novo cupom'}
+					</Button>
+				)}
 			</div>
 
 			{error ? (
@@ -213,9 +228,11 @@ export function CouponManager({ coupons, create, error, isSaving, remove, setSta
 					</div>
 
 					<div className="sm:col-span-2">
-						<Button disabled={isSaving} type="submit">
-							{isSaving ? 'Salvando...' : 'Salvar cupom'}
-						</Button>
+						{permissions.create && (
+							<Button disabled={isSaving} type="submit">
+								{isSaving ? 'Salvando...' : 'Salvar cupom'}
+							</Button>
+						)}
 					</div>
 				</form>
 			) : null}
@@ -248,24 +265,28 @@ export function CouponManager({ coupons, create, error, isSaving, remove, setSta
 								</div>
 
 								<div className="flex items-center gap-1">
-									<Button
-										aria-label={`${coupon.status === 'active' ? 'Desativar' : 'Ativar'} ${coupon.code}`}
-										onClick={() => setStatus(coupon.id, coupon.status === 'active' ? 'inactive' : 'active')}
-										size="icon"
-										type="button"
-										variant="ghost"
-									>
-										<Power className="size-4" aria-hidden />
-									</Button>
-									<Button
-										aria-label={`Excluir ${coupon.code}`}
-										onClick={() => setToDelete(coupon)}
-										size="icon"
-										type="button"
-										variant="destructive"
-									>
-										<Trash2 className="size-4" aria-hidden />
-									</Button>
+									{permissions.update && (
+										<Button
+											aria-label={`${coupon.status === 'active' ? 'Desativar' : 'Ativar'} ${coupon.code}`}
+											onClick={() => setStatus(coupon.id, coupon.status === 'active' ? 'inactive' : 'active')}
+											size="icon"
+											type="button"
+											variant="ghost"
+										>
+											<Power className="size-4" aria-hidden />
+										</Button>
+									)}
+									{permissions.remove && (
+										<Button
+											aria-label={`Excluir ${coupon.code}`}
+											onClick={() => setToDelete(coupon)}
+											size="icon"
+											type="button"
+											variant="destructive"
+										>
+											<Trash2 className="size-4" aria-hidden />
+										</Button>
+									)}
 								</div>
 							</Card>
 						</li>

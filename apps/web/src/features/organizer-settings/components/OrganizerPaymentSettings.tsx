@@ -1,4 +1,5 @@
 'use client';
+import { Can } from '@/components/auth/PermissionsProvider';
 
 import {
 	CARD_SETTLEMENT_PERIODS,
@@ -223,9 +224,11 @@ export function OrganizerPaymentSettings() {
 								As taxas atuais não puderam ser carregadas. Os valores exibidos são os padrões de referência.
 							</p>
 						) : null}
-						<Button onClick={save} loading={saving}>
-							Salvar formas de pagamento
-						</Button>
+						<Can permission={'payments.configure'}>
+							<Button onClick={save} loading={saving}>
+								Salvar formas de pagamento
+							</Button>
+						</Can>
 					</>
 				)}
 			</CardContent>

@@ -1,7 +1,8 @@
+import { renderAsOwner } from '@/test/permissions';
 import { describe, it, expect, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import type { EventTicket } from '@events-manager/contracts';
-import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch, problemResponse } from '@/test';
 import { EventTicketManager } from './EventTicketManager';
 const a = {
 	id: 'a',
@@ -29,7 +30,7 @@ const fee: [string, () => Response] = [
 describe('event ticket manager', () => {
 	it('shows confirmed sales separately from held stock and only actual payments as revenue', async () => {
 		mockFetch([['/api/admin/eventos/e/grupos', () => jsonResponse({ data: [] })], fee]);
-		renderWithProviders(
+		renderAsOwner(
 			<EventTicketManager
 				eventId="e"
 				tickets={[a]}
@@ -52,7 +53,7 @@ describe('event ticket manager', () => {
 			['/api/admin/eventos/e/ingressos/ordem', () => jsonResponse({ success: true })],
 			fee,
 		]);
-		const { user } = renderWithProviders(
+		const { user } = renderAsOwner(
 			<EventTicketManager eventId="e" tickets={[a, b]} isFree={false} onChanged={changed} />,
 		);
 		await user.click(screen.getByRole('button', { name: 'Mover Camarote para cima' }));
@@ -69,7 +70,7 @@ describe('event ticket manager', () => {
 			],
 			fee,
 		]);
-		const { user } = renderWithProviders(<EventTicketManager eventId="e" tickets={[a, b]} isFree={false} />);
+		const { user } = renderAsOwner(<EventTicketManager eventId="e" tickets={[a, b]} isFree={false} />);
 		await user.click(screen.getByRole('button', { name: 'Mover Camarote para cima' }));
 		expect(await screen.findByRole('alert')).toHaveTextContent('Atualize a lista');
 		expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('Pista');
@@ -92,9 +93,7 @@ describe('event ticket manager', () => {
 			],
 			fee,
 		]);
-		const { user } = renderWithProviders(
-			<EventTicketManager eventId="e" tickets={[a]} isFree={false} onChanged={changed} />,
-		);
+		const { user } = renderAsOwner(<EventTicketManager eventId="e" tickets={[a]} isFree={false} onChanged={changed} />);
 		await user.type(await screen.findByRole('textbox', { name: 'Novo grupo' }), 'Setor A');
 		await user.click(screen.getByRole('button', { name: 'Adicionar grupo' }));
 		await user.click(screen.getByRole('button', { name: 'Salvar grupos' }));
@@ -112,9 +111,7 @@ describe('event ticket manager', () => {
 			['/api/admin/ingressos/a', () => jsonResponse({ success: true })],
 			fee,
 		]);
-		const { user } = renderWithProviders(
-			<EventTicketManager eventId="e" tickets={[a]} isFree={false} onChanged={changed} />,
-		);
+		const { user } = renderAsOwner(<EventTicketManager eventId="e" tickets={[a]} isFree={false} onChanged={changed} />);
 		await user.click(screen.getByRole('button', { name: 'Duplicar Pista' }));
 		await waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
 		await user.click(screen.getByRole('button', { name: 'Remover Pista' }));
@@ -126,7 +123,7 @@ describe('event ticket manager', () => {
 	});
 	it('keeps a type with occupied stock instead of deleting buyer records', async () => {
 		const fetcher = mockFetch([['/api/admin/eventos/e/grupos', () => jsonResponse({ data: [] })], fee]);
-		const { user } = renderWithProviders(
+		const { user } = renderAsOwner(
 			<EventTicketManager eventId="e" tickets={[{ ...a, quantity_sold: 1 }]} isFree={false} />,
 		);
 		await user.click(screen.getByRole('button', { name: 'Remover Pista' }));

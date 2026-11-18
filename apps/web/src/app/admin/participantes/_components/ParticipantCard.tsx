@@ -1,4 +1,5 @@
 'use client';
+import { Can } from '@/components/auth/PermissionsProvider';
 
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
@@ -75,17 +76,28 @@ export function ParticipantCard({
 						<DropdownMenuItem asChild>
 							<Link href={`/admin/participantes/${participant.id}`}>Ver detalhes</Link>
 						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onCheckInClick(participant)}>
-							{participant.check_in_date ? 'Desfazer check-in' : 'Fazer check-in'}
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onEditClick?.(participant)}>
-							{participant.attendee_name ? 'Editar participante' : 'Informar participante'}
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onResendEmailClick?.(participant)}>Reenviar email</DropdownMenuItem>
+						<Can
+							permission={participant.check_in_date ? 'checkin.undo' : 'checkin.execute'}
+							eventId={participant.event.id}
+						>
+							<DropdownMenuItem onClick={() => onCheckInClick(participant)}>
+								{participant.check_in_date ? 'Desfazer check-in' : 'Fazer check-in'}
+							</DropdownMenuItem>
+						</Can>
+						<Can permission={'participants.update'} eventId={participant.event.id}>
+							<DropdownMenuItem onClick={() => onEditClick?.(participant)}>
+								{participant.attendee_name ? 'Editar participante' : 'Informar participante'}
+							</DropdownMenuItem>
+						</Can>
+						<Can permission={'participants.update'} eventId={participant.event.id}>
+							<DropdownMenuItem onClick={() => onResendEmailClick?.(participant)}>Reenviar email</DropdownMenuItem>
+						</Can>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem className="text-destructive" onClick={() => onCancelClick?.(participant)}>
-							Cancelar pedido
-						</DropdownMenuItem>
+						<Can permission={'participants.cancel'} eventId={participant.event.id}>
+							<DropdownMenuItem className="text-destructive" onClick={() => onCancelClick?.(participant)}>
+								Cancelar pedido
+							</DropdownMenuItem>
+						</Can>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
@@ -117,7 +129,9 @@ export function ParticipantCard({
 					<div className="flex flex-1 items-center justify-between">
 						<div>
 							<Badge variant="secondary">{paymentStatusLabels[payment || ''] || payment}</Badge>
-							<p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(participant.total_amount)}</p>
+							<Can permission={'finance.read'} eventId={participant.event.id}>
+								<p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(participant.total_amount)}</p>
+							</Can>
 						</div>
 					</div>
 				</div>
@@ -135,9 +149,11 @@ export function ParticipantCard({
 						</span>
 					</div>
 				) : (
-					<Button size="sm" variant="outline" onClick={() => onCheckInClick(participant)} className="w-full">
-						Fazer Check-in
-					</Button>
+					<Can permission={'checkin.execute'} eventId={participant.event.id}>
+						<Button size="sm" variant="outline" onClick={() => onCheckInClick(participant)} className="w-full">
+							Fazer Check-in
+						</Button>
+					</Can>
 				)}
 			</div>
 		</Card>

@@ -1,3 +1,4 @@
+import { memberOrganizations } from './member-organizations.js';
 import type {
 	AuthIdentity,
 	AuthRepository,
@@ -259,7 +260,9 @@ export class SupabaseAuthRepository implements AuthRepository {
 			.eq('user_id', userId)
 			.order('date_created', { ascending: true });
 		if (error) throw error;
-		return (data ?? []) as unknown as OrganizerAuthorization[];
+		const owned = (Array.isArray(data) ? data : []) as unknown as OrganizerAuthorization[];
+		const memberships = await memberOrganizations(this.clients, userId);
+		return [...owned, ...memberships.filter((member) => !owned.some((org) => org.id === member.id))];
 	}
 
 	/**

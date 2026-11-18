@@ -1,3 +1,5 @@
+import { renderAsOwner, TestPermissions, ownerAccess } from '@/test/permissions';
+import { renderWithProviders, jsonResponse, mockFetch, problemResponse } from '@/test';
 /**
  * Cabeçalho do detalhe do evento. As ações do evento ficam juntas no topo,
  * inclusive a exclusão, que abre a confirmação antes de qualquer chamada.
@@ -5,7 +7,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import type { Event } from '@events-manager/contracts';
-import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
 import EventoDetalhesClient from './EventoDetalhesClient';
 
 const router = { push: vi.fn(), refresh: vi.fn() };
@@ -29,8 +30,26 @@ const event = {
 } as unknown as Event;
 
 describe('EventoDetalhesClient', () => {
+	it('hides mutation and financial controls from a check-in operator', () => {
+		renderWithProviders(
+			<TestPermissions
+				access={{
+					...ownerAccess,
+					isOwner: false,
+					permissions: ['events.read', 'participants.read', 'checkin.execute'],
+				}}
+			>
+				<EventoDetalhesClient initialEvent={event} evento_id="e-1" />
+			</TestPermissions>,
+		);
+		expect(screen.queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('link', { name: 'Editar' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Publicar' })).not.toBeInTheDocument();
+		expect(screen.queryByText('Receita bruta')).not.toBeInTheDocument();
+		expect(screen.queryByRole('tab', { name: 'Ingressos' })).not.toBeInTheDocument();
+	});
 	it('keeps "Excluir" among the header actions, beside "Editar", not buried in the details tab', () => {
-		renderWithProviders(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
+		renderAsOwner(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
 
 		const actions = screen.getByRole('toolbar', { name: 'Ações do evento' });
 		expect(within(actions).getByRole('link', { name: /editar/i })).toBeInTheDocument();
@@ -43,7 +62,7 @@ describe('EventoDetalhesClient', () => {
 	});
 
 	it('asks for confirmation before deleting', async () => {
-		const { user } = renderWithProviders(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
+		const { user } = renderAsOwner(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
 
 		await user.click(screen.getByRole('button', { name: 'Excluir' }));
 
@@ -51,20 +70,18 @@ describe('EventoDetalhesClient', () => {
 	});
 
 	it('offers "Publicar" in the header only while the event is a draft', () => {
-		const { unmount } = renderWithProviders(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
+		const { unmount } = renderAsOwner(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
 		const actions = screen.getByRole('toolbar', { name: 'Ações do evento' });
 		expect(within(actions).getByRole('button', { name: 'Publicar' })).toBeInTheDocument();
 		unmount();
 
-		renderWithProviders(
-			<EventoDetalhesClient initialEvent={{ ...event, status: 'published' } as Event} evento_id="e-1" />,
-		);
+		renderAsOwner(<EventoDetalhesClient initialEvent={{ ...event, status: 'published' } as Event} evento_id="e-1" />);
 		expect(screen.queryByRole('button', { name: 'Publicar' })).not.toBeInTheDocument();
 	});
 
 	it('publishes only after the organizer confirms, then refreshes the page', async () => {
 		const fetchMock = mockFetch([['/api/events/e-1', () => jsonResponse({ ...event, status: 'published' })]]);
-		const { user } = renderWithProviders(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
+		const { user } = renderAsOwner(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
 
 		await user.click(screen.getByRole('button', { name: 'Publicar' }));
 		const dialog = screen.getByRole('alertdialog', { name: 'Publicar evento' });
@@ -82,7 +99,7 @@ describe('EventoDetalhesClient', () => {
 
 	it('keeps the dialog open and shows why when the API refuses to publish', async () => {
 		mockFetch([['/api/events/e-1', () => problemResponse(422, 'VALIDATION_ERROR', 'Cadastre ao menos um ingresso.')]]);
-		const { user } = renderWithProviders(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
+		const { user } = renderAsOwner(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
 
 		await user.click(screen.getByRole('button', { name: 'Publicar' }));
 		await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Publicar' }));
@@ -92,7 +109,7 @@ describe('EventoDetalhesClient', () => {
 	});
 
 	it('shows the rich description as formatted text, never as raw tags', () => {
-		renderWithProviders(
+		renderAsOwner(
 			<EventoDetalhesClient
 				initialEvent={{ ...event, description: '<p>Três dias de <strong>encontros</strong>.</p>' } as Event}
 				evento_id="e-1"
@@ -106,12 +123,12 @@ describe('EventoDetalhesClient', () => {
 
 describe('prévia e retirada do ar', () => {
 	it('links a draft to its private preview', () => {
-		renderWithProviders(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
+		renderAsOwner(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
 		expect(screen.getByRole('link', { name: /Prévia/ })).toHaveAttribute('href', '/admin/eventos/e-1/previa');
 	});
 	it('unpublishes only after confirmation', async () => {
 		const requests = mockFetch([['/api/events/e-1', () => jsonResponse({ ...event, status: 'draft' })]]);
-		const { user } = renderWithProviders(
+		const { user } = renderAsOwner(
 			<EventoDetalhesClient initialEvent={{ ...event, status: 'published' } as Event} evento_id="e-1" />,
 		);
 		await user.click(screen.getByRole('button', { name: 'Despublicar' }));
@@ -145,7 +162,7 @@ it('separates confirmed sales, reservations and paid revenue', () => {
 			{ id: 'r-2', status: 'confirmed', payment_status: 'paid', quantity: 1, payment_amount: 100 },
 		],
 	} as unknown as Event;
-	renderWithProviders(<EventoDetalhesClient initialEvent={initialEvent} evento_id="e-1" />);
+	renderAsOwner(<EventoDetalhesClient initialEvent={initialEvent} evento_id="e-1" />);
 	expect(within(screen.getByRole('group', { name: 'Ingressos vendidos' })).getByText('1')).toBeInTheDocument();
 	expect(within(screen.getByRole('group', { name: 'Reservados' })).getByText('2')).toBeInTheDocument();
 	expect(within(screen.getByRole('group', { name: 'Receita bruta' })).getByText(/100,00/)).toBeInTheDocument();
@@ -155,7 +172,7 @@ it('atualiza o contexto do Header ao excluir o evento selecionado', async () => 
 	router.push.mockClear();
 	router.refresh.mockClear();
 	mockFetch([['/api/events/e-1', () => new Response(null, { status: 204 })]]);
-	const { user } = renderWithProviders(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
+	const { user } = renderAsOwner(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
 	await user.click(screen.getByRole('button', { name: 'Excluir' }));
 	await user.click(
 		within(screen.getByRole('alertdialog', { name: 'Excluir evento' })).getByRole('button', { name: 'Excluir evento' }),

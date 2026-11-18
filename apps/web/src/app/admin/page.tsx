@@ -1,8 +1,6 @@
 import { redirect } from 'next/navigation';
-
-/**
- * Admin root redirects to dashboard
- */
-export default function AdminPage() {
-	redirect('/admin/dashboard');
+import { getServerPermissions } from '@/lib/auth/server-permissions';
+import { preferredAdminPath } from '@/lib/auth/permission-policy';
+export default async function AdminPage() {
+	redirect(preferredAdminPath(await getServerPermissions()));
 }

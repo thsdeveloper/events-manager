@@ -1,3 +1,4 @@
+import { memberOrganizations } from './member-organizations.js';
 import type { Event, EventInput } from '@events-manager/contracts';
 import { type EventRepository, type EventStorageInput } from '../../application/events/event-service.js';
 import type { SupabaseClients } from './clients.js';
@@ -20,7 +21,9 @@ export async function resolveEventOrganizer(
 		.eq('user_id', userId)
 		.order('date_created', { ascending: true });
 	if (error) throw error;
-	const organizers = (Array.isArray(data) ? data : data ? [data] : []) as EventOrganizerScope[];
+	const owned = (Array.isArray(data) ? data : data ? [data] : []) as EventOrganizerScope[];
+	const memberships = await memberOrganizations(clients, userId);
+	const organizers = [...owned, ...memberships.filter((member) => !owned.some((org) => org.id === member.id))];
 	if (!organizers.length) return null;
 	if (strictPreference) return organizers.find((organizer) => organizer.id === preferredId) ?? null;
 	const preferred = organizers.find((organizer) => organizer.id === preferredId);
@@ -65,6 +68,7 @@ export class SupabaseEventRepository implements EventRepository {
 		private readonly clients: SupabaseClients,
 		private readonly preferredOrganizerId?: string,
 		private readonly strictPreference = false,
+		private readonly allowedEventIds: string[] | null = null,
 	) {}
 
 	private organizerForUser(userId: string) {
@@ -118,15 +122,19 @@ export class SupabaseEventRepository implements EventRepository {
 	async listForUser(userId: string) {
 		const organizer = await this.organizerForUser(userId);
 		if (!organizer) return [];
-		const { data, error } = await this.clients.admin
+		let query = this.clients.admin
 			.from('events')
 			.select(
 				'*,cover_image:media_files(*),category_id:event_categories(*),tickets:event_tickets(*),registrations:event_registrations(id,ticket_type_id,status,payment_status,quantity,payment_amount,total_amount,inventory_reserved)',
 			)
 			.eq('organizer_id', organizer.id)
 			.order('date_created', { ascending: false });
+		if (this.allowedEventIds !== null) query = query.in('id', this.allowedEventIds);
+		const { data, error } = await query;
 		if (error) throw error;
-		return (data ?? []) as unknown as Event[];
+		return ((data ?? []) as unknown as Event[]).filter(
+			(row) => this.allowedEventIds === null || this.allowedEventIds.includes(row.id),
+		);
 	}
 
 	async listCategories() {

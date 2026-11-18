@@ -1,4 +1,5 @@
 'use client';
+import { usePermissions } from '@/components/auth/PermissionsProvider';
 
 import { useAdminEventScope } from '@/features/event-scope/components/AdminEventScope';
 import { rememberEventCreation } from '@/features/event-creation';
@@ -318,6 +319,8 @@ export function EventCreationWizard({
 	initialDraft,
 	draftOnly = false,
 }: EventCreationWizardProps = {}) {
+	const { can } = usePermissions();
+	const canChangeStatus = can('events.publish', event?.id);
 	const isEdit = mode === 'edit' && Boolean(event);
 	const router = useRouter();
 	const { selectedEventId } = useAdminEventScope();
@@ -743,7 +746,7 @@ export function EventCreationWizard({
 							end_date: values.end_date,
 							event_type: values.event_type,
 							max_attendees: values.max_attendees ?? null,
-							status: values.status,
+							status: canChangeStatus ? values.status : undefined,
 							visibility: values.visibility ?? 'public',
 							is_free: values.is_free,
 							category_id: values.category_id || null,
@@ -887,6 +890,7 @@ export function EventCreationWizard({
 			case 'tickets':
 				return (
 					<TicketsStep
+						canChangeStatus={canChangeStatus}
 						draftOnly={draftOnly}
 						manageTicketsHref={isEdit && event ? `/admin/eventos/${event.id}` : undefined}
 					/>
@@ -917,6 +921,7 @@ export function EventCreationWizard({
 		isEdit,
 		isGeneratingCover,
 		mode,
+		canChangeStatus,
 		draftOnly,
 	]);
 

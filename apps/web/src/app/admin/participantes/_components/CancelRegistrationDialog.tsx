@@ -1,4 +1,5 @@
 'use client';
+import { usePermissions } from '@/components/auth/PermissionsProvider';
 
 import { Card } from '@/components/ui/card';
 import { useState } from 'react';
@@ -44,6 +45,7 @@ export function CancelRegistrationDialog({
 	onSuccess,
 }: CancelRegistrationDialogProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const { can } = usePermissions();
 	// O estorno é uma decisão do organizador, não um efeito do cancelamento: um
 	// no-show cancelado não devolve dinheiro; um evento cancelado, sim.
 	const [refund, setRefund] = useState(false);
@@ -120,7 +122,7 @@ export function CancelRegistrationDialog({
 	// deste tipo, caem juntos. O diálogo recebe um ingresso, mas fala do pedido.
 	const { registration } = participant;
 	const canCancel = registration.status === 'confirmed' || registration.status === 'pending';
-	const canRefund = registration.payment_status === 'paid';
+	const canRefund = registration.payment_status === 'paid' && can('refunds.create', participant.event.id);
 	const orderTotal = Number(registration.total_amount ?? 0);
 
 	return (

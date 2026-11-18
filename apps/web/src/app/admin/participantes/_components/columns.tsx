@@ -1,5 +1,6 @@
 'use client';
 
+import { Can } from '@/components/auth/PermissionsProvider';
 import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
@@ -136,7 +137,9 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 			return (
 				<div className="flex flex-col gap-1">
 					<Badge variant="secondary">{paymentStatusLabels[status || ''] || status}</Badge>
-					<span className="text-sm text-foreground">{formatCurrency(ticket.total_amount)}</span>
+					<Can permission={'finance.read'} eventId={ticket.event.id}>
+						<span className="text-sm text-foreground">{formatCurrency(ticket.total_amount)}</span>
+					</Can>
 					{method && method !== 'free' && (
 						<span className="text-xs text-muted-foreground dark:text-muted-foreground">
 							{paymentMethodLabels[method] || method}
@@ -171,9 +174,11 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 			}
 
 			return (
-				<Button size="sm" variant="outline" onClick={() => options?.onCheckInClick?.(row.original)}>
-					Fazer Check-in
-				</Button>
+				<Can permission={'checkin.execute'} eventId={row.original.event.id}>
+					<Button size="sm" variant="outline" onClick={() => options?.onCheckInClick?.(row.original)}>
+						Fazer Check-in
+					</Button>
+				</Can>
 			);
 		},
 	},
@@ -194,19 +199,30 @@ export const createColumns = (options?: ColumnsOptions): ColumnDef<ParticipantRo
 						<DropdownMenuItem asChild>
 							<Link href={`/admin/participantes/${participant.id}`}>Ver detalhes</Link>
 						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => options?.onCheckInClick?.(participant)}>
-							{participant.check_in_date ? 'Desfazer check-in' : 'Fazer check-in'}
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => options?.onEditClick?.(participant)}>
-							{participant.attendee_name ? 'Editar participante' : 'Informar participante'}
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => options?.onResendEmailClick?.(participant)}>
-							Reenviar email
-						</DropdownMenuItem>
+						<Can
+							permission={participant.check_in_date ? 'checkin.undo' : 'checkin.execute'}
+							eventId={participant.event.id}
+						>
+							<DropdownMenuItem onClick={() => options?.onCheckInClick?.(participant)}>
+								{participant.check_in_date ? 'Desfazer check-in' : 'Fazer check-in'}
+							</DropdownMenuItem>
+						</Can>
+						<Can permission={'participants.update'} eventId={participant.event.id}>
+							<DropdownMenuItem onClick={() => options?.onEditClick?.(participant)}>
+								{participant.attendee_name ? 'Editar participante' : 'Informar participante'}
+							</DropdownMenuItem>
+						</Can>
+						<Can permission={'participants.update'} eventId={participant.event.id}>
+							<DropdownMenuItem onClick={() => options?.onResendEmailClick?.(participant)}>
+								Reenviar email
+							</DropdownMenuItem>
+						</Can>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem className="text-destructive" onClick={() => options?.onCancelClick?.(participant)}>
-							Cancelar pedido
-						</DropdownMenuItem>
+						<Can permission={'participants.cancel'} eventId={participant.event.id}>
+							<DropdownMenuItem className="text-destructive" onClick={() => options?.onCancelClick?.(participant)}>
+								Cancelar pedido
+							</DropdownMenuItem>
+						</Can>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			);

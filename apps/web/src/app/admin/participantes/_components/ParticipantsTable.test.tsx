@@ -1,3 +1,4 @@
+import { TestPermissions, ownerAccess } from '@/test/permissions';
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '@/test';
@@ -8,13 +9,27 @@ vi.mock('next/link', () => ({
 	default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
 }));
 
-function renderTable(data = [nominalTicket()]) {
+function renderTable(data = [nominalTicket()], access = ownerAccess) {
 	return renderWithProviders(
-		<ParticipantsTable data={data} isLoading={false} pageCount={1} currentPage={1} onPageChange={vi.fn()} />,
+		<TestPermissions access={access}>
+			<ParticipantsTable data={data} isLoading={false} pageCount={1} currentPage={1} onPageChange={vi.fn()} />
+		</TestPermissions>,
 	);
 }
 
 describe('ParticipantsTable', () => {
+	it('lets check-in operators validate entry without financial or editing actions', async () => {
+		const { user } = renderTable(undefined, {
+			...ownerAccess,
+			isOwner: false,
+			permissions: ['participants.read', 'checkin.execute'],
+		});
+		expect(screen.queryByText('R$ 110,00')).not.toBeInTheDocument();
+		await user.click(screen.getAllByRole('button', { name: 'Abrir menu' })[0]);
+		expect(screen.getByRole('menuitem', { name: 'Fazer check-in' })).toBeInTheDocument();
+		expect(screen.queryByRole('menuitem', { name: 'Editar participante' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('menuitem', { name: 'Cancelar pedido' })).not.toBeInTheDocument();
+	});
 	it('announces partial selection and can select or clear all tickets', async () => {
 		const { user } = renderTable([nominalTicket(), nominalTicket({ id: 'second', attendee_name: 'Carlos' })]);
 		const all = screen.getByRole('checkbox', { name: 'Selecionar todos os ingressos' });

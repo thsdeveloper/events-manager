@@ -1,4 +1,5 @@
 'use client';
+import { Can } from '@/components/auth/PermissionsProvider';
 
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
@@ -111,16 +112,20 @@ export default function EventosPage() {
 				title="Meus Eventos"
 				description="Acompanhe o desempenho e crie novas experiências."
 				actions={
-					<Button asChild className="gap-2">
-						<Link href="/admin/eventos/novo">
-							<Plus className="size-4" />
-							Criar evento
-						</Link>
-					</Button>
+					<Can permission={'events.create'}>
+						<Button asChild className="gap-2">
+							<Link href="/admin/eventos/novo">
+								<Plus className="size-4" />
+								Criar evento
+							</Link>
+						</Button>
+					</Can>
 				}
 			/>
 
-			<EventDraftList enabled={Boolean(user)} />
+			<Can permission="events.create">
+				<EventDraftList enabled={Boolean(user)} />
+			</Can>
 			{preparedEvents.length > 0 && (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 					<Card className="">

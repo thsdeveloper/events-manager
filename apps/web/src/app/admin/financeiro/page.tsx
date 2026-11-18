@@ -1,3 +1,7 @@
+import { hasPermission } from '@events-manager/contracts';
+import { getServerPermissions } from '@/lib/auth/server-permissions';
+import { canVisitAdminPath } from '@/lib/auth/permission-policy';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { getEventSelection } from '@/features/event-scope/api/getEventSelection';
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
@@ -23,7 +27,12 @@ const defaultFilters: AppliedFilters = {
 };
 
 export default async function FinanceiroPage() {
-	const [{ organizer }, { selectedEventId }] = await Promise.all([requireOrganizer(), getEventSelection()]);
+	const [{ organizer }, { selectedEventId }, access] = await Promise.all([
+		requireOrganizer(),
+		getEventSelection(),
+		getServerPermissions(),
+	]);
+	if (!canVisitAdminPath(access, '/admin/financeiro')) return <AccessDenied />;
 
 	// Get access token from cookies
 	const cookieStore = await cookies();
@@ -38,7 +47,7 @@ export default async function FinanceiroPage() {
 		fetchFinanceEvents(organizer, accessToken),
 		fetchFinanceOverview(organizer, accessToken, defaultFilters),
 		fetchTransactions(organizer, accessToken, defaultFilters, 1, 20, 'date', 'desc'),
-		selectedEventId ? Promise.resolve(null) : fetchPayouts(organizer),
+		selectedEventId || !hasPermission(access, 'payouts.read') ? Promise.resolve(null) : fetchPayouts(organizer),
 	]);
 
 	return (

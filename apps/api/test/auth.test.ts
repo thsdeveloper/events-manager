@@ -1,7 +1,7 @@
 import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTestEnv } from './support/index.js';
+import { createTestEnv, fakeQueryBuilder } from './support/index.js';
 import type { SupabaseClients } from '../src/infrastructure/supabase/clients.js';
 import { authRoutes } from '../src/routes/auth.js';
 import { installErrorHandler } from '../src/shared/errors.js';
@@ -49,30 +49,34 @@ function createClients() {
 					updateUserById: vi.fn(),
 				},
 			},
-			from: vi.fn((table: string) => ({
-				select: vi.fn(() => ({
-					eq: vi.fn(() => ({
-						// Listagens (organizações do usuário) terminam em `order`; nenhuma aqui.
-						order: vi.fn(async () => ({ data: [], error: null })),
-						// Atividade paga (`in(...).limit(1)`): nenhuma para este usuário.
-						in: vi.fn(() => ({ limit: vi.fn(async () => ({ data: [], error: null })) })),
-						maybeSingle: vi.fn(async () => ({
-							data:
-								table === 'profiles'
-									? {
-											id: authUser.id,
-											email: authUser.email,
-											first_name: 'Ana',
-											last_name: 'Silva',
-											role: 'attendee',
-											status: 'active',
-										}
-									: null,
-							error: null,
-						})),
-					})),
-				})),
-			})),
+			from: vi.fn((table: string) =>
+				table === 'organization_members'
+					? fakeQueryBuilder({ data: [] })
+					: {
+							select: vi.fn(() => ({
+								eq: vi.fn(() => ({
+									// Listagens (organizações do usuário) terminam em `order`; nenhuma aqui.
+									order: vi.fn(async () => ({ data: [], error: null })),
+									// Atividade paga (`in(...).limit(1)`): nenhuma para este usuário.
+									in: vi.fn(() => ({ limit: vi.fn(async () => ({ data: [], error: null })) })),
+									maybeSingle: vi.fn(async () => ({
+										data:
+											table === 'profiles'
+												? {
+														id: authUser.id,
+														email: authUser.email,
+														first_name: 'Ana',
+														last_name: 'Silva',
+														role: 'attendee',
+														status: 'active',
+													}
+												: null,
+										error: null,
+									})),
+								})),
+							})),
+						},
+			),
 		},
 		forAccessToken,
 	};

@@ -1,3 +1,4 @@
+import { renderAsOwner } from '@/test/permissions';
 /**
  * Construtor da página do evento. O organizador monta a landing por seções,
  * vê o resultado ao vivo e só publica um layout coerente. A seção de ingressos
@@ -6,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import { buildDefaultEventPageLayout, type Event, type EventPageRecord } from '@events-manager/contracts';
-import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch, problemResponse } from '@/test';
 import { EventPageBuilder } from './EventPageBuilder';
 
 vi.mock('next/link', () => ({
@@ -76,7 +77,7 @@ function renderBuilder(page = record(), routes: Parameters<typeof mockFetch>[0] 
 			(_input, init) => jsonResponse({ ...page, draft: JSON.parse(String(init?.body)).draft }),
 		],
 	]);
-	const view = renderWithProviders(<EventPageBuilder event={event} initialPage={page} autosaveDelayMs={30} />);
+	const view = renderAsOwner(<EventPageBuilder event={event} initialPage={page} autosaveDelayMs={30} />);
 
 	return { fetchMock, ...view };
 }

@@ -1,3 +1,4 @@
+import { hasPermission } from '@events-manager/contracts';
 import type { FastifyRequest } from 'fastify';
 import type { AuthService } from '../application/auth/auth-service.js';
 import { z } from 'zod';
@@ -26,7 +27,7 @@ export async function resolveActiveEvent(request: FastifyRequest, auth: AuthServ
 	const eventId = preference.data[1];
 	try {
 		await auth.assertOrganizerOwnsEvent(organizerId, eventId);
-		return eventId;
+		return !request.iam || hasPermission(request.iam.access, 'events.read', eventId) ? eventId : null;
 	} catch (error) {
 		// Deleted/transferred events cannot leave the workspace stuck on an obsolete selection.
 		if (error instanceof ApiError && error.code === 'EVENT_NOT_FOUND') return null;

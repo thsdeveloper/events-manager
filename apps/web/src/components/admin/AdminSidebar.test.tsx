@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import AdminSidebar from './AdminSidebar';
+import { PermissionContext } from '@/components/auth/PermissionsProvider';
+import { permissionDefinitions, type Permission } from '@events-manager/contracts';
 
 const router = vi.hoisted(() => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }));
 vi.mock('next/navigation', () => ({ usePathname: () => '/admin/eventos/novo', useRouter: () => router }));
@@ -35,16 +37,26 @@ const organizations = [
 	{ id: 'maya', name: 'Maya Eventos', status: 'active' },
 	{ id: 'outra', name: 'Outra organização', status: 'active' },
 ];
-function renderSidebar() {
+function renderSidebar(permissions: Permission[] = permissionDefinitions.map((p) => p.key)) {
 	return renderWithProviders(
-		<SidebarProvider>
-			<AdminSidebar organizer={organizations[0] as never} organizations={organizations} />
-			<SidebarTrigger />
-		</SidebarProvider>,
+		<PermissionContext.Provider
+			value={{ userId: 'owner', organizationId: 'maya', isOwner: true, active: true, permissions, events: [] }}
+		>
+			<SidebarProvider>
+				<AdminSidebar organizer={organizations[0] as never} organizations={organizations} />
+				<SidebarTrigger />
+			</SidebarProvider>
+		</PermissionContext.Provider>,
 	);
 }
 
 describe('organizer sidebar', () => {
+	it('shows only authorized destinations for a check-in operator', () => {
+		renderSidebar(['events.read', 'participants.read', 'checkin.execute']);
+		expect(screen.getByRole('link', { name: 'Participantes' })).toBeInTheDocument();
+		expect(screen.queryByRole('link', { name: 'Financeiro' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('link', { name: 'Equipe' })).not.toBeInTheDocument();
+	});
 	it('keeps destinations accessible when collapsed and explains each icon on hover', async () => {
 		const { user } = renderSidebar();
 		await user.click(screen.getByRole('button', { name: 'Alternar navegação' }));
@@ -84,7 +96,7 @@ describe('organizer sidebar', () => {
 		const nav = screen.getByRole('navigation', { name: 'Navegação do organizador' });
 		expect(within(nav).getByRole('link', { name: 'Eventos' })).toHaveAttribute('aria-current', 'page');
 		expect(within(nav).getByRole('link', { name: 'Financeiro' })).toHaveAttribute('href', '/admin/financeiro');
-		expect(within(nav).getAllByRole('link')).toHaveLength(6);
+		expect(within(nav).getAllByRole('link')).toHaveLength(7);
 	});
 
 	it('lets the organizer change the active organization through the API', async () => {
@@ -93,7 +105,7 @@ describe('organizer sidebar', () => {
 		await user.click(screen.getByRole('button', { name: /Maya Eventos/ }));
 		await user.click(screen.getByRole('menuitem', { name: /Outra organização/ }));
 		await waitFor(() => expect(router.refresh).toHaveBeenCalled());
-		expect(router.replace).toHaveBeenCalledWith('/admin/dashboard');
+		expect(router.replace).toHaveBeenCalledWith('/admin');
 		expect(fetchMock).toHaveBeenCalledWith(
 			'/api/organizer/organizations/outra/activate',
 			expect.objectContaining({ method: 'POST', credentials: 'include' }),

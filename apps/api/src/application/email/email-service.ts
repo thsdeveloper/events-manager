@@ -355,9 +355,46 @@ export class EmailService implements TicketMailer {
 		});
 	}
 
+	async sendTeamInvitation(
+		notice: { id: string; email: string; url: string; expiresAt: string },
+		idempotencyKey: string,
+	) {
+		// The token/link never enters delivery payloads or audit logs.
+		const delivery = await this.deliveries.claim({
+			idempotencyKey,
+			template: 'team-invitation',
+			recipient: notice.email,
+			payload: { invitationId: notice.id, expiresAt: notice.expiresAt },
+		});
+		if (!delivery.shouldSend) return delivery;
+		const branding = await this.branding.load();
+		const { html, text } = renderEmail({
+			branding,
+			preheader: 'Você recebeu um convite para uma equipe na Flouvi.',
+			blocks: [
+				{ type: 'heading', text: 'Você foi convidado para uma equipe' },
+				{
+					type: 'paragraph',
+					text: 'Entre ou crie sua conta com este endereço de e-mail para aceitar. O convite vale por 7 dias e só pode ser usado uma vez.',
+				},
+				{ type: 'button', label: 'Ver convite', url: notice.url },
+				{
+					type: 'paragraph',
+					text: 'Se não reconhece o convite, ignore esta mensagem. Nenhum acesso será criado sem o seu aceite.',
+				},
+			],
+		});
+		return this.dispatch(
+			delivery,
+			{ to: notice.email, subject: 'Convite para equipe na Flouvi', html, text },
+			'Não foi possível enviar o convite.',
+		);
+	}
+
 	private async dispatch(
 		delivery: EmailDelivery,
 		message: { html: string; subject: string; text: string; to: string },
+		safeError?: string,
 	) {
 		try {
 			const result = await this.gateway.send({ from: this.from, ...message });
@@ -366,7 +403,7 @@ export class EmailService implements TicketMailer {
 			await this.deliveries.markFailed(
 				delivery.id,
 				delivery.attempts + 1,
-				error instanceof Error ? error.message : String(error),
+				safeError ?? (error instanceof Error ? error.message : String(error)),
 			);
 			throw error;
 		}

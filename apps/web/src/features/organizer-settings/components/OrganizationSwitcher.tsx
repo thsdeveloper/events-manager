@@ -62,7 +62,6 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 
 	const activate = useCallback(
 		async (id: string) => {
-			if (id === activeId) return;
 			setSwitching(id);
 			try {
 				const response = await fetch(`/api/organizer/organizations/${id}/activate`, {
@@ -72,7 +71,7 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 				if (!response.ok) throw new Error('Não foi possível trocar de organização.');
 				// Every admin screen is scoped to the active organization, so the whole
 				// tree is refetched rather than patched piecemeal.
-				router.replace('/admin/dashboard');
+				router.replace('/admin');
 				router.refresh();
 			} catch (error) {
 				toast({
@@ -84,7 +83,7 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 				setSwitching(null);
 			}
 		},
-		[activeId, router, toast],
+		[router, toast],
 	);
 
 	if (!active) return null;

@@ -1,3 +1,4 @@
+import { authorizedEventIds } from './iam-authorization.js';
 import { eventCreateSchema, eventPatchSchema } from '@events-manager/contracts';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -27,16 +28,16 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 	// Tickets that arrive with a new event are created through the admin service so
 	// they go through the same ownership check and platform-fee pricing as any other.
 	const adminTickets = new AdminService(new SupabaseAdminRepository(clients));
-	const createEvents = (preferred?: string, strict = false) =>
+	const createEvents = (preferred?: string, strict = false, eventIds: string[] | null = null) =>
 		new EventService(
-			new SupabaseEventRepository(clients, preferred, strict),
+			new SupabaseEventRepository(clients, preferred, strict, eventIds),
 			{ create: (organizerId, ticket) => adminTickets.createTicket(organizerId, ticket) },
 			new SupabaseEventDraftRepository(clients, preferred, strict),
 			{ create: (organizerId, eventId, groups) => createEventTicketGroups(clients, organizerId, eventId, groups) },
 		);
-	const eventsFor = async (userId: string, preferred?: string) => {
+	const eventsFor = async (userId: string, preferred?: string, eventIds: string[] | null = null) => {
 		const organizer = await resolveEventOrganizer(clients, userId, preferred);
-		return createEvents(organizer?.id, true);
+		return createEvents(organizer?.id, true, eventIds);
 	};
 	const events = createEvents();
 	const selectedEventFor = async (request: Parameters<typeof requireUser>[0], userId: string) => {
@@ -58,7 +59,7 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 		const context = await requireUser(request, auth);
 		const eventId = await selectedEventFor(request, context.user.id);
 		const data = await (
-			await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE])
+			await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE], authorizedEventIds(request))
 		).listForUser(context.user.id);
 		return { data: eventId ? data.filter((event) => event.id === eventId) : data };
 	});
@@ -84,7 +85,7 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 				.code(201)
 				.send(
 					await (
-						await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE])
+						await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE], authorizedEventIds(request))
 					).create(context.user.id, input),
 				);
 		} catch (error) {
@@ -99,7 +100,7 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 		if (eventId && eventId !== id) throw new ApiError('Evento fora da seleção atual.', 404, 'EVENT_NOT_FOUND');
 		try {
 			return await (
-				await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE])
+				await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE], authorizedEventIds(request))
 			).getForUser(context.user.id, id);
 		} catch (error) {
 			mapEventError(error);
@@ -112,7 +113,7 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 		const input = eventPatchSchema.parse(request.body);
 		try {
 			return await (
-				await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE])
+				await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE], authorizedEventIds(request))
 			).update(context.user.id, id, input);
 		} catch (error) {
 			mapEventError(error);
@@ -123,7 +124,9 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 		const context = await requireUser(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
 		try {
-			await (await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE])).delete(context.user.id, id);
+			await (
+				await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE], authorizedEventIds(request))
+			).delete(context.user.id, id);
 			return reply.code(204).send();
 		} catch (error) {
 			mapEventError(error);

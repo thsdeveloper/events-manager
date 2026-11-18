@@ -22,3 +22,5 @@ export * from './brazil-address.js';
 export * from './payment-fees.js';
 export * from './payment-settings.js';
 export * from './transparent-checkout.js';
+
+export * from './iam.js';

@@ -1,10 +1,11 @@
+import { renderAsOwner } from '@/test/permissions';
 /**
  * Detalhe de um ingresso nominal: quem vai, o pedido de quem comprou (com o
  * comprovante), o evento e o check-in daquela unidade.
  */
 import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch } from '@/test';
 import { nominalTicket } from '../_lib/fixtures';
 import ParticipantDetailsPage from './page';
 
@@ -34,7 +35,7 @@ describe('ParticipantDetailsPage', () => {
 			],
 		]);
 
-		renderWithProviders(<ParticipantDetailsPage />);
+		renderAsOwner(<ParticipantDetailsPage />);
 
 		expect(await screen.findByRole('heading', { name: 'Bia Lima' })).toBeInTheDocument();
 		expect(screen.getByText(/comprado por/i)).toBeInTheDocument();
@@ -52,7 +53,7 @@ describe('ParticipantDetailsPage', () => {
 			],
 		]);
 
-		renderWithProviders(<ParticipantDetailsPage />);
+		renderAsOwner(<ParticipantDetailsPage />);
 
 		expect(await screen.findByRole('heading', { name: 'Participante a informar' })).toBeInTheDocument();
 		expect(screen.getAllByRole('button', { name: /informar participante/i }).length).toBeGreaterThan(0);

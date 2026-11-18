@@ -18,7 +18,10 @@ const registrationSelection = `
 `;
 
 export class SupabaseAdminRepository implements AdminRepository {
-	constructor(private readonly clients: SupabaseClients) {}
+	constructor(
+		private readonly clients: SupabaseClients,
+		private readonly allowedEventIds: string[] | null = null,
+	) {}
 
 	async getConfiguration() {
 		const { data, error } = await this.clients.admin.from('event_configurations').select('*').eq('id', 1).single();
@@ -32,19 +35,25 @@ export class SupabaseAdminRepository implements AdminRepository {
 	}
 
 	async listOwnedEventIds(organizerId: string) {
-		const { data, error } = await this.clients.admin.from('events').select('id').eq('organizer_id', organizerId);
+		let query = this.clients.admin.from('events').select('id').eq('organizer_id', organizerId);
+		if (this.allowedEventIds !== null) query = query.in('id', this.allowedEventIds);
+		const { data, error } = await query;
 		if (error) throw error;
-		return (data ?? []).map((event) => event.id);
+		return (data ?? [])
+			.filter((event) => this.allowedEventIds === null || this.allowedEventIds.includes(event.id))
+			.map((event) => event.id);
 	}
 
 	async listEventOptions(organizerId: string) {
-		const { data, error } = await this.clients.admin
+		let query = this.clients.admin
 			.from('events')
 			.select('id,title,start_date')
 			.eq('organizer_id', organizerId)
 			.order('start_date', { ascending: false });
+		if (this.allowedEventIds !== null) query = query.in('id', this.allowedEventIds);
+		const { data, error } = await query;
 		if (error) throw error;
-		return data ?? [];
+		return (data ?? []).filter((event) => this.allowedEventIds === null || this.allowedEventIds.includes(event.id));
 	}
 
 	async listTickets(eventIds: string[], query: TicketQuery) {

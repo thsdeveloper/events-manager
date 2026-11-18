@@ -1,6 +1,7 @@
+import { renderAsOwner } from '@/test/permissions';
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch, problemResponse } from '@/test';
 import { Toaster } from '@/components/ui/toaster';
 import { EventCoupons } from './EventCoupons';
 
@@ -12,7 +13,7 @@ function invalidExpiration() {
 	});
 }
 function renderCoupons() {
-	return renderWithProviders(
+	return renderAsOwner(
 		<>
 			<EventCoupons eventId={EVENT_ID} />
 			<Toaster />

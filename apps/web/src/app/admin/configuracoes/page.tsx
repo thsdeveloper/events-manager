@@ -1,3 +1,4 @@
+import { getServerPermissions } from '@/lib/auth/server-permissions';
 import { OrganizerPaymentSettings } from '@/features/organizer-settings/components/OrganizerPaymentSettings';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +8,7 @@ import { OrganizerProfileSettings } from '@/features/organizer-settings/componen
 import { requireOrganizer } from '@/lib/auth/server-auth';
 
 export default async function OrganizerSettingsPage() {
-	const { organizer } = await requireOrganizer();
+	const [{ organizer }, access] = await Promise.all([requireOrganizer(), getServerPermissions()]);
 
 	return (
 		<div className="w-full space-y-6">
@@ -24,7 +25,7 @@ export default async function OrganizerSettingsPage() {
 			/>
 			<OrganizerProfileSettings organizer={organizer} />
 			<OrganizerPaymentSettings />
-			<PayoutSettingsCard organizer={organizer} />
+			{access?.isOwner && <PayoutSettingsCard organizer={organizer} />}
 		</div>
 	);
 }

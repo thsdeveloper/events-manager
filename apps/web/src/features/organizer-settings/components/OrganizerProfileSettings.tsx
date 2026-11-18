@@ -1,4 +1,5 @@
 'use client';
+import { Can, usePermissions } from '@/components/auth/PermissionsProvider';
 
 import type { Organizer } from '@events-manager/contracts';
 import { Building2, Save } from 'lucide-react';
@@ -12,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 export function OrganizerProfileSettings({ organizer }: { organizer: Organizer }) {
+	const { can, access } = usePermissions();
 	const [values, setValues] = useState({
 		name: organizer.name,
 		email: organizer.email,
@@ -33,7 +35,7 @@ export function OrganizerProfileSettings({ organizer }: { organizer: Organizer }
 			const response = await fetch('/api/organizer/profile', {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(values),
+				body: JSON.stringify({ ...values, document: access?.isOwner ? values.document : undefined }),
 			});
 			const body = await response.json().catch(() => null);
 			if (!response.ok) throw new Error(body?.detail ?? body?.error ?? 'Não foi possível salvar o perfil.');
@@ -57,72 +59,80 @@ export function OrganizerProfileSettings({ organizer }: { organizer: Organizer }
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<form onSubmit={save} className="space-y-5">
-					<OrganizerLogoField
-						logo={typeof organizer.logo === 'string' ? organizer.logo : (organizer.logo?.id ?? null)}
-					/>
-					<div className="grid gap-4 md:grid-cols-2">
-						<div className="space-y-2">
-							<Label htmlFor="organization-name">Nome público</Label>
-							<Input
-								id="organization-name"
-								value={values.name}
-								onChange={(event) => update('name', event.target.value)}
-								required
-							/>
+				<form onSubmit={save}>
+					<fieldset className="space-y-5" disabled={!can('organization.update')}>
+						<OrganizerLogoField
+							logo={typeof organizer.logo === 'string' ? organizer.logo : (organizer.logo?.id ?? null)}
+						/>
+						<div className="grid gap-4 md:grid-cols-2">
+							<div className="space-y-2">
+								<Label htmlFor="organization-name">Nome público</Label>
+								<Input
+									id="organization-name"
+									value={values.name}
+									onChange={(event) => update('name', event.target.value)}
+									required
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="organization-email">E-mail corporativo</Label>
+								<Input
+									id="organization-email"
+									type="email"
+									value={values.email}
+									onChange={(event) => update('email', event.target.value)}
+									required
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="organization-phone">Telefone</Label>
+								<PhoneInput
+									id="organization-phone"
+									value={values.phone}
+									onChange={(digits) => update('phone', digits)}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="organization-document">CPF ou CNPJ</Label>
+								<DocumentInput
+									id="organization-document"
+									disabled={!access?.isOwner || Boolean(organizer.current_receiving_request_id)}
+									value={values.document}
+									onChange={(digits) => update('document', digits)}
+								/>
+							</div>
+							<div className="space-y-2 md:col-span-2">
+								<Label htmlFor="organization-website">Site</Label>
+								<Input
+									id="organization-website"
+									type="url"
+									value={values.website}
+									onChange={(event) => update('website', event.target.value)}
+									placeholder="https://"
+								/>
+							</div>
+							<div className="space-y-2 md:col-span-2">
+								<Label htmlFor="organization-description">Descrição</Label>
+								<Textarea
+									id="organization-description"
+									rows={5}
+									value={values.description}
+									onChange={(event) => update('description', event.target.value)}
+								/>
+							</div>
 						</div>
-						<div className="space-y-2">
-							<Label htmlFor="organization-email">E-mail corporativo</Label>
-							<Input
-								id="organization-email"
-								type="email"
-								value={values.email}
-								onChange={(event) => update('email', event.target.value)}
-								required
-							/>
+						<div className="flex items-center justify-between gap-4 border-t pt-4">
+							<p role="status" className="text-sm text-muted-foreground">
+								{message}
+							</p>
+							<Can permission={'organization.update'}>
+								<Button type="submit" disabled={saving || values.name.trim().length < 2}>
+									<Save className="mr-2 size-4" />
+									{saving ? 'Salvando…' : 'Salvar perfil'}
+								</Button>
+							</Can>
 						</div>
-						<div className="space-y-2">
-							<Label htmlFor="organization-phone">Telefone</Label>
-							<PhoneInput id="organization-phone" value={values.phone} onChange={(digits) => update('phone', digits)} />
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="organization-document">CPF ou CNPJ</Label>
-							<DocumentInput
-								id="organization-document"
-								disabled={Boolean(organizer.current_receiving_request_id)}
-								value={values.document}
-								onChange={(digits) => update('document', digits)}
-							/>
-						</div>
-						<div className="space-y-2 md:col-span-2">
-							<Label htmlFor="organization-website">Site</Label>
-							<Input
-								id="organization-website"
-								type="url"
-								value={values.website}
-								onChange={(event) => update('website', event.target.value)}
-								placeholder="https://"
-							/>
-						</div>
-						<div className="space-y-2 md:col-span-2">
-							<Label htmlFor="organization-description">Descrição</Label>
-							<Textarea
-								id="organization-description"
-								rows={5}
-								value={values.description}
-								onChange={(event) => update('description', event.target.value)}
-							/>
-						</div>
-					</div>
-					<div className="flex items-center justify-between gap-4 border-t pt-4">
-						<p role="status" className="text-sm text-muted-foreground">
-							{message}
-						</p>
-						<Button type="submit" disabled={saving || values.name.trim().length < 2}>
-							<Save className="mr-2 size-4" />
-							{saving ? 'Salvando…' : 'Salvar perfil'}
-						</Button>
-					</div>
+					</fieldset>
 				</form>
 			</CardContent>
 		</Card>

@@ -64,6 +64,7 @@ const ADVANCED_STATUS_OPTIONS = [
 ] as const;
 
 interface TicketsStepProps {
+	canChangeStatus?: boolean;
 	/**
 	 * Na edição, os tipos de ingresso já existem no banco e têm vendas: são
 	 * geridos na página do evento, não aqui. Recebe o link para lá.
@@ -72,7 +73,7 @@ interface TicketsStepProps {
 	draftOnly?: boolean;
 }
 
-export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsStepProps = {}) {
+export function TicketsStep({ manageTicketsHref, canChangeStatus = true, draftOnly = false }: TicketsStepProps = {}) {
 	const form = useFormContext<EventWizardFormValues>();
 	const isFree = useWatch({ control: form.control, name: 'is_free' });
 	const maxAttendees = useWatch({ control: form.control, name: 'max_attendees' });
@@ -446,6 +447,7 @@ export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsSte
 									<FormItem className="space-y-3">
 										<FormControl>
 											<RadioGroup
+												disabled={!canChangeStatus}
 												value={field.value}
 												onValueChange={(value) => field.onChange(value as EventWizardFormValues['status'])}
 												className="grid gap-3 sm:grid-cols-2"
@@ -501,6 +503,7 @@ export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsSte
 											{showAdvancedStatus && !draftOnly && (
 												<div className="border-t p-3">
 													<RadioGroup
+														disabled={!canChangeStatus}
 														value={field.value}
 														onValueChange={(value) => field.onChange(value as EventWizardFormValues['status'])}
 														className="grid gap-3"

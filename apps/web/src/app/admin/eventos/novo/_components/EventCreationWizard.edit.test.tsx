@@ -1,3 +1,4 @@
+import { renderAsOwner } from '@/test/permissions';
 /**
  * Editar um evento usa o mesmo assistente em etapas da criação: mesma ordem,
  * mesmos campos, mesma barra de progresso. O que muda é o ponto de partida
@@ -7,7 +8,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import type { Event } from '@events-manager/contracts';
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch } from '@/test';
 import { Toaster } from '@/components/ui/toaster';
 import { resetServerAuthStore } from '@/hooks/useServerAuth';
 import { consumeEventCreation } from '@/features/event-creation/lib/creation-feedback';
@@ -64,7 +65,7 @@ function renderEdit() {
 		['/api/ai/generate-cover', () => jsonResponse({ fileId: '00000000-0000-4000-8000-000000000099' })],
 	]);
 
-	return { fetchMock, ...renderWithProviders(<EventCreationWizard mode="edit" event={event} />) };
+	return { fetchMock, ...renderAsOwner(<EventCreationWizard mode="edit" event={event} />) };
 }
 
 describe('EventCreationWizard em modo de edição', () => {
@@ -263,7 +264,7 @@ describe('EventCreationWizard em modo de criação', () => {
 			],
 			['/api/events', () => jsonResponse({ id: 'new-event', status: 'published' })],
 		]);
-		const { user } = renderWithProviders(<EventCreationWizard />);
+		const { user } = renderAsOwner(<EventCreationWizard />);
 		await user.click(await screen.findByRole('button', { name: 'Adicionar ingresso' }));
 		const dialog = await screen.findByRole('dialog', { name: 'Novo ingresso' });
 		await user.type(within(dialog).getByRole('textbox', { name: /Nome do ingresso/ }), 'Lote 1');
@@ -319,7 +320,7 @@ describe('EventCreationWizard em modo de criação', () => {
 			['/api/organizer/profile', () => jsonResponse({ organizer: { id: 'org-1', status: 'active' } })],
 			['/api/events', () => jsonResponse({ id: 'new-event', status: 'published' })],
 		]);
-		const { user } = renderWithProviders(
+		const { user } = renderAsOwner(
 			<>
 				<EventCreationWizard />
 				<Toaster />
@@ -346,7 +347,7 @@ describe('EventCreationWizard em modo de criação', () => {
 			['/api/event-categories', () => jsonResponse({ data: [] })],
 			['/api/organizer/profile', () => jsonResponse({ id: 'org-1', status: 'active' })],
 		]);
-		renderWithProviders(<EventCreationWizard />);
+		renderAsOwner(<EventCreationWizard />);
 
 		expect(await screen.findByRole('button', { name: 'Continuar' })).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument();
@@ -364,7 +365,7 @@ describe('rascunhos e prévia', () => {
 		]);
 		const props = { mode: 'create' as const, initialDraft };
 
-		return { requests, ...renderWithProviders(<EventCreationWizard {...props} />) };
+		return { requests, ...renderAsOwner(<EventCreationWizard {...props} />) };
 	}
 	it('previews an incomplete event without publishing or navigating to checkout', async () => {
 		const { requests, user } = setup();
@@ -413,7 +414,7 @@ it('allows a pending organizer to prepare a snapshot without creating an event',
 			() => jsonResponse({ id: 'd-pending', values: { title: 'Preparado' }, current_step: 6 }),
 		],
 	]);
-	const { user } = renderWithProviders(
+	const { user } = renderAsOwner(
 		<EventCreationWizard
 			draftOnly
 			initialDraft={{ id: 'd-pending', values: { title: 'Preparado' }, current_step: 6 }}
@@ -440,7 +441,7 @@ it('preserves local changes when snapshot saving fails and retries without losin
 					: jsonResponse({ id: 'd-retry', values: {}, current_step: 0 }),
 		],
 	]);
-	const { user } = renderWithProviders(<EventCreationWizard />);
+	const { user } = renderAsOwner(<EventCreationWizard />);
 	await user.type(await screen.findByRole('textbox', { name: /Nome do evento/ }), 'Meu encontro');
 	await user.click(screen.getByRole('button', { name: 'Salvar rascunho' }));
 	expect(await screen.findByText('Serviço indisponível')).toBeInTheDocument();
@@ -464,7 +465,7 @@ it.each(['draft', 'cancelled', 'archived'] as const)(
 			['/api/organizer/profile', () => jsonResponse({ organizer: { id: 'org-1', status: 'active' } })],
 			['/api/events', () => jsonResponse({ id: 'existing-event', status })],
 		]);
-		const { user } = renderWithProviders(
+		const { user } = renderAsOwner(
 			<>
 				<EventCreationWizard
 					initialDraft={{

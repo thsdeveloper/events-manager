@@ -1,4 +1,5 @@
 'use client';
+import { Can } from '@/components/auth/PermissionsProvider';
 
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
@@ -125,7 +126,9 @@ export default function ParticipantesPage() {
 				<div className="space-y-4">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
 						<div className="flex gap-2">
-							<ExportButton filters={filters} disabled={isLoading} />
+							<Can permission="participants.export" anyEvent>
+								<ExportButton filters={filters} disabled={isLoading} />
+							</Can>
 							<ParticipantFilters
 								filters={filters}
 								onChange={handleFilterChange}

@@ -1,7 +1,8 @@
+import { renderAsOwner } from '@/test/permissions';
 import { DEFAULT_GATEWAY_FEES } from '@events-manager/contracts';
 import { screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch, problemResponse } from '@/test';
 import { Toaster } from '@/components/ui/toaster';
 import { OrganizerPaymentSettings } from './OrganizerPaymentSettings';
 
@@ -30,7 +31,7 @@ it('starts with only Pix checked and saves multiple methods with a requested cre
 			},
 		],
 	]);
-	const { user } = renderWithProviders(<OrganizerPaymentSettings />);
+	const { user } = renderAsOwner(<OrganizerPaymentSettings />);
 	expect(await screen.findByRole('checkbox', { name: 'Pix' })).toBeChecked();
 	expect(screen.getByRole('checkbox', { name: 'Cartão de crédito' })).not.toBeChecked();
 	await user.click(screen.getByRole('checkbox', { name: 'Cartão de crédito' }));
@@ -51,7 +52,7 @@ it('requires a credit period and displays validation using the standard toast', 
 		['/api/content/fees', () => jsonResponse(DEFAULT_GATEWAY_FEES)],
 		['/api/organizer/payment-settings', () => jsonResponse(initial)],
 	]);
-	const { user } = renderWithProviders(
+	const { user } = renderAsOwner(
 		<>
 			<OrganizerPaymentSettings />
 			<Toaster />
@@ -67,7 +68,7 @@ it('does not present defaults as saved preferences when loading fails', async ()
 		['/api/content/fees', () => jsonResponse(DEFAULT_GATEWAY_FEES)],
 		['/api/organizer/payment-settings', () => problemResponse(503, 'UNAVAILABLE')],
 	]);
-	renderWithProviders(<OrganizerPaymentSettings />);
+	renderAsOwner(<OrganizerPaymentSettings />);
 	expect(await screen.findByText(/Não foi possível carregar as formas de pagamento/)).toBeInTheDocument();
 	expect(screen.queryByRole('button', { name: 'Salvar formas de pagamento' })).not.toBeInTheDocument();
 });
@@ -77,7 +78,7 @@ it('requires at least one method without discarding the draft', async () => {
 		['/api/content/fees', () => jsonResponse(DEFAULT_GATEWAY_FEES)],
 		['/api/organizer/payment-settings', () => jsonResponse(initial)],
 	]);
-	const { user } = renderWithProviders(
+	const { user } = renderAsOwner(
 		<>
 			<OrganizerPaymentSettings />
 			<Toaster />
@@ -104,7 +105,7 @@ it('keeps a requested debit preference pending and preserves edits if saving fai
 						}),
 		],
 	]);
-	const { user } = renderWithProviders(
+	const { user } = renderAsOwner(
 		<>
 			<OrganizerPaymentSettings />
 			<Toaster />

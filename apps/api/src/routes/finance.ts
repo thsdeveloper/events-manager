@@ -1,3 +1,5 @@
+import { authorizedEventIds } from './iam-authorization.js';
+import type { FastifyRequest } from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { FinanceService } from '../application/finance/finance-service.js';
@@ -36,16 +38,17 @@ export async function financeRoutes(
 ) {
 	const { clients, payments } = options;
 	const auth = createSupabaseAuthService(clients);
-	const finance = new FinanceService(new SupabaseFinanceRepository(clients), payments.provider);
+	const financeFor = (request: FastifyRequest) =>
+		new FinanceService(new SupabaseFinanceRepository(clients, authorizedEventIds(request)), payments.provider);
 
 	app.get('/api/organizer/finance/events', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return finance.listEvents(context.organizer.id, context.eventId ?? undefined);
+		return financeFor(request).listEvents(context.organizer.id, context.eventId ?? undefined);
 	});
 
 	app.get('/api/organizer/finance/overview', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return finance.overview(context.organizer.id, {
+		return financeFor(request).overview(context.organizer.id, {
 			...dateFilter.parse(request.query),
 			...(context.eventId ? { event_id: context.eventId } : {}),
 		});
@@ -53,7 +56,7 @@ export async function financeRoutes(
 
 	app.get('/api/organizer/finance/transactions', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return finance.transactions(context.organizer.id, {
+		return financeFor(request).transactions(context.organizer.id, {
 			...transactionFilter.parse(request.query),
 			...(context.eventId ? { event_id: context.eventId } : {}),
 		});
@@ -62,12 +65,12 @@ export async function financeRoutes(
 	app.get('/api/organizer/finance/payouts', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		if (context.eventId) return { balance: null, payouts: [] };
-		return finance.payouts(context.organizer.id, context.organizer.payout_status);
+		return financeFor(request).payouts(context.organizer.id, context.organizer.payout_status);
 	});
 
 	app.get('/api/organizer/analytics', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return finance.analytics(context.organizer.id, {
+		return financeFor(request).analytics(context.organizer.id, {
 			...analyticsFilter.parse(request.query),
 			...(context.eventId ? { event_id: context.eventId } : {}),
 		});
@@ -79,7 +82,7 @@ export async function financeRoutes(
 			.type('text/csv; charset=utf-8')
 			.header('content-disposition', 'attachment; filename="financeiro.csv"')
 			.send(
-				await finance.exportCsv(context.organizer.id, {
+				await financeFor(request).exportCsv(context.organizer.id, {
 					...transactionFilter.parse(request.query),
 					...(context.eventId ? { event_id: context.eventId } : {}),
 				}),

@@ -1,4 +1,5 @@
 'use client';
+import { Can } from '@/components/auth/PermissionsProvider';
 
 import { ColumnDef } from '@tanstack/react-table';
 import { ArrowUpDown, Eye, MoreHorizontal, Pencil } from 'lucide-react';
@@ -226,19 +227,23 @@ export const getEventsColumns = (onEventDeleted?: () => void): ColumnDef<EventWi
 								Ver detalhes
 							</Link>
 						</DropdownMenuItem>
-						<DropdownMenuItem asChild>
-							<Link href={`/admin/eventos/${event.id}/editar`} className="flex cursor-pointer items-center">
-								<Pencil className="mr-2 size-4" />
-								Editar
-							</Link>
-						</DropdownMenuItem>
+						<Can permission={'events.update'} eventId={event.id}>
+							<DropdownMenuItem asChild>
+								<Link href={`/admin/eventos/${event.id}/editar`} className="flex cursor-pointer items-center">
+									<Pencil className="mr-2 size-4" />
+									Editar
+								</Link>
+							</DropdownMenuItem>
+						</Can>
 						<DropdownMenuSeparator />
-						<DeleteEventDialog
-							eventId={event.id}
-							eventTitle={event.title || 'Evento sem título'}
-							participantsCount={participantsCount}
-							onSuccess={onEventDeleted}
-						/>
+						<Can permission="events.delete" eventId={event.id}>
+							<DeleteEventDialog
+								eventId={event.id}
+								eventTitle={event.title || 'Evento sem título'}
+								participantsCount={participantsCount}
+								onSuccess={onEventDeleted}
+							/>
+						</Can>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			);
