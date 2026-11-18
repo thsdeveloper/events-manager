@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { eventAIContextSchema } from '@events-manager/contracts';
+import { eventAIContextSchema, postalCodeSchema } from '@events-manager/contracts';
+import { PostalCodeService } from '../application/external/postal-code-service.js';
+import { ViaCepGateway } from '../infrastructure/external/viacep-gateway.js';
 import { OpenAIDescriptionGenerator } from '../infrastructure/external/openai-description-generator.js';
 import { EventDescriptionService, EventCoverService, PlacesService } from '../application/external/external-service.js';
 import { MediaService } from '../application/media/media-service.js';
@@ -14,12 +16,13 @@ import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repos
 import { SupabaseEventCategoryReader } from '../infrastructure/supabase/event-category-reader.js';
 import { SupabaseMediaRepository } from '../infrastructure/supabase/media-repository.js';
 import { ApiError } from '../shared/errors.js';
-import { requireOrganizer } from './auth-context.js';
+import { requireOrganizer, requireUser } from './auth-context.js';
 
 export async function externalRoutes(app: FastifyInstance, options: { env: ApiEnv; clients: SupabaseClients }) {
 	const { env, clients } = options;
 	const auth = createSupabaseAuthService(clients);
 	const places = new PlacesService(new NominatimGeocodingGateway(env.WEB_URL));
+	const postalCodes = new PostalCodeService(new ViaCepGateway());
 	const rateLimit = new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin));
 	// Nominatim starts refusing bursts well before a generous per-caller budget
 	// would trip, so the cap is set to roughly what one person typing an address
@@ -34,6 +37,13 @@ export async function externalRoutes(app: FastifyInstance, options: { env: ApiEn
 			throw error;
 		}
 	};
+
+	app.get('/api/places/postal-code/:code', async (request) => {
+		await requireUser(request, auth);
+		const { code } = z.object({ code: postalCodeSchema }).parse(request.params);
+		await limitGeocoding('postal-code-ip', request.ip);
+		return postalCodes.find(code);
+	});
 
 	app.get('/api/places/search', async (request) => {
 		const { input } = z.object({ input: z.string().default('') }).parse(request.query);

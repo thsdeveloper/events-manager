@@ -1,20 +1,11 @@
-import { screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { renderWithProviders } from '@/test';
+import { screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
+import { resetServerAuthStore } from '@/hooks/useServerAuth';
 import NovoOrganizadorPage from './page';
 
-const replace = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: replace, replace, refresh: vi.fn() }) }));
-vi.mock('@/features/organizer-signup', () => ({
-	OrganizerSignupForm: () => <div>formulário de solicitação</div>,
-}));
-vi.mock('next/link', () => ({
-	default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
-}));
-
-const session = vi.fn();
-vi.mock('@/hooks/useServerAuth', () => ({ useServerAuth: () => session() }));
-
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => router }));
 const baseUser = {
 	id: 'u1',
 	email: 'ana@example.com',
@@ -28,57 +19,64 @@ const baseUser = {
 	location: 'Uberlândia - MG',
 	description: 'Gosto de festivais.',
 };
-
-function auth(user: Record<string, unknown>) {
-	return {
-		user,
-		isLoading: false,
-		isAuthenticated: true,
-		isOrganizer: false,
-		isSuperAdmin: false,
-		organizerStatus: null,
-		hasPendingOrganizerRequest: false,
-		refresh: vi.fn(),
-		logout: vi.fn(),
-		updateUser: vi.fn(),
-	};
+beforeEach(() => {
+	vi.clearAllMocks();
+	resetServerAuthStore();
+});
+function setup(options: { existing?: boolean; incomplete?: boolean; pending?: boolean; guest?: boolean } = {}) {
+	return mockFetch([
+		[
+			'/api/auth/me',
+			() =>
+				jsonResponse({
+					user: options.guest ? null : { ...baseUser, document: options.incomplete ? null : baseUser.document },
+					isOrganizer: Boolean(options.existing),
+					organizerStatus: options.pending ? 'pending' : options.existing ? 'active' : null,
+				}),
+		],
+		[
+			'/api/organizer/request',
+			() => jsonResponse({ success: true, organizer: { id: 'new-org', status: 'active' } }, { status: 201 }),
+		],
+	]);
 }
-
 describe('NovoOrganizadorPage', () => {
-	it('shows the request form to a person with a complete profile', () => {
-		session.mockReturnValue(auth(baseUser));
-
+	it('shows signup to a person with a complete profile', async () => {
+		setup();
 		renderWithProviders(<NovoOrganizadorPage />);
-
-		expect(screen.getByText('formulário de solicitação')).toBeInTheDocument();
-		expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/conta de organizador/i);
+		expect(await screen.findByRole('radio', { name: /pessoa física/i })).toBeChecked();
 	});
-
-	it('keeps the page inside the same container as the header', () => {
-		session.mockReturnValue(auth(baseUser));
-
-		const { container } = renderWithProviders(<NovoOrganizadorPage />);
-
-		const wrapper = container.querySelector('.max-w-7xl');
-		expect(wrapper).not.toBeNull();
-		expect(wrapper?.className).toMatch(/\bpx-4\b/);
+	it('sends an additional organizer account directly to its document verification', async () => {
+		const fetchMock = setup({ existing: true });
+		const { user } = renderWithProviders(<NovoOrganizadorPage />);
+		expect(await screen.findByRole('radio', { name: /empresa ou organização/i })).toBeChecked();
+		expect(router.replace).not.toHaveBeenCalled();
+		await user.type(screen.getByLabelText(/^cnpj/i), '45723174000110');
+		await user.type(screen.getByLabelText(/nome da organização ou marca/i), 'Nova Produtora');
+		await user.click(screen.getByRole('checkbox', { name: /confirmo/i }));
+		await user.click(screen.getByRole('button', { name: /criar conta de organizador/i }));
+		await waitFor(() => expect(router.push).toHaveBeenCalledWith('/perfil/organizador/new-org/recebimento'));
+		expect(router.refresh).toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/organizer/request',
+			expect.objectContaining({ method: 'POST', body: expect.stringContaining('Nova Produtora') }),
+		);
 	});
-
-	it('sends someone who already has an organizer account back to the organizer page', () => {
-		session.mockReturnValue({ ...auth(baseUser), isOrganizer: true, organizerStatus: 'active' });
-
+	it('allows another account while a previous application is pending', async () => {
+		setup({ pending: true });
 		renderWithProviders(<NovoOrganizadorPage />);
-
-		expect(screen.queryByText('formulário de solicitação')).not.toBeInTheDocument();
-		expect(replace).toHaveBeenCalledWith('/perfil/organizador');
+		expect(await screen.findByRole('radio', { name: /empresa ou organização/i })).toBeChecked();
+		expect(router.replace).not.toHaveBeenCalled();
 	});
-
-	it('sends an incomplete profile back to the organizer page instead of the form', () => {
-		session.mockReturnValue(auth({ ...baseUser, document: null }));
-
+	it('keeps profile completion mandatory', async () => {
+		setup({ incomplete: true });
 		renderWithProviders(<NovoOrganizadorPage />);
-
-		expect(screen.queryByText('formulário de solicitação')).not.toBeInTheDocument();
-		expect(replace).toHaveBeenCalledWith('/perfil/organizador');
+		await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/perfil/organizador'));
+		expect(screen.queryByRole('button', { name: /criar conta de organizador/i })).not.toBeInTheDocument();
+	});
+	it('sends visitors to login with a return URL', async () => {
+		setup({ guest: true });
+		renderWithProviders(<NovoOrganizadorPage />);
+		await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/login?redirect=/perfil/organizador/novo'));
 	});
 });

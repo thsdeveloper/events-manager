@@ -5,7 +5,7 @@ import { EventDraftService } from '../application/events/event-draft-service.js'
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
 import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
 import { SupabaseEventDraftRepository } from '../infrastructure/supabase/event-draft-repository.js';
-import { ACTIVE_ORGANIZER_COOKIE, requireUser } from './auth-context.js';
+import { ACTIVE_ORGANIZER_COOKIE, requireUser, resolveActiveEvent } from './auth-context.js';
 import { resolveEventOrganizer } from '../infrastructure/supabase/event-repository.js';
 
 export async function eventDraftRoutes(app: FastifyInstance, options: { clients: SupabaseClients }) {
@@ -17,6 +17,12 @@ export async function eventDraftRoutes(app: FastifyInstance, options: { clients:
 	const params = z.object({ id: z.string().uuid() });
 	app.get('/api/event-drafts', async (request) => {
 		const context = await requireUser(request, auth);
+		const organizer = await resolveEventOrganizer(
+			options.clients,
+			context.user.id,
+			request.cookies?.[ACTIVE_ORGANIZER_COOKIE],
+		);
+		if (organizer && (await resolveActiveEvent(request, auth, organizer.id))) return { data: [] };
 		return {
 			data: await (
 				await service(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE])

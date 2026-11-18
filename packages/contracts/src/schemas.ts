@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { addPhysicalLocationIssues } from './brazil-address.js';
 import { categoryIdSchema } from './category-id.js';
 import { eventTicketGroupDraftSchema, addTicketGroupIssues } from './ticket-groups.js';
 import { isValidCNPJ, isValidCPF, isValidDocument, isValidPhone, onlyDigits } from './br-documents.js';
@@ -275,6 +276,7 @@ function addCoordinatePairIssue(
 }
 
 export const eventInputSchema = eventFieldsSchema.superRefine((event, context) => {
+	addPhysicalLocationIssues(event, context);
 	addDateOrderIssue(context, event.start_date, event.end_date, 'end_date');
 	addCoordinatePairIssue(context, event.latitude, event.longitude);
 	addOnlinePlatformIssue(event, context);
@@ -348,6 +350,7 @@ export const eventCreateSchema = eventFieldsSchema
 		draft_id: z.string().uuid().optional(),
 	})
 	.superRefine((event, context) => {
+		addPhysicalLocationIssues(event, context);
 		addDateOrderIssue(context, event.start_date, event.end_date, 'end_date');
 		addCoordinatePairIssue(context, event.latitude, event.longitude);
 		addOnlinePlatformIssue(event, context);

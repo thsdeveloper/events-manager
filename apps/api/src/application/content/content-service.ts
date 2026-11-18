@@ -1,3 +1,4 @@
+import type { GatewayFees } from '@events-manager/contracts';
 import {
 	sanitizeHtml,
 	type Globals,
@@ -63,7 +64,7 @@ export interface SitemapEntry {
 }
 
 /** Tabela pública de taxas: só o que o site divulga, nunca o gateway ou prefixos operacionais. */
-export interface PublicFeeTable {
+export interface PublicFeeTable extends Partial<GatewayFees> {
 	boleto_fee_fixed: number;
 	card_fee_fixed: number;
 	card_fee_percentage: number;

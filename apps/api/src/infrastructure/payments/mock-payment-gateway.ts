@@ -1,3 +1,4 @@
+import type { CreateTransparentInput, TransparentCharge } from '../../application/payments/payment-gateway.js';
 import type {
 	CreateCheckoutInput,
 	CreateCustomerInput,
@@ -9,6 +10,27 @@ import type {
 } from '../../application/payments/payment-gateway.js';
 
 export class MockPaymentGateway implements PaymentGateway {
+	async createTransparentCharge(input: CreateTransparentInput): Promise<TransparentCharge> {
+		return {
+			id: `mock_${input.externalId}`,
+			method: input.method,
+			status: 'PAID',
+			amountInCents: input.amountInCents,
+			providerFeeInCents: 0,
+			devMode: true,
+			receiptUrl: null,
+			metadata: input.metadata,
+			copyPasteCode: null,
+			qrCodeBase64: null,
+			barcode: null,
+			boletoUrl: null,
+			expiresAt: null,
+		};
+	}
+	async findTransparentCharge(): Promise<TransparentCharge | null> {
+		return null;
+	}
+
 	readonly provider = 'mock' as const;
 
 	async createProduct(input: CreateProductInput) {

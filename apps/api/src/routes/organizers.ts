@@ -1,4 +1,11 @@
-import { brDocumentSchema, brPhoneSchema, httpUrlSchema, organizerSignupSchema } from '@events-manager/contracts';
+import {
+	brDocumentSchema,
+	brPhoneSchema,
+	httpUrlSchema,
+	organizerSignupSchema,
+	organizerPaymentSettingsSchema,
+} from '@events-manager/contracts';
+import { OrganizerPaymentService } from '../application/organizers/organizer-payment-service.js';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { MediaService } from '../application/media/media-service.js';
@@ -10,7 +17,9 @@ import { SupabaseMediaRepository } from '../infrastructure/supabase/media-reposi
 import { SupabaseOrganizerRepository } from '../infrastructure/supabase/organizer-repository.js';
 import { ApiError } from '../shared/errors.js';
 import { ACTIVE_ORGANIZER_COOKIE, requireOrganizer, requireUser } from './auth-context.js';
-import { setActiveOrganizerCookie } from './session-cookies.js';
+import { setActiveEventCookie, setActiveOrganizerCookie } from './session-cookies.js';
+import { AdminService } from '../application/admin/admin-service.js';
+import { SupabaseAdminRepository } from '../infrastructure/supabase/admin-repository.js';
 
 const organizerInput = z.object({
 	name: z.string().trim().min(2).optional(),
@@ -26,11 +35,6 @@ function stringOrNull(value: unknown) {
 	return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
-const payoutInput = z.object({
-	payout_pix_key: z.string().trim().min(3),
-	payout_pix_key_type: z.enum(['CPF', 'CNPJ', 'PHONE', 'EMAIL', 'RANDOM']),
-});
-
 export async function organizerRoutes(app: FastifyInstance, options: { env: ApiEnv; clients: SupabaseClients }) {
 	const { env, clients } = options;
 	const auth = createSupabaseAuthService(clients);
@@ -38,6 +42,33 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 	const service = new OrganizerService(new SupabaseOrganizerRepository(clients), mediaRepository);
 	const media = new MediaService(mediaRepository);
 	const initialStatus = env.PAYMENTS_MODE === 'mock' ? 'active' : 'pending';
+	const admin = new AdminService(new SupabaseAdminRepository(clients));
+	const paymentSettings = new OrganizerPaymentService(
+		new SupabaseOrganizerRepository(clients),
+		env.PAYMENTS_MODE === 'mock' ? ['PIX', 'CARD', 'BOLETO'] : env.ABACATEPAY_METHODS,
+	);
+	app.get('/api/organizer/payment-settings', async (request) => {
+		const context = await requireOrganizer(request, auth);
+		return paymentSettings.get(context.organizer.id);
+	});
+	app.patch('/api/organizer/payment-settings', async (request) => {
+		const context = await requireOrganizer(request, auth);
+		return paymentSettings.update(context.organizer.id, organizerPaymentSettingsSchema.parse(request.body));
+	});
+
+	app.get('/api/organizer/event-selection', async (request) => {
+		const context = await requireOrganizer(request, auth);
+		const { events } = await admin.eventFilterOptions(context.organizer.id);
+		return { events, selectedEventId: context.eventId };
+	});
+
+	app.post('/api/organizer/event-selection', async (request, reply) => {
+		const context = await requireOrganizer(request, auth);
+		const { eventId } = z.object({ eventId: z.string().uuid().nullable() }).parse(request.body);
+		if (eventId) await auth.assertOrganizerOwnsEvent(context.organizer.id, eventId);
+		setActiveEventCookie(reply, env, context.organizer.id, eventId);
+		return { selectedEventId: eventId };
+	});
 
 	app.get('/api/organizer/profile', async (request) => {
 		// requireOrganizer resolves the active organization from the cookie and
@@ -60,6 +91,7 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 				phone: stringOrNull(profile.phone),
 			},
 		});
+		if (organizer.status === 'active') setActiveOrganizerCookie(reply, env, organizer.id);
 		return reply.code(201).send({ success: true, organizer });
 	});
 
@@ -129,16 +161,11 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 
 	app.get('/api/organizer/stats', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return { success: true, stats: await service.stats(context.organizer.id) };
+		return { success: true, stats: await service.stats(context.organizer.id, context.eventId ?? undefined) };
 	});
 
 	app.patch('/api/organizer/payout-settings', async (request) => {
-		const context = await requireOrganizer(request, auth);
-		const organizer = await service.updatePayout(context.organizer.id, payoutInput.parse(request.body));
-		return {
-			success: true,
-			organizer,
-			message: 'Dados de repasse enviados para validação pela plataforma.',
-		};
+		await requireOrganizer(request, auth);
+		throw new ApiError('Cadastre os dados e documentos na página de recebimento.', 410, 'RECEIVING_FLOW_REQUIRED');
 	});
 }

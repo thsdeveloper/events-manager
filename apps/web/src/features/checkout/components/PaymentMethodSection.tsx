@@ -1,6 +1,6 @@
 'use client';
 
-import { CreditCard, Info, QrCode } from 'lucide-react';
+import { Barcode, CreditCard, Info, QrCode } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -41,7 +41,6 @@ export function PaymentMethodSection({
 	ticket,
 	totalAmount,
 }: PaymentMethodSectionProps) {
-	const cardAvailable = availableMethods.includes('CARD');
 	const maxCardInstallments = ticket?.allow_installments ? Math.min(12, Number(ticket.max_installments ?? 1)) : 1;
 
 	return (
@@ -51,47 +50,46 @@ export function PaymentMethodSection({
 				<p className="text-sm text-muted-foreground">Escolha como prefere pagar.</p>
 			</div>
 
+			{availableMethods.length === 0 ? (
+				<p role="status">Nenhuma forma de pagamento disponível neste momento. Tente novamente mais tarde.</p>
+			) : null}
 			<RadioGroup
 				value={method}
 				onValueChange={(value) => onMethodChange(value as PaymentMethod)}
 				disabled={disabled}
 				aria-label="Forma de pagamento"
 			>
-				<div className="flex items-start gap-3 rounded-lg border p-4 transition-colors has-[[data-state=checked]]:border-primary">
-					<RadioGroupItem value="PIX" id="payment-method-pix" className="mt-1" />
-					<Label htmlFor="payment-method-pix" className="flex flex-1 cursor-pointer items-start gap-3">
-						<QrCode className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-						<span className="space-y-1">
-							<span className="block font-semibold">Pix</span>
-							<span className="block text-sm text-muted-foreground">
-								Aprovação em segundos. À vista ou em parcelas via Pix, quando o ingresso permite.
-							</span>
-						</span>
-					</Label>
-				</div>
+				{availableMethods.map((value) => {
+					const Icon = value === 'PIX' ? QrCode : value === 'CARD' ? CreditCard : Barcode;
+					const title = value === 'PIX' ? 'Pix' : value === 'CARD' ? 'Cartão de crédito' : 'Boleto';
+					const description =
+						value === 'PIX'
+							? 'Aprovação em segundos. À vista ou em parcelas via Pix, quando o ingresso permite.'
+							: value === 'BOLETO'
+								? 'Pague o boleto no banco ou pelo QR Code Pix. A compensação bancária pode levar até 3 dias úteis.'
+								: maxCardInstallments > 1
+									? `Parcele em até ${maxCardInstallments}x no formulário seguro desta página.`
+									: 'Pagamento à vista no formulário seguro desta página.';
 
-				<div className="flex items-start gap-3 rounded-lg border p-4 transition-colors has-[[data-state=checked]]:border-primary has-[[data-disabled]]:opacity-60">
-					<RadioGroupItem value="CARD" id="payment-method-card" className="mt-1" disabled={!cardAvailable} />
-					<Label
-						htmlFor="payment-method-card"
-						className={`flex flex-1 items-start gap-3 ${cardAvailable ? 'cursor-pointer' : 'cursor-not-allowed'}`}
-					>
-						<CreditCard className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-						<span className="space-y-1">
-							<span className="block font-semibold">Cartão de crédito</span>
-							<span className="block text-sm text-muted-foreground">
-								{cardAvailable
-									? maxCardInstallments > 1
-										? `Parcele em até ${maxCardInstallments}x no ambiente seguro de pagamento.`
-										: 'Pagamento à vista no ambiente seguro de pagamento.'
-									: 'Cartão ainda não habilitado nesta loja. Pague com Pix.'}
-							</span>
-						</span>
-					</Label>
-				</div>
+					return (
+						<div
+							key={value}
+							className="flex items-start gap-3 rounded-lg border p-4 transition-colors has-[[data-state=checked]]:border-primary"
+						>
+							<RadioGroupItem value={value} id={`payment-method-${value}`} className="mt-1" />
+							<Label htmlFor={`payment-method-${value}`} className="flex flex-1 cursor-pointer items-start gap-3">
+								<Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+								<span className="space-y-1">
+									<span className="block font-semibold">{title}</span>
+									<span className="block text-sm text-muted-foreground">{description}</span>
+								</span>
+							</Label>
+						</div>
+					);
+				})}
 			</RadioGroup>
 
-			{method === 'PIX' && ticket ? (
+			{method === 'PIX' && availableMethods.includes('PIX') && ticket ? (
 				<InstallmentOptions
 					totalAmount={totalAmount}
 					maxInstallments={ticket.max_installments || 4}
@@ -106,8 +104,8 @@ export function PaymentMethodSection({
 				<Alert>
 					<Info className="size-4" />
 					<AlertDescription className="text-sm">
-						Você informa os dados do cartão no ambiente seguro de pagamento
-						{maxCardInstallments > 1 ? ` e escolhe lá o número de parcelas, até ${maxCardInstallments}x` : ''}.
+						Você informa os dados do cartão no formulário seguro desta página
+						{maxCardInstallments > 1 ? ` e escolhe abaixo o número de parcelas, até ${maxCardInstallments}x` : ''}.
 					</AlertDescription>
 				</Alert>
 			) : null}

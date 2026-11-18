@@ -12,6 +12,9 @@ import { loadEnv } from '../src/config/env.js';
 const base = { SUPABASE_ANON_KEY: 'anon', SUPABASE_SERVICE_ROLE_KEY: 'service' };
 
 describe('ABACATEPAY_METHODS', () => {
+	it('allows the example environment to leave the optional public key empty', () => {
+		expect(loadEnv({ ...base, ABACATEPAY_PUBLIC_KEY: '' }).ABACATEPAY_PUBLIC_KEY).toBeUndefined();
+	});
 	it('offers only PIX when nothing is configured', () => {
 		expect(loadEnv(base).ABACATEPAY_METHODS).toEqual(['PIX']);
 	});
@@ -20,8 +23,12 @@ describe('ABACATEPAY_METHODS', () => {
 		expect(loadEnv({ ...base, ABACATEPAY_METHODS: ' pix, Card ' }).ABACATEPAY_METHODS).toEqual(['PIX', 'CARD']);
 	});
 
+	it('accepts boleto when the gateway account has enabled it', () => {
+		expect(loadEnv({ ...base, ABACATEPAY_METHODS: 'PIX,BOLETO' }).ABACATEPAY_METHODS).toEqual(['PIX', 'BOLETO']);
+	});
+
 	it('refuses a method the gateway does not support', () => {
-		expect(() => loadEnv({ ...base, ABACATEPAY_METHODS: 'PIX,BOLETO' })).toThrow(/ABACATEPAY_METHODS/);
+		expect(() => loadEnv({ ...base, ABACATEPAY_METHODS: 'PIX,DEBIT' })).toThrow(/ABACATEPAY_METHODS/);
 	});
 });
 

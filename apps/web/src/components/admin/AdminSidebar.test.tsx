@@ -5,7 +5,7 @@ import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import AdminSidebar from './AdminSidebar';
 
-const router = vi.hoisted(() => ({ refresh: vi.fn() }));
+const router = vi.hoisted(() => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }));
 vi.mock('next/navigation', () => ({ usePathname: () => '/admin/eventos/novo', useRouter: () => router }));
 vi.mock('next/link', () => ({
 	default: ({
@@ -93,6 +93,7 @@ describe('organizer sidebar', () => {
 		await user.click(screen.getByRole('button', { name: /Maya Eventos/ }));
 		await user.click(screen.getByRole('menuitem', { name: /Outra organização/ }));
 		await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+		expect(router.replace).toHaveBeenCalledWith('/admin/dashboard');
 		expect(fetchMock).toHaveBeenCalledWith(
 			'/api/organizer/organizations/outra/activate',
 			expect.objectContaining({ method: 'POST', credentials: 'include' }),

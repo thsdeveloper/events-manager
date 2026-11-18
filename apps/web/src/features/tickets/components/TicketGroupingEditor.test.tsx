@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { renderWithProviders } from '@/test';
 import type { EventTicketGroupDraft } from '@events-manager/contracts';
 import { TicketGroupingEditor } from './TicketGroupingEditor';
@@ -29,4 +29,13 @@ describe('ticket grouping', () => {
 		await user.click(screen.getByRole('button', { name: 'Remover grupo Pista' }));
 		expect(screen.getByLabelText('groups')).toHaveTextContent('[]');
 	});
+});
+
+it('explains groups and independent ticket prices in a help dialog', async () => {
+	const { user } = renderWithProviders(<Host />);
+	await user.click(screen.getByRole('button', { name: 'Como funcionam os grupos de ingressos?' }));
+	const dialog = screen.getByRole('dialog');
+	expect(within(dialog).getByText(/cada ingresso mantém seu próprio preço/i)).toBeInTheDocument();
+	expect(within(dialog).getByText('Pista')).toBeInTheDocument();
+	expect(within(dialog).getByText('Meia-entrada')).toBeInTheDocument();
 });

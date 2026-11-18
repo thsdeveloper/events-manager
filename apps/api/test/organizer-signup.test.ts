@@ -14,7 +14,6 @@ import {
 
 const repositoryMethods: Array<keyof OrganizerRepository> = [
 	'create',
-	'existsForUser',
 	'findByDocument',
 	'findById',
 	'setLogo',
@@ -25,7 +24,6 @@ const repositoryMethods: Array<keyof OrganizerRepository> = [
 
 function setup() {
 	const repository = fakePort<OrganizerRepository>(repositoryMethods);
-	repository.existsForUser.mockResolvedValue(false);
 	repository.findByDocument.mockResolvedValue(null);
 	repository.create.mockImplementation(async (_user, input) => ({ id: 'org-1', ...input }));
 	return { repository, service: new OrganizerService(repository as unknown as OrganizerRepository) };
@@ -111,15 +109,29 @@ describe('OrganizerService.create', () => {
 		);
 	});
 
-	it('refuses a second organizer account for the same person', async () => {
+	it('allows another company for someone who already owns an organizer account', async () => {
 		const { repository, service } = setup();
-		repository.existsForUser.mockResolvedValue(true);
+		await expect(service.create(TEST_USER_ID, company, 'active', { profile: verifiedProfile })).resolves.toMatchObject({
+			name: company.name,
+		});
+	});
 
+	it('refuses a second individual account using the same profile CPF', async () => {
+		const { repository, service } = setup();
+		repository.findByDocument.mockResolvedValue({ id: 'existing', user_id: TEST_USER_ID });
+		await expect(
+			service.create(TEST_USER_ID, individual, 'active', { profile: verifiedProfile }),
+		).rejects.toMatchObject({ statusCode: 409, code: 'DOCUMENT_IN_USE' });
+		expect(repository.create).not.toHaveBeenCalled();
+	});
+
+	it('reports a document conflict if a concurrent signup already created the account', async () => {
+		const { repository, service } = setup();
+		repository.create.mockResolvedValue('exists');
 		await expect(service.create(TEST_USER_ID, company, 'active', { profile: verifiedProfile })).rejects.toMatchObject({
 			statusCode: 409,
-			code: 'ORGANIZER_EXISTS',
+			code: 'DOCUMENT_IN_USE',
 		});
-		expect(repository.create).not.toHaveBeenCalled();
 	});
 
 	it('refuses a CNPJ that already belongs to another organizer', async () => {
@@ -134,7 +146,7 @@ describe('OrganizerService.create', () => {
 });
 
 describe('AuthService.createOrganizer', () => {
-	it('keeps the one-organizer rule for the organization switcher as well', async () => {
+	it('does not allow the legacy name-and-email endpoint to bypass the full additional-account signup', async () => {
 		const repository = partialMock<AuthRepository>({
 			listOrganizers: vi.fn().mockResolvedValue([{ id: 'org-1', status: 'active' }]),
 			createOrganizer: vi.fn(),
@@ -165,13 +177,15 @@ describe('POST /api/organizer/request', () => {
 		status: 'active',
 	};
 
-	async function app(options: { existing?: boolean; created?: Record<string, unknown> } = {}) {
+	async function app(options: { duplicate?: boolean; created?: Record<string, unknown>; incomplete?: boolean } = {}) {
 		const stub = createSupabaseClientsStub({
 			user: identity,
 			tables: {
-				profiles: { data: profile },
-				// Primeira consulta: conta as organizações da pessoa; segunda: procura o CNPJ.
-				organizers: options.existing ? { data: null, count: 1 } : [{ data: null, count: 0 }, { data: null }],
+				profiles: { data: options.incomplete ? { ...profile, document: null } : profile },
+				organizers: [
+					{ data: [{ id: 'existing', user_id: TEST_USER_ID, status: 'active' }] },
+					{ data: options.duplicate ? { id: 'existing', user_id: TEST_USER_ID } : null },
+				],
 				event_registrations: { data: [] },
 			},
 			rpc: { data: options.created ?? { id: 'org-new', status: 'active' } },
@@ -247,8 +261,8 @@ describe('POST /api/organizer/request', () => {
 		expect(untyped.statusCode).toBe(422);
 	});
 
-	it('answers 409 when the person already has an organizer account', async () => {
-		const { app: server, stub } = await app({ existing: true });
+	it('answers 409 when the CPF is already registered', async () => {
+		const { app: server, stub } = await app({ duplicate: true });
 
 		const response = await server.inject({
 			method: 'POST',
@@ -258,7 +272,48 @@ describe('POST /api/organizer/request', () => {
 		});
 
 		expect(response.statusCode).toBe(409);
-		expect(response.json()).toMatchObject({ title: 'ORGANIZER_EXISTS' });
+		expect(response.json()).toMatchObject({ title: 'DOCUMENT_IN_USE' });
+		expect(stub.clients.admin.rpc).not.toHaveBeenCalled();
+	});
+
+	it('selects a newly active account and clears the previous event filter', async () => {
+		const { app: server } = await app();
+		const response = await server.inject({
+			method: 'POST',
+			url: '/api/organizer/request',
+			headers: sessionCookie(),
+			payload: company,
+		});
+		expect(response.statusCode).toBe(201);
+		expect(response.cookies).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: 'active_organizer_id', value: 'org-new', httpOnly: true }),
+				expect.objectContaining({ name: 'active_event', value: '' }),
+			]),
+		);
+	});
+
+	it('preserves the current workspace when the new account awaits approval', async () => {
+		const { app: server } = await app({ created: { id: 'org-new', status: 'pending' } });
+		const response = await server.inject({
+			method: 'POST',
+			url: '/api/organizer/request',
+			headers: sessionCookie(),
+			payload: company,
+		});
+		expect(response.statusCode).toBe(201);
+		expect(response.cookies).toEqual([]);
+	});
+
+	it('still requires a complete validated profile for additional accounts', async () => {
+		const { app: server, stub } = await app({ incomplete: true });
+		const response = await server.inject({
+			method: 'POST',
+			url: '/api/organizer/request',
+			headers: sessionCookie(),
+			payload: company,
+		});
+		expect(response.statusCode).toBe(403);
 		expect(stub.clients.admin.rpc).not.toHaveBeenCalled();
 	});
 
@@ -270,4 +325,15 @@ describe('POST /api/organizer/request', () => {
 
 		expect(response.statusCode).toBe(401);
 	});
+});
+
+it('does not allow changing the fiscal document after a receiving submission', async () => {
+	const repository = partialMock<OrganizerRepository>({
+		findById: vi.fn().mockResolvedValue({ document: '52998224725', current_receiving_request_id: 'request-id' }),
+		updateById: vi.fn(),
+	});
+	await expect(new OrganizerService(repository).update('org', { document: '45723174000110' })).rejects.toMatchObject({
+		code: 'VERIFIED_DOCUMENT_IMMUTABLE',
+	});
+	expect(repository.updateById).not.toHaveBeenCalled();
 });

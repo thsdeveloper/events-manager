@@ -32,6 +32,7 @@ const configuration = {
 };
 
 const event = {
+	organizer_id: { accepted_payment_methods: ['PIX', 'CARD', 'BOLETO'], credit_card_settlement_period: 'D+1' },
 	id: TEST_EVENT_ID,
 	slug: 'congresso',
 	title: 'Congresso',
@@ -61,6 +62,7 @@ function buildService(
 ) {
 	const registrations: Database['public']['Tables']['event_registrations']['Insert'][] = [];
 	const repository = partialMock<PaymentRepository>({
+		isOrganizerApprovedForEvent: vi.fn().mockResolvedValue(true),
 		findCheckoutEvent: vi.fn().mockResolvedValue(event),
 		getConfiguration: vi.fn().mockResolvedValue(configuration),
 		createRegistration: vi.fn(async (input) => {
@@ -110,6 +112,32 @@ const cart = {
 	participantInfo: { name: 'Ana', email: 'ana@events.local' },
 	tickets: [{ ticketId: TICKET_ID, quantity: 1 }],
 };
+
+describe('organization checkout restrictions', () => {
+	it('rejects a method the organizer has not enabled before reserving or charging', async () => {
+		const { service, repository, gateway } = buildService({ methods: ['PIX', 'CARD'] });
+		vi.mocked(repository.findCheckoutEvent).mockResolvedValue({
+			...event,
+			organizer_id: { accepted_payment_methods: ['PIX'], credit_card_settlement_period: null },
+		} as unknown as CheckoutEvent);
+		await expect(service.checkout(TEST_USER_ID, { ...cart, paymentMethod: 'CARD' }, logger)).rejects.toMatchObject({
+			code: 'PAYMENT_METHOD_UNAVAILABLE',
+		});
+		expect(gateway.createCheckout).not.toHaveBeenCalled();
+		expect(repository.createRegistration).not.toHaveBeenCalled();
+	});
+	it('keeps a requested credit period pending until the operational period matches', async () => {
+		const { service, repository, gateway } = buildService({ methods: ['PIX', 'CARD'] });
+		vi.mocked(repository.findCheckoutEvent).mockResolvedValue({
+			...event,
+			organizer_id: { accepted_payment_methods: ['CARD'], credit_card_settlement_period: 'D+7' },
+		} as unknown as CheckoutEvent);
+		await expect(service.checkout(TEST_USER_ID, { ...cart, paymentMethod: 'CARD' }, logger)).rejects.toMatchObject({
+			code: 'PAYMENT_METHOD_UNAVAILABLE',
+		});
+		expect(gateway.createCheckout).not.toHaveBeenCalled();
+	});
+});
 
 describe('PaymentService.checkout hospedado: métodos de pagamento', () => {
 	it('offers only PIX unless the store is configured otherwise', async () => {

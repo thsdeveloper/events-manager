@@ -22,6 +22,7 @@ export function clearSessionCookies(reply: FastifyReply, env: ApiEnv) {
 	};
 	reply.clearCookie('access_token', options);
 	reply.clearCookie('refresh_token', options);
+	reply.clearCookie('active_event', options);
 }
 
 /**
@@ -30,6 +31,7 @@ export function clearSessionCookies(reply: FastifyReply, env: ApiEnv) {
  * expires like the session so a shared machine does not leak the choice.
  */
 export function setActiveOrganizerCookie(reply: FastifyReply, env: ApiEnv, organizerId: string) {
+	setActiveEventCookie(reply, env, organizerId, null);
 	reply.setCookie('active_organizer_id', organizerId, {
 		path: '/',
 		httpOnly: true,
@@ -37,4 +39,13 @@ export function setActiveOrganizerCookie(reply: FastifyReply, env: ApiEnv, organ
 		sameSite: 'lax' as const,
 		maxAge: 60 * 60 * 24 * 30,
 	});
+}
+
+export function setActiveEventCookie(reply: FastifyReply, env: ApiEnv, organizerId: string, eventId: string | null) {
+	const options = { path: '/', httpOnly: true, secure: env.NODE_ENV === 'production', sameSite: 'lax' as const };
+	if (!eventId) {
+		reply.clearCookie('active_event', options);
+		return;
+	}
+	reply.setCookie('active_event', `${organizerId}:${eventId}`, { ...options, maxAge: 60 * 60 * 24 * 30 });
 }

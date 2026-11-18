@@ -150,3 +150,16 @@ it('separates confirmed sales, reservations and paid revenue', () => {
 	expect(within(screen.getByRole('group', { name: 'Reservados' })).getByText('2')).toBeInTheDocument();
 	expect(within(screen.getByRole('group', { name: 'Receita bruta' })).getByText(/100,00/)).toBeInTheDocument();
 });
+
+it('atualiza o contexto do Header ao excluir o evento selecionado', async () => {
+	router.push.mockClear();
+	router.refresh.mockClear();
+	mockFetch([['/api/events/e-1', () => new Response(null, { status: 204 })]]);
+	const { user } = renderWithProviders(<EventoDetalhesClient initialEvent={event} evento_id="e-1" />);
+	await user.click(screen.getByRole('button', { name: 'Excluir' }));
+	await user.click(
+		within(screen.getByRole('alertdialog', { name: 'Excluir evento' })).getByRole('button', { name: 'Excluir evento' }),
+	);
+	await waitFor(() => expect(router.push).toHaveBeenCalledWith('/admin/eventos'));
+	expect(router.refresh).toHaveBeenCalledOnce();
+});

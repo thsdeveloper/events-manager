@@ -18,14 +18,22 @@ interface BlogPostClientProps {
 }
 
 export default function BlogPostClient({ post, relatedPosts, author, authorName, postUrl }: BlogPostClientProps) {
+	const coverImage = typeof post.image === 'object' ? post.image : null;
+
 	return (
 		<>
 			<Container className="py-12">
 				{post.image && (
 					<div className="mb-8">
-						<div className="relative w-full h-[400px] overflow-hidden rounded-lg">
-							<MediaImage uuid={post.image} alt={post.title || 'post header image'} className="object-cover" fill />
-						</div>
+						<MediaImage
+							uuid={post.image}
+							alt={post.title || 'Imagem de capa do post'}
+							width={coverImage?.width || 1200}
+							height={coverImage?.height || 630}
+							className="block h-auto w-full rounded-lg"
+							sizes="(min-width: 1280px) 1216px, (min-width: 1024px) calc(100vw - 64px), (min-width: 640px) calc(100vw - 48px), calc(100vw - 32px)"
+							priority
+						/>
 					</div>
 				)}
 

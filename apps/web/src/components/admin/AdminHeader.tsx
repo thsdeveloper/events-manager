@@ -7,13 +7,17 @@ import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { UserMenu } from '@/components/layout/UserMenu';
+import { EventSwitcher } from '@/features/event-scope/components/EventSwitcher';
+import { allEventsSelection, type EventSelection } from '@/features/event-scope/types';
 
 export default function AdminHeader({
 	user,
 	organizer,
+	eventSelection = allEventsSelection,
 }: {
 	user: AuthUser;
 	organizer: OrganizerProfile;
+	eventSelection?: EventSelection;
 	title?: string;
 }) {
 	const router = useRouter();
@@ -51,10 +55,7 @@ export default function AdminHeader({
 				<div className="flex min-w-0 items-center gap-3">
 					<SidebarTrigger />
 					<Separator orientation="vertical" className="h-6" />
-					<div className="min-w-0">
-						<p className="truncate text-sm font-medium">{organizer.name}</p>
-						<p className="text-xs text-muted-foreground">Gestão de eventos</p>
-					</div>
+					<EventSwitcher selection={eventSelection} organizationName={organizer.name} />
 				</div>
 				<div className="flex shrink-0 items-center gap-3">
 					<WorkspaceSwitcher area="organizer" isSuperAdmin={user.role === 'super_admin'} isOrganizer />

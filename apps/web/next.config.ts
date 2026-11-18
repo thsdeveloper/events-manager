@@ -15,12 +15,12 @@ const contentSecurityPolicy = `
   base-uri 'self';
   object-src 'none';
   form-action 'self';
-  script-src 'self' 'unsafe-inline'${developmentScriptPolicy};
-  frame-src 'self' https://app.abacatepay.com;
+  script-src 'self' 'unsafe-inline'${developmentScriptPolicy} https://abacatepay.com https://www.abacatepay.com https://assets.abacatepay.com https://pkgs.rinne.com.br https://js.evervault.com;
+  frame-src 'self' https://app.abacatepay.com https://ui-components.evervault.com;
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data: ${supabaseUrl.origin} ${tileHosts};
   media-src 'self' ${supabaseUrl.origin};
-  connect-src 'self';
+  connect-src 'self' https://api.abacatepay.com https://api.rinne.com.br https://api-sandbox.rinne.com.br https://t.rinne.com.br https://t-sandbox.rinne.com.br https://keys.evervault.com https://api.evervault.com;
   font-src 'self' data:;
   frame-ancestors 'self';
 `;

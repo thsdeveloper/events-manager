@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -134,7 +135,7 @@ export function TicketFormSheet({
 	groups = [],
 }: TicketFormSheetProps) {
 	const { toast } = useToast();
-	const { feeConfig, isFallback } = useFeeConfig();
+	const { feeConfig, feeTable, isFallback, paymentSettings } = useFeeConfig();
 	const formId = useId();
 	const isEditing = Boolean(ticket);
 	const isFree = pricing === 'free';
@@ -156,6 +157,7 @@ export function TicketFormSheet({
 	const price = useWatch({ control: form.control, name: 'price' });
 	const serviceFeeType = useWatch({ control: form.control, name: 'service_fee_type' });
 	const allowInstallments = useWatch({ control: form.control, name: 'allow_installments' });
+	const maxInstallments = useWatch({ control: form.control, name: 'max_installments' });
 	const numericPrice = useMemo(() => (isFree ? 0 : Number(price) || 0), [isFree, price]);
 
 	const submit = useCallback(
@@ -348,7 +350,13 @@ export function TicketFormSheet({
 										<FormItem>
 											<FormLabel>Valor do ingresso (R$) *</FormLabel>
 											<FormControl>
-												<Input {...field} type="number" min="0" step="0.01" inputMode="decimal" />
+												<CurrencyInput
+													name={field.name}
+													ref={field.ref}
+													onBlur={field.onBlur}
+													value={field.value}
+													onValueChange={field.onChange}
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -397,6 +405,9 @@ export function TicketFormSheet({
 								/>
 
 								<TicketFeeSummary
+									paymentSettings={paymentSettings}
+									maxInstallments={allowInstallments ? Number(maxInstallments ?? 1) : 1}
+									feeTable={feeTable}
 									price={numericPrice}
 									serviceFeeType={serviceFeeType}
 									feeConfig={feeConfig}

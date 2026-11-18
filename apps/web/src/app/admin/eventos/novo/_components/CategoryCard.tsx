@@ -21,6 +21,7 @@ export const CategoryCard = memo(function CategoryCard({
 	name,
 	description,
 	icon,
+	color,
 	isSelected,
 	onSelect,
 }: CategoryCardProps) {
@@ -36,6 +37,7 @@ export const CategoryCard = memo(function CategoryCard({
 	};
 
 	const Icon = resolveCategoryIcon(icon);
+	const accent = /^#[0-9a-f]{6}$/i.test(color ?? '') ? color! : '#743DF5';
 	const cardContent = (
 		<Button
 			variant={isSelected ? 'secondary' : 'outline'}
@@ -43,10 +45,15 @@ export const CategoryCard = memo(function CategoryCard({
 			onClick={handleClick}
 			onKeyDown={handleKeyDown}
 			className="h-auto w-full justify-start gap-3 whitespace-normal py-4 text-left"
+			style={
+				isSelected
+					? { borderColor: accent, backgroundColor: `${accent}18`, boxShadow: `inset 3px 0 0 ${accent}` }
+					: undefined
+			}
 			aria-pressed={isSelected}
 			aria-label={`Selecionar categoria ${name}`}
 		>
-			<Icon className="size-4 text-muted-foreground" />
+			<Icon className="size-4 text-muted-foreground" style={isSelected ? { color: accent } : undefined} />
 			<span className="flex-1">{name}</span>
 			{isSelected && <Check className="size-4" />}
 		</Button>

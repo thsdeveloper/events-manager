@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { renderWithProviders } from '@/test';
 import { TicketList } from './TicketList';
 import type { TicketDraft } from '../types';
@@ -30,4 +30,17 @@ describe('organizer ticket ordering', () => {
 		await user.click(screen.getByRole('button', { name: 'Mover Camarote para cima' }));
 		expect(reordered).toHaveBeenCalledWith([expect.objectContaining({ id: 'b', price: 50, quantity: 10 }), a]);
 	});
+});
+
+it('offers creation inside the empty ticket card', async () => {
+	const onAdd = vi.fn();
+	const { user } = renderWithProviders(
+		<TicketList tickets={[]} isFree onAdd={onAdd} onEdit={vi.fn()} onRemove={vi.fn()} />,
+	);
+	await user.click(
+		within(screen.getByRole('region', { name: 'Nenhum ingresso cadastrado' })).getByRole('button', {
+			name: 'Adicionar ingresso',
+		}),
+	);
+	expect(onAdd).toHaveBeenCalledOnce();
 });

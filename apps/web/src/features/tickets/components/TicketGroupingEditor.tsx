@@ -1,4 +1,14 @@
 'use client';
+import Image from 'next/image';
+import { Info } from 'lucide-react';
+import {
+	Dialog,
+	DialogTrigger,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+} from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useId } from 'react';
@@ -37,12 +47,48 @@ export function TicketGroupingEditor({
 
 	return (
 		<Card className="space-y-3 p-4">
-			<h3 className="font-semibold">Grupos e subgrupos de ingressos</h3>
+			<div className="flex items-center gap-2">
+				<h3 className="font-semibold">Grupos e subgrupos de ingressos</h3>
+				<Dialog>
+					<DialogTrigger asChild>
+						<Button type="button" variant="ghost" size="icon" aria-label="Como funcionam os grupos de ingressos?">
+							<Info className="size-4" />
+						</Button>
+					</DialogTrigger>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Como funcionam os grupos de ingressos?</DialogTitle>
+							<DialogDescription>Organize as opções que o público verá na inscrição.</DialogDescription>
+						</DialogHeader>
+						<div className="flex items-center gap-4 rounded-xl bg-violet-50 p-4 text-slate-900">
+							<Image src="/illustrations/event-creation/ticket-paid.png" alt="" width={100} height={100} />
+							<p>Um grupo reúne ingressos por setor, experiência ou categoria.</p>
+						</div>
+						<div className="space-y-3 rounded-xl border p-4">
+							<p className="font-semibold">Pista</p>
+							<div className="ml-3 space-y-2 border-l-2 border-violet-300 pl-4">
+								<p>Inteira</p>
+								<p>Meia-entrada</p>
+								<p className="text-xs text-muted-foreground">Exemplos de ingressos dentro do mesmo grupo.</p>
+							</div>
+						</div>
+						<p className="text-sm">
+							Cada ingresso mantém seu próprio preço, quantidade disponível e período de venda. O grupo apenas organiza
+							a apresentação.
+						</p>
+						<p className="text-sm text-muted-foreground">
+							Para criar um subgrupo, escolha um grupo pai. Depois, ao adicionar ou editar um ingresso, selecione o
+							grupo ou subgrupo correspondente. Em eventos gratuitos, você pode separar categorias de inscrição sem
+							cobrar por elas.
+						</p>
+					</DialogContent>
+				</Dialog>
+			</div>
 			<p className="text-sm text-muted-foreground">
 				Organize por setor ou categoria. Cada ingresso mantém seu preço e estoque.
 			</p>
-			<div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-				<div>
+			<div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+				<div className="space-y-2">
 					<Label htmlFor={id + 'title'}>Novo grupo</Label>
 					<Input
 						id={id + 'title'}
@@ -52,7 +98,7 @@ export function TicketGroupingEditor({
 						disabled={disabled}
 					/>
 				</div>
-				<div>
+				<div className="space-y-2">
 					<Label htmlFor={id + 'parent'}>Grupo pai</Label>
 					<Select
 						value={parent || 'none'}

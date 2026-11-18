@@ -1,4 +1,9 @@
-import type { BrandingAssetKey, MediaFile } from '@events-manager/contracts';
+import type {
+	BrandingAssetKey,
+	MediaFile,
+	OrganizerAdminList,
+	OrganizerSupportDetail,
+} from '@events-manager/contracts';
 import 'server-only';
 import { authenticatedBackendFetch } from '@/lib/backend-auth';
 import type { EventCategoryRecord } from '@/features/super-admin/components/CategoryFormSheet';
@@ -22,10 +27,7 @@ export interface PlatformOverview {
 	provider: 'mock' | 'abacatepay';
 }
 
-export interface OrganizerList {
-	data: Array<any>;
-	pagination: { page: number; limit: number; total: number; pageCount: number };
-}
+export type OrganizerList = OrganizerAdminList;
 
 export interface PaymentSettingsResponse {
 	settings: Record<string, any>;
@@ -48,3 +50,6 @@ export const fetchEventCategories = () =>
 	authenticatedBackendFetch<{ data: EventCategoryRecord[] }>('/api/super-admin/categories');
 export const fetchBrandingSettings = () =>
 	authenticatedBackendFetch<{ settings: BrandingSettings }>('/api/super-admin/settings/branding');
+
+export const fetchOrganizerSupport = (id: string) =>
+	authenticatedBackendFetch<OrganizerSupportDetail>(`/api/super-admin/organizers/${id}`);

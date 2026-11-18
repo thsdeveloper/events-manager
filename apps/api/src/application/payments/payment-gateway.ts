@@ -1,5 +1,6 @@
+import type { TransparentPayment } from '@events-manager/contracts';
 export type PaymentProvider = 'mock' | 'abacatepay';
-export type CheckoutMethod = 'PIX' | 'CARD';
+export type CheckoutMethod = 'PIX' | 'CARD' | 'BOLETO';
 
 export interface CreateProductInput {
 	externalId: string;
@@ -88,6 +89,10 @@ export interface PaymentRefund {
 }
 
 export interface PaymentGateway {
+	createTransparentCharge(input: CreateTransparentInput): Promise<TransparentCharge>;
+	findTransparentCharge(
+		lookup: { id: string } | { attemptId: string; createdAt: string },
+	): Promise<TransparentCharge | null>;
 	readonly provider: PaymentProvider;
 	createProduct(input: CreateProductInput): Promise<PaymentProduct>;
 	/** Cria ou devolve o cliente existente (o provedor deduplica por CPF/CNPJ). */
@@ -108,4 +113,22 @@ export interface PaymentGateway {
 	}): Promise<PixCharge>;
 	getPixCharge(chargeId: string): Promise<PixChargeState>;
 	sendPix(input: CreatePixInput): Promise<PixTransfer>;
+}
+
+export interface TransparentCharge extends TransparentPayment {
+	providerUpdatedAt?: string;
+	providerFeeInCents: number | null;
+	devMode: boolean;
+	receiptUrl: string | null;
+	metadata: Record<string, string>;
+}
+export interface CreateTransparentInput {
+	method: CheckoutMethod;
+	externalId: string;
+	amountInCents: number;
+	description: string;
+	customer: CreateCustomerInput;
+	metadata: Record<string, string>;
+	token?: string;
+	installments?: number;
 }

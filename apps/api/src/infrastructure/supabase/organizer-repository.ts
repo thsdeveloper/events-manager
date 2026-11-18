@@ -1,8 +1,31 @@
+import { cardSettlementPeriodSchema, type OrganizerPaymentSettings } from '@events-manager/contracts';
 import type { OrganizerInput, OrganizerRepository } from '../../application/organizers/organizer-service.js';
+import { ApiError } from '../../shared/errors.js';
 import type { SupabaseClients } from './clients.js';
 
 export class SupabaseOrganizerRepository implements OrganizerRepository {
 	constructor(private readonly clients: SupabaseClients) {}
+
+	async getPaymentPeriod() {
+		const { data, error } = await this.clients.admin
+			.from('event_configurations')
+			.select('gateway_card_settlement_period')
+			.eq('id', 1)
+			.single();
+		if (error) throw error;
+		return cardSettlementPeriodSchema.parse(data?.gateway_card_settlement_period ?? 'D+1');
+	}
+
+	async updatePaymentSettings(id: string, input: OrganizerPaymentSettings) {
+		const { data, error } = await this.clients.admin
+			.from('organizers')
+			.update(input)
+			.eq('id', id)
+			.select('*')
+			.maybeSingle();
+		if (error) throw error;
+		return data;
+	}
 
 	async findById(organizerId: string) {
 		const { data, error } = await this.clients.admin
@@ -27,16 +50,7 @@ export class SupabaseOrganizerRepository implements OrganizerRepository {
 			target_status: status,
 		});
 		if (error) throw error;
-		return data ? (data as Record<string, unknown>) : ('exists' as const);
-	}
-
-	async existsForUser(userId: string) {
-		const { count, error } = await this.clients.admin
-			.from('organizers')
-			.select('id', { count: 'exact', head: true })
-			.eq('user_id', userId);
-		if (error) throw error;
-		return (count ?? 0) > 0;
+		return data ? (data as { id: string; status: string }) : ('exists' as const);
 	}
 
 	async findByDocument(document: string) {
@@ -59,6 +73,12 @@ export class SupabaseOrganizerRepository implements OrganizerRepository {
 			.eq('id', organizerId)
 			.select('*')
 			.maybeSingle();
+		if (error?.message.includes('VERIFIED_DOCUMENT_IMMUTABLE'))
+			throw new ApiError(
+				'O CPF/CNPJ não pode ser alterado após o envio dos documentos de recebimento.',
+				409,
+				'VERIFIED_DOCUMENT_IMMUTABLE',
+			);
 		if (error) throw error;
 		return data;
 	}
@@ -74,13 +94,13 @@ export class SupabaseOrganizerRepository implements OrganizerRepository {
 		return data;
 	}
 
-	async stats(organizerId: string) {
+	async stats(organizerId: string, eventId?: string) {
 		const { data: events, error } = await this.clients.admin
 			.from('events')
 			.select('id')
 			.eq('organizer_id', organizerId);
 		if (error) throw error;
-		const eventIds = (events ?? []).map((event) => event.id);
+		const eventIds = (events ?? []).filter((event) => !eventId || event.id === eventId).map((event) => event.id);
 		if (!eventIds.length) return { totalEvents: 0, totalRegistrations: 0, totalRevenue: 0 };
 		const { data: registrations, error: registrationsError } = await this.clients.admin
 			.from('event_registrations')

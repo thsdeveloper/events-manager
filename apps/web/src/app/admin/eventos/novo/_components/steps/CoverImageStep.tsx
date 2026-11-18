@@ -42,89 +42,92 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 							</div>
 						</div>
 
-						<div className="mt-6 space-y-6">
-							<ImageUpload
-								uploadOnSelect={false}
-								onFileSelected={onCoverFileSelected}
-								pendingPreviewUrl={pendingPreviewUrl}
-								value={cover}
-								onChange={(value) => {
-									onChangeCoverImage(value);
-									if (value) {
-										form.setValue('cover_image', value, { shouldValidate: true });
-									} else {
-										form.setValue('cover_image', '', { shouldValidate: true });
-									}
-								}}
-								onUploadError={(error) => {
-									toast({
-										title: 'Erro ao enviar imagem',
-										description: error,
-										variant: 'destructive',
-									});
-								}}
-								label="Imagem de capa (opcional)"
-								description="Recomendado 1200x630px. Aceita JPG, PNG ou GIF até 5MB. A imagem só é enviada ao servidor quando você finalizar o cadastro do evento."
-							/>
-
-							<FormField
-								control={form.control}
-								name="cover_image_alt"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Texto alternativo da capa</FormLabel>
-										<FormControl>
-											<Input
-												{...field}
-												value={field.value ?? ''}
-												maxLength={240}
-												placeholder="Descreva o conteúdo da imagem"
-											/>
-										</FormControl>
-										<p className="text-xs text-muted-foreground">
-											Ajuda quem usa leitor de tela a entender a imagem. Opcional.
-										</p>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							{form.formState.errors.cover_image?.message && (
-								<p className="text-sm font-medium text-destructive">{form.formState.errors.cover_image.message}</p>
-							)}
-
-							<div className="grid gap-4 rounded-lg border border-dashed p-4 text-sm text-muted-foreground md:grid-cols-2">
-								<div>
-									<h3 className="font-medium text-foreground">Boas práticas</h3>
-									<ul className="mt-2 list-disc space-y-1 pl-4">
-										<li>Destaque o tema e o benefício principal</li>
-										<li>Use pouco texto e contraste alto</li>
-										<li>Mantenha rostos centralizados e com foco</li>
-									</ul>
-								</div>
-								<div className="rounded-md bg-muted p-3">
-									<p className="flex items-center gap-2 text-sm font-medium text-foreground">
-										<Wand2 className="size-4" />
-										Geração inteligente
-									</p>
-									<p className="mt-1 text-xs text-muted-foreground">
-										Use o nome, a categoria, a descrição completa e as tags para criar uma capa que combine com seu
-										evento.
-									</p>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										className="mt-3"
-										onClick={onGenerateCoverImage}
-										disabled={isGeneratingImage}
-									>
-										{isGeneratingImage ? 'Gerando...' : 'Gerar imagem com IA'}
-									</Button>
-									{aiError && (
-										<p role="alert" className="mt-2 text-xs text-destructive">
-											{aiError}
-										</p>
+						<div className="mt-6 grid items-start gap-8 lg:grid-cols-2">
+							<div className="w-full max-w-2xl">
+								<ImageUpload
+									uploadOnSelect={false}
+									onFileSelected={onCoverFileSelected}
+									pendingPreviewUrl={pendingPreviewUrl}
+									value={cover}
+									onChange={(value) => {
+										onChangeCoverImage(value);
+										if (value) {
+											form.setValue('cover_image', value, { shouldValidate: true });
+										} else {
+											form.setValue('cover_image', '', { shouldValidate: true });
+										}
+									}}
+									onUploadError={(error) => {
+										toast({
+											title: 'Erro ao enviar imagem',
+											description: error,
+											variant: 'destructive',
+										});
+									}}
+									label="Imagem de capa (opcional)"
+									description="Recomendado 1200x630px. Aceita JPG, PNG ou GIF até 5MB. A imagem só é enviada ao servidor quando você finalizar o cadastro do evento."
+								/>
+							</div>
+							<div className="space-y-5">
+								<FormField
+									control={form.control}
+									name="cover_image_alt"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Texto alternativo da capa</FormLabel>
+											<FormControl>
+												<Input
+													{...field}
+													value={field.value ?? ''}
+													maxLength={240}
+													placeholder="Descreva o conteúdo da imagem"
+												/>
+											</FormControl>
+											<p className="text-xs text-muted-foreground">
+												Ajuda quem usa leitor de tela a entender a imagem. Opcional.
+											</p>
+											<FormMessage />
+										</FormItem>
 									)}
+								/>
+								{form.formState.errors.cover_image?.message && (
+									<p className="text-sm font-medium text-destructive">{form.formState.errors.cover_image.message}</p>
+								)}
+
+								<div className="space-y-5 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+									<div>
+										<h3 className="font-medium text-foreground">Boas práticas</h3>
+										<ul className="mt-2 list-disc space-y-1 pl-4">
+											<li>Destaque o tema e o benefício principal</li>
+											<li>Use pouco texto e contraste alto</li>
+											<li>Mantenha rostos centralizados e com foco</li>
+										</ul>
+									</div>
+									<div className="rounded-md bg-muted p-3">
+										<p className="flex items-center gap-2 text-sm font-medium text-foreground">
+											<Wand2 className="size-4" />
+											Geração inteligente
+										</p>
+										<p className="mt-1 text-xs text-muted-foreground">
+											Use o nome, a categoria, a descrição completa e as tags para criar uma capa que combine com seu
+											evento.
+										</p>
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											className="mt-3"
+											onClick={onGenerateCoverImage}
+											disabled={isGeneratingImage}
+										>
+											{isGeneratingImage ? 'Gerando...' : 'Gerar imagem com IA'}
+										</Button>
+										{aiError && (
+											<p role="alert" className="mt-2 text-xs text-destructive">
+												{aiError}
+											</p>
+										)}
+									</div>
 								</div>
 							</div>
 						</div>

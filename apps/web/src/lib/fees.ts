@@ -1,3 +1,10 @@
+import {
+	DEFAULT_GATEWAY_FEES,
+	quoteGatewayFee,
+	readGatewayFees,
+	type GatewayFees,
+	type CardSettlementPeriod,
+} from '@events-manager/contracts';
 import { calculateUnitPlatformFee } from '@events-manager/contracts';
 /**
  * Funções utilitárias para cálculo de taxas de ingressos
@@ -130,7 +137,7 @@ export function calculateConvenienceFeePercentage(ticketPrice: number, config: F
 // ---------------------------------------------------------------------------
 
 /** Espelho de `GET /api/content/fees`: o que a plataforma divulga. */
-export interface PublicFeeTable {
+export interface PublicFeeTable extends Partial<GatewayFees> {
 	boleto_fee_fixed: number;
 	card_fee_fixed: number;
 	card_fee_percentage: number;
@@ -146,6 +153,7 @@ export interface PublicFeeTable {
 
 /** Valores publicados; usados quando a API não responde. */
 export const DEFAULT_PUBLIC_FEES: PublicFeeTable = {
+	...DEFAULT_GATEWAY_FEES,
 	platform_fee_percentage: 5,
 	platform_fee_minimum: 0,
 	pix_fee_fixed: 0.8,
@@ -159,18 +167,43 @@ export const DEFAULT_PUBLIC_FEES: PublicFeeTable = {
 	convenience_fee_calculation_method: 'buyer_pays',
 };
 
-export type PaymentMethod = 'pix' | 'card' | 'card_installments_2_6' | 'card_installments_7_12' | 'boleto';
+export type PaymentMethod =
+	| 'pix'
+	| 'card'
+	| 'card_installments_2_6'
+	| 'card_installments_7_12'
+	| 'boleto'
+	| 'boleto_pix'
+	| 'debit';
+export interface FeeScenario {
+	installments?: number;
+	period?: CardSettlementPeriod;
+}
 
 export const PAYMENT_METHODS: Array<{ value: PaymentMethod; label: string; hint: string }> = [
 	{ value: 'pix', label: 'PIX', hint: 'Tarifa fixa por transação' },
-	{ value: 'card', label: 'Cartão à vista', hint: 'Percentual mais tarifa fixa' },
-	{ value: 'card_installments_2_6', label: 'Cartão em 2 a 6 vezes', hint: 'Percentual do parcelamento' },
-	{ value: 'card_installments_7_12', label: 'Cartão em 7 a 12 vezes', hint: 'Percentual do parcelamento' },
-	{ value: 'boleto', label: 'Boleto', hint: 'Tarifa fixa por transação' },
+	{ value: 'card', label: 'Cartão de crédito', hint: 'Percentual por parcela e prazo + tarifa fixa' },
+	{ value: 'boleto', label: 'Boleto', hint: 'Por boleto pago' },
+	{ value: 'boleto_pix', label: 'Boleto pago pelo Pix', hint: 'Aplica somente a tarifa do Pix' },
+	{ value: 'debit', label: 'Cartão de débito', hint: 'Percentual + tarifa fixa, em D+1' },
 ];
 
 /** Tarifa do gateway para um valor pago pelo comprador, conforme a forma escolhida. */
-export function calculateProviderFee(buyerPrice: number, method: PaymentMethod, table: PublicFeeTable): number {
+export function calculateProviderFee(
+	buyerPrice: number,
+	method: PaymentMethod,
+	table: PublicFeeTable,
+	scenario: FeeScenario = {},
+): number {
+	if (buyerPrice <= 0) return 0;
+	if (method === 'debit' || method === 'boleto_pix' || (method === 'card' && table.card_rates))
+		return quoteGatewayFee(
+			buyerPrice,
+			method,
+			readGatewayFees({ ...table }),
+			scenario.installments ?? 1,
+			scenario.period ?? 'D+1',
+		).fee;
 	switch (method) {
 		case 'pix':
 			return table.pix_fee_fixed;
@@ -194,6 +227,7 @@ export function calculateFeesForMethod(
 	serviceFeeType: 'passed_to_buyer' | 'absorbed',
 	method: PaymentMethod,
 	table: PublicFeeTable,
+	scenario: FeeScenario = {},
 ): FeeCalculation {
 	const config: FeeConfig = {
 		platformFeePercentage: table.platform_fee_percentage,
@@ -204,7 +238,7 @@ export function calculateFeesForMethod(
 	const platformFee = calculateConvenienceFee(ticketPrice, config);
 	const convenienceFee = serviceFeeType === 'passed_to_buyer' ? calculateConvenienceFee(ticketPrice, config) : 0;
 	const buyerPrice = ticketPrice + convenienceFee;
-	const providerFee = calculateProviderFee(buyerPrice, method, table);
+	const providerFee = calculateProviderFee(buyerPrice, method, table, scenario);
 	const organizerReceives =
 		serviceFeeType === 'passed_to_buyer' ? ticketPrice - providerFee : buyerPrice - providerFee - platformFee;
 	const round = (value: number) => Math.round(value * 100) / 100;

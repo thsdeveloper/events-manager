@@ -1,17 +1,22 @@
 'use client';
 
+import { TicketFeeDetails } from './TicketFeeDetails';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { ArrowRight, Wallet } from 'lucide-react';
+import type { OrganizerPaymentSettingsResponse } from '@events-manager/contracts';
 import { memo, useMemo } from 'react';
-import { calculateFees, formatCurrency, type FeeConfig } from '@/lib/fees';
+import { calculateFees, formatCurrency, type FeeConfig, type PublicFeeTable } from '@/lib/fees';
 import type { TicketServiceFeeType } from '../types';
 
 interface TicketFeeSummaryProps {
 	price: number;
 	serviceFeeType: TicketServiceFeeType;
 	feeConfig: FeeConfig;
+	feeTable?: PublicFeeTable;
 	isFallback: boolean;
+	paymentSettings?: OrganizerPaymentSettingsResponse;
+	maxInstallments?: number;
 }
 
 /**
@@ -24,6 +29,9 @@ export const TicketFeeSummary = memo(function TicketFeeSummary({
 	serviceFeeType,
 	feeConfig,
 	isFallback,
+	feeTable,
+	paymentSettings,
+	maxInstallments,
 }: TicketFeeSummaryProps) {
 	const fees = useMemo(
 		() => (price > 0 ? calculateFees(price, serviceFeeType, feeConfig) : null),
@@ -63,6 +71,19 @@ export const TicketFeeSummary = memo(function TicketFeeSummary({
 				</div>
 			</div>
 
+			{paymentSettings ? (
+				<p className="mb-3 text-xs text-muted-foreground">
+					Estimativa para{' '}
+					{paymentSettings.settings.accepted_payment_methods.includes('PIX')
+						? 'Pix'
+						: paymentSettings.settings.accepted_payment_methods[0] === 'CARD'
+							? `crédito em 1x, ${paymentSettings.settings.credit_card_settlement_period}`
+							: paymentSettings.settings.accepted_payment_methods[0] === 'BOLETO'
+								? 'boleto'
+								: 'débito'}
+					.
+				</p>
+			) : null}
 			<dl className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
 				<div className="flex justify-between gap-4">
 					<dt>Taxa de conveniência</dt>
@@ -80,6 +101,15 @@ export const TicketFeeSummary = memo(function TicketFeeSummary({
 					? 'Não foi possível carregar as taxas atuais; a estimativa usa os valores padrão. O valor final é recalculado ao salvar.'
 					: 'Estimativa. A tarifa efetiva do gateway é confirmada na liquidação do pagamento.'}
 			</p>
+			<TicketFeeDetails
+				paymentSettings={paymentSettings}
+				maxInstallments={maxInstallments}
+				price={price}
+				serviceFeeType={serviceFeeType}
+				feeConfig={feeConfig}
+				feeTable={feeTable}
+				isFallback={isFallback}
+			/>
 		</Card>
 	);
 });

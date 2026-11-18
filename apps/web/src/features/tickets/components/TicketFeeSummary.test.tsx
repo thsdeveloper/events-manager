@@ -3,7 +3,7 @@
  * As asserções descrevem o que a pessoa organizadora lê na tela, não a
  * estrutura interna do componente.
  */
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders } from '@/test';
 import type { FeeConfig } from '@/lib/fees';
@@ -38,4 +38,22 @@ describe('TicketFeeSummary', () => {
 
 		expect(screen.getByText(/valores padrão/i)).toBeInTheDocument();
 	});
+});
+
+it('explains platform minimum, who pays, gateway percentage and fixed fee, and net amount', async () => {
+	const { user } = renderWithProviders(
+		<TicketFeeSummary
+			price={100}
+			serviceFeeType="absorbed"
+			feeConfig={{ ...feeConfig, platformFeeMinimum: 7 }}
+			isFallback={false}
+		/>,
+	);
+	await user.click(screen.getByRole('button', { name: 'Entender taxas e recebimento' }));
+	const dialog = screen.getByRole('dialog');
+	expect(within(dialog).getByText(/taxa mínima aplicada/i)).toBeInTheDocument();
+	expect(within(dialog).getByText(/organizador absorve/i)).toBeInTheDocument();
+	expect(within(dialog).getByText(/percentual do gateway/i)).toBeInTheDocument();
+	expect(within(dialog).getByText(/parcela fixa do gateway/i)).toBeInTheDocument();
+	expect(within(dialog).getByText(/R\$\s?88,90/)).toBeInTheDocument();
 });

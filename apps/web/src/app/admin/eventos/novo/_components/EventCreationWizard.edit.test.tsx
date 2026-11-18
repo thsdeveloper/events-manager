@@ -10,6 +10,7 @@ import type { Event } from '@events-manager/contracts';
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
 import { Toaster } from '@/components/ui/toaster';
 import { resetServerAuthStore } from '@/hooks/useServerAuth';
+import { consumeEventCreation } from '@/features/event-creation/lib/creation-feedback';
 import { EventCreationWizard } from './EventCreationWizard';
 
 beforeEach(() => {
@@ -70,10 +71,10 @@ describe('EventCreationWizard em modo de edição', () => {
 	it('keeps visual as the last editing step and requires an explicit save after entering review', async () => {
 		const { fetchMock, user } = renderEdit();
 		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
-		const navigation = screen.getByRole('list');
+		const navigation = screen.getByRole('tablist');
 		expect(
 			within(navigation)
-				.getAllByRole('button')
+				.getAllByRole('tab')
 				.map((button) => button.textContent),
 		).toEqual([
 			expect.stringContaining('Básico'),
@@ -84,7 +85,7 @@ describe('EventCreationWizard em modo de edição', () => {
 			expect.stringContaining('Visual'),
 			expect.stringContaining('Revisão'),
 		]);
-		await user.click(screen.getByRole('button', { name: /^Visual:/ }));
+		await user.click(screen.getByRole('tab', { name: /^Visual:/ }));
 		await user.click(screen.getByRole('button', { name: 'Continuar' }));
 		await screen.findByRole('button', { name: 'Salvar alterações' });
 		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
@@ -95,7 +96,7 @@ describe('EventCreationWizard em modo de edição', () => {
 	it('shows event dates in Agenda and leaves the sales period only on each ticket', async () => {
 		const { user } = renderEdit();
 		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
-		await user.click(screen.getByRole('button', { name: /^Agenda:/ }));
+		await user.click(screen.getByRole('tab', { name: /^Agenda:/ }));
 		await screen.findByText('Início do evento');
 		expect(screen.queryByRole('button', { name: /Período de inscrições/ })).not.toBeInTheDocument();
 		expect(screen.getByText(/período de vendas.*ingresso/i)).toBeInTheDocument();
@@ -104,7 +105,7 @@ describe('EventCreationWizard em modo de edição', () => {
 	it('uses title, category, full description and tags when requesting a cover in the final editing step', async () => {
 		const { fetchMock, user } = renderEdit();
 		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
-		await user.click(screen.getByRole('button', { name: /^Visual:/ }));
+		await user.click(screen.getByRole('tab', { name: /^Visual:/ }));
 		await user.click(await screen.findByRole('button', { name: 'Gerar imagem com IA' }));
 		await waitFor(() =>
 			expect(fetchMock).toHaveBeenCalledWith('/api/ai/generate-cover', expect.objectContaining({ method: 'POST' })),
@@ -129,9 +130,9 @@ describe('EventCreationWizard em modo de edição', () => {
 	it('lets the organizer choose an unlisted event and saves that choice', async () => {
 		const { fetchMock, user } = renderEdit();
 		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
-		await user.click(screen.getByRole('button', { name: /^Ingressos:/ }));
+		await user.click(screen.getByRole('tab', { name: /^Ingressos:/ }));
 		await user.click(await screen.findByRole('radio', { name: /Não listado/ }));
-		await user.click(screen.getByRole('button', { name: /^Revisão:/ }));
+		await user.click(screen.getByRole('tab', { name: /^Revisão:/ }));
 		expect(await screen.findByText('Não listado — acesso pelo link')).toBeInTheDocument();
 		await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
 		await waitFor(() =>
@@ -145,8 +146,8 @@ describe('EventCreationWizard em modo de edição', () => {
 		const { user } = renderEdit();
 
 		expect(await screen.findByDisplayValue('Congresso de Jovens da ADEB')).toBeInTheDocument();
-		const steps = screen.getByRole('list').closest('nav') ?? document.body;
-		const detailsStep = within(steps).getByRole('button', { name: /^Detalhes:/ });
+		const steps = screen.getByRole('tablist').closest('nav') ?? document.body;
+		const detailsStep = within(steps).getByRole('tab', { name: /^Detalhes:/ });
 		expect(detailsStep).toBeEnabled();
 
 		await user.click(detailsStep);
@@ -170,7 +171,7 @@ describe('EventCreationWizard em modo de edição', () => {
 		const { user } = renderEdit();
 		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
 
-		await user.click(screen.getByRole('button', { name: /^Ingressos:/ }));
+		await user.click(screen.getByRole('tab', { name: /^Ingressos:/ }));
 
 		expect(screen.queryByRole('button', { name: /adicionar ingresso/i })).not.toBeInTheDocument();
 		expect(await screen.findByRole('link', { name: /gerenciar ingressos/i })).toHaveAttribute(
@@ -183,7 +184,7 @@ describe('EventCreationWizard em modo de edição', () => {
 		const { fetchMock, user } = renderEdit();
 		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
 
-		await user.click(screen.getByRole('button', { name: /^Revisão:/ }));
+		await user.click(screen.getByRole('tab', { name: /^Revisão:/ }));
 		await user.click(await screen.findByRole('button', { name: 'Salvar alterações' }));
 
 		await waitFor(() =>
@@ -219,16 +220,16 @@ describe('EventCreationWizard em modo de edição', () => {
 		const { fetchMock, user } = renderEdit();
 		await screen.findByDisplayValue('Congresso de Jovens da ADEB');
 
-		await user.click(screen.getByRole('button', { name: /^Detalhes:/ }));
+		await user.click(screen.getByRole('tab', { name: /^Detalhes:/ }));
 		const editor = await screen.findByRole('textbox', { name: 'Descrição completa' });
 		await user.click(editor);
 		await user.keyboard('{Control>}a{/Control}{Backspace}');
-		await user.click(screen.getByRole('button', { name: /^Básico:/ }));
+		await user.click(screen.getByRole('tab', { name: /^Básico:/ }));
 		expect(await screen.findByDisplayValue('Congresso de Jovens da ADEB')).toBeInTheDocument();
 
 		await user.click(screen.getByRole('button', { name: 'Salvar' }));
 
-		expect(await screen.findByRole('button', { name: /^Detalhes:/ })).toHaveAttribute('aria-current', 'step');
+		expect(await screen.findByRole('tab', { name: /^Detalhes:/ })).toHaveAttribute('aria-selected', 'true');
 		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
 	});
 });
@@ -266,15 +267,15 @@ describe('EventCreationWizard em modo de criação', () => {
 		await user.click(await screen.findByRole('button', { name: 'Adicionar ingresso' }));
 		const dialog = await screen.findByRole('dialog', { name: 'Novo ingresso' });
 		await user.type(within(dialog).getByRole('textbox', { name: /Nome do ingresso/ }), 'Lote 1');
-		const price = within(dialog).getByRole('spinbutton', { name: /Valor do ingresso/ });
+		const price = within(dialog).getByRole('textbox', { name: /Valor do ingresso/ });
 		await user.clear(price);
-		await user.type(price, '50');
+		await user.type(price, '5000');
 		await user.click(within(dialog).getByRole('checkbox', { name: /Permitir parcelamento/ }));
 		await user.type(within(dialog).getByRole('spinbutton', { name: /Máximo de parcelas/ }), '3');
 		await user.click(within(dialog).getByRole('button', { name: 'Adicionar ingresso' }));
 		await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Novo ingresso' })).not.toBeInTheDocument());
 		expect(screen.getByText('Lote 1')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /^Ingressos:/ })).toHaveAttribute('aria-current', 'step');
+		expect(screen.getByRole('tab', { name: /^Ingressos:/ })).toHaveAttribute('aria-selected', 'true');
 		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
 		await user.click(screen.getByRole('button', { name: 'Continuar' }));
 		await screen.findByRole('heading', { name: 'Uma capa irresistível' });
@@ -334,7 +335,9 @@ describe('EventCreationWizard em modo de criação', () => {
 			status: 'published',
 			tags: [],
 		});
-		expect(await screen.findByText('Seu evento está no ar. Que tal compartilhar agora?')).toBeInTheDocument();
+		await waitFor(() => expect(router.push).toHaveBeenCalledWith('/admin/eventos/new-event'));
+		expect(screen.queryByText('Seu evento está no ar. Que tal compartilhar agora?')).not.toBeInTheDocument();
+		expect(consumeEventCreation('new-event')).toMatchObject({ status: 'published' });
 		window.localStorage.removeItem('event-creation-wizard');
 	});
 
@@ -484,13 +487,11 @@ it.each(['draft', 'cancelled', 'archived'] as const)(
 		const create = await screen.findByRole('button', { name: 'Criar evento' });
 		await waitFor(() => expect(create).toBeEnabled());
 		await user.click(create);
-		const message =
-			status === 'draft'
-				? 'O evento foi salvo como rascunho. Publique quando estiver pronto.'
-				: status === 'cancelled'
-					? 'O evento existente está cancelado. Você pode revisá-lo no painel.'
-					: 'O evento existente está arquivado. Você pode revisá-lo no painel.';
-		expect(await screen.findByText(message)).toBeInTheDocument();
+		await waitFor(() =>
+			expect(requests.mock.calls.some(([url, init]) => url === '/api/events' && init?.method === 'POST')).toBe(true),
+		);
+		await waitFor(() => expect(router.push).toHaveBeenCalledWith('/admin/eventos/existing-event'));
+		expect(consumeEventCreation('existing-event')).toMatchObject({ status });
 		expect(screen.queryByText('Seu evento está no ar. Que tal compartilhar agora?')).not.toBeInTheDocument();
 		const call = requests.mock.calls.find(([url, init]) => url === '/api/events' && init?.method === 'POST');
 		expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({ draft_id: draftId, status: 'published' });

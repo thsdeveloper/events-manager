@@ -3,6 +3,8 @@
 import { isProfileComplete } from '@events-manager/contracts';
 import { BadgePercent, CalendarPlus, Loader2, ShieldCheck, Wallet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { useEffect } from 'react';
 import Container from '@/components/ui/container';
 import { OrganizerSignupForm } from '@/features/organizer-signup';
@@ -11,18 +13,18 @@ import { useServerAuth } from '@/hooks/useServerAuth';
 const nextSteps = [
 	{
 		icon: ShieldCheck,
-		title: 'Conta criada na hora',
-		text: 'Pessoa física usa o CPF já validado; empresa informa o CNPJ. Nada de documentos para enviar.',
+		title: 'Cadastre sua conta',
+		text: 'Use o CPF validado no perfil ou o CNPJ da empresa. Após a aprovação, a conta estará disponível no workspace.',
 	},
 	{
 		icon: CalendarPlus,
-		title: 'Publique o primeiro evento',
-		text: 'Informações, ingressos, local e imagens em um fluxo guiado.',
+		title: 'Valide seus dados',
+		text: 'Anexe os documentos do responsável, da empresa e da conta para análise.',
 	},
 	{
 		icon: Wallet,
 		title: 'Receba pelos ingressos',
-		text: 'Cadastre uma chave PIX e acompanhe cada repasse no painel.',
+		text: 'Escolha PIX ou conta bancária, envie documentos e acompanhe a aprovação.',
 	},
 ];
 
@@ -30,18 +32,17 @@ export default function NovoOrganizadorPage() {
 	const router = useRouter();
 	const { user, isLoading, isOrganizer, hasPendingOrganizerRequest, organizerStatus, refresh } = useServerAuth();
 	const profileComplete = user ? isProfileComplete(user) : false;
-	// Regra de negócio: uma conta de organizador por pessoa, em qualquer status.
 	const alreadyHasOrganizer = isOrganizer || hasPendingOrganizerRequest || Boolean(organizerStatus);
 
 	useEffect(() => {
 		if (isLoading) return;
 		if (!user) {
 			router.replace('/login?redirect=/perfil/organizador/novo');
-		} else if (alreadyHasOrganizer || !profileComplete) {
+		} else if (!profileComplete) {
 			// A página do organizador explica o status atual ou o que falta no perfil.
 			router.replace('/perfil/organizador');
 		}
-	}, [isLoading, user, alreadyHasOrganizer, profileComplete, router]);
+	}, [isLoading, user, profileComplete, router]);
 
 	if (isLoading) {
 		return (
@@ -54,18 +55,23 @@ export default function NovoOrganizadorPage() {
 		);
 	}
 
-	if (!user || alreadyHasOrganizer || !profileComplete) return null;
+	if (!user || !profileComplete) return null;
 
 	return (
 		<Container as="section" className="py-8 lg:py-12">
 			<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-14">
 				<div className="min-w-0">
 					<header className="mb-8 max-w-2xl">
+						{isOrganizer && (
+							<Button asChild variant="link" className="mb-4 h-auto p-0">
+								<Link href="/admin/dashboard">Voltar ao workspace</Link>
+							</Button>
+						)}
 						<p className="text-sm font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
 							Organizador
 						</p>
 						<h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-							Crie sua conta de organizador
+							{alreadyHasOrganizer ? 'Cadastre uma nova conta de organizador' : 'Crie sua conta de organizador'}
 						</h1>
 						<p className="mt-3 text-base leading-7 text-muted-foreground">
 							Escolha se vai vender como pessoa física ou como empresa. Pessoa física vende com os dados já validados no
@@ -74,9 +80,14 @@ export default function NovoOrganizadorPage() {
 					</header>
 					<OrganizerSignupForm
 						user={user}
-						onSuccess={() => {
-							refresh();
-							router.push('/perfil/organizador');
+						initialAccountType={alreadyHasOrganizer ? 'company' : 'individual'}
+						onSuccess={async (organizerId) => {
+							const destination = organizerId
+								? `/perfil/organizador/${organizerId}/recebimento`
+								: '/perfil/organizador/recebimento';
+							await refresh();
+							router.push(destination);
+							router.refresh();
 						}}
 					/>
 				</div>

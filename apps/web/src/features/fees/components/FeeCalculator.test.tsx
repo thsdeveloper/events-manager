@@ -28,7 +28,7 @@ describe('FeeCalculator', () => {
 	it('shows what the buyer pays and what the organizer receives for the chosen method', async () => {
 		const { user } = renderCalculator();
 
-		await waitFor(() => expect(screen.getByTestId('calculator-organizer-receives')).toHaveTextContent('R$ 95,73'));
+		await waitFor(() => expect(screen.getByTestId('calculator-organizer-receives')).toHaveTextContent('R$ 93,71'));
 		expect(screen.getByTestId('calculator-buyer-pays')).toHaveTextContent('R$ 105,00');
 
 		await user.click(screen.getByRole('radio', { name: /^pix/i }));
@@ -41,13 +41,13 @@ describe('FeeCalculator', () => {
 
 	it('projects the total for the number of tickets typed', async () => {
 		const { user } = renderCalculator();
-		await waitFor(() => expect(screen.getByTestId('calculator-organizer-receives')).toHaveTextContent('R$ 95,73'));
+		await waitFor(() => expect(screen.getByTestId('calculator-organizer-receives')).toHaveTextContent('R$ 93,71'));
 
 		const quantity = screen.getByLabelText(/quantidade de ingressos/i);
 		await user.clear(quantity);
 		await user.type(quantity, '50');
 
-		expect(screen.getByTestId('calculator-total-receives')).toHaveTextContent('R$ 4.786,50');
+		expect(screen.getByTestId('calculator-total-receives')).toHaveTextContent('R$ 4.685,50');
 	});
 
 	it('lists every published rate in the fee table', async () => {
@@ -61,4 +61,23 @@ describe('FeeCalculator', () => {
 		expect(table).toHaveTextContent(/R\$ 2,50/);
 		expect(table).toHaveTextContent(/R\$ 3,50/);
 	});
+});
+
+it('formats the entered ticket price as reais and calculates using the numeric amount', async () => {
+	const { user } = renderCalculator();
+	const price = screen.getByRole('textbox', { name: /valor do ingresso/i });
+	expect(price).toHaveValue('R$ 100,00');
+	await user.clear(price);
+	await user.type(price, '34400');
+	expect(price).toHaveValue('R$ 344,00');
+	await waitFor(() => expect(screen.getByTestId('calculator-buyer-pays')).toHaveTextContent('R$ 361,20'));
+});
+
+it('quotes the exact credit installment for the selected settlement period', async () => {
+	const { user } = renderCalculator();
+	await user.click(screen.getByRole('combobox', { name: 'Prazo de recebimento' }));
+	await user.click(screen.getByRole('option', { name: 'D+7' }));
+	await user.click(screen.getByRole('combobox', { name: 'Parcelas no cartão' }));
+	await user.click(screen.getByRole('option', { name: '2x' }));
+	expect(screen.getByTestId('calculator-organizer-receives')).toHaveTextContent('R$ 92,55');
 });

@@ -63,7 +63,7 @@ describe('useCoupons', () => {
 		await waitFor(() => expect(result.current.coupons).toHaveLength(2));
 	});
 
-	it('surfaces the reason the API refused a coupon', async () => {
+	it('returns an unsuccessful result without replacing the list when creation is refused', async () => {
 		mockFetch([
 			[
 				/coupons/,
@@ -76,15 +76,21 @@ describe('useCoupons', () => {
 		const { result } = renderHookWithProviders(() => useCoupons(EVENT_ID));
 
 		await act(async () => {
-			await result.current.create(newCoupon);
+			expect(await result.current.create(newCoupon)).toBe(false);
 		});
 
-		await waitFor(() => expect(result.current.error).toBe('Já existe um cupom com este código.'));
+		expect(result.current.error).toBeNull();
+		expect(result.current.coupons).toEqual([]);
+		expect(result.current.isSaving).toBe(false);
 	});
 
 	it('removes a coupon through the API', async () => {
 		const fetchMock = mockFetch([
-			[/coupons/, (_input, init) => (init?.method === 'DELETE' ? new Response(null, { status: 204 }) : jsonResponse({ data: [coupon] }))],
+			[
+				/coupons/,
+				(_input, init) =>
+					init?.method === 'DELETE' ? new Response(null, { status: 204 }) : jsonResponse({ data: [coupon] }),
+			],
 		]);
 		const { result } = renderHookWithProviders(() => useCoupons(EVENT_ID));
 		await waitFor(() => expect(result.current.coupons).toHaveLength(1));
@@ -93,12 +99,18 @@ describe('useCoupons', () => {
 			await result.current.remove('c-1');
 		});
 
-		expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith('/coupons/c-1') && init?.method === 'DELETE')).toBe(true);
+		expect(
+			fetchMock.mock.calls.some(([url, init]) => String(url).endsWith('/coupons/c-1') && init?.method === 'DELETE'),
+		).toBe(true);
 	});
 
 	it('toggles a coupon between active and inactive', async () => {
 		const fetchMock = mockFetch([
-			[/coupons/, (_input, init) => (init?.method === 'PATCH' ? jsonResponse({ ...coupon, status: 'inactive' }) : jsonResponse({ data: [coupon] }))],
+			[
+				/coupons/,
+				(_input, init) =>
+					init?.method === 'PATCH' ? jsonResponse({ ...coupon, status: 'inactive' }) : jsonResponse({ data: [coupon] }),
+			],
 		]);
 		const { result } = renderHookWithProviders(() => useCoupons(EVENT_ID));
 		await waitFor(() => expect(result.current.coupons).toHaveLength(1));

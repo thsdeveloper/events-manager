@@ -1,4 +1,5 @@
 'use client';
+import { useAdminEventScope } from '@/features/event-scope/components/AdminEventScope';
 import { FilterSheet } from '@/components/shared/FilterSheet';
 import { FilterCheckboxGroup, FilterInput, FilterSelect } from '@/components/shared/FilterFields';
 import type { ParticipantFilters as Filters } from '../_lib/types';
@@ -27,7 +28,9 @@ interface ParticipantFiltersProps {
 	ticketTypeOptions: Array<{ id: string; title: string }>;
 }
 export function ParticipantFilters({ filters, onChange, eventOptions, ticketTypeOptions }: ParticipantFiltersProps) {
-	return (
+	const { selectedEventId } = useAdminEventScope();
+
+return (
 		<FilterSheet
 			title="Filtros de participantes"
 			values={filters}
@@ -50,7 +53,7 @@ export function ParticipantFilters({ filters, onChange, eventOptions, ticketType
 						value={draft.search}
 						onChange={(event) => setDraft({ ...draft, search: event.target.value })}
 					/>
-					{eventOptions.length > 0 && (
+					{!selectedEventId && eventOptions.length > 0 && (
 						<FilterCheckboxGroup
 							label="Eventos"
 							values={draft.eventIds}

@@ -28,6 +28,57 @@ export type Database = {
 	};
 	public: {
 		Tables: {
+			checkout_attempts: {
+				Row: {
+					amount: number;
+					charge: Json | null;
+					confirmation_url: string | null;
+					created_at: string;
+					error_message: string | null;
+					fee_confirmed: boolean;
+					fingerprint: string;
+					id: string;
+					method: string;
+					provider_id: string | null;
+					registration_ids: string[];
+					status: string;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					amount: number;
+					charge?: Json | null;
+					confirmation_url?: string | null;
+					created_at?: string;
+					error_message?: string | null;
+					fee_confirmed?: boolean;
+					fingerprint: string;
+					id: string;
+					method: string;
+					provider_id?: string | null;
+					registration_ids?: string[];
+					status?: string;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					amount?: number;
+					charge?: Json | null;
+					confirmation_url?: string | null;
+					created_at?: string;
+					error_message?: string | null;
+					fee_confirmed?: boolean;
+					fingerprint?: string;
+					id?: string;
+					method?: string;
+					provider_id?: string | null;
+					registration_ids?: string[];
+					status?: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [];
+			};
 			audit_logs: {
 				Row: {
 					action: string;
@@ -151,6 +202,59 @@ export type Database = {
 					},
 				];
 			};
+			block_event_highlight: {
+				Row: {
+					button_label: string;
+					button_url: string | null;
+					date_created: string;
+					description: string | null;
+					display_mode: string;
+					event_details: string | null;
+					headline: string | null;
+					id: string;
+					image: string | null;
+					image_alt: string | null;
+					image_position: string;
+					max_items: number;
+				};
+				Insert: {
+					button_label?: string;
+					button_url?: string | null;
+					date_created?: string;
+					description?: string | null;
+					display_mode?: string;
+					event_details?: string | null;
+					headline?: string | null;
+					id?: string;
+					image?: string | null;
+					image_alt?: string | null;
+					image_position?: string;
+					max_items?: number;
+				};
+				Update: {
+					button_label?: string;
+					button_url?: string | null;
+					date_created?: string;
+					description?: string | null;
+					display_mode?: string;
+					event_details?: string | null;
+					headline?: string | null;
+					id?: string;
+					image?: string | null;
+					image_alt?: string | null;
+					image_position?: string;
+					max_items?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'block_event_highlight_image_fkey';
+						columns: ['image'];
+						isOneToOne: false;
+						referencedRelation: 'media_files';
+						referencedColumns: ['id'];
+					},
+				];
+			};
 			block_events: {
 				Row: {
 					description: string | null;
@@ -180,13 +284,6 @@ export type Database = {
 					show_past_events?: boolean;
 				};
 				Relationships: [
-					{
-						foreignKeyName: 'block_events_category_fk';
-						columns: ['filter_by_category'];
-						isOneToOne: false;
-						referencedRelation: 'event_categories';
-						referencedColumns: ['id'];
-					},
 					{
 						foreignKeyName: 'block_events_filter_by_category_fkey';
 						columns: ['filter_by_category'];
@@ -539,96 +636,6 @@ export type Database = {
 				};
 				Relationships: [];
 			};
-			event_drafts: {
-				Row: {
-					id: string;
-					organizer_id: string;
-					values: Json;
-					current_step: number;
-					event_id: string | null;
-					date_created: string;
-					date_updated: string;
-				};
-				Insert: {
-					id?: string;
-					organizer_id: string;
-					values?: Json;
-					current_step?: number;
-					event_id?: string | null;
-					date_created?: string;
-					date_updated?: string;
-				};
-				Update: {
-					id?: string;
-					organizer_id?: string;
-					values?: Json;
-					current_step?: number;
-					event_id?: string | null;
-					date_created?: string;
-					date_updated?: string;
-				};
-				Relationships: [
-					{
-						foreignKeyName: 'event_drafts_organizer_id_fkey';
-						columns: ['organizer_id'];
-						isOneToOne: false;
-						referencedRelation: 'organizers';
-						referencedColumns: ['id'];
-					},
-					{
-						foreignKeyName: 'event_drafts_event_organizer_fkey';
-						columns: ['event_id', 'organizer_id'];
-						isOneToOne: false;
-						referencedRelation: 'events';
-						referencedColumns: ['id', 'organizer_id'];
-					},
-				];
-			};
-			event_ticket_groups: {
-				Row: {
-					id: string;
-					event_id: string;
-					parent_id: string | null;
-					title: string;
-					sort: number;
-					date_created: string;
-					date_updated: string;
-				};
-				Insert: {
-					id?: string;
-					event_id: string;
-					parent_id?: string | null;
-					title: string;
-					sort?: number;
-					date_created?: string;
-					date_updated?: string;
-				};
-				Update: {
-					id?: string;
-					event_id?: string;
-					parent_id?: string | null;
-					title?: string;
-					sort?: number;
-					date_created?: string;
-					date_updated?: string;
-				};
-				Relationships: [
-					{
-						foreignKeyName: 'event_ticket_groups_event_id_fkey';
-						columns: ['event_id'];
-						isOneToOne: false;
-						referencedRelation: 'events';
-						referencedColumns: ['id'];
-					},
-					{
-						foreignKeyName: 'event_ticket_groups_parent_event_fkey';
-						columns: ['parent_id', 'event_id'];
-						isOneToOne: false;
-						referencedRelation: 'event_ticket_groups';
-						referencedColumns: ['id', 'event_id'];
-					},
-				];
-			};
 			event_categories: {
 				Row: {
 					color: string | null;
@@ -661,7 +668,16 @@ export type Database = {
 			};
 			event_configurations: {
 				Row: {
-					platform_fee_minimum: number;
+					card_rates: Json;
+					gateway_card_settlement_period: string;
+					debit_fee_percentage: number;
+					debit_fee_fixed: number;
+					payout_pix_monthly_limit: number;
+					payout_pix_excess_fee: number;
+					ted_fee_fixed: number;
+					monthly_fee: number;
+					pix_qr_fee: number;
+					boleto_issue_fee: number;
 					allow_free_events: boolean;
 					boleto_fee_fixed: number;
 					card_fee_fixed: number;
@@ -676,12 +692,22 @@ export type Database = {
 					payout_fee_fixed: number;
 					payouts_enabled: boolean;
 					pix_fee_fixed: number;
+					platform_fee_minimum: number;
 					platform_fee_percentage: number;
 					registration_confirmation_email: boolean;
 					ticket_code_prefix: string;
 				};
 				Insert: {
-					platform_fee_minimum?: number;
+					card_rates?: Json;
+					gateway_card_settlement_period?: string;
+					debit_fee_percentage?: number;
+					debit_fee_fixed?: number;
+					payout_pix_monthly_limit?: number;
+					payout_pix_excess_fee?: number;
+					ted_fee_fixed?: number;
+					monthly_fee?: number;
+					pix_qr_fee?: number;
+					boleto_issue_fee?: number;
 					allow_free_events?: boolean;
 					boleto_fee_fixed?: number;
 					card_fee_fixed?: number;
@@ -696,12 +722,22 @@ export type Database = {
 					payout_fee_fixed?: number;
 					payouts_enabled?: boolean;
 					pix_fee_fixed?: number;
+					platform_fee_minimum?: number;
 					platform_fee_percentage?: number;
 					registration_confirmation_email?: boolean;
 					ticket_code_prefix?: string;
 				};
 				Update: {
-					platform_fee_minimum?: number;
+					card_rates?: Json;
+					gateway_card_settlement_period?: string;
+					debit_fee_percentage?: number;
+					debit_fee_fixed?: number;
+					payout_pix_monthly_limit?: number;
+					payout_pix_excess_fee?: number;
+					ted_fee_fixed?: number;
+					monthly_fee?: number;
+					pix_qr_fee?: number;
+					boleto_issue_fee?: number;
 					allow_free_events?: boolean;
 					boleto_fee_fixed?: number;
 					card_fee_fixed?: number;
@@ -716,6 +752,7 @@ export type Database = {
 					payout_fee_fixed?: number;
 					payouts_enabled?: boolean;
 					pix_fee_fixed?: number;
+					platform_fee_minimum?: number;
 					platform_fee_percentage?: number;
 					registration_confirmation_email?: boolean;
 					ticket_code_prefix?: string;
@@ -774,6 +811,51 @@ export type Database = {
 						columns: ['event_id'];
 						isOneToOne: false;
 						referencedRelation: 'events';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			event_drafts: {
+				Row: {
+					current_step: number;
+					date_created: string;
+					date_updated: string;
+					event_id: string | null;
+					id: string;
+					organizer_id: string;
+					values: Json;
+				};
+				Insert: {
+					current_step?: number;
+					date_created?: string;
+					date_updated?: string;
+					event_id?: string | null;
+					id?: string;
+					organizer_id: string;
+					values?: Json;
+				};
+				Update: {
+					current_step?: number;
+					date_created?: string;
+					date_updated?: string;
+					event_id?: string | null;
+					id?: string;
+					organizer_id?: string;
+					values?: Json;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'event_drafts_event_organizer_fkey';
+						columns: ['event_id', 'organizer_id'];
+						isOneToOne: false;
+						referencedRelation: 'events';
+						referencedColumns: ['id', 'organizer_id'];
+					},
+					{
+						foreignKeyName: 'event_drafts_organizer_id_fkey';
+						columns: ['organizer_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizers';
 						referencedColumns: ['id'];
 					},
 				];
@@ -954,9 +1036,53 @@ export type Database = {
 					},
 				];
 			};
+			event_ticket_groups: {
+				Row: {
+					date_created: string;
+					date_updated: string;
+					event_id: string;
+					id: string;
+					parent_id: string | null;
+					sort: number;
+					title: string;
+				};
+				Insert: {
+					date_created?: string;
+					date_updated?: string;
+					event_id: string;
+					id?: string;
+					parent_id?: string | null;
+					sort?: number;
+					title: string;
+				};
+				Update: {
+					date_created?: string;
+					date_updated?: string;
+					event_id?: string;
+					id?: string;
+					parent_id?: string | null;
+					sort?: number;
+					title?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'event_ticket_groups_event_id_fkey';
+						columns: ['event_id'];
+						isOneToOne: false;
+						referencedRelation: 'events';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'event_ticket_groups_parent_event_fkey';
+						columns: ['parent_id', 'event_id'];
+						isOneToOne: false;
+						referencedRelation: 'event_ticket_groups';
+						referencedColumns: ['id', 'event_id'];
+					},
+				];
+			};
 			event_tickets: {
 				Row: {
-					group_id: string | null;
 					admission_type: string;
 					allow_installments: boolean;
 					buyer_price: number | null;
@@ -964,6 +1090,7 @@ export type Database = {
 					date_updated: string;
 					description: string | null;
 					event_id: string;
+					group_id: string | null;
 					id: string;
 					max_installments: number | null;
 					max_quantity_per_purchase: number;
@@ -982,7 +1109,6 @@ export type Database = {
 					visibility: string;
 				};
 				Insert: {
-					group_id?: string | null;
 					admission_type?: string;
 					allow_installments?: boolean;
 					buyer_price?: number | null;
@@ -990,6 +1116,7 @@ export type Database = {
 					date_updated?: string;
 					description?: string | null;
 					event_id: string;
+					group_id?: string | null;
 					id?: string;
 					max_installments?: number | null;
 					max_quantity_per_purchase?: number;
@@ -1008,7 +1135,6 @@ export type Database = {
 					visibility?: string;
 				};
 				Update: {
-					group_id?: string | null;
 					admission_type?: string;
 					allow_installments?: boolean;
 					buyer_price?: number | null;
@@ -1016,6 +1142,7 @@ export type Database = {
 					date_updated?: string;
 					description?: string | null;
 					event_id?: string;
+					group_id?: string | null;
 					id?: string;
 					max_installments?: number | null;
 					max_quantity_per_purchase?: number;
@@ -1035,42 +1162,31 @@ export type Database = {
 				};
 				Relationships: [
 					{
-						foreignKeyName: 'event_tickets_group_event_fkey';
-						columns: ['group_id', 'event_id'];
-						isOneToOne: false;
-						referencedRelation: 'event_ticket_groups';
-						referencedColumns: ['id', 'event_id'];
-					},
-					{
 						foreignKeyName: 'event_tickets_event_id_fkey';
 						columns: ['event_id'];
 						isOneToOne: false;
 						referencedRelation: 'events';
 						referencedColumns: ['id'];
 					},
+					{
+						foreignKeyName: 'event_tickets_group_event_fkey';
+						columns: ['group_id', 'event_id'];
+						isOneToOne: false;
+						referencedRelation: 'event_ticket_groups';
+						referencedColumns: ['id', 'event_id'];
+					},
 				];
 			};
 			events: {
 				Row: {
-					cover_image_alt: string | null;
-					description_en: string | null;
-					description_es: string | null;
-					location_tbd: boolean;
-					show_map: boolean;
-					location_street: string | null;
-					location_number: string | null;
-					location_complement: string | null;
-					location_neighborhood: string | null;
-					location_city: string | null;
-					location_state: string | null;
-					location_postal_code: string | null;
-					online_platform: string | null;
-					source_draft_id: string | null;
 					category_id: string | null;
 					cover_image: string | null;
+					cover_image_alt: string | null;
 					date_created: string;
 					date_updated: string;
 					description: string | null;
+					description_en: string | null;
+					description_es: string | null;
 					end_date: string;
 					event_type: string | null;
 					featured: boolean;
@@ -1078,16 +1194,27 @@ export type Database = {
 					is_free: boolean;
 					latitude: number | null;
 					location_address: string | null;
+					location_city: string | null;
+					location_complement: string | null;
 					location_name: string | null;
+					location_neighborhood: string | null;
+					location_number: string | null;
+					location_postal_code: string | null;
+					location_state: string | null;
+					location_street: string | null;
+					location_tbd: boolean;
 					longitude: number | null;
 					max_attendees: number | null;
+					online_platform: string | null;
 					online_url: string | null;
 					organizer_id: string;
 					registration_end: string | null;
 					registration_start: string | null;
 					short_description: string | null;
+					show_map: boolean;
 					slug: string;
 					sort: number | null;
+					source_draft_id: string | null;
 					start_date: string;
 					status: string;
 					tags: string[];
@@ -1097,25 +1224,14 @@ export type Database = {
 					visibility: string;
 				};
 				Insert: {
-					cover_image_alt?: string | null;
-					description_en?: string | null;
-					description_es?: string | null;
-					location_tbd?: boolean;
-					show_map?: boolean;
-					location_street?: string | null;
-					location_number?: string | null;
-					location_complement?: string | null;
-					location_neighborhood?: string | null;
-					location_city?: string | null;
-					location_state?: string | null;
-					location_postal_code?: string | null;
-					online_platform?: string | null;
-					source_draft_id?: string | null;
 					category_id?: string | null;
 					cover_image?: string | null;
+					cover_image_alt?: string | null;
 					date_created?: string;
 					date_updated?: string;
 					description?: string | null;
+					description_en?: string | null;
+					description_es?: string | null;
 					end_date: string;
 					event_type?: string | null;
 					featured?: boolean;
@@ -1123,16 +1239,27 @@ export type Database = {
 					is_free?: boolean;
 					latitude?: number | null;
 					location_address?: string | null;
+					location_city?: string | null;
+					location_complement?: string | null;
 					location_name?: string | null;
+					location_neighborhood?: string | null;
+					location_number?: string | null;
+					location_postal_code?: string | null;
+					location_state?: string | null;
+					location_street?: string | null;
+					location_tbd?: boolean;
 					longitude?: number | null;
 					max_attendees?: number | null;
+					online_platform?: string | null;
 					online_url?: string | null;
 					organizer_id: string;
 					registration_end?: string | null;
 					registration_start?: string | null;
 					short_description?: string | null;
+					show_map?: boolean;
 					slug: string;
 					sort?: number | null;
+					source_draft_id?: string | null;
 					start_date: string;
 					status?: string;
 					tags?: string[];
@@ -1142,25 +1269,14 @@ export type Database = {
 					visibility?: string;
 				};
 				Update: {
-					cover_image_alt?: string | null;
-					description_en?: string | null;
-					description_es?: string | null;
-					location_tbd?: boolean;
-					show_map?: boolean;
-					location_street?: string | null;
-					location_number?: string | null;
-					location_complement?: string | null;
-					location_neighborhood?: string | null;
-					location_city?: string | null;
-					location_state?: string | null;
-					location_postal_code?: string | null;
-					online_platform?: string | null;
-					source_draft_id?: string | null;
 					category_id?: string | null;
 					cover_image?: string | null;
+					cover_image_alt?: string | null;
 					date_created?: string;
 					date_updated?: string;
 					description?: string | null;
+					description_en?: string | null;
+					description_es?: string | null;
 					end_date?: string;
 					event_type?: string | null;
 					featured?: boolean;
@@ -1168,16 +1284,27 @@ export type Database = {
 					is_free?: boolean;
 					latitude?: number | null;
 					location_address?: string | null;
+					location_city?: string | null;
+					location_complement?: string | null;
 					location_name?: string | null;
+					location_neighborhood?: string | null;
+					location_number?: string | null;
+					location_postal_code?: string | null;
+					location_state?: string | null;
+					location_street?: string | null;
+					location_tbd?: boolean;
 					longitude?: number | null;
 					max_attendees?: number | null;
+					online_platform?: string | null;
 					online_url?: string | null;
 					organizer_id?: string;
 					registration_end?: string | null;
 					registration_start?: string | null;
 					short_description?: string | null;
+					show_map?: boolean;
 					slug?: string;
 					sort?: number | null;
+					source_draft_id?: string | null;
 					start_date?: string;
 					status?: string;
 					tags?: string[];
@@ -1187,13 +1314,6 @@ export type Database = {
 					visibility?: string;
 				};
 				Relationships: [
-					{
-						foreignKeyName: 'events_source_draft_organizer_fkey';
-						columns: ['source_draft_id', 'organizer_id'];
-						isOneToOne: false;
-						referencedRelation: 'event_drafts';
-						referencedColumns: ['id', 'organizer_id'];
-					},
 					{
 						foreignKeyName: 'events_category_id_fkey';
 						columns: ['category_id'];
@@ -1214,6 +1334,13 @@ export type Database = {
 						isOneToOne: false;
 						referencedRelation: 'organizers';
 						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'events_source_draft_organizer_fkey';
+						columns: ['source_draft_id', 'organizer_id'];
+						isOneToOne: false;
+						referencedRelation: 'event_drafts';
+						referencedColumns: ['id', 'organizer_id'];
 					},
 				];
 			};
@@ -1539,60 +1666,123 @@ export type Database = {
 					},
 				];
 			};
+			organizer_payout_receipts: {
+				Row: {
+					filename: string;
+					id: string;
+					mime_type: string;
+					payout_id: string;
+					size: number;
+					storage_path: string;
+					uploaded_at: string;
+					uploaded_by: string | null;
+				};
+				Insert: {
+					filename: string;
+					id?: string;
+					mime_type: string;
+					payout_id: string;
+					size: number;
+					storage_path: string;
+					uploaded_at?: string;
+					uploaded_by?: string | null;
+				};
+				Update: {
+					filename?: string;
+					id?: string;
+					mime_type?: string;
+					payout_id?: string;
+					size?: number;
+					storage_path?: string;
+					uploaded_at?: string;
+					uploaded_by?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'organizer_payout_receipts_payout_id_fkey';
+						columns: ['payout_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizer_payouts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'organizer_payout_receipts_uploaded_by_fkey';
+						columns: ['uploaded_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
 			organizer_payouts: {
 				Row: {
 					amount: number;
+					bank_account: Json | null;
+					bank_reference: string | null;
 					date_updated: string;
 					failure_reason: string | null;
 					id: string;
+					method: string;
 					net_amount: number;
 					organizer_id: string;
-					pix_key: string;
-					pix_key_type: string;
+					pix_key: string | null;
+					pix_key_type: string | null;
 					processed_at: string | null;
 					processed_by: string | null;
 					provider: string;
 					provider_fee: number;
 					provider_payout_id: string | null;
+					receipt_document_id: string | null;
 					receipt_url: string | null;
+					receiving_request_id: string | null;
 					requested_at: string;
 					requested_by: string | null;
 					status: string;
 				};
 				Insert: {
 					amount: number;
+					bank_account?: Json | null;
+					bank_reference?: string | null;
 					date_updated?: string;
 					failure_reason?: string | null;
 					id?: string;
+					method?: string;
 					net_amount: number;
 					organizer_id: string;
-					pix_key: string;
-					pix_key_type: string;
+					pix_key?: string | null;
+					pix_key_type?: string | null;
 					processed_at?: string | null;
 					processed_by?: string | null;
 					provider?: string;
 					provider_fee?: number;
 					provider_payout_id?: string | null;
+					receipt_document_id?: string | null;
 					receipt_url?: string | null;
+					receiving_request_id?: string | null;
 					requested_at?: string;
 					requested_by?: string | null;
 					status?: string;
 				};
 				Update: {
 					amount?: number;
+					bank_account?: Json | null;
+					bank_reference?: string | null;
 					date_updated?: string;
 					failure_reason?: string | null;
 					id?: string;
+					method?: string;
 					net_amount?: number;
 					organizer_id?: string;
-					pix_key?: string;
-					pix_key_type?: string;
+					pix_key?: string | null;
+					pix_key_type?: string | null;
 					processed_at?: string | null;
 					processed_by?: string | null;
 					provider?: string;
 					provider_fee?: number;
 					provider_payout_id?: string | null;
+					receipt_document_id?: string | null;
 					receipt_url?: string | null;
+					receiving_request_id?: string | null;
 					requested_at?: string;
 					requested_by?: string | null;
 					status?: string;
@@ -1613,6 +1803,20 @@ export type Database = {
 						referencedColumns: ['id'];
 					},
 					{
+						foreignKeyName: 'organizer_payouts_receipt_document_id_fkey';
+						columns: ['receipt_document_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizer_payout_receipts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'organizer_payouts_receiving_request_id_fkey';
+						columns: ['receiving_request_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizer_receiving_requests';
+						referencedColumns: ['id'];
+					},
+					{
 						foreignKeyName: 'organizer_payouts_requested_by_fkey';
 						columns: ['requested_by'];
 						isOneToOne: false;
@@ -1621,8 +1825,133 @@ export type Database = {
 					},
 				];
 			};
+			organizer_receiving_documents: {
+				Row: {
+					filename: string;
+					id: string;
+					kind: string;
+					mime_type: string;
+					organizer_id: string;
+					request_id: string | null;
+					size: number;
+					storage_path: string;
+					uploaded_at: string;
+					uploaded_by: string | null;
+				};
+				Insert: {
+					filename: string;
+					id?: string;
+					kind: string;
+					mime_type: string;
+					organizer_id: string;
+					request_id?: string | null;
+					size: number;
+					storage_path: string;
+					uploaded_at?: string;
+					uploaded_by?: string | null;
+				};
+				Update: {
+					filename?: string;
+					id?: string;
+					kind?: string;
+					mime_type?: string;
+					organizer_id?: string;
+					request_id?: string | null;
+					size?: number;
+					storage_path?: string;
+					uploaded_at?: string;
+					uploaded_by?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'organizer_receiving_documents_organizer_id_fkey';
+						columns: ['organizer_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizers';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'organizer_receiving_documents_request_id_fkey';
+						columns: ['request_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizer_receiving_requests';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'organizer_receiving_documents_uploaded_by_fkey';
+						columns: ['uploaded_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			organizer_receiving_requests: {
+				Row: {
+					account: Json;
+					id: string;
+					organizer_id: string;
+					review_reason: string | null;
+					reviewed_at: string | null;
+					reviewed_by: string | null;
+					status: string;
+					submitted_at: string;
+					submitted_by: string | null;
+					version: number;
+				};
+				Insert: {
+					account: Json;
+					id?: string;
+					organizer_id: string;
+					review_reason?: string | null;
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					status: string;
+					submitted_at?: string;
+					submitted_by?: string | null;
+					version: number;
+				};
+				Update: {
+					account?: Json;
+					id?: string;
+					organizer_id?: string;
+					review_reason?: string | null;
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					status?: string;
+					submitted_at?: string;
+					submitted_by?: string | null;
+					version?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'organizer_receiving_requests_organizer_id_fkey';
+						columns: ['organizer_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizers';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'organizer_receiving_requests_reviewed_by_fkey';
+						columns: ['reviewed_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'organizer_receiving_requests_submitted_by_fkey';
+						columns: ['submitted_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
 			organizers: {
 				Row: {
+					accepted_payment_methods: string[];
+					credit_card_settlement_period: string | null;
+					current_receiving_request_id: string | null;
 					date_created: string;
 					date_updated: string;
 					description: string | null;
@@ -1635,12 +1964,17 @@ export type Database = {
 					payout_pix_key_type: string | null;
 					payout_status: string;
 					phone: string | null;
+					production_approved_at: string | null;
+					receiving_method: string | null;
 					sort: number | null;
 					status: string;
 					user_id: string | null;
 					website: string | null;
 				};
 				Insert: {
+					accepted_payment_methods?: string[];
+					credit_card_settlement_period?: string | null;
+					current_receiving_request_id?: string | null;
 					date_created?: string;
 					date_updated?: string;
 					description?: string | null;
@@ -1653,12 +1987,17 @@ export type Database = {
 					payout_pix_key_type?: string | null;
 					payout_status?: string;
 					phone?: string | null;
+					production_approved_at?: string | null;
+					receiving_method?: string | null;
 					sort?: number | null;
 					status?: string;
 					user_id?: string | null;
 					website?: string | null;
 				};
 				Update: {
+					accepted_payment_methods?: string[];
+					credit_card_settlement_period?: string | null;
+					current_receiving_request_id?: string | null;
 					date_created?: string;
 					date_updated?: string;
 					description?: string | null;
@@ -1671,12 +2010,21 @@ export type Database = {
 					payout_pix_key_type?: string | null;
 					payout_status?: string;
 					phone?: string | null;
+					production_approved_at?: string | null;
+					receiving_method?: string | null;
 					sort?: number | null;
 					status?: string;
 					user_id?: string | null;
 					website?: string | null;
 				};
 				Relationships: [
+					{
+						foreignKeyName: 'organizers_current_receiving_request_id_fkey';
+						columns: ['current_receiving_request_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizer_receiving_requests';
+						referencedColumns: ['id'];
+					},
 					{
 						foreignKeyName: 'organizers_logo_fkey';
 						columns: ['logo'];
@@ -2198,11 +2546,15 @@ export type Database = {
 			site_settings: {
 				Row: {
 					accent_color: string;
+					app_icon: string | null;
+					app_icon_dark_mode: string | null;
+					app_icon_tinted: string | null;
 					date_created: string;
 					date_updated: string;
 					default_og_image: string | null;
 					description: string | null;
 					favicon: string | null;
+					favicon_dark_mode: string | null;
 					id: string;
 					logo: string | null;
 					logo_dark_mode: string | null;
@@ -2210,18 +2562,18 @@ export type Database = {
 					tagline: string | null;
 					title: string | null;
 					url: string | null;
-					favicon_dark_mode: string | null;
-					app_icon: string | null;
-					app_icon_dark_mode: string | null;
-					app_icon_tinted: string | null;
 				};
 				Insert: {
 					accent_color?: string;
+					app_icon?: string | null;
+					app_icon_dark_mode?: string | null;
+					app_icon_tinted?: string | null;
 					date_created?: string;
 					date_updated?: string;
 					default_og_image?: string | null;
 					description?: string | null;
 					favicon?: string | null;
+					favicon_dark_mode?: string | null;
 					id?: string;
 					logo?: string | null;
 					logo_dark_mode?: string | null;
@@ -2229,18 +2581,18 @@ export type Database = {
 					tagline?: string | null;
 					title?: string | null;
 					url?: string | null;
-					favicon_dark_mode?: string | null;
-					app_icon?: string | null;
-					app_icon_dark_mode?: string | null;
-					app_icon_tinted?: string | null;
 				};
 				Update: {
 					accent_color?: string;
+					app_icon?: string | null;
+					app_icon_dark_mode?: string | null;
+					app_icon_tinted?: string | null;
 					date_created?: string;
 					date_updated?: string;
 					default_og_image?: string | null;
 					description?: string | null;
 					favicon?: string | null;
+					favicon_dark_mode?: string | null;
 					id?: string;
 					logo?: string | null;
 					logo_dark_mode?: string | null;
@@ -2248,15 +2600,11 @@ export type Database = {
 					tagline?: string | null;
 					title?: string | null;
 					url?: string | null;
-					favicon_dark_mode?: string | null;
-					app_icon?: string | null;
-					app_icon_dark_mode?: string | null;
-					app_icon_tinted?: string | null;
 				};
 				Relationships: [
 					{
-						foreignKeyName: 'site_settings_favicon_dark_mode_fkey';
-						columns: ['favicon_dark_mode'];
+						foreignKeyName: 'site_settings_app_icon_dark_mode_fkey';
+						columns: ['app_icon_dark_mode'];
 						isOneToOne: false;
 						referencedRelation: 'media_files';
 						referencedColumns: ['id'];
@@ -2264,13 +2612,6 @@ export type Database = {
 					{
 						foreignKeyName: 'site_settings_app_icon_fkey';
 						columns: ['app_icon'];
-						isOneToOne: false;
-						referencedRelation: 'media_files';
-						referencedColumns: ['id'];
-					},
-					{
-						foreignKeyName: 'site_settings_app_icon_dark_mode_fkey';
-						columns: ['app_icon_dark_mode'];
 						isOneToOne: false;
 						referencedRelation: 'media_files';
 						referencedColumns: ['id'];
@@ -2285,6 +2626,13 @@ export type Database = {
 					{
 						foreignKeyName: 'site_settings_default_og_image_fkey';
 						columns: ['default_og_image'];
+						isOneToOne: false;
+						referencedRelation: 'media_files';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'site_settings_favicon_dark_mode_fkey';
+						columns: ['favicon_dark_mode'];
 						isOneToOne: false;
 						referencedRelation: 'media_files';
 						referencedColumns: ['id'];
@@ -2373,7 +2721,32 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
-			reorder_event_tickets: { Args: { p_event_id: string; p_ticket_ids: string[] }; Returns: undefined };
+			settle_transparent_checkout: {
+				Args: {
+					target_attempt: string;
+					target_charge: Json;
+					target_event?: string;
+				};
+				Returns: undefined;
+			};
+			prepare_transparent_checkout: {
+				Args: {
+					target_amount: number;
+					target_attempt: string;
+					target_registrations: string[];
+				};
+				Returns: undefined;
+			};
+			valid_card_fee_rates: { Args: { value: Json }; Returns: boolean };
+			add_organizer_support_note: {
+				Args: {
+					target_actor: string;
+					target_context: Json;
+					target_note: string;
+					target_organizer: string;
+				};
+				Returns: Json;
+			};
 			cancel_reconciled_checkout: {
 				Args: {
 					target_checkout_id: string;
@@ -2464,23 +2837,49 @@ export type Database = {
 				};
 				Returns: string;
 			};
+			finish_manual_payout: {
+				Args: {
+					target_actor: string;
+					target_cancel_reason?: string;
+					target_payout: string;
+					target_receipt: string;
+					target_reference: string;
+				};
+				Returns: Json;
+			};
 			get_organizer_available_balance: {
 				Args: { target_organizer: string };
 				Returns: number;
 			};
-			get_organizer_dashboard: {
+			get_organizer_dashboard:
+				| { Args: { target_organizer: string }; Returns: Json }
+				| {
+						Args: { target_event: string; target_organizer: string };
+						Returns: Json;
+				  };
+			get_organizer_support_detail: {
 				Args: { target_organizer: string };
+				Returns: Json;
+			};
+			get_receiving_account_overview: {
+				Args: {
+					target_limit?: number;
+					target_organizer: string;
+					target_page?: number;
+				};
 				Returns: Json;
 			};
 			increment_ticket_sales: {
 				Args: { sold_amount: number; target_ticket: string };
 				Returns: {
+					admission_type: string;
 					allow_installments: boolean;
 					buyer_price: number | null;
 					date_created: string;
 					date_updated: string;
 					description: string | null;
 					event_id: string;
+					group_id: string | null;
 					id: string;
 					max_installments: number | null;
 					max_quantity_per_purchase: number;
@@ -2507,6 +2906,26 @@ export type Database = {
 			};
 			is_admin: { Args: never; Returns: boolean };
 			is_super_admin: { Args: never; Returns: boolean };
+			list_organizer_support: {
+				Args: {
+					target_direction: string;
+					target_limit: number;
+					target_page: number;
+					target_search: string;
+					target_sort: string;
+					target_status: string;
+				};
+				Returns: Json;
+			};
+			list_organizer_support_records: {
+				Args: {
+					target_kind: string;
+					target_limit: number;
+					target_organizer: string;
+					target_page: number;
+				};
+				Returns: Json;
+			};
 			list_super_admin_transactions: {
 				Args: {
 					target_limit: number;
@@ -2517,13 +2936,31 @@ export type Database = {
 				Returns: Json;
 			};
 			owns_event: { Args: { target_event: string }; Returns: boolean };
+			receiving_request_json: {
+				Args: { target_request: string };
+				Returns: Json;
+			};
 			release_registration_inventory: {
 				Args: { target_registrations: string[] };
+				Returns: undefined;
+			};
+			reorder_event_tickets: {
+				Args: { p_event_id: string; p_ticket_ids: string[] };
 				Returns: undefined;
 			};
 			reserve_registration_inventory: {
 				Args: { target_registrations: string[] };
 				Returns: undefined;
+			};
+			review_receiving_account: {
+				Args: {
+					target_actor: string;
+					target_decision: string;
+					target_organizer: string;
+					target_reason: string;
+					target_request: string;
+				};
+				Returns: Json;
 			};
 			settle_installment_webhook: {
 				Args: {
@@ -2546,6 +2983,27 @@ export type Database = {
 					target_registration_id: string;
 				};
 				Returns: undefined;
+			};
+			submit_receiving_account: {
+				Args: {
+					target_account: Json;
+					target_actor: string;
+					target_document_ids: string[];
+					target_expected_request: string;
+					target_organizer: string;
+				};
+				Returns: Json;
+			};
+			update_organizer_support: {
+				Args: {
+					target_actor: string;
+					target_context?: Json;
+					target_organizer: string;
+					target_patch: Json;
+					target_reason: string;
+					target_reviewed_pix_key?: string;
+				};
+				Returns: Json;
 			};
 		};
 		Enums: {

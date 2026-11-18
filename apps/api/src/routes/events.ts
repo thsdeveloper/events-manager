@@ -2,7 +2,7 @@ import { eventCreateSchema, eventPatchSchema } from '@events-manager/contracts';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
-import { ACTIVE_ORGANIZER_COOKIE, requireUser } from './auth-context.js';
+import { ACTIVE_ORGANIZER_COOKIE, requireUser, resolveActiveEvent } from './auth-context.js';
 import { EventNotFound, EventService, OrganizerRequired } from '../application/events/event-service.js';
 import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
 import { SupabaseEventRepository, resolveEventOrganizer } from '../infrastructure/supabase/event-repository.js';
@@ -39,6 +39,10 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 		return createEvents(organizer?.id, true);
 	};
 	const events = createEvents();
+	const selectedEventFor = async (request: Parameters<typeof requireUser>[0], userId: string) => {
+		const organizer = await resolveEventOrganizer(clients, userId, request.cookies?.[ACTIVE_ORGANIZER_COOKIE]);
+		return organizer ? resolveActiveEvent(request, auth, organizer.id) : null;
+	};
 	await app.register(eventDraftRoutes, { clients });
 
 	app.get('/api/events/slug/:slug', async (request) => {
@@ -52,11 +56,11 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 
 	app.get('/api/events', async (request) => {
 		const context = await requireUser(request, auth);
-		return {
-			data: await (
-				await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE])
-			).listForUser(context.user.id),
-		};
+		const eventId = await selectedEventFor(request, context.user.id);
+		const data = await (
+			await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE])
+		).listForUser(context.user.id);
+		return { data: eventId ? data.filter((event) => event.id === eventId) : data };
 	});
 
 	app.get('/api/events/public', async (request) => {
@@ -91,6 +95,8 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 	app.get('/api/events/:id', async (request) => {
 		const context = await requireUser(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		const eventId = await selectedEventFor(request, context.user.id);
+		if (eventId && eventId !== id) throw new ApiError('Evento fora da seleção atual.', 404, 'EVENT_NOT_FOUND');
 		try {
 			return await (
 				await eventsFor(context.user.id, request.cookies?.[ACTIVE_ORGANIZER_COOKIE])

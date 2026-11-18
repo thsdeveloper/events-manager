@@ -1,3 +1,5 @@
+import type { GatewayFees } from './payment-fees.js';
+import type { OrganizerPaymentSettings } from './payment-settings.js';
 export interface MediaFile {
 	id: string;
 	bucket?: string;
@@ -155,6 +157,30 @@ export interface BlockGalleryItem {
 	user_updated?: AppUser | string | null;
 }
 
+export type EventHighlightEvent = Pick<
+	Event,
+	| 'id'
+	| 'title'
+	| 'slug'
+	| 'short_description'
+	| 'cover_image'
+	| 'cover_image_alt'
+	| 'start_date'
+	| 'end_date'
+	| 'event_type'
+	| 'location_name'
+	| 'location_address'
+>;
+
+export interface BlockEventHighlight {
+	id: string;
+	display_mode: 'single' | 'slider';
+	max_items: number;
+	image_position: 'left' | 'center' | 'right';
+	button_label: string;
+	events?: EventHighlightEvent[];
+}
+
 export interface BlockHero {
 	/** @description Larger main headline for this page section. */
 	headline?: string | null;
@@ -264,7 +290,7 @@ export interface EventCategory {
 	events?: Event[] | string[];
 }
 
-export interface EventConfigurations {
+export interface EventConfigurations extends Partial<GatewayFees> {
 	/** @primaryKey */
 	id: number;
 	/** @description Permitir que organizadores criem eventos gratuitos */
@@ -644,7 +670,7 @@ export interface NavigationItem {
 	children?: NavigationItem[] | string[];
 }
 
-export interface Organizer {
+export interface Organizer extends Partial<OrganizerPaymentSettings> {
 	/** @primaryKey */
 	id: string;
 	status?: 'active' | 'pending' | 'archived';
@@ -670,6 +696,9 @@ export interface Organizer {
 	payout_pix_key?: string | null;
 	payout_pix_key_type?: 'CPF' | 'CNPJ' | 'PHONE' | 'EMAIL' | 'RANDOM' | null;
 	payout_status?: 'not_configured' | 'pending_review' | 'enabled' | 'blocked';
+	current_receiving_request_id?: string | null;
+	production_approved_at?: string | null;
+	receiving_method?: 'pix' | 'bank_transfer' | null;
 	events?: Event[] | string[];
 }
 
@@ -680,7 +709,17 @@ export interface PageBlock {
 	/** @description The id of the page that this block belongs to. */
 	page?: Page | string | null;
 	/** @description The data for the block. */
-	item?: BlockHero | BlockRichtext | BlockForm | BlockPost | BlockGallery | BlockPricing | BlockEvent | string | null;
+	item?:
+		| BlockHero
+		| BlockRichtext
+		| BlockForm
+		| BlockPost
+		| BlockGallery
+		| BlockPricing
+		| BlockEvent
+		| BlockEventHighlight
+		| string
+		| null;
 	/** @description The collection (type of block). */
 	collection?: string | null;
 	/** @description Temporarily hide this block on the website without having to remove it from your page. */

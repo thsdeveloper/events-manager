@@ -5,6 +5,7 @@ import Pricing from '@/components/blocks/Pricing';
 import Posts from '@/components/blocks/Posts';
 import Form from '@/components/blocks/Form';
 import Events from '@/components/blocks/Events';
+import EventHighlight from '@/components/blocks/EventHighlight';
 
 interface BaseBlockProps {
 	block: {
@@ -22,6 +23,7 @@ const components: Record<string, React.ElementType> = {
 	block_posts: Posts,
 	block_form: Form,
 	block_events: Events,
+	block_event_highlight: EventHighlight,
 };
 
 export function hasBlockRenderer(collection: string) {

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { RecordTable } from '@/components/ui/record-table';
 
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
@@ -27,7 +28,7 @@ export default async function PlatformFinancePage() {
 	const net = succeeded.reduce((sum, item) => sum + Number(item.organizer_net ?? 0), 0);
 	const enabledOrganizers = organizers.data
 		.filter((item) => item.payout_status === 'enabled')
-		.map((item) => ({ id: item.id, name: item.name }));
+		.map((item) => ({ id: item.id, name: item.name, method: item.receiving_method }));
 
 	return (
 		<div className="space-y-8">
@@ -123,6 +124,14 @@ export default async function PlatformFinancePage() {
 								<p className="mt-2 text-lg font-bold">{currency.format(Number(payout.amount))}</p>
 								<p className="mt-1 text-xs text-muted-foreground">
 									{new Date(payout.requested_at).toLocaleString('pt-BR')}
+									{payout.method === 'bank_transfer' && (
+										<Link
+											className="ml-2 underline"
+											href={`/super-admin/organizadores/${payout.organizer_id?.id}?tab=payouts`}
+										>
+											Gerenciar transferência
+										</Link>
+									)}
 								</p>
 							</div>
 						))}

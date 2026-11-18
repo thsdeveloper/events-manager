@@ -15,8 +15,9 @@ function PaymentAccountStatus({
 	organizer: OrganizerProfile;
 	payoutSummary: PayoutSummary | null;
 }) {
-	const enabled = organizer.payout_status === 'enabled';
-	const pending = organizer.payout_status === 'pending_review';
+	const status = payoutSummary?.payoutStatus ?? organizer.payout_status;
+	const enabled = status === 'enabled';
+	const pending = status === 'pending_review';
 	const StatusIcon = enabled ? CheckCircle2 : pending ? Clock3 : WalletCards;
 
 	return (
@@ -34,24 +35,24 @@ function PaymentAccountStatus({
 								{enabled
 									? 'Conta de repasse habilitada'
 									: pending
-										? 'Dados PIX em validação'
+										? 'Dados de recebimento em análise'
 										: 'Configure seus repasses'}
 							</p>
 							<p className="mt-1 text-sm leading-6 text-muted-foreground">
 								{enabled
-									? 'O super admin pode transferir o saldo disponível para sua chave PIX.'
+									? 'Sua conta está aprovada para receber repasses.'
 									: pending
 										? 'Você já enviou os dados. A equipe da plataforma concluirá a validação.'
-										: 'Cadastre uma chave PIX para receber o resultado líquido dos seus eventos.'}
+										: 'Cadastre PIX ou conta bancária e envie os documentos para validação.'}
 							</p>
-							{!enabled && !pending && (
+							{
 								<Button variant="link" className="mt-2 h-auto p-0" asChild>
-									<Link href="/admin/configuracoes#repasses">
-										Cadastrar chave PIX
+									<Link href="/admin/financeiro/recebimento">
+										{enabled || pending ? 'Gerenciar recebimento' : 'Cadastrar recebimento'}
 										<ArrowRight className="ml-1.5 size-4" />
 									</Link>
 								</Button>
-							)}
+							}
 						</div>
 					</div>
 				</div>

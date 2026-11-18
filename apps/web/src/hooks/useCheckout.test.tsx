@@ -1,61 +1,89 @@
-/**
- * O método escolhido na tela viaja com o pedido: o servidor confere se a loja
- * aceita e envia só ele ao provedor.
- */
 import { act } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { jsonResponse, mockFetch, problemResponse, renderHookWithProviders } from '@/test';
 import { useCheckout } from './useCheckout';
+const tickets = [{ ticketId: 'ticket-a', quantity: 1, attendees: [{ name: 'Ana', email: 'ana@example.test' }] }];
+const participant = { name: 'Ana Silva', email: 'ana@example.test' };
+const options = { expectedAmountInCents: 10000, installments: 1 };
+it('keeps Pix inside the checkout, sends an idempotency key and never sends user-controlled userId', async () => {
+	sessionStorage.clear();
+	let body: any;
+	mockFetch([
+		[
+			'/api/payments/checkout',
+			async (_url, init) => {
+				body = JSON.parse(String(init?.body));
 
-const tickets = [{ ticketId: 'ticket-a', quantity: 1 }];
-const participant = { name: 'Ana', email: 'ana@events.local' };
-
-describe('useCheckout', () => {
-	it('sends the chosen payment method along with the cart', async () => {
-		vi.stubGlobal('location', { ...window.location, href: '' });
-		const fetchMock = mockFetch([
-			['/api/payments/checkout', () => jsonResponse({ checkoutId: 'bill_1', url: 'https://pay', registrationId: 'r' })],
-		]);
-		const { result } = renderHookWithProviders(() => useCheckout({ eventId: 'e-1' }));
-
-		await act(async () => {
-			await result.current.createCheckoutSession(tickets, participant, undefined, 'CARD');
-		});
-
-		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({ paymentMethod: 'CARD' });
+				return jsonResponse({
+					attemptId: body.requestId,
+					status: 'pending',
+					payment: { id: 'pix_1', copyPasteCode: 'code' },
+				});
+			},
+		],
+		[
+			/\/api\/payments\/attempts\//,
+			() =>
+				jsonResponse({ attemptId: body.requestId, status: 'pending', payment: { id: 'pix_1', copyPasteCode: 'code' } }),
+		],
+	]);
+	const { result } = renderHookWithProviders(() => useCheckout({ eventId: 'e1', userId: 'u1' }));
+	await act(async () => {
+		await result.current.createCheckoutSession(tickets, participant, undefined, 'PIX', options);
 	});
-
-	it('sends the attendees of each unit along with the cart, pending ones as null', async () => {
-		vi.stubGlobal('location', { ...window.location, href: '' });
-		const fetchMock = mockFetch([
-			['/api/payments/checkout', () => jsonResponse({ checkoutId: 'bill_1', url: 'https://pay', registrationId: 'r' })],
-		]);
-		const { result } = renderHookWithProviders(() => useCheckout({ eventId: 'e-1' }));
-		const cart = [{ ticketId: 'ticket-a', quantity: 2, attendees: [{ name: 'Ana', email: 'ana@events.local' }, null] }];
-
-		await act(async () => {
-			await result.current.createCheckoutSession(cart, participant);
-		});
-
-		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).tickets).toEqual(cart);
+	expect(body).toMatchObject({ paymentMethod: 'PIX', expectedAmountInCents: 10000, tickets });
+	expect(body.requestId).toMatch(/^[0-9a-f-]{36}$/);
+	expect(body.userId).toBeUndefined();
+	expect(result.current.attempt).toMatchObject({ status: 'pending', payment: { copyPasteCode: 'code' } });
+});
+it('keeps the same attempt after a network failure and does not silently charge again', async () => {
+	sessionStorage.clear();
+	const fetcher = mockFetch([
+		['/api/payments/checkout', () => Promise.reject(new TypeError('network'))],
+		[/\/api\/payments\/attempts\//, () => jsonResponse({ attemptId: 'a', status: 'processing', payment: null })],
+	]);
+	const { result } = renderHookWithProviders(() => useCheckout({ eventId: 'e2', userId: 'u2' }));
+	await act(async () => {
+		await result.current.createCheckoutSession(tickets, participant, undefined, 'PIX', options).catch(() => undefined);
 	});
-
-	it('names the refused field instead of the generic validation message', async () => {
-		mockFetch([
-			[
-				'/api/payments/checkout',
-				() =>
-					problemResponse(422, 'VALIDATION_ERROR', 'Os dados enviados são inválidos.', {
-						errors: { fieldErrors: { participantInfo: ['CPF inválido'] }, formErrors: [] },
-					}),
-			],
-		]);
-		const { result } = renderHookWithProviders(() => useCheckout({ eventId: 'e-1' }));
-
-		await act(async () => {
-			await result.current.createCheckoutSession(tickets, participant).catch(() => undefined);
-		});
-
-		expect(result.current.error).toBe('CPF inválido');
+	expect(result.current.attempt?.status).toBe('processing');
+	await act(async () => {
+		await result.current.createCheckoutSession(tickets, participant, undefined, 'PIX', options);
 	});
+	expect(fetcher.mock.calls.filter(([url]) => String(url) === '/api/payments/checkout')).toHaveLength(1);
+});
+it('shows the API field validation through the standard error description', async () => {
+	sessionStorage.clear();
+	mockFetch([
+		[
+			'/api/payments/checkout',
+			() =>
+				problemResponse(422, 'VALIDATION_ERROR', 'Inválido', {
+					errors: { fieldErrors: { participantInfo: ['CPF inválido'] }, formErrors: [] },
+				}),
+		],
+	]);
+	const { result } = renderHookWithProviders(() => useCheckout({ eventId: 'e3', userId: 'u3' }));
+	await act(async () => {
+		await result.current.createCheckoutSession(tickets, participant, undefined, 'PIX', options).catch(() => undefined);
+	});
+	expect(result.current.error).toBe('CPF inválido');
+});
+it('clears the previous purchase when the buyer or event changes', async () => {
+	sessionStorage.clear();
+	const id = '00000000-0000-4000-8000-000000000001';
+	sessionStorage.setItem('checkout-attempt:u1:e1', id);
+	mockFetch([
+		[
+			/\/api\/payments\/attempts\//,
+			() => jsonResponse({ attemptId: id, status: 'pending', payment: { copyPasteCode: 'private-code' } }),
+		],
+	]);
+	const { result, rerender } = renderHookWithProviders(({ userId, eventId }) => useCheckout({ userId, eventId }), {
+		initialProps: { userId: 'u1', eventId: 'e1' },
+	});
+	await act(async () => {});
+	expect(result.current.attempt?.attemptId).toBe(id);
+	rerender({ userId: 'u2', eventId: 'e2' });
+	expect(result.current.attempt).toBeNull();
 });

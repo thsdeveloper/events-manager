@@ -12,7 +12,7 @@ Fastify; o navegador nunca fala com o banco.
 | Coleção | Tabelas | Observações |
 | --- | --- | --- |
 | Páginas | `pages`, `page_blocks` | `permalink` único e validado no banco (`pages_permalink_format`); `seo` em JSONB; `status` draft/in_review/published e `published_at` para agendamento |
-| Blocos | `block_hero` (+ `block_button_groups`, `block_buttons`), `block_richtext`, `block_gallery` (+ `block_gallery_items`), `block_pricing` (+ `block_pricing_cards`), `block_posts`, `block_events`, `block_form` | `page_blocks.collection`/`item` é a relação polimórfica; o gatilho `page_blocks_delete_item` apaga o item ao remover o bloco e `page_blocks_touch_page` atualiza `pages.date_updated` |
+| Blocos | `block_hero` (+ `block_button_groups`, `block_buttons`), `block_richtext`, `block_gallery` (+ `block_gallery_items`), `block_pricing` (+ `block_pricing_cards`), `block_posts`, `block_events`, `block_form`, `block_event_highlight` | `page_blocks.collection`/`item` é a relação polimórfica; o gatilho `page_blocks_delete_item` apaga o item ao remover o bloco e `page_blocks_touch_page` atualiza `pages.date_updated` |
 | Menus | `navigation`, `navigation_items` | `main` e `footer` são usados pelo layout e não podem ser excluídos; um nível de subitens |
 | Blog | `posts` | `slug` validado no banco (`posts_slug_format`); conteúdo HTML sanitizado |
 | Formulários | `forms`, `form_fields`, `form_submissions`, `form_submission_values` | campos atualizados pelo `id` para preservar respostas antigas |
@@ -100,3 +100,68 @@ Conteúdo público (`apps/api/src/routes/content.ts`):
    `packages/contracts/src/cms.test.ts`, `html-sanitizer.test.ts`,
    `apps/api/test/cms-*.test.ts`, `content.test.ts`, `architecture.test.ts`
    e nos `*.test.ts(x)` de `apps/web/src/features/cms` e `apps/web/src/lib/seo`.
+
+## Destaque de evento
+
+O bloco **Destaque de evento** (`block_event_highlight`) usa a composição do
+[Figma](https://www.figma.com/design/0kdVz9adRTjZir7fbtaBUL/Untitled?node-id=1-18):
+fundo azul com a capa desfocada, chamada e botão à esquerda e cartaz à direita.
+Em telas menores, texto e imagem são empilhados. A seção ocupa a largura total,
+com o conteúdo alinhado ao `Container` do site.
+
+No editor de páginas, use **Adicionar bloco → Destaque de evento**:
+
+- **Slider** (padrão): busca os últimos 5 eventos, com quantidade configurável de
+  1 a 12. Os botões anterior/próximo percorrem os eventos em ciclo.
+- **Destaque único**: mostra somente o evento cadastrado mais recentemente.
+- O texto do botão e o foco do recorte da imagem são configuráveis.
+
+A API seleciona apenas eventos publicados e de visibilidade pública, ordenados
+por `date_created` decrescente (desempate pelo ID). Mesmo no preview do CMS,
+rascunhos, cancelados, arquivados e não listados ficam fora da seleção. Título,
+descrição resumida, capa, texto alternativo, data/local e link vêm do cadastro.
+A data segue o fuso `America/Sao_Paulo`; o botão abre `/eventos/:slug`, onde a
+pessoa escolhe os ingressos. A leitura segue o cache de conteúdo existente, com
+revalidação a cada 30 segundos. Não há seleção manual de eventos nem autoplay.
+
+Com um único evento, os controles ficam ocultos. Sem eventos elegíveis, a seção
+não é exibida. Um evento sem capa mantém seus textos e link.
+
+As migrations `202611170006_event_highlight_block.sql` e
+`202611170007_automatic_event_highlights.sql` incluem a coleção em `page_blocks`,
+criam sua configuração com RLS e acesso apenas pela API e mantêm o gatilho de
+limpeza existente. A segunda migration preserva campos editoriais já gravados,
+mas a renderização usa os eventos. Não há nova variável de ambiente nem
+alteração do conteúdo da home no seed.
+
+O PNG original em `testsprite_tests/fixtures/event-highlight.png` é uma referência
+para validação visual; as páginas usam as capas dos eventos. Testes específicos:
+`event-highlight.test.ts` nos contratos e na API, `EventHighlight.test.tsx`,
+`EventHighlightEditor.test.tsx` no frontend e `supabase/tests/event_highlight.sql`
+(integração local em transação com rollback).
+
+
+## Documentos de aceite do organizador
+
+A migration `202611180004_organizer_legal_pages.sql` cria três páginas publicadas,
+com blocos de texto rico editáveis em `/super-admin/conteudo/paginas`:
+
+- `/termos-de-uso`: cadastro, responsabilidades, eventos, pagamentos e atendimento.
+- `/politica-de-acesso`: perfis, organização/evento selecionado, segurança e restrições.
+- `/politica-de-privacidade`: dados utilizados, finalidades, compartilhamento, sessões e direitos.
+
+Os links aparecem no aceite do cadastro de organizador, em nova aba, e no rodapé.
+A migration preserva páginas existentes no mesmo permalink e não altera a página
+anterior `/politicas-de-uso`. Os textos iniciais descrevem o funcionamento do
+produto; dados do controlador, canais e condições comerciais específicos devem
+ser mantidos pelo responsável pelo conteúdo antes do uso em produção.
+
+Para a redação sobre transparência, segurança e direitos dos titulares foram
+consultadas as orientações da [ANPD](https://www.gov.br/anpd/pt-br/documentos-e-publicacoes/glossario-anpd)
+e a [LGPD na Câmara dos Deputados](https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-normaatualizada-pl.html).
+O contexto de direitos e deveres de uso da internet está no
+[Marco Civil da Internet](https://legislacao.presidencia.gov.br/atos/?ano=2014&ato=93eUTRE9ENVpWTdb6&data=23%2F04%2F2014&numero=12965&tipo=LEI).
+
+Teste SQL: `supabase/tests/organizer_legal_pages.sql`. O teste de componente
+`OrganizerSignupForm.test.tsx` verifica os três URLs e o toast padrão para erros
+de cadastro, incluindo CPF/CNPJ duplicado.

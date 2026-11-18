@@ -1,5 +1,14 @@
-import { calculateUnitPlatformFee } from '@events-manager/contracts';
-export interface PaymentFeeConfiguration {
+import {
+	calculateUnitPlatformFee,
+	readGatewayFees,
+	quoteGatewayFee,
+	type CardSettlementPeriod,
+	type GatewayFees,
+	type GatewayFeeMethod,
+} from '@events-manager/contracts';
+export interface PaymentFeeConfiguration
+	extends Partial<Omit<GatewayFees, 'card_rates' | 'pix_fee_fixed' | 'card_fee_fixed' | 'boleto_fee_fixed'>> {
+	card_rates?: unknown;
 	platform_fee_percentage: number | string;
 	platform_fee_minimum?: number | string | null;
 	pix_fee_fixed: number | string;
@@ -10,7 +19,7 @@ export interface PaymentFeeConfiguration {
 	boleto_fee_fixed: number | string;
 }
 
-export type PaymentMethod = 'pix' | 'card' | 'boleto' | 'free';
+export type PaymentMethod = GatewayFeeMethod;
 
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
 
@@ -27,8 +36,11 @@ export function calculateProviderFee(
 	method: PaymentMethod,
 	configuration: PaymentFeeConfiguration,
 	installments = 1,
+	period: CardSettlementPeriod = 'D+1',
 ) {
 	if (paidAmount <= 0 || method === 'free') return 0;
+	if (configuration.card_rates || method === 'debit' || method === 'boleto_pix')
+		return quoteGatewayFee(paidAmount, method, readGatewayFees({ ...configuration }), installments, period).fee;
 	if (method === 'pix') return roundMoney(Number(configuration.pix_fee_fixed));
 	if (method === 'boleto') return roundMoney(Number(configuration.boleto_fee_fixed));
 

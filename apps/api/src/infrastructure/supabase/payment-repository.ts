@@ -21,6 +21,17 @@ export class SupabasePaymentRepository implements PaymentRepository {
 		private readonly provider: PaymentProvider = 'abacatepay',
 	) {}
 
+	async isOrganizerApprovedForEvent(eventId: string) {
+		const { data, error } = await this.clients.admin
+			.from('events')
+			.select('organizer:organizers!inner(status,production_approved_at)')
+			.eq('id', eventId)
+			.maybeSingle();
+		if (error) throw error;
+		const organizer = data?.organizer as unknown as { status: string; production_approved_at: string | null } | null;
+		return Boolean(organizer?.status === 'active' && organizer.production_approved_at);
+	}
+
 	async findCheckoutEvent(id: string) {
 		const { data, error } = await this.clients.admin
 			.from('events')
@@ -154,7 +165,7 @@ export class SupabasePaymentRepository implements PaymentRepository {
 	async findTicketForInstallments(id: string) {
 		const { data, error } = await this.clients.admin
 			.from('event_tickets')
-			.select('*,event_id:events(*)')
+			.select('*,event_id:events(*,organizer_id:organizers(accepted_payment_methods,credit_card_settlement_period))')
 			.eq('id', id)
 			.maybeSingle();
 		if (error) throw error;
@@ -252,10 +263,15 @@ export class SupabasePaymentRepository implements PaymentRepository {
 			.from('organizer_payouts')
 			.update(input)
 			.eq('provider_payout_id', providerId)
+			.neq('provider', 'manual')
 			.select('id');
 		if (providerResult.error) throw providerResult.error;
 		if (providerResult.data?.length || !externalId || !isUuid(externalId)) return;
-		const fallback = await this.clients.admin.from('organizer_payouts').update(input).eq('id', externalId);
+		const fallback = await this.clients.admin
+			.from('organizer_payouts')
+			.update(input)
+			.eq('id', externalId)
+			.neq('provider', 'manual');
 		if (fallback.error) throw fallback.error;
 	}
 

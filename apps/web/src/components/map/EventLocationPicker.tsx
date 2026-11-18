@@ -24,14 +24,24 @@ export interface PickedLocation extends MapPosition {
 }
 
 interface EventLocationPickerProps {
+	initialQuery?: string;
 	position: MapPosition | null;
 	onPick: (location: PickedLocation) => void;
 	onClear: () => void;
 	className?: string;
 }
 
-export function EventLocationPicker({ position, onPick, onClear, className }: EventLocationPickerProps) {
-	const [query, setQuery] = useState('');
+export function EventLocationPicker({
+	position,
+	onPick,
+	onClear,
+	className,
+	initialQuery = '',
+}: EventLocationPickerProps) {
+	const [query, setQuery] = useState(initialQuery);
+	const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+	const [center, setCenter] = useState<MapPosition | null>(null);
+	const reverseController = useRef<AbortController | null>(null);
 	const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
 	const [isSearching, setIsSearching] = useState(false);
 	const [isResolving, setIsResolving] = useState(false);
@@ -42,6 +52,8 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 	const skipNextSearch = useRef(false);
 
 	useEffect(() => {
+		searchController.current?.abort();
+		setIsSearching(false);
 		if (skipNextSearch.current) {
 			skipNextSearch.current = false;
 
@@ -68,21 +80,37 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 				});
 				const body = await response.json().catch(() => null);
 				if (!response.ok) throw new Error(body?.detail ?? 'Não foi possível buscar endereços.');
-				setSuggestions(Array.isArray(body?.predictions) ? body.predictions : []);
+				if (controller.signal.aborted) return;
+				const found = Array.isArray(body?.predictions) ? body.predictions : [];
+				setSuggestions(found);
+				if (found[0]) setCenter({ latitude: found[0].latitude, longitude: found[0].longitude });
 			} catch (searchError) {
-				if ((searchError as Error).name !== 'AbortError') {
+				if (!controller.signal.aborted && (searchError as Error).name !== 'AbortError') {
 					setError(searchError instanceof Error ? searchError.message : 'Não foi possível buscar endereços.');
 					setSuggestions([]);
 				}
 			} finally {
-				setIsSearching(false);
+				if (!controller.signal.aborted) setIsSearching(false);
 			}
 		}, 400);
 
-		return () => window.clearTimeout(timeoutId);
+		return () => {
+			window.clearTimeout(timeoutId);
+			searchController.current?.abort();
+		};
 	}, [query]);
+	useEffect(
+		() => () => {
+			reverseController.current?.abort();
+			searchController.current?.abort();
+		},
+		[],
+	);
 
 	const handleSuggestion = (suggestion: PlaceSuggestion) => {
+		setSuggestionsOpen(false);
+		reverseController.current?.abort();
+		setIsResolving(false);
 		skipNextSearch.current = true;
 		setQuery(suggestion.description);
 		setSuggestions([]);
@@ -97,13 +125,20 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 	/** Dropping or dragging the pin resolves the address behind those coordinates. */
 	const handleMapPosition = useCallback(
 		async (next: MapPosition) => {
+			reverseController.current?.abort();
+			const controller = new AbortController();
+			reverseController.current = controller;
+			onPick({ ...next, address: '', name: '' });
 			setIsResolving(true);
 			setError(null);
 			try {
-				const response = await fetch(`/api/places/reverse?lat=${next.latitude}&lon=${next.longitude}`);
+				const response = await fetch(`/api/places/reverse?lat=${next.latitude}&lon=${next.longitude}`, {
+					signal: controller.signal,
+				});
 				const body = await response.json().catch(() => null);
 				if (!response.ok) throw new Error(body?.detail ?? 'Não foi possível identificar o endereço.');
 				const place = body?.place as PlaceSuggestion | null;
+				if (controller.signal.aborted) return;
 				skipNextSearch.current = true;
 				setQuery(place?.description ?? '');
 				onPick({
@@ -112,17 +147,22 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 					name: place?.mainText ?? '',
 				});
 			} catch (reverseError) {
+				if (controller.signal.aborted) return;
 				// The pin is still valid even when naming it fails, so it is kept.
 				setError(reverseError instanceof Error ? reverseError.message : 'Não foi possível identificar o endereço.');
 				onPick({ ...next, address: '', name: '' });
 			} finally {
-				setIsResolving(false);
+				if (!controller.signal.aborted) setIsResolving(false);
 			}
 		},
 		[onPick],
 	);
 
 	const handleClear = () => {
+		reverseController.current?.abort();
+		searchController.current?.abort();
+		setIsResolving(false);
+		setIsSearching(false);
 		skipNextSearch.current = true;
 		setQuery('');
 		setSuggestions([]);
@@ -136,7 +176,10 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 				<Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 				<Input
 					value={query}
-					onChange={(event) => setQuery(event.target.value)}
+					onChange={(event) => {
+						setQuery(event.target.value);
+						setSuggestionsOpen(true);
+					}}
 					placeholder="Busque pelo endereço ou nome do local"
 					autoComplete="off"
 					aria-label="Buscar endereço no mapa"
@@ -146,7 +189,7 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 					<Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
 				)}
 
-				{suggestions.length > 0 && (
+				{suggestionsOpen && suggestions.length > 0 && (
 					<ul className="absolute inset-x-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-md border bg-background">
 						{suggestions.map((suggestion) => (
 							<li key={suggestion.placeId}>
@@ -172,6 +215,8 @@ export function EventLocationPicker({ position, onPick, onClear, className }: Ev
 
 			<EventLocationMap
 				position={position}
+				center={center}
+				onPositionChange={handleMapPosition}
 				editable
 				className="h-72 w-full"
 				ariaLabel="Mapa para definir o local do evento"

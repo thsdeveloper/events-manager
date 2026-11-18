@@ -49,6 +49,7 @@ export function TicketDetailsModal({ ticket, onClose, onChangeAttendee }: Ticket
 
 	// Generate high-quality QR Code
 	useEffect(() => {
+		if (!ticket.attendee_name) return;
 		QRCode.toDataURL(ticket.ticket_code, {
 			width: 600,
 			margin: 2,
@@ -65,7 +66,7 @@ export function TicketDetailsModal({ ticket, onClose, onChangeAttendee }: Ticket
 					variant: 'destructive',
 				});
 			});
-	}, [ticket.ticket_code, toast]);
+	}, [ticket.ticket_code, ticket.attendee_name, toast]);
 
 	const eventTitle = event.title;
 	const locationName = event.location_name;
@@ -92,7 +93,7 @@ export function TicketDetailsModal({ ticket, onClose, onChangeAttendee }: Ticket
 
 	// Download ticket as PDF
 	const handleDownloadPDF = async () => {
-		if (!ticketRef.current || isDownloading) return;
+		if (!ticketRef.current || isDownloading || attendee.isPending) return;
 
 		setIsDownloading(true);
 		try {
@@ -204,7 +205,7 @@ export function TicketDetailsModal({ ticket, onClose, onChangeAttendee }: Ticket
 					<h3 className="mb-6 text-center text-3xl font-bold text-gray-900 dark:text-white">{eventTitle}</h3>
 
 					{/* QR Code - Center */}
-					{qrCodeUrl && (
+					{qrCodeUrl && !attendee.isPending && (
 						<div className="mb-8 flex justify-center">
 							<div className="rounded-lg border-4 border-indigo-600 bg-white p-4 shadow-lg">
 								<Image src={qrCodeUrl} alt="QR Code do Ingresso" width={250} height={250} className="size-[250px]" />
@@ -228,7 +229,11 @@ export function TicketDetailsModal({ ticket, onClose, onChangeAttendee }: Ticket
 								{copied ? <Check className="size-5 text-green-600" /> : <Copy className="size-5 text-indigo-600" />}
 							</button>
 						</div>
-						<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Apresente este código na entrada do evento</p>
+						<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+							{attendee.isPending
+								? 'Pendente de nomeação: informe quem usará este ingresso antes de validá-lo na entrada.'
+								: 'Apresente este código na entrada do evento'}
+						</p>
 					</div>
 
 					{/* Event Details Grid */}
@@ -348,8 +353,9 @@ export function TicketDetailsModal({ ticket, onClose, onChangeAttendee }: Ticket
 					{/* Important Note */}
 					<div className="rounded-lg border-l-4 border-amber-500 bg-amber-50 p-4 dark:bg-amber-950">
 						<p className="text-sm text-amber-900 dark:text-amber-100">
-							<strong>⚠️ Importante:</strong> Guarde este ingresso com cuidado. Você precisará apresentá-lo (impresso ou
-							no celular) na entrada do evento.
+							{attendee.isPending
+								? 'Informe os dados de quem usará este ingresso em Informar participante. O check-in exige um ingresso nomeado e com pagamento confirmado.'
+								: 'Guarde este ingresso com cuidado. Você precisará apresentá-lo impresso ou no celular na entrada do evento.'}
 						</p>
 					</div>
 				</div>
@@ -360,7 +366,7 @@ export function TicketDetailsModal({ ticket, onClose, onChangeAttendee }: Ticket
 						<button
 							type="button"
 							onClick={handleDownloadPDF}
-							disabled={isDownloading}
+							disabled={isDownloading || attendee.isPending}
 							className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
 						>
 							<Download className="size-4" />

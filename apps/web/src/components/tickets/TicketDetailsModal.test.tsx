@@ -47,6 +47,9 @@ describe('TicketDetailsModal', () => {
 		);
 
 		expect(screen.getByText('Participante a informar')).toBeInTheDocument();
+		expect(screen.getByText(/Pendente de nomeação/)).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'PDF' })).toBeDisabled();
+		expect(screen.queryByText('Apresente este código na entrada do evento')).not.toBeInTheDocument();
 		await user.click(screen.getByRole('button', { name: 'Informar participante' }));
 
 		expect(onChangeAttendee).toHaveBeenCalledWith(pending);

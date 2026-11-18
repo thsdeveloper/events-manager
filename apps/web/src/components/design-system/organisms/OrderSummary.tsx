@@ -22,20 +22,24 @@ export interface OrderSummaryItem {
  * desconto, com o botão de remover ao lado.
  */
 export function OrderSummary({
+	actionForm,
 	actionLabel,
 	children,
 	coupon,
 	footnote,
 	isActionLoading,
+	isActionDisabled,
 	items,
 	onAction,
 	onRemoveCoupon,
 }: {
+	actionForm?: string;
 	actionLabel?: string;
 	children?: ReactNode;
 	coupon?: AppliedCoupon | null;
 	footnote?: ReactNode;
 	isActionLoading?: boolean;
+	isActionDisabled?: boolean;
 	items: OrderSummaryItem[];
 	onAction?: () => void;
 	onRemoveCoupon?: () => void;
@@ -118,7 +122,18 @@ export function OrderSummary({
 			</dl>
 
 			{actionLabel ? (
-				<Button className="mt-5 w-full" disabled={isEmpty || isActionLoading} onClick={onAction} type="button">
+				<Button
+					className="mt-5 w-full"
+					disabled={isEmpty || isActionLoading || isActionDisabled}
+					form={actionForm}
+					onClick={(event) => {
+						// A mudança de etapa pode transformar este mesmo botão em submit.
+						// O clique anterior não deve enviar o formulário recém-montado.
+						if (!actionForm) event.preventDefault();
+						onAction?.();
+					}}
+					type={actionForm ? 'submit' : 'button'}
+				>
 					{isActionLoading ? 'Processando...' : actionLabel}
 				</Button>
 			) : null}

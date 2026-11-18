@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, Globe, Mail, MapPin, QrCode, ShieldCheck } from 'lucide-react';
-import type { EventTicket, MediaFile } from '@events-manager/contracts';
-import TicketSelection, { TicketSelectionItem } from './TicketSelection';
+import type { CheckoutQuote, EventTicket, MediaFile } from '@events-manager/contracts';
+import TicketSelection, { getInitialTicketSelection, TicketSelectionItem } from './TicketSelection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/design-system/atoms/Container';
@@ -15,13 +15,14 @@ import { OrderSummary } from '@/components/design-system/organisms/OrderSummary'
 import MediaImage from '@/components/shared/MediaImage';
 import { AttendeeCards, type AttendeeDraft, type AttendeeUnit } from '@/features/checkout/components/AttendeeCards';
 import { CouponField } from '@/features/checkout/components/CouponField';
-import { PaymentMethodSection } from '@/features/checkout/components/PaymentMethodSection';
+import { TransparentCheckoutForm } from '@/features/checkout/components/TransparentCheckoutForm';
+import { TransparentPaymentResult } from '@/features/checkout/components/TransparentPaymentResult';
 import { usePaymentMethods, type PaymentMethod } from '@/features/checkout/api/usePaymentMethods';
 import { formatEventDateRange, formatEventLocation } from '@/lib/event-schedule';
 import { formatCurrency } from '@/lib/formatters';
 import { useCoupon } from '@/features/checkout/api/useCoupon';
 import { Input } from '@/components/ui/input';
-import { DocumentInput, PhoneInput } from '@/components/ui/masked-inputs';
+import { maskDocument, maskPhone } from '@/lib/br-documents';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,8 @@ interface EventCheckoutProps {
 	defaultParticipantInfo?: {
 		name: string;
 		email: string;
+		phone?: string | null;
+		document?: string | null;
 	};
 }
 
@@ -71,19 +74,25 @@ export default function EventCheckout({
 	defaultParticipantInfo,
 }: EventCheckoutProps) {
 	const router = useRouter();
-	const [selectedTickets, setSelectedTickets] = useState<TicketSelectionItem[]>([]);
+	const [selectedTickets, setSelectedTickets] = useState<TicketSelectionItem[]>(() =>
+		getInitialTicketSelection(tickets),
+	);
+	const [serverQuote, setServerQuote] = useState<CheckoutQuote | null>(null);
 	// Três etapas: ingressos, dados da pessoa e pagamento. A escolha do meio de
 	// pagamento só aparece na última, quando o carrinho e os dados já estão fechados.
 	const [step, setStep] = useState<'tickets' | 'details' | 'payment'>('tickets');
-	const [selectedInstallments, setSelectedInstallments] = useState<number | null>(1);
-	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PIX');
-	const { methods: availableMethods } = usePaymentMethods();
-	const [participantInfo, setParticipantInfo] = useState({
+
+	const [chosenPaymentMethod, setPaymentMethod] = useState<PaymentMethod>('PIX');
+	const { methods: availableMethods } = usePaymentMethods(eventId);
+	const paymentMethod = availableMethods.includes(chosenPaymentMethod)
+		? chosenPaymentMethod
+		: (availableMethods[0] ?? 'PIX');
+	const participantInfo = {
 		name: defaultParticipantInfo?.name || '',
 		email: defaultParticipantInfo?.email || '',
-		phone: '',
-		document: '',
-	});
+		phone: defaultParticipantInfo?.phone ?? '',
+		document: defaultParticipantInfo?.document ?? '',
+	};
 
 	// Quem vai usar cada unidade. A chave é `${ticketId}:${índice}`; a primeira
 	// unidade do carrinho nasce como sendo da própria pessoa.
@@ -143,7 +152,8 @@ export default function EventCheckout({
 			});
 
 	const coupon = useCoupon(eventId);
-	const { createCheckoutSession, isLoading: isPaymentLoading, error: paymentError } = useCheckout({ eventId, userId });
+	const checkout = useCheckout({ eventId, userId });
+	const { isLoading: isPaymentLoading, error: paymentError } = checkout;
 	const {
 		createInstallmentCheckout,
 		isLoading: isInstallmentLoading,
@@ -162,7 +172,7 @@ export default function EventCheckout({
 		toast({ title: 'Não foi possível concluir a compra', description: error, variant: 'destructive' });
 	}, [error]);
 
-	const summaryItems = useMemo(
+	const cachedSummaryItems = useMemo(
 		() =>
 			selectedTickets.flatMap((selection) => {
 				const ticket = tickets.find((candidate) => candidate.id === selection.ticketId);
@@ -185,6 +195,15 @@ export default function EventCheckout({
 		[selectedTickets, tickets],
 	);
 
+	const summaryItems = step === 'payment' && serverQuote?.items ? serverQuote.items : cachedSummaryItems;
+	const summaryCoupon =
+		step === 'payment' && serverQuote && coupon.applied
+			? {
+					...coupon.applied,
+					discount: (serverQuote.discountInCents ?? Math.round(coupon.applied.discount * 100)) / 100,
+					total: serverQuote.amountInCents / 100,
+				}
+			: coupon.applied;
 	const totalAmount = summaryItems.reduce((total, item) => total + item.unitPrice * item.quantity, 0);
 	const ticketData = tickets.find((candidate) => candidate.id === selectedTickets[0]?.ticketId);
 
@@ -192,6 +211,7 @@ export default function EventCheckout({
 	// carrinho anterior e precisa ser reconferido com os novos valores.
 	const handleSelectionChange = (items: TicketSelectionItem[]) => {
 		setSelectedTickets(items);
+		setServerQuote(null);
 		if (coupon.applied) coupon.clear();
 	};
 
@@ -206,43 +226,19 @@ export default function EventCheckout({
 				errors[unit.key] = 'Informe nome e e-mail, ou marque para preencher depois.';
 		});
 		setAttendeeErrors(errors);
-		if (Object.keys(errors).length > 0) return;
+		const firstInvalidIndex = attendeeUnits.findIndex((unit) => errors[unit.key]);
+		if (firstInvalidIndex >= 0) {
+			const unit = attendeeUnits[firstInvalidIndex];
+			const field = draftFor(unit, firstInvalidIndex).name.trim() ? 'email' : 'name';
+			document.getElementById(`attendee-${unit.key}-${field}`)?.focus();
+
+			return;
+		}
 		setStep('payment');
 	};
 
-	const handleSubmit = async (event: React.FormEvent) => {
-		event.preventDefault();
-		if (!participantInfo.name || !participantInfo.email || selectedTickets.length === 0) return;
-
-		try {
-			// Parcelas via Pix são um plano próprio da plataforma; no cartão, quem
-			// parcela é a página do provedor.
-			if (
-				paymentMethod === 'PIX' &&
-				selectedInstallments &&
-				selectedInstallments > 1 &&
-				ticketData?.allow_installments
-			) {
-				await createInstallmentCheckout(selectedTickets[0], selectedInstallments, participantInfo);
-			} else {
-				await createCheckoutSession(
-					selectedTickets.map((selection) => ({ ...selection, attendees: attendeesFor(selection.ticketId) })),
-					participantInfo,
-					coupon.applied?.code,
-					paymentMethod,
-				);
-			}
-		} catch {
-			// O hook mantém a mensagem visível no formulário.
-		}
-	};
-
-	const handleMethodChange = (method: PaymentMethod) => {
-		setPaymentMethod(method);
-		if (method === 'CARD') setSelectedInstallments(1);
-	};
-
-	const payableTotal = coupon.applied?.total ?? totalAmount;
+	const payableTotal =
+		step === 'payment' && serverQuote ? serverQuote.amountInCents / 100 : (coupon.applied?.total ?? totalAmount);
 	const ticketTypesLabel = `${tickets.length} ${tickets.length === 1 ? 'tipo disponível' : 'tipos disponíveis'}`;
 	const eventMeta = [
 		{ icon: CalendarDays, label: formatEventDateRange(event?.startDate, event?.endDate), name: 'Quando' },
@@ -260,14 +256,17 @@ export default function EventCheckout({
 
 	const summary = (
 		<OrderSummary
-			actionLabel={step === 'tickets' ? 'Continuar para seus dados' : undefined}
-			coupon={coupon.applied}
+			actionLabel={
+				step === 'tickets' ? 'Continuar para seus dados' : step === 'details' ? 'Continuar para pagamento' : undefined
+			}
+			actionForm={step === 'details' ? 'details-form' : undefined}
+			coupon={summaryCoupon}
 			footnote={
 				step === 'payment' ? (
 					paymentMethod === 'CARD' ? (
-						'Você informa o cartão no ambiente seguro de pagamento.'
+						'Você paga aqui, com o formulário seguro do cartão.'
 					) : (
-						'Você paga com Pix no ambiente seguro de pagamento.'
+						'Você recebe o código de pagamento aqui, sem sair da plataforma.'
 					)
 				) : step === 'details' ? (
 					'Você escolhe a forma de pagamento na próxima etapa.'
@@ -292,8 +291,9 @@ export default function EventCheckout({
 				)
 			}
 			isActionLoading={isLoading}
+			isActionDisabled={step === 'details' && (participantInfo.name.trim().length < 2 || !participantInfo.email.trim())}
 			items={summaryItems}
-			onAction={() => setStep('details')}
+			onAction={step === 'tickets' ? () => setStep('details') : undefined}
 			onRemoveCoupon={coupon.clear}
 		>
 			{coupon.applied ? null : (
@@ -306,48 +306,73 @@ export default function EventCheckout({
 		</OrderSummary>
 	);
 
-	return (
-		<Container className={cn('py-8 lg:py-12', step === 'tickets' && 'pb-28 lg:pb-12')}>
-			<div className="space-y-4">
-				<CheckoutSteps currentStep={step} onStepSelect={(id) => setStep(id as typeof step)} steps={STEPS} />
+	if (checkout.attempt)
+		return (
+			<Container className="py-8">
+				<Heading as="h1" level="h2" className="mb-6">
+					{eventTitle}
+				</Heading>
+				<TransparentPaymentResult
+					result={checkout.attempt}
+					onRefresh={() => void checkout.refresh()}
+					onReset={() => {
+						checkout.reset();
+						setStep('tickets');
+						setServerQuote(null);
+					}}
+					isRefreshing={checkout.isRefreshing}
+					statusError={checkout.statusError}
+				/>
+			</Container>
+		);
 
-				{/* O evento se apresenta uma vez só: nome, quando, onde e formato na
-				    mesma cabeça de página, com a capa como miniatura. */}
-				<div className="flex items-start gap-4 pt-2">
-					{event?.coverImage ? (
-						<div className="relative hidden size-16 shrink-0 overflow-hidden rounded-lg bg-muted sm:block">
-							<MediaImage uuid={event.coverImage} alt="" fill className="object-cover" />
+	return (
+		<Container className={cn('grid gap-8 py-8 lg:grid-cols-3 lg:items-start', step === 'tickets' && 'pb-28 lg:pb-8')}>
+			<div className="min-w-0 space-y-8 lg:col-span-2">
+				<div className="space-y-4">
+					<CheckoutSteps currentStep={step} onStepSelect={(id) => setStep(id as typeof step)} steps={STEPS} />
+
+					{/* A capa horizontal acompanha os dados do evento e fica acima deles no celular. */}
+					<div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-start">
+						{event?.coverImage ? (
+							<div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg bg-muted sm:w-56">
+								<MediaImage
+									uuid={event.coverImage}
+									alt=""
+									fill
+									sizes="(min-width: 640px) 224px, calc(100vw - 2rem)"
+									className="object-cover"
+								/>
+							</div>
+						) : null}
+						<div className="min-w-0 space-y-2">
+							<Heading as="h1" level="h1">
+								{eventTitle}
+							</Heading>
+							{eventMeta.length > 0 ? (
+								<dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+									{eventMeta.map(({ icon: Icon, label, name }) => (
+										<div key={name} className="inline-flex items-center gap-1.5">
+											<dt className="sr-only">{name}</dt>
+											<Icon className="size-4 shrink-0" aria-hidden />
+											<dd>{label}</dd>
+										</div>
+									))}
+								</dl>
+							) : null}
+							{event?.slug ? (
+								<Link
+									className="inline-block text-sm font-medium text-primary hover:underline"
+									href={`/eventos/${event.slug}`}
+								>
+									Ver detalhes do evento
+								</Link>
+							) : null}
 						</div>
-					) : null}
-					<div className="min-w-0 space-y-2">
-						<Heading as="h1" level="h1">
-							{eventTitle}
-						</Heading>
-						{eventMeta.length > 0 ? (
-							<dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-								{eventMeta.map(({ icon: Icon, label, name }) => (
-									<div key={name} className="inline-flex items-center gap-1.5">
-										<dt className="sr-only">{name}</dt>
-										<Icon className="size-4 shrink-0" aria-hidden />
-										<dd>{label}</dd>
-									</div>
-								))}
-							</dl>
-						) : null}
-						{event?.slug ? (
-							<Link
-								className="inline-block text-sm font-medium text-primary hover:underline"
-								href={`/eventos/${event.slug}`}
-							>
-								Ver detalhes do evento
-							</Link>
-						) : null}
 					</div>
 				</div>
-			</div>
 
-			<div className="mt-8 grid gap-8 lg:grid-cols-3 lg:items-start">
-				<div className="space-y-6 lg:col-span-2">
+				<div className="space-y-6">
 					{step === 'tickets' ? (
 						<section aria-labelledby="tickets-title" className="space-y-4">
 							<div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -360,6 +385,7 @@ export default function EventCheckout({
 								groups={ticketGroups}
 								eventId={eventId}
 								tickets={tickets}
+								selection={selectedTickets}
 								hideAction
 								onCheckout={handleSelectionChange}
 								onSelectionChange={handleSelectionChange}
@@ -374,6 +400,25 @@ export default function EventCheckout({
 							</CardHeader>
 							<CardContent>
 								<form onSubmit={handleDetailsSubmit} className="space-y-6" id="details-form">
+									<div className="space-y-2 rounded-lg bg-muted p-4 text-sm">
+										<p>
+											Estes são os dados do comprador, vinculados à sua conta. Os dados de quem vai usar cada ingresso
+											são informados em Participantes.
+										</p>
+										<div className="flex flex-wrap items-center gap-3">
+											<Link
+												href="/perfil?section=personal"
+												target="_blank"
+												rel="noopener noreferrer"
+												className="font-medium text-primary hover:underline"
+											>
+												Atualizar meu perfil
+											</Link>
+											<Button type="button" variant="outline" size="sm" onClick={() => router.refresh()}>
+												Atualizar dados do perfil
+											</Button>
+										</div>
+									</div>
 									<div className="space-y-4">
 										<div className="space-y-2">
 											<Label htmlFor="name">Nome completo *</Label>
@@ -381,7 +426,7 @@ export default function EventCheckout({
 												id="name"
 												type="text"
 												value={participantInfo.name}
-												onChange={(event) => setParticipantInfo({ ...participantInfo, name: event.target.value })}
+												readOnly
 												required
 												disabled={isLoading}
 											/>
@@ -393,7 +438,7 @@ export default function EventCheckout({
 												id="email"
 												type="email"
 												value={participantInfo.email}
-												onChange={(event) => setParticipantInfo({ ...participantInfo, email: event.target.value })}
+												readOnly
 												required
 												disabled={isLoading}
 											/>
@@ -402,20 +447,15 @@ export default function EventCheckout({
 										<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 											<div className="space-y-2">
 												<Label htmlFor="phone">Telefone</Label>
-												<PhoneInput
-													id="phone"
-													value={participantInfo.phone}
-													onChange={(digits) => setParticipantInfo({ ...participantInfo, phone: digits })}
-													disabled={isLoading}
-												/>
+												<Input id="phone" value={maskPhone(participantInfo.phone)} readOnly disabled={isLoading} />
 											</div>
 
 											<div className="space-y-2">
 												<Label htmlFor="document">CPF</Label>
-												<DocumentInput
+												<Input
 													id="document"
-													value={participantInfo.document}
-													onChange={(digits) => setParticipantInfo({ ...participantInfo, document: digits })}
+													value={maskDocument(participantInfo.document)}
+													readOnly
 													disabled={isLoading}
 												/>
 											</div>
@@ -439,21 +479,6 @@ export default function EventCheckout({
 											units={attendeeUnits}
 										/>
 									</section>
-
-									<div className="flex flex-col gap-3 pt-2 sm:flex-row">
-										<Button
-											type="button"
-											variant="outline"
-											onClick={() => setStep('tickets')}
-											disabled={isLoading}
-											className="sm:flex-1"
-										>
-											Voltar
-										</Button>
-										<Button type="submit" disabled={isLoading} className="sm:flex-1">
-											Continuar para pagamento
-										</Button>
-									</div>
 								</form>
 							</CardContent>
 						</Card>
@@ -464,41 +489,39 @@ export default function EventCheckout({
 								<CardDescription>Escolha como pagar e finalize a compra</CardDescription>
 							</CardHeader>
 							<CardContent>
-								<form onSubmit={handleSubmit} className="space-y-6" id="checkout-form">
-									<PaymentMethodSection
-										availableMethods={availableMethods}
-										disabled={isLoading}
-										method={paymentMethod}
-										onInstallmentChange={setSelectedInstallments}
-										onMethodChange={handleMethodChange}
-										selectedInstallments={selectedInstallments}
-										ticket={ticketData}
-										totalAmount={coupon.applied?.total ?? totalAmount}
-									/>
-
-									<div className="flex flex-col gap-3 pt-2 sm:flex-row">
-										<Button
-											type="button"
-											variant="outline"
-											onClick={() => setStep('details')}
-											disabled={isLoading}
-											className="sm:flex-1"
-										>
-											Voltar
-										</Button>
-										<Button type="submit" disabled={isLoading} className="sm:flex-1">
-											{isLoading ? 'Processando...' : 'Finalizar compra'}
-										</Button>
-									</div>
-								</form>
+								<TransparentCheckoutForm
+									cart={{
+										eventId,
+										tickets: selectedTickets.map((selection) => ({
+											...selection,
+											attendees: attendeesFor(selection.ticketId),
+										})),
+										participantInfo,
+										couponCode: coupon.applied?.code,
+									}}
+									checkout={checkout}
+									onQuote={setServerQuote}
+									method={paymentMethod}
+									onMethodChange={setPaymentMethod}
+									onBack={() => setStep('details')}
+									ticket={ticketData}
+									disabled={isInstallmentLoading}
+									onPixPlan={async (count) => {
+										await createInstallmentCheckout(
+											{ ...selectedTickets[0], attendees: attendeesFor(selectedTickets[0].ticketId) },
+											count,
+											participantInfo,
+										);
+									}}
+								/>
 							</CardContent>
 						</Card>
 					)}
 				</div>
-
-				{/* Resumo acompanha a rolagem no desktop e fica no fim no celular. */}
-				<aside className="lg:sticky lg:top-24">{summary}</aside>
 			</div>
+
+			{/* Começa junto às etapas e acompanha a rolagem abaixo do cabeçalho. */}
+			<aside className="min-w-0 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">{summary}</aside>
 
 			{/* No celular o resumo fica abaixo da lista e o botão sumiria da tela:
 			    a barra fixa mantém o total e o próximo passo sempre à mão. */}

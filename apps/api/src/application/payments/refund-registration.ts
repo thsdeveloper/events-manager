@@ -8,6 +8,7 @@ export interface RefundableRegistration {
 	payment_provider: string | null;
 	payment_status: string | null;
 	provider_transaction_id: string | null;
+	additional_info?: unknown;
 	total_amount: number | string | null;
 }
 
@@ -44,7 +45,11 @@ export class RefundRegistration {
 			}
 		} else {
 			if (registration.payment_status !== 'paid' || !registration.provider_transaction_id) throw unavailable();
-			const refund = await this.gateway.refundCheckout(registration.provider_transaction_id, reason);
+			const transparent =
+				(registration.additional_info as { payment_flow?: string } | null)?.payment_flow === 'transparent';
+			const refund = transparent
+				? await this.gateway.refundPixCharge(registration.provider_transaction_id, reason)
+				: await this.gateway.refundCheckout(registration.provider_transaction_id, reason);
 			refunds.push({
 				amount: Number(registration.total_amount ?? 0),
 				providerId: registration.provider_transaction_id,

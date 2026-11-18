@@ -1,3 +1,5 @@
+import { AbacatePayTransparent, paymentDescription } from './abacatepay-transparent.js';
+import type { CreateTransparentInput } from '../../application/payments/payment-gateway.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type {
 	CreateCheckoutInput,
@@ -60,6 +62,12 @@ export class AbacatePayGateway implements PaymentGateway {
 		return body.data;
 	}
 
+	createTransparentCharge(input: CreateTransparentInput) {
+		return new AbacatePayTransparent(this.apiKey, this.baseUrl).create(input);
+	}
+	findTransparentCharge(lookup: { id: string } | { attemptId: string; createdAt: string }) {
+		return new AbacatePayTransparent(this.apiKey, this.baseUrl).find(lookup);
+	}
 	async createProduct(input: CreateProductInput): Promise<PaymentProduct> {
 		const product = await this.request<{ id: string; externalId: string }>('/products/create', {
 			method: 'POST',
@@ -167,10 +175,10 @@ export class AbacatePayGateway implements PaymentGateway {
 			method: 'POST',
 			body: JSON.stringify({
 				method: 'PIX',
-				externalId: input.externalId,
 				data: {
+					externalId: input.externalId,
 					amount: input.amountInCents,
-					description: input.description,
+					description: paymentDescription(input.description),
 					expiresIn: input.expiresInSeconds,
 					// O provedor exige `name` e `taxId` juntos quando `customer` é enviado
 					// (422 sem CPF). Comprador sem documento paga do mesmo jeito: a
@@ -242,4 +250,10 @@ export function verifyAbacatePayWebhook(rawBody: Buffer, signature: string) {
 	const expected = Buffer.from(createHmac('sha256', ABACATEPAY_WEBHOOK_PUBLIC_KEY).update(rawBody).digest('base64'));
 	const received = Buffer.from(signature);
 	return expected.length === received.length && timingSafeEqual(expected, received);
+}
+
+export function verifyWebhookSecret(provided: string, expected: string) {
+	const a = Buffer.from(provided),
+		b = Buffer.from(expected);
+	return a.length === b.length && timingSafeEqual(a, b);
 }

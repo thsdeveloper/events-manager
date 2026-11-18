@@ -7,6 +7,7 @@ import {
 	cmsPageInputSchema,
 	cmsPostInputSchema,
 	cmsRedirectInputSchema,
+	cmsReorderSchema,
 	cmsSeoSchema,
 	cmsSiteSettingsInputSchema,
 	normalizePermalink,
@@ -17,6 +18,87 @@ import {
 } from './cms.js';
 
 const uuid = '00000000-0000-4000-8000-000000000001';
+
+describe('CMS references to existing database records', () => {
+	const cases = [
+		{
+			name: 'hero buttons and linked pages',
+			schema: cmsPageBlockInputSchema,
+			payload: (id: string) => ({
+				collection: 'block_hero',
+				item: { headline: 'Início', image: id, buttons: [{ id, label: 'Sobre', type: 'page', page: id }] },
+			}),
+		},
+		{
+			name: 'gallery entries and files',
+			schema: cmsPageBlockInputSchema,
+			payload: (id: string) => ({ collection: 'block_gallery', item: { items: [{ id, file: id }] } }),
+		},
+		{
+			name: 'pricing cards and buttons',
+			schema: cmsPageBlockInputSchema,
+			payload: (id: string) => ({
+				collection: 'block_pricing',
+				item: { cards: [{ id, title: 'Básico', button: { id, label: 'Detalhes', type: 'post', post: id } }] },
+			}),
+		},
+		{
+			name: 'event categories',
+			schema: cmsPageBlockInputSchema,
+			payload: (id: string) => ({ collection: 'block_events', item: { filter_by_category: id } }),
+		},
+		{
+			name: 'embedded forms',
+			schema: cmsPageBlockInputSchema,
+			payload: (id: string) => ({ collection: 'block_form', item: { form: id } }),
+		},
+		{ name: 'block and menu order', schema: cmsReorderSchema, payload: (id: string) => ({ order: [id] }) },
+		{
+			name: 'navigation pages and parent items',
+			schema: cmsNavigationItemInputSchema,
+			payload: (id: string) => ({ title: 'Início', type: 'page', page: id, parent: id }),
+		},
+		{
+			name: 'page SEO images',
+			schema: cmsPageInputSchema,
+			payload: (id: string) => ({ title: 'Início', permalink: '/', seo: { og_image: id } }),
+		},
+		{
+			name: 'post authors and images',
+			schema: cmsPostInputSchema,
+			payload: (id: string) => ({ title: 'Flouvi', slug: 'flouvi', image: id, author: id }),
+		},
+		{
+			name: 'form fields',
+			schema: cmsFormInputSchema,
+			payload: (id: string) => ({ title: 'Contato', fields: [{ id, name: 'nome', type: 'text', label: 'Nome' }] }),
+		},
+		{
+			name: 'site media',
+			schema: cmsSiteSettingsInputSchema,
+			payload: (id: string) => ({ title: 'Flouvi', logo: id, favicon: id }),
+		},
+	];
+
+	it.each(cases)('accepts seeded UUIDs in $name without requiring RFC version bits', ({ schema, payload }) => {
+		expect(schema.safeParse(payload('20000000-0000-0000-0000-000000000001')).success).toBe(true);
+	});
+
+	it.each(cases)('still accepts generated RFC UUIDs in $name', ({ schema, payload }) => {
+		expect(schema.safeParse(payload(uuid)).success).toBe(true);
+	});
+
+	it.each(cases)('still rejects malformed references in $name', ({ schema, payload }) => {
+		for (const id of [
+			'not-a-uuid',
+			'20000000-0000-0000-0000-00000000000z',
+			'20000000-0000-0000-0000-00000000001',
+			'',
+		]) {
+			expect(schema.safeParse(payload(id)).success).toBe(false);
+		}
+	});
+});
 
 function issuePaths(result: { success: boolean; error?: { issues: Array<{ path: PropertyKey[] }> } }) {
 	return result.error?.issues.map((issue) => issue.path.join('.')) ?? [];
@@ -70,9 +152,7 @@ describe('cmsSeoSchema', () => {
 		const parsed = cmsSeoSchema.parse({});
 		expect(parsed).toMatchObject({ no_index: false, no_follow: false });
 
-		expect(
-			cmsSeoSchema.safeParse({ sitemap: { change_frequency: 'weekly', priority: 0.8 } }).success,
-		).toBe(true);
+		expect(cmsSeoSchema.safeParse({ sitemap: { change_frequency: 'weekly', priority: 0.8 } }).success).toBe(true);
 		expect(cmsSeoSchema.safeParse({ sitemap: { change_frequency: 'sometimes', priority: 0.8 } }).success).toBe(false);
 		expect(cmsSeoSchema.safeParse({ sitemap: { change_frequency: 'weekly', priority: 2 } }).success).toBe(false);
 	});
@@ -117,6 +197,7 @@ describe('cmsPageBlockInputSchema', () => {
 			'block_posts',
 			'block_events',
 			'block_form',
+			'block_event_highlight',
 		]);
 	});
 
@@ -150,8 +231,10 @@ describe('cmsPageBlockInputSchema', () => {
 			false,
 		);
 		expect(
-			cmsPageBlockInputSchema.safeParse({ collection: 'block_richtext', item: { content: '<p>oi</p>', alignment: 'center' } })
-				.success,
+			cmsPageBlockInputSchema.safeParse({
+				collection: 'block_richtext',
+				item: { content: '<p>oi</p>', alignment: 'center' },
+			}).success,
 		).toBe(true);
 	});
 
@@ -159,9 +242,9 @@ describe('cmsPageBlockInputSchema', () => {
 		expect(
 			cmsPageBlockInputSchema.safeParse({ collection: 'block_gallery', item: { items: [{ file: uuid }] } }).success,
 		).toBe(true);
-		expect(cmsPageBlockInputSchema.safeParse({ collection: 'block_gallery', item: { items: [{ file: 'x' }] } }).success).toBe(
-			false,
-		);
+		expect(
+			cmsPageBlockInputSchema.safeParse({ collection: 'block_gallery', item: { items: [{ file: 'x' }] } }).success,
+		).toBe(false);
 		expect(
 			cmsPageBlockInputSchema.safeParse({
 				collection: 'block_pricing',
@@ -176,7 +259,9 @@ describe('cmsPageBlockInputSchema', () => {
 				item: { max_items: 6, filter_featured: true, filter_by_category: uuid },
 			}).success,
 		).toBe(true);
-		expect(cmsPageBlockInputSchema.safeParse({ collection: 'block_events', item: { max_items: 100 } }).success).toBe(false);
+		expect(cmsPageBlockInputSchema.safeParse({ collection: 'block_events', item: { max_items: 100 } }).success).toBe(
+			false,
+		);
 		expect(cmsPageBlockInputSchema.safeParse({ collection: 'block_form', item: { form: uuid } }).success).toBe(true);
 		expect(cmsPageBlockInputSchema.safeParse({ collection: 'block_form', item: {} }).success).toBe(false);
 		expect(cmsPageBlockInputSchema.safeParse({ collection: 'block_video', item: {} }).success).toBe(false);
@@ -188,8 +273,12 @@ describe('cmsNavigationItemInputSchema', () => {
 		expect(cmsNavigationItemInputSchema.safeParse({ title: 'Início', type: 'page', page: uuid }).success).toBe(true);
 		expect(cmsNavigationItemInputSchema.safeParse({ title: 'Início', type: 'page' }).success).toBe(false);
 		expect(cmsNavigationItemInputSchema.safeParse({ title: 'Blog', type: 'post', post: uuid }).success).toBe(true);
-		expect(cmsNavigationItemInputSchema.safeParse({ title: 'Docs', type: 'url', url: 'https://ex.com' }).success).toBe(true);
-		expect(cmsNavigationItemInputSchema.safeParse({ title: 'Docs', type: 'url', url: 'javascript:x' }).success).toBe(false);
+		expect(cmsNavigationItemInputSchema.safeParse({ title: 'Docs', type: 'url', url: 'https://ex.com' }).success).toBe(
+			true,
+		);
+		expect(cmsNavigationItemInputSchema.safeParse({ title: 'Docs', type: 'url', url: 'javascript:x' }).success).toBe(
+			false,
+		);
 		expect(cmsNavigationItemInputSchema.safeParse({ title: 'Mais', type: 'group' }).success).toBe(true);
 		expect(cmsNavigationItemInputSchema.safeParse({ title: '', type: 'group' }).success).toBe(false);
 	});
@@ -197,9 +286,16 @@ describe('cmsNavigationItemInputSchema', () => {
 
 describe('cmsRedirectInputSchema', () => {
 	it('accepts a relative source and a relative or absolute destination, defaulting to 301', () => {
-		expect(cmsRedirectInputSchema.parse({ url_from: '/antigo', url_to: '/novo' })).toMatchObject({ response_code: '301' });
-		expect(cmsRedirectInputSchema.safeParse({ url_from: '/antigo', url_to: 'https://ex.com/novo', response_code: '302' }).success).toBe(true);
-		expect(cmsRedirectInputSchema.safeParse({ url_from: 'https://ex.com/antigo', url_to: '/novo' }).success).toBe(false);
+		expect(cmsRedirectInputSchema.parse({ url_from: '/antigo', url_to: '/novo' })).toMatchObject({
+			response_code: '301',
+		});
+		expect(
+			cmsRedirectInputSchema.safeParse({ url_from: '/antigo', url_to: 'https://ex.com/novo', response_code: '302' })
+				.success,
+		).toBe(true);
+		expect(cmsRedirectInputSchema.safeParse({ url_from: 'https://ex.com/antigo', url_to: '/novo' }).success).toBe(
+			false,
+		);
 		expect(cmsRedirectInputSchema.safeParse({ url_from: '/x', url_to: '/x' }).success).toBe(false);
 		expect(cmsRedirectInputSchema.safeParse({ url_from: '/x', url_to: 'javascript:alert(1)' }).success).toBe(false);
 	});
@@ -232,7 +328,8 @@ describe('cmsFormInputSchema', () => {
 				.success,
 		).toBe(false);
 		expect(
-			cmsFormInputSchema.safeParse({ title: 'Contato', fields: [{ name: 'assunto', type: 'select', label: 'x' }] }).success,
+			cmsFormInputSchema.safeParse({ title: 'Contato', fields: [{ name: 'assunto', type: 'select', label: 'x' }] })
+				.success,
 		).toBe(false);
 		expect(
 			cmsFormInputSchema.safeParse({
@@ -248,8 +345,12 @@ describe('cmsFormInputSchema', () => {
 	it('requires a destination when the form redirects on success', () => {
 		expect(cmsFormInputSchema.safeParse({ title: 'x', on_success: 'redirect', fields: [] }).success).toBe(false);
 		expect(
-			cmsFormInputSchema.safeParse({ title: 'x', on_success: 'redirect', success_redirect_url: '/obrigado', fields: [] })
-				.success,
+			cmsFormInputSchema.safeParse({
+				title: 'x',
+				on_success: 'redirect',
+				success_redirect_url: '/obrigado',
+				fields: [],
+			}).success,
 		).toBe(true);
 	});
 });
@@ -267,10 +368,14 @@ describe('cmsSiteSettingsInputSchema', () => {
 				default_og_image: null,
 			}).success,
 		).toBe(true);
-		expect(issuePaths(cmsSiteSettingsInputSchema.safeParse({ title: 'x', accent_color: 'roxo' }))).toContain('accent_color');
+		expect(issuePaths(cmsSiteSettingsInputSchema.safeParse({ title: 'x', accent_color: 'roxo' }))).toContain(
+			'accent_color',
+		);
 		expect(issuePaths(cmsSiteSettingsInputSchema.safeParse({ title: 'x', url: 'events.local' }))).toContain('url');
 		expect(
-			issuePaths(cmsSiteSettingsInputSchema.safeParse({ title: 'x', social_links: [{ service: 'orkut', url: 'https://a.b' }] })),
+			issuePaths(
+				cmsSiteSettingsInputSchema.safeParse({ title: 'x', social_links: [{ service: 'orkut', url: 'https://a.b' }] }),
+			),
 		).toContain('social_links.0.service');
 	});
 });

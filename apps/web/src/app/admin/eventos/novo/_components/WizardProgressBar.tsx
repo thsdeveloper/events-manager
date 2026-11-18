@@ -1,10 +1,9 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { TabsList, TabsTrigger } from '@/components/ui/base-tabs';
 import { Progress } from '@/components/ui/progress';
 import { Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { EventWizardStepMeta } from './types';
 
@@ -59,163 +58,51 @@ function useIsStuck() {
 }
 
 export function WizardProgressBar({ steps, currentStep, visitedSteps, onStepSelect }: WizardProgressBarProps) {
-	const progress = Math.max(0, (currentStep / (steps.length - 1)) * 100);
-	const estimatedTime = steps.slice(currentStep).reduce((sum, step) => sum + (step.estimatedMinutes ?? 0), 0);
+	const progress = steps.length > 1 ? (currentStep / (steps.length - 1)) * 100 : 100;
 	const { sentinelRef, isStuck } = useIsStuck();
 
-	// Once stuck the bar bleeds past the page gutter, so the rows that must stay
-	// aligned with the content get the gutter back individually. The progress
-	// track deliberately does not, which is what makes it span header to edge.
-	const gutter = isStuck ? 'px-4 sm:px-6 lg:px-8' : '';
-
 	return (
-		<TooltipProvider delayDuration={200}>
-			{/* Zero-height probe: marks where the bar sits before it sticks. */}
-			<div ref={sentinelRef} aria-hidden="true" className="h-px" />
-
+		<>
+			<div ref={sentinelRef} aria-hidden="true" className="h-0" />
 			<div
 				className={cn(
-					'sticky top-[var(--admin-header-height)] z-20 transition-all duration-300 ease-out',
-					// Opaque, not translucent: content scrolls underneath, and a see-through
-					// band makes those half-covered lines read as a rendering glitch.
-					isStuck && '-mx-4 border-b border-border bg-background sm:-mx-6 lg:-mx-8',
+					'sticky top-[var(--admin-header-height)] z-20 space-y-3 bg-background py-3',
+					isStuck && '-mx-4 border-b px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
 				)}
 			>
-				{/* Step counter and time estimate: redundant once the bar is a thin strip,
-				    so the whole row collapses instead of merely shrinking. */}
-				<div
-					className={cn(
-						'overflow-hidden transition-all duration-300 ease-out',
-						gutter,
-						isStuck ? 'max-h-0 opacity-0' : 'mb-2.5 max-h-8 opacity-100',
-					)}
-				>
-					<div className="flex items-center justify-between gap-4 text-xs">
-						<div>
-							<span className="font-semibold text-foreground">
-								Etapa {currentStep + 1} de {steps.length}
-							</span>
-							<span className="mx-1.5 text-muted-foreground">•</span>
-							<span className="text-muted-foreground">{steps[currentStep].title}</span>
-						</div>
-						<div className="flex items-center gap-3">
-							<span className="text-muted-foreground">
-								<span className="font-medium text-foreground">{estimatedTime} min</span> restantes
-							</span>
-							<span className="font-bold text-primary tabular-nums">{Math.round(progress)}%</span>
-						</div>
-					</div>
+				<div className="flex items-center justify-between text-xs text-muted-foreground">
+					<span>
+						Etapa {currentStep + 1} de {steps.length} · {steps[currentStep].title}
+					</span>
+					<span>{Math.round(progress)}% concluído</span>
 				</div>
-
-				{/* Flush against the header once stuck — no gutter, no rounding. */}
-				<Progress
-					value={progress}
-					aria-label="Progresso da criação do evento"
-					className={cn('h-1', isStuck && 'rounded-lg')}
-				/>
-
-				{/* pt-3 keeps a clear gap between the progress track and the circles so
-				    the two never read as one crowded strip. */}
-				<div className={cn('relative transition-all duration-300', gutter, isStuck ? 'pb-2 pt-3' : 'pt-2.5')}>
-					<div
-						className={cn(
-							'absolute h-px bg-border transition-all duration-300',
-							isStuck ? 'inset-x-4 top-6 sm:inset-x-6 lg:inset-x-8' : 'inset-x-0 top-6',
-						)}
-						aria-hidden="true"
-					/>
-
-					<ol className="relative grid grid-cols-7 gap-1.5">
-						{steps.map((step, index) => {
-							const isActive = index === currentStep;
-							const isVisited = visitedSteps.has(index);
-							const isCompleted = index < currentStep;
-							const isClickable = !!onStepSelect && isVisited;
-
-							return (
-								<li key={step.id} className="relative">
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button
-												variant={isActive ? 'secondary' : 'ghost'}
-												type="button"
-												onClick={() => isClickable && onStepSelect?.(index)}
-												disabled={!isClickable}
-												className={cn(
-													'group relative flex h-auto w-full flex-col items-center gap-1 p-0 text-center transition-all duration-200',
-													isClickable ? 'cursor-pointer' : 'cursor-default',
-												)}
-												aria-current={isActive ? 'step' : undefined}
-												aria-label={`${step.title}: ${step.description}`}
-											>
-												<div
-													className={cn(
-														'relative z-10 flex items-center justify-center rounded-md border font-semibold transition-all duration-300',
-														isStuck ? 'size-6 text-[10px]' : 'size-7 text-xs',
-														isActive && 'border-primary bg-primary text-primary-foreground ',
-														isCompleted && !isActive && 'border-primary bg-primary text-primary-foreground',
-														isVisited && !isCompleted && !isActive && 'border-border bg-background text-foreground',
-														!isVisited && 'border-dashed border-muted-foreground/30 bg-muted text-muted-foreground',
-														isClickable && !isActive && ' group-hover:border-primary/50',
-													)}
-												>
-													{isCompleted ? (
-														<Check className={cn(isStuck ? 'size-3' : 'size-3.5')} strokeWidth={3} />
-													) : (
-														<span>{index + 1}</span>
-													)}
-												</div>
-
-												{/* Labels collapse rather than unmount, so the height animates and
-												    the accessible name on the button is unaffected. */}
-												<div
-													className={cn(
-														'w-full overflow-hidden transition-all duration-300 ease-out',
-														isStuck ? 'max-h-0 opacity-0' : 'max-h-4 opacity-100',
-													)}
-												>
-													<div
-														className={cn(
-															'text-[10px] font-medium leading-tight transition-colors duration-200',
-															isActive && 'text-primary',
-															isCompleted && !isActive && 'text-foreground',
-															isVisited && !isCompleted && !isActive && 'text-foreground/70',
-															!isVisited && 'text-muted-foreground',
-														)}
-													>
-														{step.title}
-													</div>
-												</div>
-
-												{index < steps.length - 1 && (
-													<div
-														className={cn(
-															'absolute h-px transition-all duration-300',
-															isStuck
-																? 'left-[calc(50%+12px)] top-3 w-[calc(100%-24px)]'
-																: 'left-[calc(50%+14px)] top-3.5 w-[calc(100%-28px)]',
-															isCompleted ? 'bg-primary' : 'bg-transparent',
-														)}
-														aria-hidden="true"
-													/>
-												)}
-											</Button>
-										</TooltipTrigger>
-										{/* Only while stuck: the labels are visible otherwise, and a tooltip
-										    repeating them would be noise. Omitting the content keeps the
-										    trigger mounted, so toggling never restarts the size transition. */}
-										{isStuck && (
-											<TooltipContent side="bottom" className="px-2 py-1 text-xs">
-												{step.title}
-											</TooltipContent>
-										)}
-									</Tooltip>
-								</li>
-							);
-						})}
-					</ol>
+				<div className="overflow-x-auto pb-1">
+					<TabsList
+						aria-label="Etapas do cadastro"
+						className="w-full min-w-max justify-start sm:justify-between"
+						activateOnFocus={false}
+					>
+						{steps.map((step, index) => (
+							<TabsTrigger
+								key={step.id}
+								value={index}
+								disabled={!visitedSteps.has(index) || !onStepSelect}
+								aria-label={`${step.title}: ${step.description}`}
+								onClick={() => onStepSelect?.(index)}
+							>
+								<span
+									className="flex size-5 items-center justify-center rounded-full bg-muted text-xs"
+									aria-hidden="true"
+								>
+									{index < currentStep ? <Check className="size-3" /> : index + 1}
+								</span>
+								{step.title}
+							</TabsTrigger>
+						))}
+					</TabsList>
 				</div>
+				<Progress value={progress} aria-label="Progresso da criação do evento" className="h-1" />
 			</div>
-		</TooltipProvider>
+		</>
 	);
 }

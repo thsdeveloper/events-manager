@@ -1,3 +1,4 @@
+import { OrganizerPaymentSettings } from '@/features/organizer-settings/components/OrganizerPaymentSettings';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheck } from 'lucide-react';
@@ -12,8 +13,8 @@ export default async function OrganizerSettingsPage() {
 		<div className="w-full space-y-6">
 			<PageHeader
 				eyebrow="Conta do organizador"
-				title="Perfil e repasses"
-				description="Mantenha os dados públicos da organização e a chave PIX de recebimento em um único lugar."
+				title="Perfil da organização"
+				description="Mantenha os dados públicos e os contatos da sua organização atualizados."
 				actions={
 					<Badge variant="secondary">
 						<ShieldCheck className="mr-2 size-4" />
@@ -22,6 +23,7 @@ export default async function OrganizerSettingsPage() {
 				}
 			/>
 			<OrganizerProfileSettings organizer={organizer} />
+			<OrganizerPaymentSettings />
 			<PayoutSettingsCard organizer={organizer} />
 		</div>
 	);

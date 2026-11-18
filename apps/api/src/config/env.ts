@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { z } from 'zod';
 import type { CheckoutMethod } from '../application/payments/payment-gateway.js';
 
-const checkoutMethods: readonly CheckoutMethod[] = ['PIX', 'CARD'];
+const checkoutMethods: readonly CheckoutMethod[] = ['PIX', 'CARD', 'BOLETO'];
 
 config({ path: resolve(process.cwd(), '../../.env') });
 config();
@@ -22,6 +22,13 @@ const envSchema = z
 		SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 		COOKIE_SECRET: z.string().min(16).default('local-development-cookie-secret'),
 		ABACATEPAY_API_KEY: z.string().optional(),
+		ABACATEPAY_PUBLIC_KEY: z.preprocess(
+			(value) => (value === '' ? undefined : value),
+			z
+				.string()
+				.regex(/^pk_[A-Za-z0-9_-]+$/)
+				.optional(),
+		),
 		ABACATEPAY_BASE_URL: z.string().url().default('https://api.abacatepay.com/v2'),
 		ABACATEPAY_WEBHOOK_SECRET: z.string().optional(),
 		/**
@@ -80,6 +87,16 @@ const envSchema = z
 			'Pagamentos simulados não são permitidos em produção.',
 		);
 		if (env.PAYMENTS_MODE === 'mock' && env.APP_ENV === 'development') return;
+		requireSetting(
+			!env.ABACATEPAY_METHODS.includes('CARD') || Boolean(env.ABACATEPAY_PUBLIC_KEY),
+			'ABACATEPAY_PUBLIC_KEY',
+			'Configure a chave pública do checkout transparente para aceitar cartão.',
+		);
+		requireSetting(
+			env.APP_ENV !== 'production' || !env.ABACATEPAY_API_KEY?.startsWith('abc_dev_'),
+			'ABACATEPAY_API_KEY',
+			'Uma chave de teste não pode receber pagamentos de produção.',
+		);
 		requireSetting(
 			Boolean(env.ABACATEPAY_API_KEY?.trim()),
 			'ABACATEPAY_API_KEY',

@@ -1,5 +1,9 @@
 # Pagamentos, repasses e administração global
 
+> O checkout público foi migrado para [checkout transparente](CHECKOUT_TRANSPARENTE.md). As referências a checkout
+> hospedado abaixo documentam a compatibilidade com compras antigas. Consulte o guia novo para rotas, configuração,
+> segurança e homologação atuais.
+
 ## Arquitetura adotada
 
 O frontend Next.js nunca acessa o gateway nem o banco diretamente para operações de negócio. O fluxo é:
@@ -17,10 +21,10 @@ rotas e sem chamadas externas.
 ## Modelo financeiro
 
 A documentação pública da API v2 descreve uma loja autenticada por chave, checkouts, PIX, saques da própria loja e
-transferências PIX para terceiros. Ela não documenta subcontas de marketplace ou split por organizador. Por isso, a
-plataforma mantém um ledger por organizador e o super admin autoriza repasses PIX para as chaves validadas.
+transferências PIX para terceiros. A integração atual não utiliza subcontas ou split por organizador. A plataforma
+mantém um ledger por organizador e o super admin autoriza repasses PIX para as chaves validadas.
 
-- O participante paga no checkout hospedado do AbacatePay.
+- O participante paga no checkout transparente da Flouvi, processado pela AbacatePay.
 - O webhook registra valor bruto, tarifa efetiva do gateway, taxa da plataforma e líquido do organizador.
 - O organizador enxerga somente eventos, transações, saldo e repasses vinculados a ele.
 - O super admin enxerga a conciliação global e cria os repasses.
@@ -51,21 +55,21 @@ pnpm db:types
 pnpm dev:apps
 ```
 
-No modo mock, checkouts e transferências são confirmados localmente e nenhum dado sai do computador. O modo mock
-representa uma loja com tudo habilitado: oferece e aceita Pix e cartão, independentemente de `ABACATEPAY_METHODS`.
+No modo mock, checkouts e transferências são confirmados localmente e nenhum dado sai do computador. O modo mock simula
+suporte a Pix, cartão e boleto, independentemente de `ABACATEPAY_METHODS`. As preferências da organização e a
+compatibilidade do prazo de crédito continuam sendo validadas.
 
 ## Como a integração usa a API v2
 
 Verificado contra a documentação e a conta de desenvolvimento em 2026-09-15.
 
-- **Métodos do checkout hospedado.** O provedor recusa o checkout inteiro quando um método não está habilitado na loja
-  (`CARD is not available for this store`) e não expõe quais estão. A lista vem de `ABACATEPAY_METHODS`, com `PIX` como
-  padrão; inclua `CARD` só depois de habilitar cartão na conta. `GET /api/payments/methods` publica a lista para o
-  front, que oferece Pix e cartão na última etapa e deixa o cartão desabilitado quando a loja não o aceita. O checkout
-  recebe `paymentMethod` (`PIX` ou `CARD`) e envia só o método escolhido; um método fora da lista responde 422
-  `PAYMENT_METHOD_UNAVAILABLE` antes de criar qualquer inscrição. No cartão, `card.maxInstallments` vai com o maior
-  `max_installments` dos ingressos do carrinho e a página do provedor parcela; no Pix, o parcelamento é o plano próprio
-  da plataforma (`/api/checkout/installments`).
+- **Métodos do checkout hospedado.** O provedor aceita `PIX`, `CARD` e `BOLETO`, conforme habilitação da conta em
+  `ABACATEPAY_METHODS`. A organização começa apenas com Pix e escolhe outros meios em `/admin/configuracoes`.
+  `GET /api/payments/methods?eventId=<uuid>` retorna a interseção efetiva. Crédito solicitado em prazo diferente do
+  operacional fica pendente. A API recusa métodos indisponíveis antes de registrar ou cobrar a compra. Veja
+  [taxas, prazos e preferências](TAXAS_E_MEIOS_DE_PAGAMENTO.md) para a tabela completa e a configuração operacional. No
+  cartão, a página hospedada oferece o parcelamento do ingresso; no Pix, o parcelamento é o plano próprio da plataforma
+  (`/api/checkout/installments`).
 - **Produtos por preço.** O checkout hospedado cobra o preço do produto cadastrado no AbacatePay, não o total calculado
   pela API. A tabela `ticket_provider_products` guarda um produto por ingresso, provedor e preço unitário em centavos;
   preço editado ou cupom aplicado criam um produto novo. O `externalId` leva um sufixo aleatório porque o provedor

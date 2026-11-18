@@ -1,5 +1,8 @@
 'use client';
 
+import Image from 'next/image';
+import { getMediaAssetUrl } from '@/lib/media';
+import { PENDING_UPLOAD_VALUE } from '@/components/admin/ImageUpload';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useFormContext } from 'react-hook-form';
@@ -14,6 +17,7 @@ import type { EventWizardFormValues, EventWizardStepId } from '../types';
 
 interface ReviewStepProps {
 	categories: EventCategory[];
+	coverPreviewUrl?: string | null;
 	mode?: 'create' | 'edit';
 	onEdit?: (step: EventWizardStepId) => void;
 }
@@ -25,9 +29,12 @@ const STATUS_LABELS: Record<EventWizardFormValues['status'], string> = {
 	archived: 'Arquivado',
 };
 
-export function ReviewStep({ categories, mode = 'create', onEdit }: ReviewStepProps) {
+export function ReviewStep({ categories, mode = 'create', onEdit, coverPreviewUrl }: ReviewStepProps) {
 	const form = useFormContext<EventWizardFormValues>();
 	const values = form.getValues();
+	const cover =
+		coverPreviewUrl ||
+		(values.cover_image && values.cover_image !== PENDING_UPLOAD_VALUE ? getMediaAssetUrl(values.cover_image) : null);
 	const category = categories.find((item) => String(item.id) === values.category_id);
 
 	const formatDateTime = (value: string) => {
@@ -53,6 +60,16 @@ export function ReviewStep({ categories, mode = 'create', onEdit }: ReviewStepPr
 					</div>
 
 					<div className="mt-6 space-y-6">
+						{cover && (
+							<Image
+								src={cover}
+								alt={values.cover_image_alt || `Capa de ${values.title}`}
+								width={1200}
+								height={630}
+								unoptimized
+								className="aspect-[1200/630] w-full max-w-2xl rounded-xl object-cover"
+							/>
+						)}
 						{onEdit && (
 							<div className="flex flex-wrap gap-2" aria-label="Ajustar informações">
 								{(

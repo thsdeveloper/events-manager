@@ -19,6 +19,7 @@ export interface MapPosition {
 
 interface EventLocationMapProps {
 	position: MapPosition | null;
+	center?: MapPosition | null;
 	/** Zoom applied once a position exists. */
 	zoom?: number;
 	/** Lets the visitor drag/zoom the map. Off for decorative previews. */
@@ -55,6 +56,7 @@ function buildMarkerIcon(leaflet: typeof Leaflet, draggable: boolean) {
 
 export function EventLocationMap({
 	position,
+	center,
 	zoom = 16,
 	interactive = true,
 	editable = false,
@@ -69,6 +71,7 @@ export function EventLocationMap({
 	// Read through a ref so remounting the map is never tied to callback identity.
 	const changeHandlerRef = useRef(onPositionChange);
 	const [failed, setFailed] = useState(false);
+	const [ready, setReady] = useState(0);
 
 	useEffect(() => {
 		changeHandlerRef.current = onPositionChange;
@@ -86,8 +89,12 @@ export function EventLocationMap({
 				leafletRef.current = leaflet;
 
 				const map = leaflet.map(containerRef.current, {
-					center: position ? [position.latitude, position.longitude] : FALLBACK_CENTER,
-					zoom: position ? zoom : FALLBACK_ZOOM,
+					center: position
+						? [position.latitude, position.longitude]
+						: center
+							? [center.latitude, center.longitude]
+							: FALLBACK_CENTER,
+					zoom: position ? zoom : center ? 14 : FALLBACK_ZOOM,
 					zoomControl: interactive || editable,
 					dragging: interactive || editable,
 					// Scrolling the page over a map should scroll the page, not zoom it.
@@ -99,6 +106,7 @@ export function EventLocationMap({
 				});
 				leaflet.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
 				mapRef.current = map;
+				setReady((value) => value + 1);
 
 				if (editable) {
 					map.on('click', (event: Leaflet.LeafletMouseEvent) => {
@@ -108,7 +116,9 @@ export function EventLocationMap({
 
 				// Leaflet measures the container on creation; inside tabs or freshly
 				// mounted panels that measurement can land before layout settles.
-				window.setTimeout(() => map.invalidateSize(), 0);
+				window.setTimeout(() => {
+					if (!cancelled) map.invalidateSize();
+				}, 0);
 			} catch {
 				if (!cancelled) setFailed(true);
 			}
@@ -135,7 +145,7 @@ export function EventLocationMap({
 		if (!position) {
 			markerRef.current?.remove();
 			markerRef.current = null;
-			map.setView(FALLBACK_CENTER, FALLBACK_ZOOM);
+			map.setView(center ? [center.latitude, center.longitude] : FALLBACK_CENTER, center ? 14 : FALLBACK_ZOOM);
 
 			return;
 		}
@@ -150,6 +160,7 @@ export function EventLocationMap({
 			const marker = leaflet
 				.marker(latLng, { icon: buildMarkerIcon(leaflet, editable), draggable: editable, keyboard: editable })
 				.addTo(map);
+			marker.getElement()?.setAttribute('aria-label', 'Ponto exato do evento');
 			if (editable) {
 				marker.on('dragend', () => {
 					const { lat, lng } = marker.getLatLng();
@@ -161,7 +172,7 @@ export function EventLocationMap({
 		if (!alreadyVisible) {
 			map.flyTo(latLng, Math.max(map.getZoom(), zoom), { duration: 0.6 });
 		}
-	}, [editable, position, zoom]);
+	}, [editable, position, zoom, center, ready]);
 
 	if (failed) {
 		return (

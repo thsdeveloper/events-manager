@@ -1,5 +1,6 @@
 'use client';
 
+import { EventCreatedFeedback } from '@/features/event-creation';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
 import { Badge } from '@/components/ui/badge';
@@ -149,6 +150,7 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 			}
 			toast({ title: 'Evento excluído', variant: 'success' });
 			router.push('/admin/eventos');
+			router.refresh();
 		} catch (error) {
 			toast({
 				title: 'Erro ao excluir',
@@ -231,6 +233,7 @@ export default function EventoDetalhesClient({ initialEvent, evento_id }: Evento
 
 	return (
 		<div className="space-y-6">
+			<EventCreatedFeedback eventId={evento_id} />
 			<PageHeader
 				title={event.title}
 				description={

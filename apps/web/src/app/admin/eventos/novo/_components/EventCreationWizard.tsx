@@ -1,5 +1,9 @@
 'use client';
 
+import { useAdminEventScope } from '@/features/event-scope/components/AdminEventScope';
+import { rememberEventCreation } from '@/features/event-creation';
+import { openEvent } from '@/features/event-scope/api/openEvent';
+
 import { eventAIContext, generateEventContent } from './event-ai';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -38,6 +42,8 @@ import { useOrganizer } from '@/hooks/useOrganizer';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
 import { WizardProgressBar } from './WizardProgressBar';
 import { StepNavigation } from './StepNavigation';
+import { PageHeader } from '@/components/design-system/molecules/PageHeader';
+import { Tabs, TabsContent } from '@/components/ui/base-tabs';
 import { BasicInfoStep } from './steps/BasicInfoStep';
 const CoverImageStep = dynamic(() => import('./steps/CoverImageStep').then((module) => module.CoverImageStep), {
 	loading: () => (
@@ -314,6 +320,8 @@ export function EventCreationWizard({
 }: EventCreationWizardProps = {}) {
 	const isEdit = mode === 'edit' && Boolean(event);
 	const router = useRouter();
+	const { selectedEventId } = useAdminEventScope();
+	const savedEventId = useRef<string | null>(null);
 	const { toast } = useToast();
 	const { organizer, loading: organizerLoading } = useOrganizer();
 	const autoSaveTimeoutRef = useRef<number | undefined>(undefined);
@@ -676,7 +684,7 @@ export function EventCreationWizard({
 		async (values: EventWizardFormValues) => {
 			if (draftOnly || submittingRef.current || submissionCompletedRef.current) return;
 			if (initialDraft?.event_id) {
-				router.push('/admin/eventos/' + initialDraft.event_id);
+				await openEvent(router, initialDraft.event_id, selectedEventId);
 
 				return;
 			}
@@ -686,6 +694,12 @@ export function EventCreationWizard({
 			setIsSubmitting(true);
 
 			try {
+				if (savedEventId.current) {
+					await openEvent(router, savedEventId.current, selectedEventId);
+					submissionCompletedRef.current = true;
+
+					return;
+				}
 				// Na edição a posse do evento já foi verificada pela API ao carregá-lo.
 				if (!isEdit && !organizer?.id) {
 					throw new Error('Crie um perfil de organizador antes de publicar eventos.');
@@ -744,7 +758,7 @@ export function EventCreationWizard({
 					}
 					if (event.slug) await revalidateEventPage(event.slug).catch(() => undefined);
 					toast({ title: 'Evento atualizado', description: 'As alterações já estão salvas.', variant: 'success' });
-					router.push(`/admin/eventos/${event.id}`);
+					await openEvent(router, event.id, selectedEventId);
 
 					return;
 				}
@@ -795,28 +809,13 @@ export function EventCreationWizard({
 				}
 				const created = (await response.json()) as { id: string; status?: Event['status'] };
 				const actualStatus = created.status ?? values.status;
-				const savedMessage =
-					{
-						published: 'Seu evento está no ar. Que tal compartilhar agora?',
-						draft: 'O evento foi salvo como rascunho. Publique quando estiver pronto.',
-						cancelled: 'O evento existente está cancelado. Você pode revisá-lo no painel.',
-						archived: 'O evento existente está arquivado. Você pode revisá-lo no painel.',
-					}[actualStatus] ?? 'O evento existente foi recuperado. Revise o estado atual no painel.';
-
 				if (slug) await revalidateEventPage(slug).catch(() => undefined);
 				window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+				rememberEventCreation(created.id, actualStatus);
 
-				toast({
-					title:
-						actualStatus === 'published' || actualStatus === 'draft'
-							? 'Evento salvo com sucesso!'
-							: 'Evento existente recuperado',
-					description: savedMessage,
-					variant: 'success',
-				});
-
+				savedEventId.current = created.id;
+				await openEvent(router, created.id, selectedEventId);
 				submissionCompletedRef.current = true;
-				router.push(`/admin/eventos/${created.id}`);
 			} catch (error: any) {
 				console.error('Erro ao criar evento', error);
 				toast({
@@ -837,6 +836,7 @@ export function EventCreationWizard({
 			isEdit,
 			organizer?.id,
 			router,
+			selectedEventId,
 			toast,
 			validateAll,
 			initialDraft?.event_id,
@@ -894,6 +894,7 @@ export function EventCreationWizard({
 			case 'review':
 				return (
 					<ReviewStep
+						coverPreviewUrl={coverPreviewUrl}
 						categories={categories}
 						mode={mode}
 						onEdit={(id) => goToStep(steps.findIndex((step) => step.id === id))}
@@ -947,21 +948,27 @@ export function EventCreationWizard({
 						ver a prévia.
 					</p>
 				)}
-				<div className="flex flex-wrap items-center justify-end gap-2">
-					<Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
-						Prévia
-					</Button>
-					{!isEdit && (
-						<Button
-							type="button"
-							variant="secondary"
-							onClick={() => void saveServerDraft()}
-							disabled={serverDraftSaving || Boolean(initialDraft?.event_id)}
-						>
-							{serverDraftSaving ? 'Salvando rascunho...' : 'Salvar rascunho'}
-						</Button>
-					)}
-				</div>
+				<PageHeader
+					title={isEdit ? 'Editar evento' : draftOnly ? 'Preparar evento em rascunho' : 'Novo evento'}
+					description={isEdit ? event?.title : 'Preencha as etapas para criar e publicar seu evento.'}
+					actions={
+						<>
+							<Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
+								Prévia
+							</Button>
+							{!isEdit && (
+								<Button
+									type="button"
+									variant="secondary"
+									onClick={() => void saveServerDraft()}
+									disabled={serverDraftSaving || Boolean(initialDraft?.event_id)}
+								>
+									{serverDraftSaving ? 'Salvando rascunho...' : 'Salvar rascunho'}
+								</Button>
+							)}
+						</>
+					}
+				/>
 				{!isEdit && serverDraftSaved && (
 					<p role="status" className="text-sm text-muted-foreground">
 						Rascunho salvo na sua conta.
@@ -993,31 +1000,37 @@ export function EventCreationWizard({
 						</AlertDescription>
 					</Alert>
 				)}
-				<WizardProgressBar
-					steps={steps}
-					currentStep={currentStep}
-					visitedSteps={visitedSteps}
-					onStepSelect={handleSelectStep}
-				/>
-				{!isEdit && <AutoSaveIndicator isSaving={isSavingDraft} lastSaved={lastSaved} />}
-
-				<div className="relative">
-					{/* scroll-mt keeps anything scrolled into view (a focused field, a
-					    validation error) clear of the header plus the sticky progress bar. */}
-					<div className="scroll-mt-36">{stepContent}</div>
-					<StepNavigation
-						submitLabel={draftOnly ? 'Aguardando aprovação' : isEdit ? 'Salvar alterações' : 'Criar evento'}
-						disableNext={draftOnly && isLastStep}
-						onSave={isEdit ? handleQuickSave : undefined}
-						isFirstStep={isFirstStep}
-						isLastStep={isLastStep}
-						isSubmitting={isSubmitting}
-						isLoadingOrganizer={organizerLoading}
-						onBack={handleBack}
-						onNext={handleNext}
-						onConfirm={() => void form.handleSubmit(onSubmit)()}
+				<Tabs value={currentStep} className="space-y-5">
+					<WizardProgressBar
+						steps={steps}
+						currentStep={currentStep}
+						visitedSteps={visitedSteps}
+						onStepSelect={handleSelectStep}
 					/>
-				</div>
+					{!isEdit && <AutoSaveIndicator isSaving={isSavingDraft} lastSaved={lastSaved} />}
+
+					<div className="relative">
+						{/* scroll-mt keeps anything scrolled into view (a focused field, a
+					    validation error) clear of the header plus the sticky progress bar. */}
+						{steps.map((step, index) => (
+							<TabsContent key={step.id} value={index} className="scroll-mt-36">
+								{currentStep === index ? stepContent : null}
+							</TabsContent>
+						))}
+						<StepNavigation
+							submitLabel={draftOnly ? 'Aguardando aprovação' : isEdit ? 'Salvar alterações' : 'Criar evento'}
+							disableNext={draftOnly && isLastStep}
+							onSave={isEdit ? handleQuickSave : undefined}
+							isFirstStep={isFirstStep}
+							isLastStep={isLastStep}
+							isSubmitting={isSubmitting}
+							isLoadingOrganizer={organizerLoading}
+							onBack={handleBack}
+							onNext={handleNext}
+							onConfirm={() => void form.handleSubmit(onSubmit)()}
+						/>
+					</div>
+				</Tabs>
 			</form>
 
 			<Dialog open={previewOpen} onOpenChange={setPreviewOpen}>

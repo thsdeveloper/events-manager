@@ -371,6 +371,23 @@ describe('PaymentService webhook routing', () => {
 		);
 	});
 
+	it.each([0, 250])(
+		'reconciles the actual transfer fee %i and net amount from a signed movement',
+		async (platformFee) => {
+			const repository = partialMock<PaymentRepository>({
+				updatePayoutForWebhook: vi.fn().mockResolvedValue(undefined),
+			});
+			await service(repository).processWebhook({
+				event: 'transfer.completed',
+				data: { transfer: { id: 'transfer', externalId: 'local', amount: 10000, platformFee } },
+			});
+			expect(repository.updatePayoutForWebhook).toHaveBeenCalledWith(
+				'transfer',
+				'local',
+				expect.objectContaining({ provider_fee: platformFee / 100, net_amount: 100 - platformFee / 100 }),
+			);
+		},
+	);
 	it('ignores unrelated signed provider events safely', async () => {
 		await expect(
 			service(partialMock<PaymentRepository>({})).processWebhook({ event: 'customer.updated' }),
@@ -379,6 +396,21 @@ describe('PaymentService webhook routing', () => {
 		});
 	});
 
+	it.each([undefined, 1, 5251])('rejects incomplete or mismatched paid Pix installment amount %s', async (amount) => {
+		const repository = partialMock<PaymentRepository>({
+			findInstallmentForWebhook: vi
+				.fn()
+				.mockResolvedValue({ id: 'installment', amount: 52.5, registration_id: { id: 'registration' } }),
+			settleInstallmentWebhook: vi.fn(),
+		});
+		await expect(
+			service(repository).processWebhook({
+				event: 'transparent.completed',
+				data: { transparent: { id: 'pix_1', amount, status: 'PAID', platformFee: 80 } },
+			}),
+		).rejects.toMatchObject({ code: 'PAYMENT_AMOUNT_MISMATCH' });
+		expect(repository.settleInstallmentWebhook).not.toHaveBeenCalled();
+	});
 	it('delegates a completed installment to one atomic settlement operation', async () => {
 		const repository = partialMock<PaymentRepository>({
 			findInstallmentForWebhook: vi.fn().mockResolvedValue({
@@ -390,7 +422,15 @@ describe('PaymentService webhook routing', () => {
 		});
 		const payload = {
 			event: 'transparent.completed',
-			data: { transparent: { id: 'provider-charge', externalId: 'installment', platformFee: 125 } },
+			data: {
+				transparent: {
+					id: 'provider-charge',
+					externalId: 'installment',
+					amount: 5250,
+					status: 'PAID',
+					platformFee: 125,
+				},
+			},
 		};
 
 		await expect(service(repository).processWebhook(payload)).resolves.toEqual({ received: true });

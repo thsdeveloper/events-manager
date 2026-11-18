@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { cmsRoutes } from '../src/routes/cms.js';
-import { buildRouteTestApp, createSupabaseClientsStub, createTestEnv, sessionCookie, TEST_USER_ID } from './support/index.js';
+import {
+	buildRouteTestApp,
+	createSupabaseClientsStub,
+	createTestEnv,
+	sessionCookie,
+	TEST_USER_ID,
+} from './support/index.js';
 
 const superAdmin = { id: TEST_USER_ID, email: 'admin@example.com', role: 'super_admin', status: 'active' };
 const attendee = { ...superAdmin, role: 'attendee' };
 const PAGE_ID = '00000000-0000-4000-8000-000000000100';
+const SEED_PAGE_ID = '20000000-0000-0000-0000-000000000001';
+const SEED_BLOCK_ID = '44000000-0000-0000-0000-000000000001';
 
 async function buildApp(options: Parameters<typeof createSupabaseClientsStub>[0] = {}) {
 	const stub = createSupabaseClientsStub({ user: { id: TEST_USER_ID, email: superAdmin.email }, ...options });
@@ -32,6 +40,144 @@ describe('CMS routes: authorization', () => {
 });
 
 describe('CMS routes: pages', () => {
+	it('opens the seeded homepage with its existing content blocks', async () => {
+		const { app } = await buildApp({
+			tables: {
+				profiles: { data: superAdmin },
+				pages: { data: { id: SEED_PAGE_ID, title: 'Início', permalink: '/', status: 'published' } },
+				page_blocks: { data: [{ id: SEED_BLOCK_ID, collection: 'block_richtext', item: SEED_BLOCK_ID }] },
+				block_richtext: { data: { id: SEED_BLOCK_ID, content: '<p>Bem-vindo à Flouvi.</p>' } },
+			},
+		});
+		const response = await app.inject({
+			method: 'GET',
+			url: `/api/super-admin/cms/pages/${SEED_PAGE_ID}`,
+			headers: sessionCookie(),
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject({
+			id: SEED_PAGE_ID,
+			blocks: [{ id: SEED_BLOCK_ID, item: { content: '<p>Bem-vindo à Flouvi.</p>' } }],
+		});
+	});
+
+	it('loads activity for a page whose UUID predates the stricter RFC validation', async () => {
+		const activity = { id: PAGE_ID, resource_id: SEED_PAGE_ID, action: 'cms.page.update', actor: superAdmin };
+		const { app } = await buildApp({ tables: { profiles: { data: superAdmin }, audit_logs: { data: [activity] } } });
+		const response = await app.inject({
+			method: 'GET',
+			url: `/api/super-admin/cms/pages/${SEED_PAGE_ID}/activity`,
+			headers: sessionCookie(),
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject({ data: [{ resource_id: SEED_PAGE_ID, action: 'cms.page.update' }] });
+	});
+
+	it('saves the seeded homepage without replacing its ID', async () => {
+		const before = { id: SEED_PAGE_ID, title: 'Início', permalink: '/', status: 'published' };
+		const updated = { ...before, title: 'Página inicial' };
+		const { app } = await buildApp({
+			tables: {
+				profiles: { data: superAdmin },
+				pages: [{ data: { id: SEED_PAGE_ID } }, { data: before }, { data: updated }],
+			},
+		});
+		const response = await app.inject({
+			method: 'PATCH',
+			url: `/api/super-admin/cms/pages/${SEED_PAGE_ID}`,
+			headers: sessionCookie(),
+			payload: updated,
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject(updated);
+	});
+
+	it('updates a seeded content block through the page editor', async () => {
+		const block = {
+			id: SEED_BLOCK_ID,
+			page: SEED_PAGE_ID,
+			collection: 'block_richtext',
+			item: SEED_BLOCK_ID,
+			hide_block: false,
+		};
+		const { app } = await buildApp({
+			tables: {
+				profiles: { data: superAdmin },
+				page_blocks: [{ data: block }, { data: block }, { data: { ...block, hide_block: true } }],
+				block_richtext: { data: { id: SEED_BLOCK_ID, content: '<p>Flouvi</p>' } },
+			},
+		});
+		const response = await app.inject({
+			method: 'PATCH',
+			url: `/api/super-admin/cms/pages/${SEED_PAGE_ID}/blocks/${SEED_BLOCK_ID}`,
+			headers: sessionCookie(),
+			payload: { hide_block: true },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject({ id: SEED_BLOCK_ID, hide_block: true });
+	});
+
+	it('reorders blocks with the legacy IDs already stored on the page', async () => {
+		const secondBlockId = '44000000-0000-0000-0000-000000000002';
+		const { app } = await buildApp({
+			tables: { profiles: { data: superAdmin }, page_blocks: { data: [{ id: SEED_BLOCK_ID }, { id: secondBlockId }] } },
+		});
+		const response = await app.inject({
+			method: 'PUT',
+			url: `/api/super-admin/cms/pages/${SEED_PAGE_ID}/blocks/order`,
+			headers: sessionCookie(),
+			payload: { order: [secondBlockId, SEED_BLOCK_ID] },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toEqual({ success: true });
+	});
+
+	it.each(['', '/activity'])('still rejects malformed IDs at the page endpoint %s', async (suffix) => {
+		const { app } = await buildApp({ tables: { profiles: { data: superAdmin } } });
+		const response = await app.inject({
+			method: 'GET',
+			url: `/api/super-admin/cms/pages/not-a-uuid${suffix}`,
+			headers: sessionCookie(),
+		});
+		await app.close();
+		expect(response.statusCode).toBe(422);
+		expect(response.json()).toMatchObject({ title: 'VALIDATION_ERROR' });
+	});
+
+	it('returns 404 for an absent page with a well-formed legacy ID', async () => {
+		const { app } = await buildApp({ tables: { profiles: { data: superAdmin }, pages: { data: null } } });
+		const response = await app.inject({
+			method: 'GET',
+			url: `/api/super-admin/cms/pages/${SEED_PAGE_ID}`,
+			headers: sessionCookie(),
+		});
+		await app.close();
+		expect(response.statusCode).toBe(404);
+		expect(response.json()).toMatchObject({ title: 'PAGE_NOT_FOUND' });
+	});
+
+	it.each([
+		['anonymous', null, 401],
+		['attendee', attendee, 403],
+	] as const)('does not grant %s access to a seeded page', async (_role, profile, status) => {
+		const { app } = await buildApp({
+			user: profile ? { id: TEST_USER_ID, email: profile.email } : null,
+			tables: { profiles: { data: profile } },
+		});
+		const response = await app.inject({
+			method: 'GET',
+			url: `/api/super-admin/cms/pages/${SEED_PAGE_ID}`,
+			headers: profile ? sessionCookie() : {},
+		});
+		await app.close();
+		expect(response.statusCode).toBe(status);
+	});
+
 	it('lists pages with pagination for the super admin', async () => {
 		const { app } = await buildApp({
 			tables: {

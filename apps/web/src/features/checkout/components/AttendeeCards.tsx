@@ -94,8 +94,10 @@ export function AttendeeCards({ buyer, drafts, errors = {}, onChange, units }: A
 							<p className="mt-3 inline-flex items-start gap-2 text-sm text-muted-foreground">
 								<Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
 								<span>
-									Você informa quem vai usar este ingresso na sua área de ingressos. A pessoa recebe o ingresso por
-									e-mail assim que for nomeada.
+									<strong className="block text-foreground">Pendente de nomeação</strong>
+									Você pode concluir a compra e informar os dados de outra pessoa na sua área de ingressos. O ingresso
+									só poderá ser validado na entrada depois da nomeação e da confirmação do pagamento. A pessoa recebe o
+									ingresso por e-mail quando estiver confirmado e nomeado.
 								</span>
 							</p>
 						) : (

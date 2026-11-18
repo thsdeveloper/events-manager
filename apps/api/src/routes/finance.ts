@@ -9,6 +9,7 @@ import { SupabaseFinanceRepository } from '../infrastructure/supabase/finance-re
 import { requireOrganizer } from './auth-context.js';
 
 const dateFilter = z.object({
+	event_id: z.string().uuid().optional(),
 	date_from: z.string().optional(),
 	date_to: z.string().optional(),
 	range: z.string().optional(),
@@ -39,27 +40,37 @@ export async function financeRoutes(
 
 	app.get('/api/organizer/finance/events', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return finance.listEvents(context.organizer.id);
+		return finance.listEvents(context.organizer.id, context.eventId ?? undefined);
 	});
 
 	app.get('/api/organizer/finance/overview', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return finance.overview(context.organizer.id, dateFilter.parse(request.query));
+		return finance.overview(context.organizer.id, {
+			...dateFilter.parse(request.query),
+			...(context.eventId ? { event_id: context.eventId } : {}),
+		});
 	});
 
 	app.get('/api/organizer/finance/transactions', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return finance.transactions(context.organizer.id, transactionFilter.parse(request.query));
+		return finance.transactions(context.organizer.id, {
+			...transactionFilter.parse(request.query),
+			...(context.eventId ? { event_id: context.eventId } : {}),
+		});
 	});
 
 	app.get('/api/organizer/finance/payouts', async (request) => {
 		const context = await requireOrganizer(request, auth);
+		if (context.eventId) return { balance: null, payouts: [] };
 		return finance.payouts(context.organizer.id, context.organizer.payout_status);
 	});
 
 	app.get('/api/organizer/analytics', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return finance.analytics(context.organizer.id, analyticsFilter.parse(request.query));
+		return finance.analytics(context.organizer.id, {
+			...analyticsFilter.parse(request.query),
+			...(context.eventId ? { event_id: context.eventId } : {}),
+		});
 	});
 
 	app.get('/api/organizer/finance/export', async (request, reply) => {
@@ -67,6 +78,11 @@ export async function financeRoutes(
 		return reply
 			.type('text/csv; charset=utf-8')
 			.header('content-disposition', 'attachment; filename="financeiro.csv"')
-			.send(await finance.exportCsv(context.organizer.id));
+			.send(
+				await finance.exportCsv(context.organizer.id, {
+					...transactionFilter.parse(request.query),
+					...(context.eventId ? { event_id: context.eventId } : {}),
+				}),
+			);
 	});
 }

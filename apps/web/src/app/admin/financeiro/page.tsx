@@ -1,3 +1,4 @@
+import { getEventSelection } from '@/features/event-scope/api/getEventSelection';
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { requireOrganizer } from '@/lib/auth/server-auth';
@@ -22,7 +23,7 @@ const defaultFilters: AppliedFilters = {
 };
 
 export default async function FinanceiroPage() {
-	const { organizer } = await requireOrganizer();
+	const [{ organizer }, { selectedEventId }] = await Promise.all([requireOrganizer(), getEventSelection()]);
 
 	// Get access token from cookies
 	const cookieStore = await cookies();
@@ -37,7 +38,7 @@ export default async function FinanceiroPage() {
 		fetchFinanceEvents(organizer, accessToken),
 		fetchFinanceOverview(organizer, accessToken, defaultFilters),
 		fetchTransactions(organizer, accessToken, defaultFilters, 1, 20, 'date', 'desc'),
-		fetchPayouts(organizer),
+		selectedEventId ? Promise.resolve(null) : fetchPayouts(organizer),
 	]);
 
 	return (

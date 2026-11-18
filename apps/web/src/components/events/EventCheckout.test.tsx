@@ -34,12 +34,38 @@ const tickets = [
 
 function renderCheckout(
 	checkoutResponse: () => Response = () =>
-		jsonResponse({ checkoutId: 'bill_1', url: 'https://pay', registrationId: 'r' }),
+		jsonResponse({ attemptId: '00000000-0000-4000-8000-000000000099', status: 'pending', payment: null }),
+	quoteExtra: Record<string, unknown> = {},
+	checkoutTickets = tickets,
+	buyer: { name: string; email: string; phone?: string; document?: string } = {
+		name: 'Ana Souza',
+		email: 'ana@events.local',
+	},
 ) {
+	sessionStorage.clear();
 	vi.stubGlobal('location', { ...window.location, href: '' });
 	const fetchMock = mockFetch([
 		['/api/payments/methods', () => jsonResponse({ methods: ['PIX', 'CARD'] })],
+		[
+			'/api/payments/checkout/quote',
+			(_url, init) =>
+				jsonResponse({
+					amountInCents:
+						10000 *
+						JSON.parse(String(init?.body)).tickets.reduce(
+							(sum: number, t: { quantity: number }) => sum + t.quantity,
+							0,
+						),
+					maxInstallments: 3,
+					methods: ['PIX', 'CARD'],
+					publicKey: null,
+					mock: true,
+					...quoteExtra,
+				}),
+		],
+		[/\/api\/payments\/attempts\//, () => jsonResponse({ attemptId: 'a', status: 'pending', payment: null })],
 		['/api/payments/checkout', checkoutResponse],
+		['/api/checkout/installments', () => jsonResponse({ registration_id: 'reg-1', success: true })],
 	]);
 	const view = renderWithProviders(
 		<>
@@ -53,8 +79,8 @@ function renderCheckout(
 				}}
 				eventId="e-1"
 				eventTitle="Congresso"
-				tickets={tickets}
-				defaultParticipantInfo={{ name: 'Ana Souza', email: 'ana@events.local' }}
+				tickets={checkoutTickets}
+				defaultParticipantInfo={buyer}
 			/>
 			<Toaster />
 		</>,
@@ -64,6 +90,104 @@ function renderCheckout(
 }
 
 describe('EventCheckout', () => {
+	it('continues to payment from the summary and removes the redundant back button', async () => {
+		const { user } = renderCheckout();
+		await continueToDetails(user);
+		const summary = screen.getByRole('region', { name: 'Resumo da compra' });
+		const next = within(summary).getByRole('button', { name: 'Continuar para pagamento' });
+		expect(screen.getAllByRole('button', { name: 'Continuar para pagamento' })).toHaveLength(1);
+		expect(screen.queryByRole('button', { name: 'Voltar' })).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Voltar para Ingressos' })).toBeInTheDocument();
+		await user.click(next);
+		expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Pagamento');
+	});
+
+	it('validates the attendee form when continuing from the summary', async () => {
+		const { user } = renderCheckout();
+		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
+		await continueToDetails(user);
+		const next = within(screen.getByRole('region', { name: 'Resumo da compra' })).getByRole('button', {
+			name: 'Continuar para pagamento',
+		});
+		await user.click(next);
+		expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Seus dados');
+		const attendee = screen.getByRole('group', { name: 'Inteira · ingresso 2 de 2' });
+		expect(within(attendee).getByRole('alert')).toHaveTextContent('Informe nome e e-mail');
+		expect(within(attendee).getByLabelText('Nome completo')).toHaveFocus();
+		await user.click(within(attendee).getByRole('checkbox', { name: 'Preencher depois' }));
+		await user.click(next);
+		expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Pagamento');
+	});
+
+	it('keeps a ticket pending nomination in a Pix installment purchase without changing its buyer', async () => {
+		const { user, fetchMock } = renderCheckout();
+		await continueToDetails(user);
+		await user.click(screen.getByRole('checkbox', { name: 'Preencher depois' }));
+		await user.click(screen.getByRole('button', { name: 'Continuar para pagamento' }));
+		await user.click(await screen.findByRole('radio', { name: /3x de R\$ 33\.33/i }));
+		await user.click(screen.getByRole('button', { name: /Pagar R\$/ }));
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/checkout/installments', expect.anything()));
+		const call = fetchMock.mock.calls.find(([url]) => url === '/api/checkout/installments');
+		expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+			participant_name: 'Ana Souza',
+			participant_email: 'ana@events.local',
+			attendees: [null],
+		});
+	});
+
+	it('starts with one ticket selected and includes it in the purchase total', () => {
+		renderCheckout();
+		expect(screen.getByRole('spinbutton', { name: 'Quantidade de Inteira' })).toHaveValue(1);
+		expect(screen.getByTestId('order-total')).toHaveTextContent('R$ 100,00');
+		expect(screen.getAllByRole('button', { name: 'Continuar para seus dados' })[0]).toBeEnabled();
+	});
+
+	it.each([
+		{ status: 'inactive' },
+		{ visibility: 'private' },
+		{ quantity_sold: 100 },
+		{ sale_start_date: '2999-01-01T00:00:00Z' },
+		{ sale_end_date: '2000-01-01T00:00:00Z' },
+		{ quantity: 1, min_quantity_per_purchase: 2 },
+		{ max_quantity_per_purchase: 1, min_quantity_per_purchase: 2 },
+	])('preselects only the first purchasable ticket, skipping %j', (unavailable) => {
+		renderCheckout(undefined, {}, [
+			{ ...tickets[0], ...unavailable } as EventTicket,
+			{ ...tickets[0], id: 'ticket-b', title: 'VIP' },
+			{ ...tickets[0], id: 'ticket-c', title: 'Camarote' },
+		]);
+		expect(screen.getByRole('spinbutton', { name: 'Quantidade de VIP' })).toHaveValue(1);
+		expect(screen.getByRole('spinbutton', { name: 'Quantidade de Camarote' })).toHaveValue(0);
+		expect(screen.getByTestId('order-total')).toHaveTextContent('R$ 100,00');
+	});
+
+	it('respects the minimum purchase quantity when preselecting a ticket', () => {
+		renderCheckout(undefined, {}, [{ ...tickets[0], min_quantity_per_purchase: 2 }]);
+		expect(screen.getByRole('spinbutton', { name: 'Quantidade de Inteira' })).toHaveValue(2);
+		expect(screen.getByTestId('order-total')).toHaveTextContent('R$ 200,00');
+	});
+
+	it('keeps the cart empty when no tickets are available', () => {
+		renderCheckout(undefined, {}, [{ ...tickets[0], quantity_sold: 100 }]);
+		expect(screen.getByText('Nenhum ingresso disponível no momento.')).toBeInTheDocument();
+		expect(screen.getByTestId('order-total')).toHaveTextContent('R$ 0,00');
+		expect(screen.getAllByRole('button', { name: 'Continuar para seus dados' })[0]).toBeDisabled();
+	});
+
+	it('preserves the chosen quantity between steps and allows removing the default ticket', async () => {
+		const { user } = renderCheckout();
+		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
+		await continueToDetails(user);
+		await user.click(screen.getByRole('button', { name: 'Voltar para Ingressos' }));
+		expect(screen.getByRole('spinbutton', { name: 'Quantidade de Inteira' })).toHaveValue(2);
+		expect(screen.getByTestId('order-total')).toHaveTextContent('R$ 200,00');
+		await user.click(screen.getByRole('button', { name: 'Remover um ingresso Inteira' }));
+		await user.click(screen.getByRole('button', { name: 'Remover um ingresso Inteira' }));
+		expect(screen.getByRole('spinbutton', { name: 'Quantidade de Inteira' })).toHaveValue(0);
+		expect(screen.getByTestId('order-total')).toHaveTextContent('R$ 0,00');
+		expect(screen.getAllByRole('button', { name: 'Continuar para seus dados' })[0]).toBeDisabled();
+	});
+
 	// O botão de avançar existe duas vezes no DOM: no resumo (desktop) e na barra
 	// fixa (celular). O CSS mostra um de cada vez; para o teste, o primeiro basta.
 	async function continueToDetails(user: ReturnType<typeof renderCheckout>['user']) {
@@ -71,11 +195,26 @@ describe('EventCheckout', () => {
 	}
 
 	async function reachPaymentStep(user: ReturnType<typeof renderCheckout>['user']) {
-		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
 		await continueToDetails(user);
 		await user.click(screen.getByRole('button', { name: 'Continuar para pagamento' }));
 	}
 
+	it('shows a declined payment only once in the standard toast', async () => {
+		const { user } = renderCheckout(() => problemResponse(422, 'PAYMENT_DECLINED', 'Pagamento recusado.'));
+		await reachPaymentStep(user);
+		await user.click(await screen.findByRole('button', { name: /Pagar R\$/ }));
+		await waitFor(() => expect(screen.getAllByText('Pagamento recusado.')).toHaveLength(1));
+	});
+	it('updates the summary when the server price changed since the event was loaded', async () => {
+		const { user } = renderCheckout(undefined, {
+			amountInCents: 12000,
+			items: [{ id: 'ticket-a', title: 'Inteira', quantity: 1, unitPrice: 120, unitFee: 10 }],
+			discountInCents: 0,
+		});
+		await reachPaymentStep(user);
+		await screen.findByRole('button', { name: /Pagar R\$\s?120,00/ });
+		expect(screen.getByTestId('order-total').textContent).toMatch(/120,00/);
+	});
 	it('introduces the event once, with when and where, and puts the tickets first', () => {
 		renderCheckout();
 
@@ -90,16 +229,13 @@ describe('EventCheckout', () => {
 	it('names the next step on the button and goes there', async () => {
 		const { user } = renderCheckout();
 
-		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
 		await continueToDetails(user);
 
 		expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Seus dados');
 	});
 
-	it('repeats the total and the next step in a bar for small screens', async () => {
-		const { user } = renderCheckout();
-
-		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
+	it('repeats the total and the next step in a bar for small screens', () => {
+		renderCheckout();
 
 		const bar = screen.getByRole('region', { name: 'Total e próximo passo' });
 		expect(within(bar).getByText('R$ 100,00')).toBeInTheDocument();
@@ -109,7 +245,6 @@ describe('EventCheckout', () => {
 	it('lets the buyer go back to the tickets from the trail of steps', async () => {
 		const { user } = renderCheckout();
 
-		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
 		await continueToDetails(user);
 		await user.click(screen.getByRole('button', { name: 'Voltar para Ingressos' }));
 
@@ -124,7 +259,6 @@ describe('EventCheckout', () => {
 				: jsonResponse({ methods: ['PIX', 'CARD'] }),
 		);
 
-		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
 		await user.type(screen.getByLabelText('Cupom de desconto'), 'JOVENS10');
 		await user.click(screen.getByRole('button', { name: 'Aplicar' }));
 
@@ -138,10 +272,8 @@ describe('EventCheckout', () => {
 		expect(screen.queryByText('JOVENS10')).not.toBeInTheDocument();
 	});
 
-	it('explains how much of the subtotal is service fee', async () => {
-		const { user } = renderCheckout();
-
-		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
+	it('explains how much of the subtotal is service fee', () => {
+		renderCheckout();
 
 		expect(screen.getByText('Inclui R$ 10,00 de taxa de serviço')).toBeInTheDocument();
 	});
@@ -155,6 +287,7 @@ describe('EventCheckout', () => {
 
 	it('explains that a ticket comes first when a coupon is applied to an empty cart', async () => {
 		const { user, fetchMock } = renderCheckout();
+		await user.click(screen.getByRole('button', { name: 'Remover um ingresso Inteira' }));
 
 		await user.type(screen.getByLabelText('Cupom de desconto'), 'JOVENS10');
 		await user.click(screen.getByRole('button', { name: 'Aplicar' }));
@@ -168,7 +301,6 @@ describe('EventCheckout', () => {
 	it('keeps the payment choice out of "Seus dados" and shows it on the "Pagamento" step', async () => {
 		const { user } = renderCheckout();
 
-		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
 		await continueToDetails(user);
 
 		expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Seus dados');
@@ -180,12 +312,12 @@ describe('EventCheckout', () => {
 		expect(await screen.findByRole('radio', { name: /cartão de crédito/i })).toBeInTheDocument();
 	});
 
-	it('does not move on to payment without a name and an e-mail', async () => {
-		const { user } = renderCheckout();
+	it('requires completing missing buyer data in the profile before payment', async () => {
+		const { user } = renderCheckout(undefined, {}, tickets, { name: '', email: 'ana@events.local' });
 
-		await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
 		await continueToDetails(user);
-		await user.clear(screen.getByLabelText(/e-mail/i));
+		expect(screen.getByRole('link', { name: 'Atualizar meu perfil' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Continuar para pagamento' })).toBeDisabled();
 		await user.click(screen.getByRole('button', { name: 'Continuar para pagamento' }));
 
 		expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Seus dados');
@@ -195,7 +327,6 @@ describe('EventCheckout', () => {
 		const { fetchMock, user } = renderCheckout();
 
 		const add = screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' });
-		await user.click(add);
 		await user.click(add);
 		await continueToDetails(user);
 
@@ -208,7 +339,7 @@ describe('EventCheckout', () => {
 		await user.type(within(second).getByLabelText('Nome completo'), 'Bia Lima');
 		await user.type(within(second).getByLabelText('E-mail'), 'bia@events.local');
 		await user.click(screen.getByRole('button', { name: 'Continuar para pagamento' }));
-		await user.click(screen.getByRole('button', { name: 'Finalizar compra' }));
+		await user.click(await screen.findByRole('button', { name: /Pagar R\$/ }));
 
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/payments/checkout', expect.anything()));
 		const call = fetchMock.mock.calls.find(([url]) => url === '/api/payments/checkout');
@@ -229,12 +360,11 @@ describe('EventCheckout', () => {
 
 		const add = screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' });
 		await user.click(add);
-		await user.click(add);
 		await continueToDetails(user);
 		const second = screen.getByRole('group', { name: 'Inteira · ingresso 2 de 2' });
 		await user.click(within(second).getByRole('checkbox', { name: 'Preencher depois' }));
 		await user.click(screen.getByRole('button', { name: 'Continuar para pagamento' }));
-		await user.click(screen.getByRole('button', { name: 'Finalizar compra' }));
+		await user.click(await screen.findByRole('button', { name: /Pagar R\$/ }));
 
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/payments/checkout', expect.anything()));
 		const call = fetchMock.mock.calls.find(([url]) => url === '/api/payments/checkout');
@@ -249,7 +379,6 @@ describe('EventCheckout', () => {
 
 		const add = screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' });
 		await user.click(add);
-		await user.click(add);
 		await continueToDetails(user);
 		await user.click(screen.getByRole('button', { name: 'Continuar para pagamento' }));
 
@@ -258,12 +387,19 @@ describe('EventCheckout', () => {
 		expect(within(second).getByRole('alert')).toHaveTextContent(/informe nome e e-mail/i);
 	});
 
-	it('lets the buyer pay by card and sends that choice to the API', async () => {
-		const { fetchMock, user } = renderCheckout();
+	it('lets the buyer pay by card using their profile data', async () => {
+		const { fetchMock, user } = renderCheckout(undefined, {}, tickets, {
+			name: 'Ana Souza',
+			email: 'ana@events.local',
+			document: '52998224725',
+			phone: '11999999999',
+		});
 
 		await reachPaymentStep(user);
 		await user.click(await screen.findByRole('radio', { name: /cartão de crédito/i }));
-		await user.click(screen.getByRole('button', { name: 'Finalizar compra' }));
+		expect(screen.getByLabelText('CPF ou CNPJ do comprador *')).toHaveValue('529.982.247-25');
+		expect(screen.getByLabelText('Celular do comprador *')).toHaveValue('(11) 99999-9999');
+		await user.click(await screen.findByRole('button', { name: /Pagar R\$/ }));
 
 		await waitFor(() =>
 			expect(fetchMock).toHaveBeenCalledWith('/api/payments/checkout', expect.objectContaining({ method: 'POST' })),
@@ -294,7 +430,7 @@ describe('EventCheckout', () => {
 		);
 
 		await reachPaymentStep(user);
-		await user.click(screen.getByRole('button', { name: 'Finalizar compra' }));
+		await user.click(await screen.findByRole('button', { name: /Pagar R\$/ }));
 
 		expect(await screen.findByText('CPF inválido')).toBeInTheDocument();
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();

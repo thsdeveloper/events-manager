@@ -5,7 +5,7 @@ import { BLOCK_TYPES, blockSummary, blockTypeMeta } from './blocks';
 const base = { id: 'b', page: 'p', sort: 1, hide_block: false, background: 'light' as const, date_created: '' };
 
 describe('block metadata', () => {
-	it('describes the seven block types with a readable label', () => {
+	it('describes the eight block types with a readable label', () => {
 		expect(BLOCK_TYPES.map((type) => type.label)).toEqual([
 			'Hero',
 			'Texto rico',
@@ -14,6 +14,7 @@ describe('block metadata', () => {
 			'Posts do blog',
 			'Eventos',
 			'Formulário',
+			'Destaque de evento',
 		]);
 		expect(blockTypeMeta('block_form').label).toBe('Formulário');
 	});

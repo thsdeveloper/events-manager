@@ -72,6 +72,7 @@ export interface FinanceRepository {
 }
 
 export interface FinanceDateFilter {
+	event_id?: string;
 	date_from?: string;
 	date_to?: string;
 }
@@ -98,13 +99,16 @@ export class FinanceService {
 		private readonly now: () => number = Date.now,
 	) {}
 
-	async listEvents(organizerId: string) {
-		return { data: await this.repository.listEvents(organizerId) };
+	async listEvents(organizerId: string, eventId?: string) {
+		const events = await this.repository.listEvents(organizerId);
+		return { data: eventId ? events.filter((event) => event.id === eventId) : events };
 	}
 
 	async overview(organizerId: string, query: FinanceDateFilter) {
-		const rows = (await this.repository.listRegistrations(organizerId)).filter((row) =>
-			isWithin(row.date_created, query.date_from, query.date_to),
+		const rows = (await this.repository.listRegistrations(organizerId)).filter(
+			(row) =>
+				(!query.event_id || row.event_id?.id === query.event_id) &&
+				isWithin(row.date_created, query.date_from, query.date_to),
 		);
 		const paid = rows.filter((row) => row.payment_status === 'paid');
 		const gross = sum(paid, 'total_amount');
@@ -189,7 +193,7 @@ export class FinanceService {
 			this.provider === 'mock'
 				? 'Ambiente local: pagamentos e repasses são simulados.'
 				: payoutStatus !== 'enabled'
-					? 'Cadastre e valide sua chave PIX para receber repasses.'
+					? 'Cadastre seus dados de recebimento e documentos para liberar os repasses.'
 					: undefined;
 		return {
 			balance: { available: Math.max(0, earned - completed - pending), pending, currency: 'brl' },
@@ -200,8 +204,11 @@ export class FinanceService {
 				status: payout.status,
 				createdAt: payout.requested_at,
 				arrivalDate: payout.processed_at,
-				description: payout.failure_reason ?? 'Repasse via PIX',
-				receiptUrl: payout.receipt_url,
+				description:
+					payout.failure_reason ?? (payout.method === 'bank_transfer' ? 'Transferência bancária' : 'Repasse via PIX'),
+				receiptUrl: payout.receipt_document_id
+					? `/api/organizer/receiving-accounts/${organizerId}/payouts/${payout.id}/receipt`
+					: payout.receipt_url,
 			})),
 			alert,
 			payoutStatus,
@@ -360,13 +367,26 @@ export class FinanceService {
 				percentage: totalCheckins ? ((hourMap.get(hour) ?? 0) / totalCheckins) * 100 : 0,
 			})),
 			activeEvents: events
-				.filter((event) => event.status === 'published' || event.status === 'draft')
+				.filter(
+					(event) =>
+						(!query.event_id || event.id === query.event_id) &&
+						(event.status === 'published' || event.status === 'draft'),
+				)
 				.map((event) => eventSummary(event, tickets, paid)),
 		};
 	}
 
-	async exportCsv(organizerId: string) {
-		const rows = await this.repository.listRegistrations(organizerId);
+	async exportCsv(organizerId: string, query: Partial<FinanceTransactionFilter> = {}) {
+		const status = query.status === 'succeeded' ? 'paid' : query.status;
+		const search = query.search?.toLocaleLowerCase('pt-BR');
+		const rows = (await this.repository.listRegistrations(organizerId)).filter(
+			(row) =>
+				(!query.event_id || row.event_id?.id === query.event_id) &&
+				isWithin(row.date_created, query.date_from, query.date_to) &&
+				(!status || row.payment_status === status) &&
+				(!search ||
+					`${row.participant_name ?? ''} ${row.participant_email ?? ''}`.toLocaleLowerCase('pt-BR').includes(search)),
+		);
 		return `\uFEFF${[
 			'Data,Evento,Participante,Email,Status,Bruto,Taxas,Líquido',
 			...rows.map((row) =>

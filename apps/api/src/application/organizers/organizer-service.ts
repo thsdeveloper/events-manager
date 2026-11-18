@@ -44,13 +44,15 @@ export interface OrganizerStats {
 }
 
 export interface OrganizerRepository {
-	create(userId: string, input: OrganizerInput, status: 'active' | 'pending'): Promise<unknown | 'exists'>;
-	/** Uma pessoa tem no máximo uma conta de organizador, em qualquer status. */
-	existsForUser(userId: string): Promise<boolean>;
+	create(
+		userId: string,
+		input: OrganizerInput,
+		status: 'active' | 'pending',
+	): Promise<{ id: string; status: string } | 'exists'>;
 	findByDocument(document: string): Promise<{ id: string; user_id: string } | null>;
 	findById(organizerId: string): Promise<unknown | null>;
 	setLogo(organizerId: string, mediaId: string | null): Promise<unknown>;
-	stats(organizerId: string): Promise<OrganizerStats>;
+	stats(organizerId: string, eventId?: string): Promise<OrganizerStats>;
 	updateById(organizerId: string, input: Partial<OrganizerInput>): Promise<unknown | null>;
 	updatePayout(
 		organizerId: string,
@@ -68,54 +70,53 @@ export class OrganizerService {
 		return this.repository.findById(organizerId);
 	}
 
-	/**
-	 * Regras do cadastro: uma conta de organizador por pessoa; quem vende como
-	 * pessoa física usa o CPF já validado no perfil (o cliente não escolhe o
-	 * documento); quem vende como empresa informa um CNPJ que ainda não pertence
-	 * a outra organização.
-	 */
-	/**
-	 * Regras do cadastro: uma conta de organizador por pessoa; pessoa física
-	 * vende com os dados já validados no perfil (nome, e-mail, telefone e CPF),
-	 * ignorando qualquer valor enviado pelo cliente; empresa informa os dados
-	 * da organização e um CNPJ válido e único.
-	 */
+	/** Uma pessoa pode gerenciar várias organizações, cada uma com seu CPF/CNPJ. */
 	async create(
 		userId: string,
 		input: OrganizerSignupInput,
 		initialStatus: 'active' | 'pending',
 		context: { profile: OrganizerSignupProfile },
 	) {
-		if (await this.repository.existsForUser(userId)) {
-			throw new ApiError('Você já possui uma conta de organizador.', 409, 'ORGANIZER_EXISTS');
+		const details = input.account_type === 'individual' ? detailsFromProfile(context.profile) : input;
+		const duplicateMessage =
+			input.account_type === 'individual'
+				? 'Você já possui uma conta com este CPF. Cadastre uma empresa com outro CNPJ.'
+				: 'Este CNPJ já está vinculado a uma organização.';
+		if (await this.repository.findByDocument(details.document)) {
+			throw new ApiError(duplicateMessage, 409, 'DOCUMENT_IN_USE');
 		}
-
-		const details =
-			input.account_type === 'individual' ? detailsFromProfile(context.profile) : await this.detailsFromCompany(input);
 
 		const organizer = await this.repository.create(
 			userId,
 			normalizeWebsite({
-				...details,
+				name: details.name,
+				email: details.email,
+				phone: details.phone,
+				document: details.document,
 				description: input.description ?? null,
 				website: input.website ?? null,
 			}),
 			initialStatus,
 		);
 		if (organizer === 'exists') {
-			throw new ApiError('Você já possui uma conta de organizador.', 409, 'ORGANIZER_EXISTS');
+			throw new ApiError(duplicateMessage, 409, 'DOCUMENT_IN_USE');
 		}
 		return organizer;
 	}
 
-	private async detailsFromCompany(input: Extract<OrganizerSignupInput, { account_type: 'company' }>) {
-		const owner = await this.repository.findByDocument(input.document);
-		if (owner) throw new ApiError('Este CNPJ já está vinculado a outra organização.', 409, 'DOCUMENT_IN_USE');
-
-		return { name: input.name, email: input.email, phone: input.phone, document: input.document };
-	}
-
 	async update(organizerId: string, input: Partial<OrganizerInput>) {
+		if (input.document !== undefined) {
+			const existing = (await this.repository.findById(organizerId)) as {
+				document?: string | null;
+				current_receiving_request_id?: string | null;
+			} | null;
+			if (existing?.current_receiving_request_id && input.document !== existing.document)
+				throw new ApiError(
+					'O CPF/CNPJ não pode ser alterado após o envio dos documentos de recebimento.',
+					409,
+					'VERIFIED_DOCUMENT_IMMUTABLE',
+				);
+		}
 		const organizer = await this.repository.updateById(organizerId, normalizeWebsite(input));
 		if (!organizer) throw new ApiError('Perfil de organizador não encontrado.', 404, 'ORGANIZER_NOT_FOUND');
 		return organizer;
@@ -144,8 +145,8 @@ export class OrganizerService {
 		return { organizer, cleanupPending };
 	}
 
-	stats(organizerId: string) {
-		return this.repository.stats(organizerId);
+	stats(organizerId: string, eventId?: string) {
+		return this.repository.stats(organizerId, eventId);
 	}
 
 	updatePayout(

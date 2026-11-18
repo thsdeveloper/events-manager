@@ -1,5 +1,6 @@
 'use client';
 
+import { useAdminEventScope } from '@/features/event-scope/components/AdminEventScope';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
 import { useCallback, useMemo, useState } from 'react';
@@ -73,7 +74,7 @@ interface FinanceiroDashboardProps {
 	initialEvents: EventsOption[];
 	initialOverview: OverviewMetrics;
 	initialTransactions: TransactionsResult;
-	initialPayouts: PayoutSummary;
+	initialPayouts: PayoutSummary | null;
 }
 
 export default function FinanceiroDashboard({
@@ -83,6 +84,7 @@ export default function FinanceiroDashboard({
 	initialTransactions,
 	initialPayouts,
 }: FinanceiroDashboardProps) {
+	const { selectedEventId } = useAdminEventScope();
 	const [filters, setFilters] = useState<AppliedFilters>(defaultFilters);
 	const [paginationState, setPaginationState] = useState<Pick<PaginationState, 'page' | 'limit'>>({
 		page: initialTransactions.pagination?.page ?? DEFAULT_PAGINATION.page,
@@ -111,7 +113,8 @@ export default function FinanceiroDashboard({
 	});
 
 	const payoutsQuery = usePayouts({
-		initialData: initialPayouts,
+		initialData: initialPayouts ?? undefined,
+		enabled: !selectedEventId,
 	});
 
 	const overviewLoading = overviewQuery.isPending;
@@ -165,15 +168,13 @@ export default function FinanceiroDashboard({
 			setExportError(null);
 			setExporting(true);
 			const payload = buildExportPayload(filters);
-			const response = await fetch('/api/organizer/finance/export', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload),
-			});
+			const query = new URLSearchParams();
+			for (const [key, value] of Object.entries(payload)) if (value) query.set(key, value);
+			const response = await fetch(`/api/organizer/finance/export?${query}`, { credentials: 'include' });
 
 			if (!response.ok) {
 				const errorPayload = await response.json().catch(() => ({}));
-				throw new Error((errorPayload as { error?: string })?.error ?? 'Falha ao exportar CSV');
+				throw new Error((errorPayload as { detail?: string })?.detail ?? 'Falha ao exportar CSV');
 			}
 
 			const blob = await response.blob();
@@ -206,13 +207,19 @@ export default function FinanceiroDashboard({
 		<div className="space-y-6">
 			<PageHeader
 				title="Financeiro"
-				description="Acompanhe vendas, taxas e repasses dos seus eventos"
+				description={
+					selectedEventId
+						? 'Acompanhe vendas e taxas do evento selecionado'
+						: 'Acompanhe vendas, taxas e repasses dos seus eventos'
+				}
 				actions={
 					<div className="flex flex-wrap gap-2">
-						<Button variant="outline" onClick={loadPayouts} disabled={payoutsQuery.isFetching}>
-							<RefreshCcw className="mr-2 size-4" />
-							Atualizar repasses
-						</Button>
+						{!selectedEventId && (
+							<Button variant="outline" onClick={loadPayouts} disabled={payoutsQuery.isFetching}>
+								<RefreshCcw className="mr-2 size-4" />
+								Atualizar repasses
+							</Button>
+						)}
 						<Button onClick={handleExport} disabled={exporting}>
 							<Download className="mr-2 size-4" />
 							Exportar CSV
@@ -223,7 +230,7 @@ export default function FinanceiroDashboard({
 
 			<FinanceFilters events={initialEvents} filters={filters} onApply={handleFiltersApply} />
 
-			<PaymentAccountStatus organizer={organizer} payoutSummary={payoutSummary} />
+			{!selectedEventId && <PaymentAccountStatus organizer={organizer} payoutSummary={payoutSummary} />}
 
 			<FinanceOverview isLoading={overviewLoading} metrics={metrics} currencyFormatter={currencyFormatter} />
 
@@ -248,7 +255,9 @@ export default function FinanceiroDashboard({
 				</CardContent>
 			</Card>
 
-			<PayoutHistory isLoading={payoutLoading} summary={payoutSummary} currencyFormatter={currencyFormatter} />
+			{!selectedEventId && (
+				<PayoutHistory isLoading={payoutLoading} summary={payoutSummary} currencyFormatter={currencyFormatter} />
+			)}
 		</div>
 	);
 }

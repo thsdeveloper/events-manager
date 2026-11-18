@@ -1,2 +1,2 @@
 export { FeeCalculator } from './components/FeeCalculator';
-export { usePublicFees } from './api/usePublicFees';
+export { usePublicFees } from '@/hooks/usePublicFees';

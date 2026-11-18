@@ -65,7 +65,7 @@ export function CheckoutRegistrationList({ registrations }: CheckoutRegistration
 													{ticket.isBuyer ? <span className="text-muted-foreground"> (você)</span> : null}
 												</>
 											) : (
-												<span className="text-muted-foreground">participante a informar</span>
+												<span className="text-muted-foreground">Pendente de nomeação · participante a informar</span>
 											)}
 										</span>
 										{ticket.ticketType ? <span className="text-muted-foreground">· {ticket.ticketType}</span> : null}

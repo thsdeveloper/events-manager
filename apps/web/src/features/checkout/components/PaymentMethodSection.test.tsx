@@ -11,7 +11,7 @@ import { PaymentMethodSection } from './PaymentMethodSection';
 const installmentTicket = { allow_installments: true, max_installments: 3, min_amount_for_installments: 50 };
 
 describe('PaymentMethodSection', () => {
-	it('offers Pix and card, explaining when the store does not take cards yet', () => {
+	it('offers only the methods enabled by the organization', () => {
 		render(
 			<PaymentMethodSection
 				availableMethods={['PIX']}
@@ -25,8 +25,7 @@ describe('PaymentMethodSection', () => {
 		);
 
 		expect(screen.getByRole('radio', { name: /^pix/i })).toBeEnabled();
-		expect(screen.getByRole('radio', { name: /cartão de crédito/i })).toBeDisabled();
-		expect(screen.getByText(/ainda não habilitado nesta loja/i)).toBeInTheDocument();
+		expect(screen.queryByRole('radio', { name: /cartão de crédito/i })).not.toBeInTheDocument();
 	});
 
 	it('shows the Pix choices, cash or installments, while Pix is selected', () => {
@@ -77,7 +76,23 @@ describe('PaymentMethodSection', () => {
 
 		expect(screen.queryByRole('radio', { name: /à vista - pix/i })).not.toBeInTheDocument();
 		const explanation = within(screen.getByRole('alert'));
-		expect(explanation.getByText(/ambiente seguro/i)).toBeInTheDocument();
+		expect(explanation.getByText(/formulário seguro/i)).toBeInTheDocument();
 		expect(explanation.getByText(/até 3x/i)).toBeInTheDocument();
 	});
+});
+
+it('offers only boleto when Pix and credit are disabled by the organizer', () => {
+	render(
+		<PaymentMethodSection
+			availableMethods={['BOLETO']}
+			method="BOLETO"
+			onMethodChange={vi.fn()}
+			totalAmount={100}
+			selectedInstallments={1}
+			onInstallmentChange={vi.fn()}
+		/>,
+	);
+	expect(screen.getByRole('radio', { name: /boleto/i })).toBeEnabled();
+	expect(screen.queryByRole('radio', { name: /^pix/i })).not.toBeInTheDocument();
+	expect(screen.queryByRole('radio', { name: /cartão de crédito/i })).not.toBeInTheDocument();
 });

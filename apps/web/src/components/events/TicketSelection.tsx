@@ -17,6 +17,8 @@ interface TicketSelectionProps {
 	groups?: Array<{ id: string; title: string; parent_id?: string | null }>;
 	eventId: string;
 	tickets: EventTicket[];
+	/** Mantém o carrinho do checkout ao voltar entre etapas. */
+	selection?: TicketSelectionItem[];
 	onCheckout: (selectedTickets: TicketSelectionItem[]) => void;
 	/** Avisa a cada mudança, para o resumo da compra acompanhar ao lado. */
 	onSelectionChange?: (selectedTickets: TicketSelectionItem[]) => void;
@@ -53,16 +55,42 @@ function describeLimits(ticket: EventTicket) {
 	return { available, limitedByPurchase, maxAllowed, maxPerPurchase, minPerPurchase };
 }
 
+function isAvailable(ticket: EventTicket, now: Date) {
+	return (
+		ticket.status === 'active' &&
+		(!ticket.visibility || ticket.visibility === 'public') &&
+		describeLimits(ticket).available > 0 &&
+		(!ticket.sale_start_date || new Date(ticket.sale_start_date) <= now) &&
+		(!ticket.sale_end_date || new Date(ticket.sale_end_date) >= now)
+	);
+}
+
+export function getInitialTicketSelection(tickets: EventTicket[]): TicketSelectionItem[] {
+	const now = new Date();
+	const ticket = tickets.find((candidate) => {
+		const { maxAllowed, minPerPurchase } = describeLimits(candidate);
+
+		return isAvailable(candidate, now) && maxAllowed >= minPerPurchase;
+	});
+
+	return ticket ? [{ ticketId: ticket.id, quantity: describeLimits(ticket).minPerPurchase }] : [];
+}
+
 export default function TicketSelection({
 	eventId: _eventId,
 	tickets,
+	selection,
 	groups = [],
 	onCheckout,
 	onSelectionChange,
 	hideAction = false,
 	isLoading = false,
 }: TicketSelectionProps) {
-	const [selectedTickets, setSelectedTickets] = useState<Map<string, number>>(new Map());
+	const [localSelection, setSelectedTickets] = useState<Map<string, number>>(() => new Map());
+	const selectedTickets = useMemo(
+		() => (selection ? new Map(selection.map(({ ticketId, quantity }) => [ticketId, quantity])) : localSelection),
+		[selection, localSelection],
+	);
 
 	const toItems = (selection: Map<string, number>): TicketSelectionItem[] =>
 		Array.from(selection.entries()).map(([ticketId, quantity]) => ({ ticketId, quantity }));
@@ -70,15 +98,7 @@ export default function TicketSelection({
 	const availableTickets = useMemo(() => {
 		const now = new Date();
 
-		return tickets.filter((ticket) => {
-			if (ticket.status !== 'active') return false;
-			if (ticket.visibility && ticket.visibility !== 'public') return false;
-			if (describeLimits(ticket).available <= 0) return false;
-			if (ticket.sale_start_date && new Date(ticket.sale_start_date) > now) return false;
-			if (ticket.sale_end_date && new Date(ticket.sale_end_date) < now) return false;
-
-			return true;
-		});
+		return tickets.filter((ticket) => isAvailable(ticket, now));
 	}, [tickets]);
 
 	const totals = useMemo(() => {
@@ -111,7 +131,7 @@ export default function TicketSelection({
 		const next = new Map(selectedTickets);
 		if (quantity <= 0) next.delete(ticketId);
 		else next.set(ticketId, quantity);
-		setSelectedTickets(next);
+		if (!selection) setSelectedTickets(next);
 		onSelectionChange?.(toItems(next));
 	};
 

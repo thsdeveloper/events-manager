@@ -3,9 +3,33 @@
  * caracteres vale para o texto que a pessoa lê, não para as tags.
  */
 import { describe, expect, it } from 'vitest';
-import { detailsSchema, scheduleSchema, ticketsSchema } from './validation';
+import { detailsSchema, scheduleSchema, ticketsSchema, locationSchema } from './validation';
 
 const words = (count: number) => Array.from({ length: count }, () => 'palavra').join(' ');
+
+describe('endereço presencial', () => {
+	const location = {
+		event_type: 'in_person',
+		location_name: 'Teatro Municipal',
+		location_address: 'Praça da Sé',
+		show_map: false,
+		location_postal_code: '01001-000',
+		location_number: '10',
+		location_state: 'SP',
+	};
+	it.each(['location_postal_code', 'location_number', 'location_state'])('exige %s para um local definido', (field) => {
+		const result = locationSchema.safeParse({ ...location, [field]: '' });
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error.issues.some((issue) => issue.path[0] === field)).toBe(true);
+	});
+	it('aceita CEP com máscara, UF válida e dispensa endereço no local a definir', () => {
+		expect(locationSchema.safeParse(location).success).toBe(true);
+		expect(locationSchema.safeParse({ event_type: 'in_person', location_tbd: true }).success).toBe(true);
+	});
+	it.each([{ location_state: 'XX' }, { location_postal_code: '123' }])('rejeita CEP ou UF inválidos: %j', (patch) => {
+		expect(locationSchema.safeParse({ ...location, ...patch }).success).toBe(false);
+	});
+});
 
 describe('detailsSchema.description', () => {
 	it('counts only the visible text, so formatting never inflates a short description', () => {

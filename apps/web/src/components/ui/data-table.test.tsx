@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '@/test';
 import { DataTable } from './data-table';
 const columns = [
@@ -36,4 +36,30 @@ describe('DataTable', () => {
 		expect(screen.getByText('Nenhum resultado encontrado.')).toBeInTheDocument();
 		expect(screen.getByText('Página 1 de 1')).toBeInTheDocument();
 	});
+});
+
+it('uses the server total and delegates pagination and sorting across the complete result', async () => {
+	const pageChanged = vi.fn();
+	const sortChanged = vi.fn();
+	const { user } = renderWithProviders(
+		<DataTable
+			columns={columns}
+			data={data}
+			serverPagination={{ state: { pageIndex: 0, pageSize: 20 }, rowCount: 42, onChange: pageChanged }}
+			serverSorting={{ state: [], onChange: sortChanged }}
+		/>,
+	);
+	expect(screen.getByText('Página 1 de 3')).toBeInTheDocument();
+	await user.click(screen.getByRole('button', { name: 'Próxima' }));
+	expect(pageChanged).toHaveBeenCalled();
+	await user.click(screen.getByRole('button', { name: 'Ordenar por Nome' }));
+	expect(sortChanged).toHaveBeenCalled();
+	expect(within(screen.getAllByRole('row')[1]).getByText('Zélia')).toBeInTheDocument();
+});
+
+it('uses the visible column titles in the column chooser', async () => {
+	const { user } = renderWithProviders(<DataTable columns={columns} data={data} />);
+	await user.click(screen.getByRole('button', { name: 'Colunas' }));
+	expect(screen.getByRole('menuitemcheckbox', { name: 'Nome' })).toBeInTheDocument();
+	expect(screen.getByRole('menuitemcheckbox', { name: 'Valor' })).toBeInTheDocument();
 });

@@ -36,7 +36,9 @@ export function problemResponse(status: number, title: string, detail?: string, 
  * ]);
  * expect(fetchMock).toHaveBeenCalledOnce();
  */
-export function mockFetch(routes: Array<[string | RegExp, (input: FetchInput, init?: RequestInit) => Response]>) {
+export function mockFetch(
+	routes: Array<[string | RegExp, (input: FetchInput, init?: RequestInit) => Response | Promise<Response>]>,
+) {
 	const fetchMock = vi.fn(async (input: FetchInput, init?: RequestInit) => {
 		const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 		const match = routes.find(([pattern]) => (pattern instanceof RegExp ? pattern.test(url) : url.includes(pattern)));

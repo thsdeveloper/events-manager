@@ -48,6 +48,7 @@ describe('block forms registry', () => {
 	it('exposes a form definition for every block collection', () => {
 		expect(Object.keys(blockForms).sort()).toEqual(
 			[
+				'block_event_highlight',
 				'block_events',
 				'block_form',
 				'block_gallery',

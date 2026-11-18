@@ -4,6 +4,8 @@
  * bater com a soma exibida, senão a fatura vira surpresa.
  */
 import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from '@/test';
 import { OrderSummary } from './OrderSummary';
@@ -14,6 +16,38 @@ const items = [
 ];
 
 describe('OrderSummary', () => {
+	it('requires a second click to submit the form opened by the first step', async () => {
+		const submitted = vi.fn();
+		function CheckoutSteps() {
+			const [details, setDetails] = useState(false);
+
+			return (
+				<>
+					{details ? (
+						<form
+							id="buyer-details"
+							onSubmit={(event) => {
+								event.preventDefault();
+								submitted();
+							}}
+						/>
+					) : null}
+					<OrderSummary
+						items={items}
+						actionLabel={details ? 'Continuar para pagamento' : 'Continuar para seus dados'}
+						actionForm={details ? 'buyer-details' : undefined}
+						onAction={details ? undefined : () => flushSync(() => setDetails(true))}
+					/>
+				</>
+			);
+		}
+		render(<CheckoutSteps />);
+		await userEvent.click(screen.getByRole('button', { name: 'Continuar para seus dados' }));
+		expect(submitted).not.toHaveBeenCalled();
+		await userEvent.click(screen.getByRole('button', { name: 'Continuar para pagamento' }));
+		expect(submitted).toHaveBeenCalledTimes(1);
+	});
+
 	it('lists each chosen ticket with its quantity and line total', () => {
 		render(<OrderSummary items={items} />);
 

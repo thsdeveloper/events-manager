@@ -43,6 +43,7 @@ export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 
 	const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
 	useEffect(() => {
+		if (!ticket.attendee_name) return;
 		QRCode.toDataURL(ticket.ticket_code, {
 			width: 300,
 			margin: 1,
@@ -50,7 +51,7 @@ export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 
 		})
 			.then(setQrCodeUrl)
 			.catch(console.error);
-	}, [ticket.ticket_code]);
+	}, [ticket.ticket_code, ticket.attendee_name]);
 
 	const event = ticket.event;
 	const eventDate = event.start_date ? new Date(event.start_date) : null;
@@ -62,9 +63,15 @@ export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 
 		? { tone: STATUS_STYLES.checkedIn, icon: CheckCircle2, label: 'Check-in' }
 		: ticket.registration.status === 'cancelled'
 			? { tone: STATUS_STYLES.cancelled, icon: XCircle, label: 'Cancelado' }
-			: isEventPast
-				? { tone: STATUS_STYLES.past, icon: Clock, label: 'Finalizado' }
-				: { tone: STATUS_STYLES.confirmed, icon: CheckCircle2, label: 'Confirmado' };
+			: !ticket.attendee_name
+				? {
+						tone: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+						icon: Clock,
+						label: 'Pendente de nomeação',
+					}
+				: isEventPast
+					? { tone: STATUS_STYLES.past, icon: Clock, label: 'Finalizado' }
+					: { tone: STATUS_STYLES.confirmed, icon: CheckCircle2, label: 'Confirmado' };
 	const StatusIcon = status.icon;
 
 	const coverImage = event.cover_image;
@@ -207,7 +214,7 @@ export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 
 				{/* QR beside the code rather than centred above it: at this size it is a
 				    reference, and the full-size one lives in the details modal. */}
 				<div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-50 p-2 dark:bg-slate-950/50">
-					{qrCodeUrl && (
+					{qrCodeUrl && !attendee.isPending && (
 						<Image src={qrCodeUrl} alt="QR Code do ingresso" width={40} height={40} className="size-10 rounded" />
 					)}
 					<div className="min-w-0">

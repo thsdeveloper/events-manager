@@ -88,3 +88,13 @@ describe('RefundRegistration', () => {
 		expect(repository.recordTransaction).toHaveBeenCalledWith(expect.objectContaining({ status: 'refunded' }));
 	});
 });
+it('refunds transparent purchases through the transparent endpoint and awaits provider confirmation', async () => {
+	const { gateway, repository, useCase } = build();
+	await useCase.execute(
+		{ ...paidCheckout, provider_transaction_id: 'card_1', additional_info: { payment_flow: 'transparent' } },
+		'Solicitado pelo comprador',
+	);
+	expect(gateway.refundPixCharge).toHaveBeenCalledWith('card_1', 'Solicitado pelo comprador');
+	expect(gateway.refundCheckout).not.toHaveBeenCalled();
+	expect(repository.updateRegistration).not.toHaveBeenCalled();
+});

@@ -74,7 +74,7 @@ export interface AdminRepository {
 	getPlatformFeePercentage(): Promise<number>;
 	nextTicketSort?(eventId: string): Promise<number>;
 	groupBelongsToEvent?(groupId: string, eventId: string): Promise<boolean>;
-	listEventOptions(organizerId: string): Promise<unknown[]>;
+	listEventOptions(organizerId: string): Promise<Array<{ id: string; title: string }>>;
 	listOwnedEventIds(organizerId: string): Promise<string[]>;
 	listParticipantFilterOptions(eventIds: string[]): Promise<{ events: unknown[]; ticketTypes: unknown[] }>;
 	/** Uma linha por ingresso nominal, com pedido, evento e tipo. */
@@ -98,8 +98,9 @@ export class AdminService {
 		return this.repository.getConfiguration();
 	}
 
-	async eventFilterOptions(organizerId: string) {
-		return { events: await this.repository.listEventOptions(organizerId) };
+	async eventFilterOptions(organizerId: string, eventId?: string) {
+		const events = await this.repository.listEventOptions(organizerId);
+		return { events: eventId ? events.filter((event) => event.id === eventId) : events };
 	}
 
 	async listTickets(organizerId: string, query: TicketQuery) {
@@ -185,14 +186,15 @@ export class AdminService {
 		});
 	}
 
-	async participantFilterOptions(organizerId: string) {
-		return this.repository.listParticipantFilterOptions(await this.repository.listOwnedEventIds(organizerId));
+	async participantFilterOptions(organizerId: string, eventId?: string) {
+		const ownedIds = await this.repository.listOwnedEventIds(organizerId);
+		return this.repository.listParticipantFilterOptions(eventId ? ownedIds.filter((id) => id === eventId) : ownedIds);
 	}
 
 	async listParticipants(organizerId: string, query: ParticipantQuery) {
 		const ownedIds = await this.repository.listOwnedEventIds(organizerId);
 		const requested = query.eventIds?.split(',').filter((id) => ownedIds.includes(id));
-		const eventIds = requested?.length ? requested : ownedIds;
+		const eventIds = query.eventIds ? (requested ?? []) : ownedIds;
 		if (!eventIds.length) return emptyParticipantPage(query.page, query.limit);
 		const result = await this.repository.listParticipantTickets(eventIds, query);
 		const checkedIn = result.metricRows.filter((row) => row.check_in_date).length;
@@ -214,8 +216,10 @@ export class AdminService {
 		};
 	}
 
-	async getParticipant(organizerId: string, id: string) {
-		return { success: true, data: await this.ownedNominalTicket(organizerId, id) };
+	async getParticipant(organizerId: string, id: string, eventId?: string) {
+		const ticket = await this.ownedNominalTicket(organizerId, id);
+		if (eventId && ticket.event.id !== eventId) throw registrationNotFound();
+		return { success: true, data: ticket };
 	}
 
 	/**
@@ -302,15 +306,18 @@ export class AdminService {
 		return { success: true, data, ...(refund ? { refund } : {}) };
 	}
 
-	async exportParticipants(organizerId: string) {
-		const eventIds = await this.repository.listOwnedEventIds(organizerId);
+	async exportParticipants(organizerId: string, query: Partial<ParticipantQuery> = {}) {
+		const ownedIds = await this.repository.listOwnedEventIds(organizerId);
+		const requestedIds = query.eventIds?.split(',');
+		const eventIds = requestedIds ? ownedIds.filter((id) => requestedIds.includes(id)) : ownedIds;
 		const result = eventIds.length
 			? await this.repository.listParticipantTickets(eventIds, {
-					page: 1,
-					limit: 10_000,
 					search: '',
 					sortField: 'date_created',
 					sortDirection: 'desc',
+					...query,
+					page: 1,
+					limit: 10_000,
 				})
 			: { data: [] as NominalTicket[] };
 		return `\uFEFF${[

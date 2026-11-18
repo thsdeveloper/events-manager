@@ -1,5 +1,6 @@
 import {
 	cmsFormInputSchema,
+	cmsIdSchema,
 	cmsListQuerySchema,
 	cmsNavigationInputSchema,
 	cmsNavigationItemInputSchema,
@@ -20,10 +21,10 @@ import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
 import { SupabaseCmsRepository } from '../infrastructure/supabase/cms-repository.js';
 import { requireSuperAdmin } from './auth-context.js';
 
-const idParams = z.object({ id: z.string().uuid() });
+const idParams = z.object({ id: cmsIdSchema });
 const navigationParams = z.object({ id: z.string().regex(/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/) });
-const blockParams = idParams.extend({ blockId: z.string().uuid() });
-const itemParams = navigationParams.extend({ itemId: z.string().uuid() });
+const blockParams = idParams.extend({ blockId: cmsIdSchema });
+const itemParams = navigationParams.extend({ itemId: cmsIdSchema });
 const pageQuery = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -191,7 +192,9 @@ export async function cmsRoutes(app: FastifyInstance, options: { clients: Supaba
 	app.put(`${base}/navigation/:id/items/order`, async (request) => {
 		const admin = await requireSuperAdmin(request, auth);
 		const { id } = navigationParams.parse(request.params);
-		const { order, parent } = cmsReorderSchema.extend({ parent: z.string().uuid().nullable().default(null) }).parse(request.body);
+		const { order, parent } = cmsReorderSchema
+			.extend({ parent: cmsIdSchema.nullable().default(null) })
+			.parse(request.body);
 		return service.reorderNavigationItems(admin.user.id, id, parent, order, auditContext(request));
 	});
 

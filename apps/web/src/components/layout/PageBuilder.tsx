@@ -13,7 +13,9 @@ const PageBuilder = ({ sections }: PageBuilderProps) => {
 			typeof block.collection === 'string' &&
 			hasBlockRenderer(block.collection) &&
 			!!block.item &&
-			typeof block.item === 'object',
+			typeof block.item === 'object' &&
+			(block.collection !== 'block_event_highlight' ||
+				('events' in block.item && Array.isArray(block.item.events) && block.item.events.length > 0)),
 	);
 
 	return (
@@ -21,19 +23,29 @@ const PageBuilder = ({ sections }: PageBuilderProps) => {
 			{validBlocks.map((block) => (
 				<section
 					key={block.id}
-					aria-label={'headline' in block.item ? String(block.item.headline || '') || undefined : undefined}
+					aria-label={
+						block.collection === 'block_event_highlight'
+							? 'Eventos recentes'
+							: 'headline' in block.item
+								? String(block.item.headline || '') || undefined
+								: undefined
+					}
 					data-background={block.background ?? 'light'}
 					className={cn('bg-background text-foreground', block.background === 'dark' && 'dark')}
 				>
-					<Container className="py-8 sm:py-10">
-						<BaseBlock
-							block={{
-								collection: block.collection,
-								item: block.item,
-								id: block.id,
-							}}
-						/>
-					</Container>
+					{block.collection === 'block_event_highlight' ? (
+						<BaseBlock block={{ collection: block.collection, item: block.item, id: block.id }} />
+					) : (
+						<Container className="py-8 sm:py-10">
+							<BaseBlock
+								block={{
+									collection: block.collection,
+									item: block.item,
+									id: block.id,
+								}}
+							/>
+						</Container>
+					)}
 				</section>
 			))}
 		</div>

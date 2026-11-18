@@ -1,0 +1,33 @@
+begin;
+select '1..1';
+do $$
+declare owner_id uuid:=gen_random_uuid(); reviewer uuid:=gen_random_uuid(); org uuid:=gen_random_uuid(); event_id uuid:=gen_random_uuid(); registration uuid:=gen_random_uuid();request_id uuid:=gen_random_uuid(); payout_id uuid:=gen_random_uuid(); receipt_id uuid:=gen_random_uuid();j jsonb;
+begin
+ insert into auth.users(id,email) values(owner_id,owner_id||'@payout.test'),(reviewer,reviewer||'@payout.test');
+ insert into public.profiles(id,role,status) values(owner_id,'organizer','active'),(reviewer,'super_admin','active') on conflict(id) do update set role=excluded.role;
+ insert into public.organizers(id,user_id,name,email,document,status,payout_status,receiving_method,production_approved_at) values(org,owner_id,'Transferência','a@payout.test','52998224725','active','enabled','bank_transfer',now());
+ insert into public.organizer_receiving_requests(id,organizer_id,version,account,status,submitted_by) values(request_id,org,1,'{"method":"bank_transfer","holder_name":"Titular","holder_document":"52998224725","bank_code":"001","bank_name":"Banco do Brasil","branch":"1234","account_number":"123456","account_digit":"7","account_type":"checking"}','approved',owner_id);
+ update public.organizers set current_receiving_request_id=request_id where id=org;
+ insert into public.events(id,organizer_id,title,slug,start_date,end_date,status) values(event_id,org,'Payout event','payout-'||event_id,now(),now()+interval '1 day','draft');
+ insert into public.event_registrations(id,event_id,participant_name,participant_email,status,payment_status,total_amount,payment_amount,quantity) values(registration,event_id,'Buyer','buyer@payout.test','confirmed','paid',100,100,1);
+ insert into public.payment_transactions(registration_id,status,amount,organizer_net,provider) values(registration,'succeeded',100,100,'mock');
+ update public.event_configurations set payouts_enabled=true where id=1;
+ j:=public.create_organizer_payout(payout_id,org,reviewer,30,0,'manual');
+ assert j->>'status'='pending' and j#>>'{bank_account,account_number}'='123456','manual transfer reserves the approved destination';
+ assert public.get_organizer_available_balance(org)=70,'reservation prevents another spend of the same balance';
+ begin perform public.finish_manual_payout(payout_id,reviewer,null,'TED-123',null);raise exception 'completed without receipt';exception when others then if sqlerrm<>'RECEIPT_REQUIRED' then raise;end if;end;
+ update public.organizers set payout_status='pending_review' where id=org;
+ begin perform public.create_organizer_payout(gen_random_uuid(),org,reviewer,20,0,'manual');raise exception 'paid while new data pending';exception when others then if sqlerrm<>'PAYOUT_ACCOUNT_DISABLED' then raise;end if;end;
+ insert into public.organizer_payout_receipts(id,payout_id,uploaded_by,filename,mime_type,size,storage_path) values(receipt_id,payout_id,reviewer,'receipt.pdf','application/pdf',100,'payout-test/'||receipt_id);
+ j:=public.finish_manual_payout(payout_id,reviewer,receipt_id,'TED-123',null);
+ assert j->>'status'='completed' and j->>'receipt_document_id'=receipt_id::text,'receipt completes an actual manual transfer';
+ assert public.get_organizer_available_balance(org)=70,'completion does not reserve the amount twice';
+ begin perform public.finish_manual_payout(payout_id,reviewer,null,null,'Não enviado');raise exception 'cancelled completed transfer';exception when others then if sqlerrm<>'MANUAL_PAYOUT_CHANGED' then raise;end if;end;
+ update public.organizers set payout_status='enabled' where id=org;
+ payout_id:=gen_random_uuid();perform public.create_organizer_payout(payout_id,org,reviewer,20,0,'manual');
+ perform public.finish_manual_payout(payout_id,reviewer,null,null,'Transferência não realizada');
+ assert public.get_organizer_available_balance(org)=70,'cancellation releases only the unspent reservation';
+ assert not has_table_privilege('authenticated','public.organizer_payout_receipts','select'),'private receipts cannot be read directly';
+end; $$;
+select 'ok 1 - manual payouts require verified destinations, balance reservations and receipts';
+rollback;

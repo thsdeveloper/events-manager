@@ -245,10 +245,18 @@ export class SuperAdminService {
 			this.repository.getAvailableBalance(organizerId),
 		]);
 		if (!organizer) throw new ApiError('Organizador não encontrado.', 404, 'ORGANIZER_NOT_FOUND');
-		if (!organizer.payout_pix_key || !organizer.payout_pix_key_type || organizer.payout_status !== 'enabled') {
-			throw new ApiError('Os dados PIX do organizador ainda não estão habilitados.', 422, 'PAYOUT_ACCOUNT_DISABLED');
+		const bankTransfer = organizer.receiving_method === 'bank_transfer';
+		if (
+			organizer.payout_status !== 'enabled' ||
+			(!bankTransfer && (!organizer.payout_pix_key || !organizer.payout_pix_key_type))
+		) {
+			throw new ApiError(
+				'Os dados de recebimento do organizador ainda não estão aprovados.',
+				422,
+				'PAYOUT_ACCOUNT_DISABLED',
+			);
 		}
-		const pixKeyType = parsePixKeyType(organizer.payout_pix_key_type);
+
 		if (!configuration.payouts_enabled && this.payments.provider !== 'mock') {
 			throw new ApiError('Os repasses reais estão pausados nas configurações da plataforma.', 409, 'PAYOUTS_DISABLED');
 		}
@@ -262,7 +270,7 @@ export class SuperAdminService {
 		if (amount > available)
 			throw new ApiError('Saldo disponível insuficiente para este repasse.', 409, 'INSUFFICIENT_BALANCE');
 
-		const providerFee = this.payments.provider === 'mock' ? 0 : Number(configuration.payout_fee_fixed);
+		const providerFee = bankTransfer || this.payments.provider === 'mock' ? 0 : Number(configuration.payout_fee_fixed);
 		let payout: Row;
 		try {
 			payout = await this.repository.createPayout({
@@ -270,24 +278,34 @@ export class SuperAdminService {
 				amount,
 				id: crypto.randomUUID(),
 				organizerId,
-				provider: this.payments.provider,
+				provider: bankTransfer ? 'manual' : this.payments.provider,
 				providerFee,
 			});
 		} catch (error) {
 			throw payoutCreationError(error, configuration);
 		}
+		if (payout.method === 'bank_transfer') return { success: true, payout };
 		try {
 			const transfer = await this.payments.sendPix({
 				externalId: String(payout.id),
-				amountInCents: Math.round(Number(payout.net_amount) * 100),
+				// AbacatePay deducts its fee from amount; send the gross reservation exactly once.
+				amountInCents: Math.round(Number(payout.amount ?? amount) * 100),
 				description: `Repasse Events Manager · ${String(organizer.name)}`,
-				pixKey: String(organizer.payout_pix_key),
-				pixKeyType,
+				pixKey: String(payout.pix_key),
+				pixKeyType: parsePixKeyType(payout.pix_key_type),
 			});
 			const completed = transfer.status === 'COMPLETE';
 			const updated = await this.repository.finishPayout(String(payout.id), {
 				provider_payout_id: transfer.id,
-				provider_fee: transfer.providerFeeInCents ? transfer.providerFeeInCents / 100 : providerFee,
+				provider_fee: transfer.providerFeeInCents == null ? providerFee : transfer.providerFeeInCents / 100,
+				net_amount:
+					Math.round(
+						Math.max(
+							0,
+							Number(payout.amount ?? amount) -
+								(transfer.providerFeeInCents == null ? providerFee : transfer.providerFeeInCents / 100),
+						) * 100,
+					) / 100,
 				status: completed ? 'completed' : 'processing',
 				receipt_url: transfer.receiptUrl,
 				processed_at: completed ? this.now().toISOString() : null,
@@ -462,7 +480,11 @@ function parsePixKeyType(value: unknown): 'CPF' | 'CNPJ' | 'PHONE' | 'EMAIL' | '
 	if (['CPF', 'CNPJ', 'PHONE', 'EMAIL', 'RANDOM'].includes(normalized)) {
 		return normalized as 'CPF' | 'CNPJ' | 'PHONE' | 'EMAIL' | 'RANDOM';
 	}
-	throw new ApiError('Os dados PIX do organizador ainda não estão habilitados.', 422, 'PAYOUT_ACCOUNT_DISABLED');
+	throw new ApiError(
+		'Os dados de recebimento do organizador ainda não estão aprovados.',
+		422,
+		'PAYOUT_ACCOUNT_DISABLED',
+	);
 }
 
 function payoutCreationError(error: unknown, configuration: Row) {
@@ -470,7 +492,11 @@ function payoutCreationError(error: unknown, configuration: Row) {
 	if (message.includes('ORGANIZER_NOT_FOUND'))
 		return new ApiError('Organizador não encontrado.', 404, 'ORGANIZER_NOT_FOUND');
 	if (message.includes('PAYOUT_ACCOUNT_DISABLED'))
-		return new ApiError('Os dados PIX do organizador ainda não estão habilitados.', 422, 'PAYOUT_ACCOUNT_DISABLED');
+		return new ApiError(
+			'Os dados de recebimento do organizador ainda não estão aprovados.',
+			422,
+			'PAYOUT_ACCOUNT_DISABLED',
+		);
 	if (message.includes('PAYOUTS_DISABLED'))
 		return new ApiError('Os repasses reais estão pausados nas configurações da plataforma.', 409, 'PAYOUTS_DISABLED');
 	if (message.includes('PAYOUT_BELOW_MINIMUM'))

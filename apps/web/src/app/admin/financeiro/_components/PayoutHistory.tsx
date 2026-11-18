@@ -20,9 +20,11 @@ export type PayoutRecord = {
 	description: string | null;
 	statementDescriptor: string | null;
 	destination: string | null;
+	receiptUrl?: string | null;
 };
 
 export type PayoutSummary = {
+	payoutStatus?: string;
 	balance: {
 		available: number;
 		pending: number;
@@ -51,12 +53,21 @@ function formatDate(value: string | null) {
 }
 
 const statusLabel: Record<string, string> = {
+	completed: 'Concluído',
+	processing: 'Em processamento',
 	paid: 'Pago',
 	in_transit: 'Em trânsito',
 	pending: 'Pendente',
 	failed: 'Falhou',
 	canceled: 'Cancelado',
+	cancelled: 'Cancelado',
 };
+
+function receiptHref(value?: string | null) {
+	if (!value || /[\\\s]/.test(value)) return null;
+
+	return /^https?:\/\//i.test(value) || value.startsWith('/api/organizer/receiving-accounts/') ? value : null;
+}
 
 function PayoutHistory({ summary, isLoading, currencyFormatter }: PayoutHistoryProps) {
 	const balance = summary?.balance;
@@ -66,7 +77,7 @@ function PayoutHistory({ summary, isLoading, currencyFormatter }: PayoutHistoryP
 		<Card className="">
 			<CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
 				<div>
-					<CardTitle>Repasses AbacatePay</CardTitle>
+					<CardTitle>Repasses</CardTitle>
 					<CardDescription>Histórico de transferências e saldo disponível</CardDescription>
 				</div>
 				{balance && (
@@ -94,12 +105,12 @@ function PayoutHistory({ summary, isLoading, currencyFormatter }: PayoutHistoryP
 					</div>
 				) : payouts.length === 0 ? (
 					<div className="py-8 text-center text-sm text-muted-foreground">
-						Nenhum repasse encontrado para sua conta AbacatePay.
+						Nenhum repasse encontrado para sua organização.
 					</div>
 				) : (
 					<div className="overflow-x-auto">
 						<RecordTable
-							headers={['Data', 'ID Payout', 'Valor', 'Status', 'Previsão']}
+							headers={['Data', 'Repasse', 'Valor', 'Status', 'Processamento', 'Comprovante']}
 							rows={payouts.map((payout) => ({
 								id: String(payout.id),
 								values: [payout.createdAt, payout.id, payout.amount, payout.status, payout.arrivalDate],
@@ -109,6 +120,7 @@ function PayoutHistory({ summary, isLoading, currencyFormatter }: PayoutHistoryP
 									</div>,
 									<div key="column-1" className="text-primary">
 										{payout.id}
+										{payout.description && <p className="text-sm text-muted-foreground">{payout.description}</p>}
 									</div>,
 									<div key="column-2" className="text-right text-sm text-foreground">
 										{currencyFormatter.format(payout.amount)}
@@ -118,6 +130,20 @@ function PayoutHistory({ summary, isLoading, currencyFormatter }: PayoutHistoryP
 									</div>,
 									<div key="column-4" className="text-sm text-muted-foreground">
 										{formatDate(payout.arrivalDate)}
+									</div>,
+									<div key="receipt" className="text-sm">
+										{receiptHref(payout.receiptUrl) ? (
+											<a
+												href={receiptHref(payout.receiptUrl)!}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="text-primary underline underline-offset-4"
+											>
+												Ver comprovante
+											</a>
+										) : (
+											'—'
+										)}
 									</div>,
 								],
 							}))}

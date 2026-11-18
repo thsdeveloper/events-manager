@@ -1,6 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
+import { Toaster } from '@/components/ui/toaster';
 import { OrganizerSignupForm } from './OrganizerSignupForm';
 
 vi.mock('next/link', () => ({
@@ -127,7 +128,7 @@ describe('OrganizerSignupForm', () => {
 		});
 	});
 
-	it('explains when the person already has an organizer account and when the API refuses a field', async () => {
+	it('explains duplicate documents and field validation errors', async () => {
 		const onSuccess = vi.fn();
 		let attempt = 0;
 		mockFetch([
@@ -135,20 +136,43 @@ describe('OrganizerSignupForm', () => {
 				'/api/organizer/request',
 				() =>
 					attempt++ === 0
-						? problemResponse(409, 'ORGANIZER_EXISTS', 'Você já possui uma conta de organizador.')
+						? problemResponse(409, 'DOCUMENT_IN_USE', 'Você já possui uma conta com este CPF.')
 						: problemResponse(422, 'VALIDATION_ERROR', 'Os dados enviados são inválidos.', {
 								errors: { fieldErrors: { email: ['E-mail recusado pela API'] } },
 							}),
 			],
 		]);
-		const { user: person } = renderWithProviders(<OrganizerSignupForm user={user} onSuccess={onSuccess} />);
+		const { user: person } = renderWithProviders(
+			<>
+				<OrganizerSignupForm user={user} onSuccess={onSuccess} />
+				<Toaster />
+			</>,
+		);
 
 		await person.click(screen.getByRole('checkbox', { name: /confirmo/i }));
 		await person.click(screen.getByRole('button', { name: /criar conta de organizador/i }));
-		expect(await screen.findByRole('alert')).toHaveTextContent('Você já possui uma conta de organizador.');
+		expect(
+			await within(screen.getByRole('region', { name: /Notifications/ })).findByText(
+				'Você já possui uma conta com este CPF.',
+			),
+		).toBeInTheDocument();
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 
 		await person.click(screen.getByRole('button', { name: /criar conta de organizador/i }));
 		expect(await screen.findByText('E-mail recusado pela API')).toBeInTheDocument();
 		expect(onSuccess).not.toHaveBeenCalled();
 	});
+});
+
+it('links all acceptance documents to published CMS URLs without losing the signup form', () => {
+	renderWithProviders(<OrganizerSignupForm user={user} onSuccess={vi.fn()} />);
+	for (const [name, href] of [
+		['termos de uso', '/termos-de-uso'],
+		['política de acesso', '/politica-de-acesso'],
+		['política de privacidade', '/politica-de-privacidade'],
+	]) {
+		const link = screen.getByRole('link', { name });
+		expect(link).toHaveAttribute('href', href);
+		expect(link).toHaveAttribute('target', '_blank');
+	}
 });

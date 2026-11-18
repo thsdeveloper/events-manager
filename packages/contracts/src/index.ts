@@ -15,3 +15,10 @@ export * from './event-ai.js';
 export * from './category-id.js';
 export * from './event-sales-period.js';
 export * from './branding.js';
+export * from './organizer-admin.js';
+
+export * from './receiving-account.js';
+export * from './brazil-address.js';
+export * from './payment-fees.js';
+export * from './payment-settings.js';
+export * from './transparent-checkout.js';

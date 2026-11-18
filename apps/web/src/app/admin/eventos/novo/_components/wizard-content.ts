@@ -37,7 +37,20 @@ export function contentFromEvent(event: Event) {
 	};
 }
 
-export function structuredAddress(values: Partial<EventWizardFormValues>) {
+export function structuredAddress(
+	values: Partial<
+		Pick<
+			EventWizardFormValues,
+			| 'location_street'
+			| 'location_number'
+			| 'location_complement'
+			| 'location_neighborhood'
+			| 'location_city'
+			| 'location_state'
+			| 'location_postal_code'
+		>
+	>,
+) {
 	const street = [values.location_street, values.location_number].filter(Boolean).join(', ');
 
 	return [

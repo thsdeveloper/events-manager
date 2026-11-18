@@ -1,44 +1,44 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import type { FeeConfig } from '@/lib/fees';
+import { DEFAULT_ORGANIZER_PAYMENTS, quoteGatewayFee, readGatewayFees } from '@events-manager/contracts';
+import { useMemo } from 'react';
+import { usePublicFees } from '@/hooks/usePublicFees';
+import { useOrganizerPaymentSettings } from '@/hooks/useOrganizerPaymentSettings';
 
-const FALLBACK_FEE_CONFIG: FeeConfig = {
-	platformFeePercentage: 5,
-	platformFeeMinimum: 0,
-	providerPercentageFee: 3.5,
-	providerFixedFee: 0.6,
-};
+/** Both the compact summary and detailed simulation use the organization's saved preferences. */
+export function useFeeConfig() {
+	const { fees, isLoading, isFallback } = usePublicFees();
+	const preferences = useOrganizerPaymentSettings();
+	const settings = preferences.data?.settings ?? DEFAULT_ORGANIZER_PAYMENTS;
+	const method = settings.accepted_payment_methods.includes('PIX') ? 'PIX' : settings.accepted_payment_methods[0];
+	const feeConfig = useMemo(() => {
+		const quote = quoteGatewayFee(
+			100,
+			method === 'CARD' ? 'card' : method === 'BOLETO' ? 'boleto' : method === 'DEBIT' ? 'debit' : 'pix',
+			readGatewayFees({ ...fees }),
+			1,
+			settings.credit_card_settlement_period ?? 'D+1',
+		);
 
-async function fetchFeeConfig(): Promise<FeeConfig> {
-	// Tabela pública: funciona para visitantes e organizadores sem depender de sessão.
-	const response = await fetch('/api/content/fees');
-	if (!response.ok) throw new Error('Não foi possível carregar as taxas da plataforma.');
-	const config = await response.json();
+		return {
+			platformFeePercentage: fees.platform_fee_percentage,
+			platformFeeMinimum: fees.platform_fee_minimum ?? 0,
+			providerPercentageFee: quote.percentage,
+			providerFixedFee: quote.fixed,
+		};
+	}, [fees, method, settings.credit_card_settlement_period]);
+	const paymentSettings = preferences.data ?? {
+		settings: DEFAULT_ORGANIZER_PAYMENTS,
+		available_methods: ['PIX'] as const,
+		pending_methods: [],
+		gateway_card_settlement_period: 'D+1' as const,
+	};
 
 	return {
-		platformFeePercentage: Number(config?.platform_fee_percentage ?? FALLBACK_FEE_CONFIG.platformFeePercentage),
-		platformFeeMinimum: Number(config?.platform_fee_minimum ?? 0),
-		providerPercentageFee: Number(config?.card_fee_percentage ?? FALLBACK_FEE_CONFIG.providerPercentageFee),
-		providerFixedFee: Number(config?.card_fee_fixed ?? FALLBACK_FEE_CONFIG.providerFixedFee),
+		feeConfig,
+		feeTable: fees,
+		paymentSettings: { ...paymentSettings, available_methods: [...paymentSettings.available_methods] },
+		isLoading: isLoading || preferences.isPending,
+		isFallback: isFallback || preferences.isError,
 	};
-}
-
-/**
- * Platform fees change rarely and every ticket form needs them, so they are
- * fetched once and shared. The previous modal refetched on every open.
- *
- * A failed request falls back to the published defaults rather than blocking the
- * form: the values only drive an on-screen estimate, and the API recomputes
- * `buyer_price` server-side when the ticket is saved.
- */
-export function useFeeConfig() {
-	const { data, isPending, isError } = useQuery({
-		queryKey: ['event-fee-config'],
-		queryFn: fetchFeeConfig,
-		staleTime: 10 * 60 * 1000,
-		retry: 1,
-	});
-
-	return { feeConfig: data ?? FALLBACK_FEE_CONFIG, isLoading: isPending, isFallback: isError };
 }

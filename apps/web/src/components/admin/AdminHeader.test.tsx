@@ -1,14 +1,26 @@
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
 import AdminHeader from './AdminHeader';
 
-const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+const router = vi.hoisted(() => ({
+	push: vi.fn(),
+	replace: vi.fn(),
+	refresh: vi.fn(),
+	pathname: '/admin/financeiro',
+	search: '',
+}));
+beforeEach(() => {
+	vi.clearAllMocks();
+	router.pathname = '/admin/financeiro';
+	router.search = '';
+});
 
 vi.mock('next/navigation', () => ({
-	usePathname: () => '/admin/financeiro',
+	usePathname: () => router.pathname,
+	useSearchParams: () => new URLSearchParams(router.search),
 	useRouter: () => router,
 }));
 vi.mock('next/link', () => ({
@@ -95,5 +107,83 @@ describe('AdminHeader', () => {
 	it('does not expose the platform switch to an ordinary organizer', () => {
 		renderHeader(<AdminHeader user={user as never} organizer={organizer} />);
 		expect(screen.queryByRole('link', { name: 'Painel superadmin' })).not.toBeInTheDocument();
+	});
+});
+
+const eventSelection = {
+	events: [
+		{ id: 'event-a', title: 'Congresso' },
+		{ id: 'event-b', title: 'Oficina' },
+	],
+	selectedEventId: null,
+};
+describe('seleção de evento no Header', () => {
+	it('oferece todos os eventos e salva a escolha antes de atualizar as páginas', async () => {
+		const save = vi.fn((_input: unknown, init?: RequestInit) => {
+			expect(JSON.parse(String(init?.body))).toEqual({ eventId: 'event-a' });
+
+return jsonResponse({ selectedEventId: 'event-a' });
+		});
+		mockFetch([['/api/organizer/event-selection', save]]);
+		const { user: person } = renderHeader(
+			<AdminHeader user={user as never} organizer={organizer} eventSelection={eventSelection} />,
+		);
+		await person.click(screen.getByRole('button', { name: 'Selecionar evento: Todos os eventos' }));
+		expect(screen.getByRole('menuitemradio', { name: 'Todos os eventos' })).toHaveAttribute('aria-checked', 'true');
+		await person.click(screen.getByRole('menuitemradio', { name: 'Congresso' }));
+		await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+		expect(save).toHaveBeenCalledOnce();
+	});
+	it('permite voltar à visão de todos e remove o filtro local antigo da URL', async () => {
+		router.search = 'eventId=event-a&page=4&startDate=2026-11-01';
+		const fetchMock = mockFetch([['/api/organizer/event-selection', () => jsonResponse({ selectedEventId: null })]]);
+		const { user: person } = renderHeader(
+			<AdminHeader
+				user={user as never}
+				organizer={organizer}
+				eventSelection={{ ...eventSelection, selectedEventId: 'event-a' }}
+			/>,
+		);
+		await person.click(screen.getByRole('button', { name: 'Selecionar evento: Congresso' }));
+		await person.click(screen.getByRole('menuitemradio', { name: 'Todos os eventos' }));
+		await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin/financeiro?startDate=2026-11-01'));
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/organizer/event-selection',
+			expect.objectContaining({ method: 'POST', body: JSON.stringify({ eventId: null }) }),
+		);
+	});
+	it('leva os detalhes ao novo evento em vez de manter os dados do anterior', async () => {
+		router.pathname = '/admin/eventos/event-a/participantes';
+		mockFetch([['/api/organizer/event-selection', () => jsonResponse({ selectedEventId: 'event-b' })]]);
+		const { user: person } = renderHeader(
+			<AdminHeader
+				user={user as never}
+				organizer={organizer}
+				eventSelection={{ ...eventSelection, selectedEventId: 'event-a' }}
+			/>,
+		);
+		await person.click(screen.getByRole('button', { name: 'Selecionar evento: Congresso' }));
+		await person.click(screen.getByRole('menuitemradio', { name: 'Oficina' }));
+		await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin/eventos/event-b/participantes'));
+	});
+	it('mantém a seleção anterior e mostra um erro se não puder salvar', async () => {
+		mockFetch([
+			['/api/organizer/event-selection', () => problemResponse(404, 'EVENT_NOT_FOUND', 'Evento não encontrado.')],
+		]);
+		const { user: person } = renderHeader(
+			<AdminHeader user={user as never} organizer={organizer} eventSelection={eventSelection} />,
+		);
+		await person.click(screen.getByRole('button', { name: 'Selecionar evento: Todos os eventos' }));
+		await person.click(screen.getByRole('menuitemradio', { name: 'Congresso' }));
+		expect(await screen.findByRole('alert')).toHaveTextContent('Evento não encontrado.');
+		expect(router.refresh).not.toHaveBeenCalled();
+		expect(screen.getByRole('button', { name: 'Selecionar evento: Todos os eventos' })).toBeEnabled();
+	});
+	it('informa quando a organização ainda não possui eventos', async () => {
+		const { user: person } = renderHeader(
+			<AdminHeader user={user as never} organizer={organizer} eventSelection={{ events: [], selectedEventId: null }} />,
+		);
+		await person.click(screen.getByRole('button', { name: 'Selecionar evento: Todos os eventos' }));
+		expect(screen.getByText('Nenhum evento cadastrado')).toBeInTheDocument();
 	});
 });

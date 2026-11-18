@@ -1,5 +1,7 @@
 'use client';
 
+import { readGatewayFees } from '@events-manager/contracts';
+
 import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_PUBLIC_FEES, type PublicFeeTable } from '@/lib/fees';
 
@@ -10,6 +12,7 @@ async function fetchPublicFees(): Promise<PublicFeeTable> {
 	const numeric = (key: keyof PublicFeeTable) => Number(table[key] ?? DEFAULT_PUBLIC_FEES[key]);
 
 	return {
+		...readGatewayFees({ ...table }),
 		platform_fee_percentage: numeric('platform_fee_percentage'),
 		platform_fee_minimum: Number(table.platform_fee_minimum ?? 0),
 		pix_fee_fixed: numeric('pix_fee_fixed'),

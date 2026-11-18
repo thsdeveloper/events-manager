@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Heading } from '@/components/design-system/atoms/Heading';
 import { formatCurrency } from '@/lib/formatters';
@@ -146,16 +147,25 @@ export function CouponManager({ coupons, create, error, isSaving, remove, setSta
 
 					<div className="space-y-2">
 						<Label htmlFor="coupon-value">Valor do desconto</Label>
-						<Input
-							id="coupon-value"
-							type="number"
-							min="0.01"
-							step="0.01"
-							max={form.discount_type === 'percentage' ? 100 : undefined}
-							value={form.discount_value}
-							onChange={(event) => setForm({ ...form, discount_value: event.target.value })}
-							required
-						/>
+						{form.discount_type === 'fixed' ? (
+							<CurrencyInput
+								id="coupon-value"
+								value={form.discount_value}
+								onValueChange={(value) => setForm({ ...form, discount_value: String(value) })}
+								required
+							/>
+						) : (
+							<Input
+								id="coupon-value"
+								type="number"
+								min="0.01"
+								step="0.01"
+								max={100}
+								value={form.discount_value}
+								onChange={(event) => setForm({ ...form, discount_value: event.target.value })}
+								required
+							/>
+						)}
 					</div>
 
 					<div className="space-y-2">

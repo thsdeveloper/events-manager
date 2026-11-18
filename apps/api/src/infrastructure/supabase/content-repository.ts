@@ -1,3 +1,4 @@
+import { readGatewayFees } from '@events-manager/contracts';
 import { brandingAssetKeys, type MediaFile } from '@events-manager/contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ContentRepository, PageReadOptions, PublicFeeTable } from '../../application/content/content-service.js';
@@ -27,6 +28,7 @@ const blockTables = {
 	block_posts: 'block_posts',
 	block_events: 'block_events',
 	block_form: 'block_form',
+	block_event_highlight: 'block_event_highlight',
 } as const;
 
 export class SupabaseContentRepository implements ContentRepository {
@@ -77,7 +79,7 @@ export class SupabaseContentRepository implements ContentRepository {
 		const { data, error } = await this.database
 			.from('event_configurations')
 			.select(
-				'platform_fee_percentage,platform_fee_minimum,pix_fee_fixed,card_fee_percentage,card_fee_fixed,card_installment_2_6_percentage,card_installment_7_12_percentage,boleto_fee_fixed,payout_fee_fixed,minimum_payout,convenience_fee_calculation_method',
+				'platform_fee_percentage,platform_fee_minimum,pix_fee_fixed,card_fee_percentage,card_fee_fixed,card_installment_2_6_percentage,card_installment_7_12_percentage,boleto_fee_fixed,payout_fee_fixed,minimum_payout,convenience_fee_calculation_method,card_rates,debit_fee_percentage,debit_fee_fixed,payout_pix_monthly_limit,payout_pix_excess_fee,ted_fee_fixed,monthly_fee,pix_qr_fee,boleto_issue_fee',
 			)
 			.eq('id', 1)
 			.single();
@@ -85,6 +87,7 @@ export class SupabaseContentRepository implements ContentRepository {
 		const row = data as Record<string, unknown>;
 		const numeric = (key: string) => Number(row[key] ?? 0);
 		return {
+			...readGatewayFees(row),
 			platform_fee_percentage: numeric('platform_fee_percentage'),
 			platform_fee_minimum: numeric('platform_fee_minimum'),
 			pix_fee_fixed: numeric('pix_fee_fixed'),
@@ -265,6 +268,24 @@ export class SupabaseContentRepository implements ContentRepository {
 		const { data, error } = await this.database.from(table).select('*').eq('id', id).maybeSingle();
 		if (error) throw error;
 		if (!data) return null;
+
+		if (collection === 'block_event_highlight') {
+			const { data: events, error: eventsError } = await this.database
+				.from('events')
+				.select(
+					'id,title,slug,short_description,cover_image_alt,start_date,end_date,event_type,location_name,location_address,cover_image:media_files(id,bucket,path,type)',
+				)
+				.eq('status', 'published')
+				.eq('visibility', 'public')
+				.order('date_created', { ascending: false })
+				.order('id', { ascending: false })
+				.limit(data.display_mode === 'single' ? 1 : (data.max_items ?? 5));
+			if (eventsError) throw eventsError;
+			return {
+				...data,
+				events: (events ?? []).map((event) => ({ ...event, cover_image: toMediaFile(event.cover_image) })),
+			};
+		}
 
 		if (collection === 'block_hero' && data.button_group) {
 			const { data: group } = await this.database

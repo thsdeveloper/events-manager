@@ -86,8 +86,15 @@ export const slugSchema = z
 export const cmsContentStatusSchema = z.enum(['draft', 'in_review', 'published']);
 export type CmsContentStatus = z.infer<typeof cmsContentStatusSchema>;
 
+/**
+ * O PostgreSQL e o seed existente usam UUIDs no formato 8-4-4-4-12, inclusive
+ * IDs sem os bits de versão/variante RFC exigidos por uuid() no Zod 4.
+ * A mesma validação atende aos parâmetros da API e às referências do editor.
+ */
+export const cmsIdSchema = z.guid();
+
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
-const optionalUuid = z.string().uuid().nullable().optional();
+const optionalUuid = cmsIdSchema.nullable().optional();
 const isoDate = z.string().datetime({ offset: true });
 const absoluteUrl = z
 	.string()
@@ -154,12 +161,13 @@ export const CMS_BLOCK_COLLECTIONS = [
 	'block_posts',
 	'block_events',
 	'block_form',
+	'block_event_highlight',
 ] as const;
 export type CmsBlockCollection = (typeof CMS_BLOCK_COLLECTIONS)[number];
 
 export const cmsButtonInputSchema = z
 	.object({
-		id: z.string().uuid().optional(),
+		id: cmsIdSchema.optional(),
 		label: z.string().trim().min(1, 'Informe o texto do botão.').max(60),
 		type: z.enum(['url', 'page', 'post']).default('url'),
 		url: linkUrlSchema.nullable().optional(),
@@ -200,7 +208,7 @@ export const cmsGalleryItemSchema = z.object({
 	tagline: optionalText(80),
 	headline: optionalText(150),
 	items: z
-		.array(z.object({ id: z.string().uuid().optional(), file: z.string().uuid() }))
+		.array(z.object({ id: cmsIdSchema.optional(), file: cmsIdSchema }))
 		.max(60)
 		.default([]),
 });
@@ -211,7 +219,7 @@ export const cmsPricingItemSchema = z.object({
 	cards: z
 		.array(
 			z.object({
-				id: z.string().uuid().optional(),
+				id: cmsIdSchema.optional(),
 				title: z.string().trim().min(1, 'Informe o nome do plano.').max(60),
 				description: optionalText(200),
 				price: optionalText(40),
@@ -243,7 +251,14 @@ export const cmsEventsItemSchema = z.object({
 export const cmsFormBlockItemSchema = z.object({
 	tagline: optionalText(80),
 	headline: optionalText(150),
-	form: z.string().uuid({ message: 'Escolha o formulário.' }),
+	form: z.guid({ error: 'Escolha o formulário.' }),
+});
+
+export const cmsEventHighlightItemSchema = z.object({
+	display_mode: z.enum(['single', 'slider']).default('slider'),
+	max_items: z.coerce.number().int().min(1).max(12).default(5),
+	image_position: z.enum(['left', 'center', 'right']).default('right'),
+	button_label: z.string().trim().min(1, 'Informe o texto do botão.').max(60).default('Comprar ingressos'),
 });
 
 export const cmsBlockItemSchemas = {
@@ -254,6 +269,7 @@ export const cmsBlockItemSchemas = {
 	block_posts: cmsPostsItemSchema,
 	block_events: cmsEventsItemSchema,
 	block_form: cmsFormBlockItemSchema,
+	block_event_highlight: cmsEventHighlightItemSchema,
 } as const;
 
 const blockOptions = {
@@ -269,6 +285,7 @@ export const cmsPageBlockInputSchema = z.discriminatedUnion('collection', [
 	z.object({ collection: z.literal('block_posts'), item: cmsPostsItemSchema, ...blockOptions }),
 	z.object({ collection: z.literal('block_events'), item: cmsEventsItemSchema, ...blockOptions }),
 	z.object({ collection: z.literal('block_form'), item: cmsFormBlockItemSchema, ...blockOptions }),
+	z.object({ collection: z.literal('block_event_highlight'), item: cmsEventHighlightItemSchema, ...blockOptions }),
 ]);
 export type CmsPageBlockInput = z.infer<typeof cmsPageBlockInputSchema>;
 
@@ -279,7 +296,7 @@ export const cmsPageBlockUpdateSchema = z.object({
 	item: z.record(z.string(), z.unknown()).optional(),
 });
 
-export const cmsReorderSchema = z.object({ order: z.array(z.string().uuid()).min(1).max(200) });
+export const cmsReorderSchema = z.object({ order: z.array(cmsIdSchema).min(1).max(200) });
 
 // ---------------------------------------------------------------------------
 // Navegação
@@ -370,7 +387,7 @@ const choiceTypes = new Set(['checkbox_group', 'radio', 'select']);
 
 export const cmsFormFieldInputSchema = z
 	.object({
-		id: z.string().uuid().optional(),
+		id: cmsIdSchema.optional(),
 		name: z
 			.string()
 			.trim()

@@ -1,4 +1,5 @@
 import type { CmsBlockCollection } from '@events-manager/contracts';
+import { eventHighlightBlockForm } from './EventHighlightBlockFields';
 import { eventsBlockForm } from './EventsBlockFields';
 import { formBlockForm } from './FormBlockFields';
 import { galleryBlockForm } from './GalleryBlockFields';
@@ -9,6 +10,7 @@ import { richtextBlockForm } from './RichtextBlockFields';
 import type { BlockFormDefinition } from './types';
 
 export const blockForms: Record<CmsBlockCollection, BlockFormDefinition<any, any>> = {
+	block_event_highlight: eventHighlightBlockForm,
 	block_hero: heroBlockForm,
 	block_richtext: richtextBlockForm,
 	block_gallery: galleryBlockForm,

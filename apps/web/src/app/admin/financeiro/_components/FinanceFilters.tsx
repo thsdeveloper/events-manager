@@ -1,4 +1,5 @@
 'use client';
+import { useAdminEventScope } from '@/features/event-scope/components/AdminEventScope';
 import { FilterSheet } from '@/components/shared/FilterSheet';
 import { FilterInput, FilterDate, FilterSelect } from '@/components/shared/FilterFields';
 export type RangeOption = '30d' | '90d' | 'year' | 'custom';
@@ -31,7 +32,9 @@ const defaultDraft: FiltersDraft = {
 };
 
 export default function FinanceFilters({ events, filters, onApply }: FinanceFiltersProps) {
-	return (
+	const { selectedEventId } = useAdminEventScope();
+
+return (
 		<FilterSheet
 			title="Filtros financeiros"
 			values={filters}
@@ -88,15 +91,17 @@ export default function FinanceFilters({ events, filters, onApply }: FinanceFilt
 							{ value: 'refunded', label: 'Reembolsado' },
 						]}
 					/>
-					<FilterSelect
-						label="Evento"
-						value={draft.eventId}
-						onChange={(eventId) => setDraft({ ...draft, eventId })}
-						options={[
-							{ value: 'all', label: 'Todos os eventos' },
-							...events.map((event) => ({ value: event.id, label: event.title })),
-						]}
-					/>
+					{!selectedEventId && (
+						<FilterSelect
+							label="Evento"
+							value={draft.eventId}
+							onChange={(eventId) => setDraft({ ...draft, eventId })}
+							options={[
+								{ value: 'all', label: 'Todos os eventos' },
+								...events.map((event) => ({ value: event.id, label: event.title })),
+							]}
+						/>
+					)}
 					<FilterInput
 						label="Busca"
 						placeholder="Nome, email ou ID AbacatePay"

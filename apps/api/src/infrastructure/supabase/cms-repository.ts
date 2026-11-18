@@ -29,6 +29,7 @@ const blockTables: Record<CmsBlockCollection, string> = {
 	block_posts: 'block_posts',
 	block_events: 'block_events',
 	block_form: 'block_form',
+	block_event_highlight: 'block_event_highlight',
 };
 
 function unwrap<T>(result: { data: T; error: unknown }): T {
@@ -334,6 +335,9 @@ export class SupabaseCmsRepository implements CmsRepository {
 		}
 
 		if (collection === 'block_richtext') return upsert(pick(item, ['tagline', 'headline', 'content', 'alignment']));
+		if (collection === 'block_event_highlight') {
+			return upsert(pick(item, ['display_mode', 'max_items', 'image_position', 'button_label']));
+		}
 		if (collection === 'block_posts') return upsert({ ...pick(item, ['tagline', 'headline', 'limit']), collection: 'posts' });
 		if (collection === 'block_events') {
 			return upsert(pick(item, ['headline', 'description', 'filter_by_category', 'filter_featured', 'max_items', 'show_past_events']));

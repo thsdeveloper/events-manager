@@ -59,8 +59,10 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 
 	// Pré-preencher dados do participante com informações do usuário autenticado
 	const defaultParticipantInfo = {
-		name: `${auth.user.first_name || ''} ${auth.user.last_name || ''}`.trim() || auth.user.email,
+		name: `${auth.user.first_name || ''} ${auth.user.last_name || ''}`.trim(),
 		email: auth.user.email,
+		phone: auth.user.phone,
+		document: auth.user.document,
 	};
 
 	return (

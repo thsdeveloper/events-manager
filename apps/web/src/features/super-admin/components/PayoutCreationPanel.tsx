@@ -5,14 +5,19 @@ import { ArrowUpRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-export function PayoutCreationPanel({ organizers }: { organizers: Array<{ id: string; name: string }> }) {
+export function PayoutCreationPanel({
+	organizers,
+}: {
+	organizers: Array<{ id: string; name: string; method?: string | null }>;
+}) {
 	const router = useRouter();
 	const [organizerId, setOrganizerId] = useState(organizers[0]?.id ?? '');
 	const [amount, setAmount] = useState('');
+	const manual = organizers.find((item) => item.id === organizerId)?.method === 'bank_transfer';
 	const [saving, setSaving] = useState(false);
 	const [feedback, setFeedback] = useState<string | null>(null);
 	async function create() {
@@ -27,7 +32,11 @@ export function PayoutCreationPanel({ organizers }: { organizers: Array<{ id: st
 			const body = await response.json().catch(() => null);
 			if (!response.ok) throw new Error(body?.detail ?? 'Não foi possível criar o repasse.');
 			setAmount('');
-			setFeedback('Repasse processado com sucesso.');
+			setFeedback(
+				body?.payout?.status === 'pending'
+					? 'Valor reservado. Realize a transferência e registre o comprovante na página do organizador, na aba Repasses.'
+					: 'Repasse registrado. Consulte o status no histórico.',
+			);
 			router.refresh();
 		} catch (error) {
 			setFeedback(error instanceof Error ? error.message : 'Falha ao processar repasse.');
@@ -44,7 +53,9 @@ export function PayoutCreationPanel({ organizers }: { organizers: Array<{ id: st
 				</div>
 				<div>
 					<h2 className="font-semibold">Novo repasse</h2>
-					<p className="text-xs text-muted-foreground">A API valida chave PIX, limite mínimo e saldo.</p>
+					<p className="text-xs text-muted-foreground">
+						Escolha uma conta aprovada. O saldo é reservado ao registrar o repasse.
+					</p>
 				</div>
 			</div>
 			{organizers.length ? (
@@ -66,23 +77,25 @@ export function PayoutCreationPanel({ organizers }: { organizers: Array<{ id: st
 					</div>
 					<div className="space-y-2">
 						<Label htmlFor="payout-amount">Valor</Label>
-						<Input
+						<CurrencyInput
 							id="payout-amount"
-							type="number"
-							min="3.5"
-							step="0.01"
 							value={amount}
-							onChange={(event) => setAmount(event.target.value)}
+							onValueChange={(value) => setAmount(String(value))}
 							placeholder="R$ 0,00"
 						/>
 					</div>
 					<Button onClick={create} loading={saving} disabled={!organizerId || Number(amount) <= 0}>
-						Transferir
+						{manual ? 'Reservar transferência' : 'Transferir PIX'}
 					</Button>
 				</div>
 			) : (
 				<p className="mt-5 rounded-lg bg-muted p-4 text-sm text-muted-foreground">
-					Nenhum organizador possui chave PIX aprovada.
+					Nenhum organizador possui dados de recebimento aprovados.
+				</p>
+			)}
+			{manual && (
+				<p className="mt-3 text-sm text-muted-foreground">
+					Transferência manual: o valor será reservado, e você deverá enviar o comprovante após realizá-la.
 				</p>
 			)}
 			{feedback && (

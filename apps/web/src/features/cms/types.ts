@@ -1,4 +1,4 @@
-import type { CmsBlockCollection, CmsContentStatus, CmsSeo } from '@events-manager/contracts';
+import type { BlockEventHighlight, CmsBlockCollection, CmsContentStatus, CmsSeo } from '@events-manager/contracts';
 
 /** Arquivo da biblioteca de mídia, como a API devolve nas relações achatadas. */
 export interface CmsMedia {
@@ -134,6 +134,7 @@ export interface CmsFormBlockItem {
 }
 
 export interface CmsBlockItemByCollection {
+	block_event_highlight: Omit<BlockEventHighlight, 'events'>;
 	block_hero: CmsHeroItem;
 	block_richtext: CmsRichtextItem;
 	block_gallery: CmsGalleryItem;

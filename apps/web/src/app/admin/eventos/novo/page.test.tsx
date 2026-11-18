@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { renderWithProviders, mockFetch, jsonResponse } from '@/test';
 import Page from './page';
 const backend = vi.hoisted(() => vi.fn());
@@ -32,6 +32,9 @@ it('resumes a private incomplete snapshot through the owned endpoint', async () 
 	expect(backend).toHaveBeenCalledWith('/api/event-drafts/' + id);
 	expect(await screen.findByDisplayValue('Rascunho da conta')).toBeInTheDocument();
 	expect(screen.getByRole('heading', { name: 'Novo evento', level: 1 })).toBeInTheDocument();
+	const heading = screen.getByRole('heading', { name: 'Novo evento', level: 1 }).closest('header')!;
+	expect(within(heading).getByRole('button', { name: 'Prévia' })).toBeInTheDocument();
+	expect(within(heading).getByRole('button', { name: 'Salvar rascunho' })).toBeInTheDocument();
 	expect(screen.queryByRole('link', { name: 'Voltar para eventos' })).not.toBeInTheDocument();
 });
 it('returns to the converted event rather than creating it again', async () => {

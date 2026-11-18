@@ -1,3 +1,4 @@
+import { DEFAULT_GATEWAY_FEES } from '@events-manager/contracts';
 import { describe, expect, it } from 'vitest';
 import { contentRoutes } from '../src/routes/content.js';
 import { buildRouteTestApp, createSupabaseClientsStub, createTestEnv } from './support/index.js';
@@ -29,6 +30,7 @@ describe('GET /api/content/fees', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.json()).toEqual({
+			...DEFAULT_GATEWAY_FEES,
 			platform_fee_percentage: 5,
 			platform_fee_minimum: 3,
 			pix_fee_fixed: 0.8,

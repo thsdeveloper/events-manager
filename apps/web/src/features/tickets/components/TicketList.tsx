@@ -40,11 +40,18 @@ export function TicketList({
 	return (
 		<div className="space-y-3">
 			{tickets.length === 0 ? (
-				<Empty className="rounded-lg border border-dashed p-6 text-center">
+				<Empty
+					role="region"
+					aria-label="Nenhum ingresso cadastrado"
+					className="rounded-lg border border-dashed p-6 text-center"
+				>
 					<p className="font-medium">Nenhum ingresso cadastrado</p>
 					<p className="text-sm text-muted-foreground">
 						{emptyHint ?? 'Cadastre pelo menos um tipo de ingresso para o público conseguir se inscrever.'}
 					</p>
+					<Button type="button" onClick={onAdd}>
+						Adicionar ingresso
+					</Button>
 				</Empty>
 			) : (
 				<ul className="space-y-2">
@@ -131,9 +138,11 @@ export function TicketList({
 					))}
 				</ul>
 			)}
-			<Button type="button" variant={tickets.length ? 'outline' : 'default'} onClick={onAdd}>
-				{tickets.length ? 'Adicionar outro ingresso' : 'Adicionar ingresso'}
-			</Button>
+			{tickets.length > 0 && (
+				<Button type="button" variant="outline" onClick={onAdd}>
+					Adicionar outro ingresso
+				</Button>
+			)}
 		</div>
 	);
 }

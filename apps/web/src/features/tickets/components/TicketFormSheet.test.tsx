@@ -107,9 +107,9 @@ describe('ticket creation rules', () => {
 		await user.click(screen.getByRole('option', { name: 'Meia-entrada' }));
 		await user.click(within(dialog).getByRole('combobox', { name: 'Grupo ou subgrupo' }));
 		await user.click(screen.getByRole('option', { name: /Pista/ }));
-		const price = within(dialog).getByRole('spinbutton', { name: /Valor do ingresso/ });
+		const price = within(dialog).getByRole('textbox', { name: /Valor do ingresso/ });
 		await user.clear(price);
-		await user.type(price, '10');
+		await user.type(price, '1000');
 		const quantity = within(dialog).getByRole('spinbutton', { name: /Quantidade disponível/ });
 		await user.clear(quantity);
 		await user.type(quantity, '20');
@@ -130,9 +130,9 @@ describe('ticket creation rules', () => {
 		const { user, saved } = setup();
 		const dialog = screen.getByRole('dialog');
 		await user.type(within(dialog).getByRole('textbox', { name: /Nome do ingresso/ }), 'Econômico');
-		const price = within(dialog).getByRole('spinbutton', { name: /Valor do ingresso/ });
+		const price = within(dialog).getByRole('textbox', { name: /Valor do ingresso/ });
 		await user.clear(price);
-		await user.type(price, '2');
+		await user.type(price, '200');
 		await user.click(within(dialog).getByRole('radio', { name: /Você absorve a taxa/ }));
 		await user.click(within(dialog).getByRole('button', { name: 'Adicionar ingresso' }));
 		await waitFor(() => expect(screen.getAllByText(/O preço não cobre a taxa mínima/).length).toBeGreaterThan(0));

@@ -64,6 +64,7 @@ describe('AttendeeCards', () => {
 
 		const second = screen.getByRole('group', { name: 'Inteira · ingresso 2 de 2' });
 		expect(within(second).getByText(/área de ingressos/i)).toBeInTheDocument();
+		expect(within(second).getByText(/Pendente de nomeação/)).toBeInTheDocument();
 		expect(within(second).queryByLabelText('Nome completo')).not.toBeInTheDocument();
 	});
 

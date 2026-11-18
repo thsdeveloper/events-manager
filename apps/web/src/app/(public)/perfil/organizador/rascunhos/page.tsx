@@ -35,7 +35,6 @@ export default async function OrganizerDraftsPage({
 
 	return (
 		<Container as="section" className="space-y-6 py-8 pb-24">
-			<h1 className="text-2xl font-bold">Preparar evento em rascunho</h1>
 			<ReactQueryProvider>
 				<EventDraftList enabled resumePath="/perfil/organizador/rascunhos" />
 				<EventCreationWizard draftOnly initialDraft={initialDraft} />

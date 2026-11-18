@@ -2,9 +2,9 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { organizerSignupSchema, type OrganizerAccountType, type OrganizerSignupInput } from '@events-manager/contracts';
-import { AlertCircle, ArrowRight, Building2, Lock, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowRight, Building2, Lock, ShieldCheck, UserRound } from 'lucide-react';
 import Link from 'next/link';
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -35,7 +35,8 @@ const resolver = zodResolver(organizerSignupSchema) as unknown as Resolver<FormV
 
 interface OrganizerSignupFormProps {
 	user: SignupProfile;
-	onSuccess: () => void;
+	onSuccess: (organizerId?: string) => void | Promise<void>;
+	initialAccountType?: OrganizerAccountType;
 }
 
 const icons = { individual: UserRound, company: Building2 } as const;
@@ -61,13 +62,12 @@ function defaultValues(user: SignupProfile, accountType: OrganizerAccountType): 
  * pedido); empresa informa o CNPJ. Validação no blur e no envio pelo mesmo
  * contrato Zod que a API usa, então o que passa aqui passa lá.
  */
-export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProps) {
+export function OrganizerSignupForm({ user, onSuccess, initialAccountType = 'individual' }: OrganizerSignupFormProps) {
 	const id = useId();
 	const { toast } = useToast();
-	const [formError, setFormError] = useState<string | null>(null);
 	const form = useForm<FormValues>({
 		resolver,
-		defaultValues: defaultValues(user, 'individual'),
+		defaultValues: defaultValues(user, initialAccountType),
 		mode: 'onBlur',
 	});
 	const accountType = form.watch('account_type');
@@ -82,13 +82,11 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 	function switchAccountType(next: OrganizerAccountType) {
 		if (next === accountType) return;
 		const { description, website, accept_terms } = form.getValues();
-		setFormError(null);
 		// Contato e textos livres sobrevivem à troca; nome e documento pertencem ao tipo escolhido.
 		form.reset({ ...defaultValues(user, next), description, website, accept_terms });
 	}
 
 	async function submit(values: FormValues) {
-		setFormError(null);
 		// O resolver já devolveu os valores transformados; o parse só devolve o tipo exato do contrato.
 		const payload: OrganizerSignupInput = organizerSignupSchema.parse(values);
 		try {
@@ -104,18 +102,29 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 				for (const [field, messages] of Object.entries(fieldErrors)) {
 					if (messages?.[0]) form.setError(field as keyof FormValues, { message: messages[0] });
 				}
-				setFormError(body?.detail ?? 'Não foi possível concluir o cadastro. Tente novamente.');
+				toast({
+					title: 'Não foi possível cadastrar',
+					description: body?.detail ?? 'Não foi possível concluir o cadastro. Tente novamente.',
+					variant: 'destructive',
+				});
 
 				return;
 			}
 			toast({
 				title: 'Conta de organizador criada',
-				description: 'Seu espaço de organizador já está disponível.',
+				description:
+					body?.organizer?.status === 'pending'
+						? 'Envie os dados de recebimento e os documentos para validar sua nova conta.'
+						: 'Seu espaço está disponível. Complete a verificação para liberar vendas em produção.',
 				variant: 'success',
 			});
-			onSuccess();
+			await onSuccess(body?.organizer?.id);
 		} catch {
-			setFormError('Não foi possível falar com o servidor. Verifique sua conexão e tente novamente.');
+			toast({
+				title: 'Erro de conexão',
+				description: 'Não foi possível falar com o servidor. Verifique sua conexão e tente novamente.',
+				variant: 'destructive',
+			});
 		}
 	}
 
@@ -338,26 +347,39 @@ export function OrganizerSignupForm({ user, onSuccess }: OrganizerSignupFormProp
 								</FormControl>
 								<label htmlFor={`${id}-terms`} className="text-sm leading-6 text-slate-700 dark:text-slate-300">
 									Confirmo que as informações são verdadeiras e aceito os{' '}
-									<Link href="/termos" className="font-medium text-violet-700 underline-offset-4 hover:underline">
+									<Link
+										href="/termos-de-uso"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="font-medium text-violet-700 underline-offset-4 hover:underline"
+									>
 										termos de uso
 									</Link>{' '}
-									da plataforma.
+									da plataforma, a{' '}
+									<Link
+										href="/politica-de-acesso"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="font-medium text-violet-700 underline-offset-4 hover:underline"
+									>
+										política de acesso
+									</Link>{' '}
+									e a{' '}
+									<Link
+										href="/politica-de-privacidade"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="font-medium text-violet-700 underline-offset-4 hover:underline"
+									>
+										política de privacidade
+									</Link>
+									.
 								</label>
 							</div>
 							<FormMessage />
 						</FormItem>
 					)}
 				/>
-
-				{formError && (
-					<div
-						role="alert"
-						className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200"
-					>
-						<AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-						<span>{formError}</span>
-					</div>
-				)}
 
 				<div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<Button asChild variant="ghost">

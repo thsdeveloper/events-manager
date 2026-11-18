@@ -464,7 +464,7 @@ export class AuthService {
 	}
 
 	async createOrganizer(userId: string, input: { email: string; name: string }) {
-		// Regra de negócio: uma conta de organizador por pessoa, em qualquer status.
+		// O cadastro legado só recebe nome/e-mail. Contas adicionais usam OrganizerService.create com CPF/CNPJ.
 		if ((await this.repository.listOrganizers(userId)).length > 0) {
 			throw new ApiError('Você já possui uma conta de organizador.', 409, 'ORGANIZER_EXISTS');
 		}

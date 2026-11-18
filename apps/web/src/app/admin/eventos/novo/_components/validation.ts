@@ -1,7 +1,12 @@
 'use client';
 
 import { z } from 'zod';
-import { eventVisibilitySchema, onlinePlatformSchema, isOnlinePlatformUrl } from '@events-manager/contracts';
+import {
+	eventVisibilitySchema,
+	onlinePlatformSchema,
+	isOnlinePlatformUrl,
+	addPhysicalLocationIssues,
+} from '@events-manager/contracts';
 import { structuredAddress } from './wizard-content';
 import { htmlToPlainText } from '@/components/ui/Text';
 
@@ -72,6 +77,7 @@ const locationFields = z.object({
 });
 
 export const locationSchema = locationFields.superRefine((data, ctx) => {
+	addPhysicalLocationIssues(data, ctx);
 	if ((data.event_type === 'in_person' || data.event_type === 'hybrid') && !data.location_tbd) {
 		if (!data.location_name || data.location_name.trim().length < 3) {
 			ctx.addIssue({

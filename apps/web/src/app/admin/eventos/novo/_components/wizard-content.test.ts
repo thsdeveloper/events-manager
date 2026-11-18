@@ -33,9 +33,10 @@ describe('event authoring metadata', () => {
 			location_number: '10',
 			location_city: 'Recife',
 			location_state: 'PE',
+			location_postal_code: '50030000',
 		} as EventWizardFormValues;
 		expect(locationSchema.safeParse(values).success).toBe(true);
-		expect(contentPayload(values).location_address).toBe('Rua Central, 10 — Recife — PE');
+		expect(contentPayload(values).location_address).toBe('Rua Central, 10 — Recife — PE — 50030000');
 	});
 	it('validates the chosen streaming platform, allows a custom HTTP URL and limits banner alternative text', () => {
 		expect(

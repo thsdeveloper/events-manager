@@ -1,0 +1,52 @@
+{
+	"tool": "image_gen builtin",
+	"prompts": [
+		{
+			"name": "event-in-person",
+			"prompt": "Use case: stylized-concept. Asset type: compact 3D editorial illustration for a Flouvi event-creation selection card. Premium soft matte clay, clean rounded forms, subtle studio lighting, expressive yet simple readable silhouette at 96px. Brand palette STRICT: violet #743DF5, deep plum #231A33, apricot #FFD09D, mist #F3EEFF and white. A subtle open-circle motif. Square composition, one centered compact object cluster with generous transparent padding, isolated on genuinely transparent background. No text, no lettering, no logo, no watermark, no rectangular background, no scenery. A miniature event stage with two friendly simple attendee silhouettes and one prominent violet location pin; conveys attending an event in person."
+		},
+		{
+			"name": "event-online",
+			"prompt": "Use case: stylized-concept. Asset type: compact 3D editorial illustration for a Flouvi event-creation selection card. Premium soft matte clay, clean rounded forms, subtle studio lighting, expressive yet simple readable silhouette at 96px. Brand palette STRICT: violet #743DF5, deep plum #231A33, apricot #FFD09D, mist #F3EEFF and white. A subtle open-circle motif. Square composition, one centered compact object cluster with generous transparent padding, isolated on genuinely transparent background. No text, no lettering, no logo, no watermark, no rectangular background, no scenery. A rounded violet laptop displaying a clean apricot play triangle and one small mist-white cloud with wireless arcs; conveys joining an online event."
+		},
+		{
+			"name": "event-hybrid",
+			"prompt": "Use case: stylized-concept. Asset type: compact 3D editorial illustration for a Flouvi event-creation selection card. Premium soft matte clay, clean rounded forms, subtle studio lighting, expressive yet simple readable silhouette at 96px. Brand palette STRICT: violet #743DF5, deep plum #231A33, apricot #FFD09D, mist #F3EEFF and white. A subtle open-circle motif. Square composition, one centered compact object cluster with generous transparent padding, isolated on genuinely transparent background. No text, no lettering, no logo, no watermark, no rectangular background, no scenery. One small physical stage with a violet location pin next to a rounded laptop with an apricot play triangle, connected with a short open curved loop; conveys a hybrid event combining on-site and online attendance."
+		},
+		{
+			"name": "ticket-free",
+			"prompt": "Use case: stylized-concept. Asset type: compact 3D editorial illustration for a Flouvi event-creation selection card. Premium soft matte clay, clean rounded forms, subtle studio lighting, expressive yet simple readable silhouette at 96px. Brand palette STRICT: violet #743DF5, deep plum #231A33, apricot #FFD09D, mist #F3EEFF and white. A subtle open-circle motif. Square composition, one centered compact object cluster with generous transparent padding, isolated on genuinely transparent background. No text, no lettering, no logo, no watermark, no rectangular background, no scenery. A pair of rounded admission tickets with perforation, a little apricot gift ribbon and a small violet heart; warm inviting free admission, no money or numerals."
+		},
+		{
+			"name": "ticket-paid",
+			"prompt": "Use case: stylized-concept. Asset type: compact 3D editorial illustration for a Flouvi event-creation selection card. Premium soft matte clay, clean rounded forms, subtle studio lighting, expressive yet simple readable silhouette at 96px. Brand palette STRICT: violet #743DF5, deep plum #231A33, apricot #FFD09D, mist #F3EEFF and white. A subtle open-circle motif. Square composition, one centered compact object cluster with generous transparent padding, isolated on genuinely transparent background. No text, no lettering, no logo, no watermark, no rectangular background, no scenery. A pair of rounded violet admission tickets with perforation and a neat small stack of apricot coins with blank faces; premium paid admission, no text or currency symbols."
+		}
+	],
+	"files": [
+		{
+			"name": "event-in-person",
+			"path": "/home/pcthiago/.codex/generated_images/01a1ec53-829d-7b21-9b14-7c4755791412/exec-2e028ca5-5d3a-4bf9-b842-8077c8d21b6d.png",
+			"workspace_path": "apps/web/public/illustrations/event-creation/event-in-person.png"
+		},
+		{
+			"name": "event-online",
+			"path": "/home/pcthiago/.codex/generated_images/01a1ec53-829d-7b21-9b14-7c4755791412/exec-7f7b10a6-63ef-4e24-8d3c-62d0ef58c72b.png",
+			"workspace_path": "apps/web/public/illustrations/event-creation/event-online.png"
+		},
+		{
+			"name": "event-hybrid",
+			"path": "/home/pcthiago/.codex/generated_images/01a1ec53-829d-7b21-9b14-7c4755791412/exec-f11274da-5179-4230-b904-296d0fb914df.png",
+			"workspace_path": "apps/web/public/illustrations/event-creation/event-hybrid.png"
+		},
+		{
+			"name": "ticket-free",
+			"path": "/home/pcthiago/.codex/generated_images/01a1ec53-829d-7b21-9b14-7c4755791412/exec-c1308cf6-1dd4-4aa2-b136-a781b5939547.png",
+			"workspace_path": "apps/web/public/illustrations/event-creation/ticket-free.png"
+		},
+		{
+			"name": "ticket-paid",
+			"path": "/home/pcthiago/.codex/generated_images/01a1ec53-829d-7b21-9b14-7c4755791412/exec-0daa669c-07fa-4b95-8b49-75a244214150.png",
+			"workspace_path": "apps/web/public/illustrations/event-creation/ticket-paid.png"
+		}
+	]
+}

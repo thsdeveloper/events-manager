@@ -35,3 +35,35 @@ describe('GET /api/payments/methods', () => {
 		expect(response.json()).toEqual({ methods: ['PIX', 'CARD'] });
 	});
 });
+
+it.each([
+	[{ accepted_payment_methods: ['PIX'], credit_card_settlement_period: null }, ['PIX']],
+	[{ accepted_payment_methods: ['CARD'], credit_card_settlement_period: 'D+7' }, []],
+	[{ accepted_payment_methods: ['BOLETO', 'CARD'], credit_card_settlement_period: 'D+1' }, ['BOLETO', 'CARD']],
+])('offers only effective organization methods for a public event: %j', async (preferences, expected) => {
+	const id = '10000000-0000-4000-8000-000000000001';
+	const app = await buildRouteTestApp(paymentRoutes, {
+		env: createTestEnv(),
+		clients: createSupabaseClientsStub({
+			tables: {
+				events: { data: { id, organizer_id: preferences } },
+				event_configurations: { data: { gateway_card_settlement_period: 'D+1' } },
+			},
+		}).clients,
+		payments: new MockPaymentGateway(),
+	});
+	const response = await app.inject({ method: 'GET', url: `/api/payments/methods?eventId=${id}` });
+	expect(response.statusCode).toBe(200);
+	expect(response.json()).toEqual({ methods: expected });
+	await app.close();
+});
+it('rejects an invalid event identifier before reading payment preferences', async () => {
+	const app = await buildRouteTestApp(paymentRoutes, {
+		env: createTestEnv(),
+		clients: createSupabaseClientsStub().clients,
+		payments: new MockPaymentGateway(),
+	});
+	const response = await app.inject({ method: 'GET', url: '/api/payments/methods?eventId=invalid' });
+	expect(response.statusCode).toBe(422);
+	await app.close();
+});

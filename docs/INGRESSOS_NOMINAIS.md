@@ -31,11 +31,25 @@ document?, phone? }`) ou `null` para deixar a unidade pendente. Sem a lista, a
 primeira unidade fica com quem compra. O contrato é `checkoutTicketSelectionSchema`
 em `packages/contracts`.
 
-Na tela, a etapa "Seus dados" mostra um cartão por unidade com "Este ingresso
-é para mim" (uma unidade por vez) e "Preencher depois".
+Na tela, os dados do comprador (nome, e-mail, CPF e telefone) vêm do perfil
+autenticado e são somente leitura nas etapas de dados e pagamento. A API confere
+esses dados com o perfil e rejeita divergências, inclusive no parcelamento Pix.
+Para completar ou corrigir o cadastro, a pessoa abre **Atualizar meu perfil** e
+depois usa **Atualizar dados do perfil** no checkout, preservando o carrinho.
+Cartão e boleto só podem avançar quando os dados exigidos estiverem no perfil.
 
-O parcelamento via Pix (`POST /api/checkout/installments`) ainda não recebe
-participantes: a primeira unidade fica com quem compra e as demais pendentes.
+O comprador e o participante são independentes. A etapa "Seus dados" mostra
+um cartão por unidade com "Este ingresso é para mim" (uma unidade por vez),
+campos para outra pessoa e "Preencher depois". Nesta última opção, a unidade
+fica **Pendente de nomeação**, com participante e `named_at` nulos; os dados
+do comprador continuam no pedido. Após a compra, o comprador informa quem
+usará o ingresso em **Meus ingressos → Informar participante**. A nomeação
+nunca altera os dados do comprador ou seu perfil.
+
+O parcelamento via Pix (`POST /api/checkout/installments`) também recebe
+`attendees`, com uma entrada por unidade. Ele preserva participantes nomeados
+e unidades pendentes. Sem a lista, mantém a compatibilidade: primeira unidade
+com quem compra e demais pendentes.
 
 ## Entrega por e-mail
 
@@ -65,6 +79,9 @@ plano.
   criar, ele aparece.
 - `PATCH /api/user/tickets/:id/attendee` nomeia ou corrige o participante. Só
   quem comprou pode, até o check-in e enquanto o pedido não estiver cancelado.
+- Ingressos sem participante mostram **Pendente de nomeação**, sem QR de
+  entrada nem download do PDF. Nomear libera essas ações; o check-in continua
+  exigindo também pagamento confirmado.
 
 ## Painel do organizador
 
@@ -83,3 +100,20 @@ pedido não atravessa a relação no PostgREST e cai na data de compra.
 - O perfil (avatar) de quem comprou não é embutido na resposta: `user_id`
   aponta para `auth.users`, sem chave estrangeira para `profiles`.
 - Limite de compra continua sendo por pedido, não por CPF.
+
+## Regressões do comprador e da nomeação
+
+Testes desta alteração:
+
+- API: `apps/api/test/transparent-routes.test.ts` e `apps/api/test/nominal-tickets.test.ts`.
+- Checkout: `apps/web/src/components/events/EventCheckout.test.tsx`,
+  `apps/web/src/app/(checkout)/eventos/[slug]/checkout/page.test.tsx`,
+  `apps/web/src/features/checkout/components/TransparentCheckoutForm.test.tsx` e
+  `apps/web/src/features/checkout/components/AttendeeCards.test.tsx`.
+- Área de ingressos: `apps/web/src/components/tickets/TicketDetailsModal.test.tsx`
+  e `apps/web/src/components/tickets/MyTicketsContent.test.tsx`.
+
+Validação: `pnpm test:coverage` e `pnpm lint` em `apps/api` e `apps/web`,
+`pnpm exec tsc --noEmit` no frontend e `pnpm build` na API. A cobertura global
+já estava abaixo das catracas; os limites foram preservados. Evidências visuais
+em `docs/evidencias/checkout-nomeacao/`.

@@ -89,6 +89,7 @@ export function OrganizerProfileSettings({ organizer }: { organizer: Organizer }
 							<Label htmlFor="organization-document">CPF ou CNPJ</Label>
 							<DocumentInput
 								id="organization-document"
+								disabled={Boolean(organizer.current_receiving_request_id)}
 								value={values.document}
 								onChange={(digits) => update('document', digits)}
 							/>

@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import type { CheckoutAttendee } from '@events-manager/contracts';
 import { describeProblem } from '@/lib/problem';
 
 interface TicketItem {
+	attendees?: Array<CheckoutAttendee | null>;
 	ticketId: string;
 	quantity: number;
 }
@@ -59,11 +61,12 @@ export function useInstallmentCheckout({ onSuccess }: InstallmentCheckoutOptions
 				body: JSON.stringify({
 					ticket_id: ticket.ticketId,
 					quantity: ticket.quantity,
+					attendees: ticket.attendees,
 					installments,
 					participant_name: participantInfo.name,
 					participant_email: participantInfo.email,
-					participant_phone: participantInfo.phone,
-					participant_document: participantInfo.document,
+					participant_phone: participantInfo.phone || undefined,
+					participant_document: participantInfo.document || undefined,
 				}),
 			});
 

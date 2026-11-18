@@ -3,6 +3,8 @@
 import * as React from 'react';
 import {
 	ColumnDef,
+	type OnChangeFn,
+	type PaginationState,
 	ColumnFiltersState,
 	SortingState,
 	VisibilityState,
@@ -30,6 +32,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 interface DataTableProps<TData, TValue> {
 	columns: ColumnDef<TData, TValue>[];
 	data: TData[];
+	serverPagination?: { state: PaginationState; rowCount: number; onChange: OnChangeFn<PaginationState> };
+	serverSorting?: { state: SortingState; onChange: OnChangeFn<SortingState> };
 	searchKey?: string;
 	searchPlaceholder?: string;
 	paginate?: boolean;
@@ -49,6 +53,8 @@ export function DataTable<TData, TValue>({
 	showToolbar = true,
 	emptyMessage = 'Nenhum resultado encontrado.',
 	getRowId,
+	serverPagination,
+	serverSorting,
 }: DataTableProps<TData, TValue>) {
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -58,17 +64,22 @@ export function DataTable<TData, TValue>({
 	const table = useReactTable({
 		data,
 		columns,
-		onSortingChange: setSorting,
+		onSortingChange: serverSorting?.onChange ?? setSorting,
+		manualSorting: Boolean(serverSorting),
+		manualPagination: Boolean(serverPagination),
+		rowCount: serverPagination?.rowCount,
+		...(serverPagination ? { onPaginationChange: serverPagination.onChange } : {}),
 		onColumnFiltersChange: setColumnFilters,
 		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: paginate ? getPaginationRowModel() : undefined,
+		getPaginationRowModel: paginate && !serverPagination ? getPaginationRowModel() : undefined,
 		getRowId,
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
 		onColumnVisibilityChange: setColumnVisibility,
 		onRowSelectionChange: setRowSelection,
 		state: {
-			sorting,
+			sorting: serverSorting?.state ?? sorting,
+			...(serverPagination ? { pagination: serverPagination.state } : {}),
 			columnFilters,
 			columnVisibility,
 			rowSelection,
@@ -125,7 +136,7 @@ export function DataTable<TData, TValue>({
 											checked={column.getIsVisible()}
 											onCheckedChange={(value) => column.toggleVisibility(!!value)}
 										>
-											{column.id}
+											{typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id}
 										</DropdownMenuCheckboxItem>
 									);
 								})}

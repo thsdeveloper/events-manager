@@ -2,7 +2,8 @@ import { cookies } from 'next/headers';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
-import { ReactQueryProvider } from '@/contexts/ReactQueryProvider';
+import { AdminEventScope } from '@/features/event-scope/components/AdminEventScope';
+import { getEventSelection } from '@/features/event-scope/api/getEventSelection';
 import { requireOrganizer } from '@/lib/auth/server-auth';
 import React from 'react';
 import type { OrganizationOption } from '@/features/organizer-settings/components/OrganizationSwitcher';
@@ -18,12 +19,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 	// ⭐ SSR Authentication - validates organizer role
 	const { user, organizer } = await requireOrganizer();
 	// The switcher needs every organization the user owns, not just the active one.
-	const { data: organizations } = await authenticatedBackendFetch<{ data: OrganizationOption[] }>(
-		'/api/organizer/organizations',
-	).catch(() => ({ data: [organizer as unknown as OrganizationOption] }));
+	const [{ data: organizations }, selection] = await Promise.all([
+		authenticatedBackendFetch<{ data: OrganizationOption[] }>('/api/organizer/organizations').catch(() => ({
+			data: [organizer as unknown as OrganizationOption],
+		})),
+		getEventSelection(),
+	]);
 
 	return (
-		<ReactQueryProvider key={`${user.id}:${organizer.id}`}>
+		<AdminEventScope scopeKey={`${user.id}:${organizer.id}`} selection={selection}>
 			<SidebarProvider
 				defaultOpen={(await cookies()).get('sidebar_state')?.value !== 'false'}
 				data-admin-theme="neutral"
@@ -34,7 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 				{/* Main Content Area */}
 				<SidebarInset className="min-w-0" id="main-content" tabIndex={-1}>
 					{/* Header */}
-					<AdminHeader user={user} organizer={organizer} />
+					<AdminHeader user={user} organizer={organizer} eventSelection={selection} />
 
 					{/* Page Content */}
 					<div className="p-4 sm:p-6 lg:p-8">
@@ -44,6 +48,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 					</div>
 				</SidebarInset>
 			</SidebarProvider>
-		</ReactQueryProvider>
+		</AdminEventScope>
 	);
 }

@@ -1,4 +1,3 @@
-import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 import { notFound, redirect } from 'next/navigation';
 import { authenticatedBackendFetch, BackendRequestError } from '@/lib/backend-auth';
 import { EventCreationWizard } from './_components/EventCreationWizard';
@@ -27,7 +26,6 @@ export default async function NovoEventoPage({
 
 	return (
 		<div className="w-full space-y-6 pb-24">
-			<PageHeader title="Novo evento" description="Preencha as etapas para criar e publicar seu evento." />
 			<EventCreationWizard initialDraft={initialDraft} />
 		</div>
 	);

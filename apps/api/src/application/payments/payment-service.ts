@@ -1,3 +1,4 @@
+import { paymentAvailability, readOrganizerPayments, type OrganizerPaymentSettings } from '@events-manager/contracts';
 import crypto from 'node:crypto';
 import type { CheckoutAttendee, Database, Json } from '@events-manager/contracts';
 import { couponProblem } from '../coupons/coupon-problem.js';
@@ -27,7 +28,10 @@ type EventRow = Database['public']['Tables']['events']['Row'];
 type ConfigurationRow = Database['public']['Tables']['event_configurations']['Row'];
 type InstallmentRow = Database['public']['Tables']['payment_installments']['Row'];
 
-export type CheckoutEvent = EventRow & { tickets: TicketRow[] };
+type PaymentEvent = Omit<EventRow, 'organizer_id'> & {
+	organizer_id: string | Partial<OrganizerPaymentSettings> | null;
+};
+export type CheckoutEvent = PaymentEvent & { tickets: TicketRow[] };
 export type InstallmentWithRegistration = InstallmentRow & {
 	registration_id: RegistrationRow & { event_id: EventRow };
 };
@@ -60,6 +64,7 @@ export interface CheckoutInput {
 }
 
 export interface InstallmentCheckoutInput {
+	attendees?: Array<CheckoutAttendee | null>;
 	installments: number;
 	participant_document?: string;
 	participant_email: string;
@@ -69,7 +74,9 @@ export interface InstallmentCheckoutInput {
 	ticket_id: string;
 }
 
-export interface WebhookMovement {
+export interface WebhookMovement extends Record<string, unknown> {
+	amount?: number | string;
+	platformFee?: number | string;
 	externalId?: string;
 	id: string;
 	reason?: string;
@@ -77,6 +84,7 @@ export interface WebhookMovement {
 }
 
 export interface PaymentWebhookPayload extends Record<string, unknown> {
+	devMode?: boolean;
 	data?: {
 		checkout?: WebhookMovement & {
 			amount?: number | string;
@@ -85,6 +93,8 @@ export interface PaymentWebhookPayload extends Record<string, unknown> {
 			platformFee?: number | string;
 		};
 		externalId?: string;
+		amount?: number | string;
+		platformFee?: number | string;
 		id?: string;
 		payerInformation?: { method?: string };
 		payout?: WebhookMovement;
@@ -101,6 +111,7 @@ export interface PaymentOperationLogger {
 }
 
 export interface PaymentRepository {
+	isOrganizerApprovedForEvent(eventId: string): Promise<boolean>;
 	cancelIncompleteCheckout(registrationIds: string[], reason: string): Promise<void>;
 	cancelInstallmentPlan(registrationId: string, reason: string): Promise<void>;
 	cancelPendingInstallments(registrationId: string): Promise<void>;
@@ -115,7 +126,7 @@ export interface PaymentRepository {
 	markWebhookProcessed(eventId: string, event: string): Promise<void>;
 	findInstallmentForUser(id: string, userId: string): Promise<InstallmentWithRegistration | null>;
 	findInstallmentForWebhook(providerId: string, externalId?: string): Promise<InstallmentWithRegistration | null>;
-	findTicketForInstallments(id: string): Promise<(TicketRow & { event_id: EventRow }) | null>;
+	findTicketForInstallments(id: string): Promise<(TicketRow & { event_id: PaymentEvent }) | null>;
 	getConfiguration(): Promise<ConfigurationRow>;
 	linkCheckout(registrationIds: string[], checkoutId: string): Promise<void>;
 	recordTransaction(input: Database['public']['Tables']['payment_transactions']['Insert']): Promise<void>;
@@ -141,6 +152,22 @@ export interface PaymentRepository {
 	updateRegistration(id: string, input: Database['public']['Tables']['event_registrations']['Update']): Promise<void>;
 }
 
+export interface TransparentCheckoutOptions {
+	attemptId: string;
+	expectedAmountInCents: number;
+	token?: string;
+	installments: number;
+	ready(input: { registrationIds: string[]; amountInCents: number; method: CheckoutMethod }): Promise<void>;
+}
+function cardLimit(event: CheckoutEvent, plan: CheckoutPlanItem[], amount: number) {
+	const limits = plan
+		.filter((item) => item.totalAmount > 0)
+		.map((item) => {
+			const ticket = event.tickets.find((t) => t.id === item.ticket.id)!;
+			return ticket.allow_installments ? Number(ticket.max_installments ?? 1) : 1;
+		});
+	return Math.max(1, Math.min(12, ...limits, Math.floor(amount / 1000)));
+}
 export class PaymentService {
 	constructor(
 		private readonly repository: PaymentRepository,
@@ -170,7 +197,79 @@ export class PaymentService {
 		}
 	}
 
-	async checkout(userId: string, input: CheckoutInput, logger: PaymentOperationLogger) {
+	async availableMethods(eventId: string) {
+		const [event, configuration] = await Promise.all([
+			this.repository.findCheckoutEvent(eventId),
+			this.repository.getConfiguration(),
+		]);
+		if (!event) throw new ApiError('Evento não encontrado.', 404, 'EVENT_NOT_FOUND');
+		return this.methodsFor(event, configuration);
+	}
+	private methodsFor(event: PaymentEvent, configuration: ConfigurationRow) {
+		const settings = readOrganizerPayments(typeof event.organizer_id === 'object' ? event.organizer_id : null);
+		return paymentAvailability(
+			settings,
+			this.gateway.provider === 'mock' ? ['PIX', 'CARD', 'BOLETO'] : this.checkoutMethods,
+			configuration.gateway_card_settlement_period ?? 'D+1',
+		).available_methods;
+	}
+
+	async quote(input: CheckoutInput) {
+		const [event, configuration] = await Promise.all([
+			this.repository.findCheckoutEvent(input.eventId),
+			this.repository.getConfiguration(),
+		]);
+		if (!event) throw new ApiError('Evento não encontrado.', 404, 'EVENT_NOT_FOUND');
+		await this.requireProductionApproval(event.id);
+		this.assertEventSalesOpen(event);
+		let plan: CheckoutPlanItem[];
+		try {
+			plan = buildCheckoutPlan({
+				configuration,
+				selections: input.tickets,
+				tickets: event.tickets.map(ticketSnapshot),
+				now: this.now(),
+			});
+		} catch (error) {
+			if (error instanceof CheckoutRuleViolation) throw checkoutRuleError(error);
+			throw error;
+		}
+		const quotedItems = plan.map((item) => ({
+			id: item.ticket.id,
+			title: event.tickets.find((ticket) => ticket.id === item.ticket.id)?.title ?? 'Ingresso',
+			quantity: item.quantity,
+			unitPrice: item.totalAmount / item.quantity,
+			unitFee: item.serviceFee / item.quantity,
+		}));
+		let discountInCents = 0;
+		if (input.couponCode && this.coupons) {
+			try {
+				const coupon = await this.coupons.validate({
+					code: input.couponCode,
+					eventId: input.eventId,
+					subtotal: money(plan.reduce((sum, item) => sum + item.totalAmount, 0)),
+				});
+				plan = applyDiscountToPlan(plan, coupon.discount);
+				discountInCents = Math.round(coupon.discount * 100);
+			} catch (error) {
+				throw couponProblem(error) ?? error;
+			}
+		}
+		const amountInCents = Math.round(plan.reduce((sum, item) => sum + item.totalAmount, 0) * 100);
+		return {
+			amountInCents,
+			items: quotedItems,
+			discountInCents,
+			maxInstallments: cardLimit(event, plan, amountInCents),
+			methods: this.methodsFor(event, configuration),
+		};
+	}
+	async checkout(
+		userId: string,
+		input: CheckoutInput,
+		logger: PaymentOperationLogger,
+		transparent?: TransparentCheckoutOptions,
+	) {
 		await this.limit('checkout', userId, 8);
 		const [event, configuration] = await Promise.all([
 			this.repository.findCheckoutEvent(input.eventId),
@@ -180,10 +279,10 @@ export class PaymentService {
 		// Pedir um método que a loja não aceita derruba o checkout inteiro no
 		// provedor; a recusa acontece aqui, antes de criar qualquer inscrição.
 		const paymentMethod = input.paymentMethod ?? 'PIX';
-		if (this.gateway.provider !== 'mock' && !this.checkoutMethods.includes(paymentMethod)) {
-			throw new ApiError('Esta forma de pagamento não está disponível.', 422, 'PAYMENT_METHOD_UNAVAILABLE');
-		}
-		const checkoutGroupId = crypto.randomUUID();
+
+		await this.requireProductionApproval(event.id);
+		this.assertEventSalesOpen(event);
+		const checkoutGroupId = transparent?.attemptId ?? crypto.randomUUID();
 		const registrations: RegistrationRow[] = [];
 		const checkoutItems: Array<{ productId: string; quantity: number }> = [];
 		let plan: CheckoutPlanItem[];
@@ -213,6 +312,31 @@ export class PaymentService {
 		}
 
 		const allFree = plan.every((item) => item.totalAmount === 0);
+		if (!allFree && !this.methodsFor(event, configuration).includes(paymentMethod))
+			throw new ApiError(
+				'Esta forma de pagamento não está disponível para este evento.',
+				422,
+				'PAYMENT_METHOD_UNAVAILABLE',
+			);
+		if (transparent) {
+			const amount = Math.round(plan.reduce((sum, item) => sum + item.totalAmount, 0) * 100);
+			if (amount !== transparent.expectedAmountInCents)
+				throw new ApiError(
+					'O valor da compra mudou. Confira o total e tente novamente.',
+					409,
+					'CHECKOUT_PRICE_CHANGED',
+				);
+			if (amount > 0 && amount < (paymentMethod === 'BOLETO' ? 300 : 100))
+				throw new ApiError(
+					paymentMethod === 'BOLETO'
+						? 'O valor mínimo para boleto é R$ 3,00.'
+						: 'O valor mínimo do pagamento é R$ 1,00.',
+					422,
+					'PAYMENT_BELOW_MINIMUM',
+				);
+			if (paymentMethod === 'CARD' && transparent.installments > cardLimit(event, plan, amount))
+				throw new ApiError('Quantidade de parcelas indisponível para esta compra.', 422, 'INSTALLMENTS_UNAVAILABLE');
+		}
 		let externalCheckoutCreated = false;
 		let inventoryReserved = false;
 		try {
@@ -244,11 +368,18 @@ export class PaymentService {
 							: this.gateway.provider === 'mock'
 								? paymentMethod === 'CARD'
 									? 'card'
-									: 'pix'
+									: paymentMethod === 'BOLETO'
+										? 'boleto'
+										: 'pix'
 								: null,
 					payment_provider: this.gateway.provider,
 					additional_info: {
 						checkout_group_id: checkoutGroupId,
+						...(transparent ? { payment_flow: 'transparent', payment_method_requested: paymentMethod } : {}),
+						payment_preferences: {
+							...readOrganizerPayments(typeof event.organizer_id === 'object' ? event.organizer_id : null),
+						},
+						gateway_card_settlement_period: configuration.gateway_card_settlement_period ?? 'D+1',
 						...(appliedCoupon
 							? { coupon_code: appliedCoupon.code, coupon_discount: (item as { discount?: number }).discount ?? 0 }
 							: {}),
@@ -265,7 +396,7 @@ export class PaymentService {
 					ticket,
 					totalAmount: item.totalAmount,
 				});
-				if (item.totalAmount > 0 && this.gateway.provider !== 'mock') {
+				if (item.totalAmount > 0 && this.gateway.provider !== 'mock' && !transparent) {
 					// O checkout hospedado cobra o preço do produto no provedor, então o
 					// produto reutilizado tem de ser o deste preço unitário: preço
 					// editado ou cupom aplicado não podem herdar um produto antigo.
@@ -288,7 +419,13 @@ export class PaymentService {
 			}
 
 			const ids = registrations.map((registration) => registration.id);
-			await this.reserveInventory(ids);
+			if (transparent && !allFree && this.gateway.provider !== 'mock')
+				await transparent.ready({
+					registrationIds: ids,
+					amountInCents: transparent.expectedAmountInCents,
+					method: paymentMethod,
+				});
+			else await this.reserveInventory(ids);
 			inventoryReserved = true;
 			if (allFree || this.gateway.provider === 'mock') {
 				for (const registration of registrations) {
@@ -321,6 +458,38 @@ export class PaymentService {
 				};
 			}
 
+			if (transparent) {
+				// Once submitted, a lost response is not evidence of failure. Keep the reserved inventory.
+				externalCheckoutCreated = true;
+				let charge;
+				try {
+					charge = await this.gateway.createTransparentCharge({
+						method: paymentMethod,
+						externalId: checkoutGroupId,
+						amountInCents: transparent.expectedAmountInCents,
+						description: event.title,
+						customer: {
+							name: input.participantInfo.name,
+							email: input.participantInfo.email,
+							taxId: input.participantInfo.document,
+							cellphone: input.participantInfo.phone,
+						},
+						metadata: { checkout_attempt_id: checkoutGroupId },
+						token: transparent.token,
+						installments: transparent.installments,
+					});
+				} catch (error) {
+					if (error instanceof ApiError && error.code === 'PAYMENT_DECLINED') externalCheckoutCreated = false;
+					throw error;
+				}
+				return {
+					checkoutId: charge.id,
+					registrationId: ids[0],
+					payment: charge,
+					confirmationUrl: `${this.webUrl}/eventos/${event.slug}/checkout/success?checkout_id=${checkoutGroupId}`,
+					url: undefined,
+				};
+			}
 			const customerId = await this.registerCustomer(input.participantInfo, logger);
 			// No cartão, a própria página do provedor parcela: o limite vem do que os
 			// ingressos do carrinho permitem.
@@ -368,6 +537,8 @@ export class PaymentService {
 		if (!ticket || !ticket.allow_installments || input.installments > Number(ticket.max_installments ?? 0)) {
 			throw new ApiError('Parcelamento indisponível para este ingresso.', 422, 'INSTALLMENTS_UNAVAILABLE');
 		}
+		await this.requireProductionApproval(ticket.event_id.id);
+		this.assertEventSalesOpen(ticket.event_id);
 		try {
 			if (ticket.event_id.status !== 'published') throw new CheckoutRuleViolation('ticket_unavailable');
 			assertTicketAvailable(ticketSnapshot(ticket), input.quantity);
@@ -376,6 +547,8 @@ export class PaymentService {
 			throw error;
 		}
 		const configuration = await this.repository.getConfiguration();
+		if (!this.methodsFor(ticket.event_id, configuration).includes('PIX'))
+			throw new ApiError('Pix não está disponível para este evento.', 422, 'PAYMENT_METHOD_UNAVAILABLE');
 		let item: CheckoutPlanItem;
 		try {
 			item = buildCheckoutPlan({
@@ -423,6 +596,7 @@ export class PaymentService {
 		let inventoryReserved = false;
 		try {
 			await this.issueTickets({
+				attendees: input.attendees,
 				buyer: {
 					name: input.participant_name,
 					email: input.participant_email,
@@ -607,6 +781,14 @@ export class PaymentService {
 			if (movement?.id)
 				await this.repository.updatePayoutForWebhook(movement.id, movement.externalId, {
 					status: eventType.endsWith('.completed') ? 'completed' : 'failed',
+					...(movement.platformFee !== undefined
+						? {
+								provider_fee: money(Number(movement.platformFee) / 100),
+								...(movement.amount !== undefined
+									? { net_amount: money(Math.max(0, (Number(movement.amount) - Number(movement.platformFee)) / 100)) }
+									: {}),
+							}
+						: {}),
 					receipt_url: movement.receiptUrl ?? null,
 					failure_reason: eventType.endsWith('.failed')
 						? String(movement.reason ?? 'Falha informada pelo provedor.')
@@ -647,6 +829,20 @@ export class PaymentService {
 		const registration = installment.registration_id;
 		const providerFee = Number(transparent.platformFee ?? 0) / 100;
 		if (eventType === 'transparent.completed') {
+			if (
+				!Number.isSafeInteger(Number(transparent.amount)) ||
+				Number(transparent.amount) !== Math.round(Number(installment.amount) * 100)
+			)
+				throw new ApiError('Valor da parcela divergente.', 409, 'PAYMENT_AMOUNT_MISMATCH');
+			if (transparent.status !== 'PAID')
+				throw new ApiError('Pagamento ainda não confirmado.', 409, 'PAYMENT_STATUS_MISMATCH');
+			if (
+				transparent.platformFee == null ||
+				!Number.isSafeInteger(Number(transparent.platformFee)) ||
+				providerFee < 0 ||
+				providerFee > Number(installment.amount)
+			)
+				throw new ApiError('Tarifa da parcela não confirmada.', 409, 'PAYMENT_FEE_MISMATCH');
 			await this.repository.settleInstallmentWebhook({
 				chargeId: transparent.id,
 				installmentId: installment.id,
@@ -807,6 +1003,25 @@ export class PaymentService {
 		});
 	}
 
+	private assertEventSalesOpen(event: Pick<EventRow, 'registration_start' | 'registration_end' | 'end_date'>) {
+		const now = this.now().getTime();
+		if (
+			(event.registration_start && Date.parse(event.registration_start) > now) ||
+			(event.registration_end && Date.parse(event.registration_end) < now) ||
+			(event.end_date && Date.parse(event.end_date) < now)
+		)
+			throw new ApiError('As inscrições para este evento estão fora do período de vendas.', 409, 'EVENT_SALES_CLOSED');
+	}
+
+	private async requireProductionApproval(eventId: string) {
+		if (this.gateway.provider !== 'mock' && !(await this.repository.isOrganizerApprovedForEvent(eventId)))
+			throw new ApiError(
+				'As vendas deste organizador aguardam a validação cadastral pela plataforma.',
+				409,
+				'ORGANIZER_PRODUCTION_PENDING',
+			);
+	}
+
 	private async reserveInventory(ids: string[]) {
 		try {
 			await this.inventory.reserve(ids);
@@ -902,6 +1117,8 @@ function movementFromData(data: PaymentWebhookPayload['data']): WebhookMovement 
 	return data?.id
 		? {
 				id: data.id,
+				amount: data.amount,
+				platformFee: data.platformFee,
 				externalId: data.externalId,
 				reason: data.reason,
 				receiptUrl: data.receiptUrl,

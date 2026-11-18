@@ -16,7 +16,14 @@ function setup() {
 		getAvailableBalance: vi.fn(async () => available),
 		createPayout: vi.fn(async () => {
 			available = 0;
-			return { id: 'reserved-payout', net_amount: 99.2 };
+			return {
+				id: 'reserved-payout',
+				amount: 100,
+				net_amount: 99.2,
+				pix_key: 'owner@example.com',
+				pix_key_type: 'EMAIL',
+				method: 'pix',
+			};
 		}),
 		finishPayout: vi.fn(async () => ({ id: 'reserved-payout', status: 'completed' })),
 		failPayout: vi.fn(async () => {
@@ -57,10 +64,56 @@ describe('payout reservation after uncertain provider outcomes', () => {
 		const { repository, gateway, create } = setup();
 		await expect(create()).resolves.toMatchObject({ success: true, payout: { status: 'completed' } });
 		expect(gateway.sendPix).toHaveBeenCalledWith(
-			expect.objectContaining({ externalId: 'reserved-payout', amountInCents: 9920 }),
+			expect.objectContaining({ externalId: 'reserved-payout', amountInCents: 10000 }),
 		);
 		expect(repository.recordAudit).toHaveBeenCalledWith(
 			expect.objectContaining({ actorId: 'super-admin', action: 'payout.created' }),
 		);
 	});
+});
+
+it('sends PIX to the approved destination captured when funds were reserved, even if the preflight data was stale', async () => {
+	const { repository, gateway, create } = setup();
+	vi.mocked(repository.createPayout).mockResolvedValue({
+		id: 'reserved-payout',
+		net_amount: 99.2,
+		method: 'pix',
+		pix_key: 'reviewed@example.com',
+		pix_key_type: 'EMAIL',
+	});
+	await create();
+	expect(gateway.sendPix).toHaveBeenCalledWith(expect.objectContaining({ pixKey: 'reviewed@example.com' }));
+});
+it('reserves an approved bank transfer for manual execution without dispatching PIX or marking it completed', async () => {
+	const { repository, gateway, create } = setup();
+	vi.mocked(repository.getOrganizer).mockResolvedValue({
+		name: 'Organizador',
+		receiving_method: 'bank_transfer',
+		payout_status: 'enabled',
+	});
+	vi.mocked(repository.createPayout).mockResolvedValue({
+		id: 'reserved-payout',
+		net_amount: 100,
+		method: 'bank_transfer',
+		status: 'pending',
+	});
+	await expect(create()).resolves.toMatchObject({ success: true, payout: { status: 'pending' } });
+	expect(gateway.sendPix).not.toHaveBeenCalled();
+	expect(repository.finishPayout).not.toHaveBeenCalled();
+	expect(repository.createPayout).toHaveBeenCalledWith(expect.objectContaining({ provider: 'manual', providerFee: 0 }));
+});
+
+it.each([0, 250])('records the actual gateway withdrawal fee %i and the exact net received', async (fee) => {
+	const { repository, gateway, create } = setup();
+	vi.mocked(gateway.sendPix).mockResolvedValue({
+		id: 'provider-transfer',
+		status: 'COMPLETE',
+		providerFeeInCents: fee,
+		receiptUrl: null,
+	});
+	await create();
+	expect(repository.finishPayout).toHaveBeenCalledWith(
+		'reserved-payout',
+		expect.objectContaining({ provider_fee: fee / 100, net_amount: 100 - fee / 100 }),
+	);
 });

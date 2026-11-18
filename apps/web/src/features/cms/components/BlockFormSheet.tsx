@@ -94,18 +94,20 @@ export function BlockFormSheet({ open, onOpenChange, pageId, collection, block, 
 					<Fields value={state} onChange={setState} errors={errors} />
 
 					<Card className="grid gap-4 p-4 sm:grid-cols-2">
-						<div className="space-y-1.5">
-							<Label htmlFor={`${formId}-background`}>Fundo</Label>
-							<Select value={background} onValueChange={(value) => setBackground(value as 'light' | 'dark')}>
-								<SelectTrigger id={`${formId}-background`}>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="light">Claro</SelectItem>
-									<SelectItem value="dark">Escuro</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
+						{collection !== 'block_event_highlight' && (
+							<div className="space-y-1.5">
+								<Label htmlFor={`${formId}-background`}>Fundo</Label>
+								<Select value={background} onValueChange={(value) => setBackground(value as 'light' | 'dark')}>
+									<SelectTrigger id={`${formId}-background`}>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="light">Claro</SelectItem>
+										<SelectItem value="dark">Escuro</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						)}
 						<Label className="flex items-center gap-3 self-end pb-2 text-sm">
 							<Switch checked={hidden} onCheckedChange={setHidden} aria-label="Ocultar bloco no site" />
 							Ocultar no site

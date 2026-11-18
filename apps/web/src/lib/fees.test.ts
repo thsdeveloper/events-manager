@@ -87,7 +87,7 @@ describe('calculateFeesForMethod', () => {
 
 	it('matches the card estimate of the ticket form and charges boleto as a fixed amount', () => {
 		expect(calculateFeesForMethod(100, 'passed_to_buyer', 'card', DEFAULT_PUBLIC_FEES)).toEqual(
-			calculateFees(100, 'passed_to_buyer', config),
+			calculateFees(100, 'passed_to_buyer', { ...config, providerPercentageFee: 5.42 }),
 		);
 		expect(calculateFeesForMethod(100, 'passed_to_buyer', 'boleto', DEFAULT_PUBLIC_FEES)).toMatchObject({
 			providerFee: 2.5,
@@ -96,13 +96,7 @@ describe('calculateFeesForMethod', () => {
 	});
 
 	it('describes every payment method the checkout offers', () => {
-		expect(PAYMENT_METHODS.map((method) => method.value)).toEqual([
-			'pix',
-			'card',
-			'card_installments_2_6',
-			'card_installments_7_12',
-			'boleto',
-		]);
+		expect(PAYMENT_METHODS.map((method) => method.value)).toEqual(['pix', 'card', 'boleto', 'boleto_pix', 'debit']);
 	});
 });
 

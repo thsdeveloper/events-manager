@@ -52,6 +52,9 @@ export default function PerfilOrganizadorPage() {
 		return (
 			<Container as="section" className="py-8 lg:py-12">
 				<StatusTimeline />
+				<Button asChild className="mt-6 mr-3">
+					<Link href="/perfil/organizador/recebimento">Enviar documentos e validar conta</Link>
+				</Button>
 				<Button asChild className="mt-6">
 					<Link href="/perfil/organizador/rascunhos">Preparar evento em rascunho</Link>
 				</Button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { Spinner } from '@/components/ui/spinner';
-import { Building2, Check, ChevronsUpDown } from 'lucide-react';
+import { Building2, Check, ChevronsUpDown, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
@@ -9,6 +9,7 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -71,6 +72,7 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 				if (!response.ok) throw new Error('Não foi possível trocar de organização.');
 				// Every admin screen is scoped to the active organization, so the whole
 				// tree is refetched rather than patched piecemeal.
+				router.replace('/admin/dashboard');
 				router.refresh();
 			} catch (error) {
 				toast({
@@ -106,12 +108,19 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 
 				<DropdownMenuContent align="start" className="w-64">
 					{organizations.map((organization) => (
-						<DropdownMenuItem key={organization.id} onClick={() => activate(organization.id)} className="gap-2 py-2">
+						<DropdownMenuItem
+							key={organization.id}
+							disabled={organization.status !== 'active' || Boolean(switching)}
+							onSelect={() => activate(organization.id)}
+							className="gap-2 py-2"
+						>
 							<OrganizationMark organization={organization} className="size-7 rounded-md" />
 							<span className="min-w-0 flex-1">
 								<span className="block truncate text-sm font-medium">{organization.name}</span>
 								{organization.status !== 'active' && (
-									<span className="block text-xs text-muted-foreground">Em análise</span>
+									<span className="block text-xs text-muted-foreground">
+										{organization.status === 'pending' ? 'Em análise' : 'Arquivada'}
+									</span>
 								)}
 							</span>
 							{switching === organization.id ? (
@@ -121,6 +130,15 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 							)}
 						</DropdownMenuItem>
 					))}
+					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						disabled={Boolean(switching)}
+						onSelect={() => router.push('/perfil/organizador/novo')}
+						className="gap-2 py-2"
+					>
+						<Plus className="size-4" aria-hidden="true" />
+						Cadastrar nova conta
+					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
 		</>

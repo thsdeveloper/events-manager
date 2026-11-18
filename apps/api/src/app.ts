@@ -18,6 +18,8 @@ import { ticketGroupRoutes } from './routes/ticket-groups.js';
 import { emailRoutes } from './routes/email.js';
 import { eventPageRoutes } from './routes/event-pages.js';
 import { externalRoutes } from './routes/external.js';
+import { manualPayoutRoutes } from './routes/manual-payouts.js';
+import { receivingAccountRoutes } from './routes/receiving-accounts.js';
 import { financeRoutes } from './routes/finance.js';
 import { locationRoutes } from './routes/locations.js';
 import { organizerRoutes } from './routes/organizers.js';
@@ -66,6 +68,8 @@ export async function buildApp(env: ApiEnv) {
 	await app.register(userRoutes, { clients, env });
 	await app.register(eventPageRoutes, { clients });
 	await app.register(locationRoutes, { clients });
+	await app.register(receivingAccountRoutes, { clients });
+	await app.register(manualPayoutRoutes, { clients });
 	await app.register(financeRoutes, { env, clients, payments });
 	await app.register(paymentRoutes, { env, clients, payments });
 	await app.register(superAdminRoutes, { clients, payments });

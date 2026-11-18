@@ -1,6 +1,15 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { brandingAssetKindSchema, brandingSettingsSchema, categoryIdSchema } from '@events-manager/contracts';
+import {
+	paymentSettingsSchema,
+	organizerAdminQuerySchema,
+	organizerAdminUpdateSchema,
+	organizerRecordQuerySchema,
+	organizerSupportNoteSchema,
+} from '@events-manager/contracts';
+import { OrganizerSupportService } from '../application/super-admin/organizer-support-service.js';
+import { SupabaseOrganizerSupportRepository } from '../infrastructure/supabase/organizer-support-repository.js';
 import { BrandingAssetService } from '../application/media/branding-asset-service.js';
 import { SupabaseMediaRepository } from '../infrastructure/supabase/media-repository.js';
 import { ApiError } from '../shared/errors.js';
@@ -10,21 +19,6 @@ import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repos
 import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
 import { SupabaseSuperAdminRepository } from '../infrastructure/supabase/super-admin-repository.js';
 import { requireSuperAdmin } from './auth-context.js';
-
-const paymentSettingsSchema = z.object({
-	platform_fee_percentage: z.coerce.number().min(0).max(100),
-	platform_fee_minimum: z.coerce.number().finite().min(0).default(0),
-	pix_fee_fixed: z.coerce.number().min(0),
-	card_fee_percentage: z.coerce.number().min(0).max(100),
-	card_fee_fixed: z.coerce.number().min(0),
-	card_installment_2_6_percentage: z.coerce.number().min(0).max(100),
-	card_installment_7_12_percentage: z.coerce.number().min(0).max(100),
-	boleto_fee_fixed: z.coerce.number().min(0),
-	payout_fee_fixed: z.coerce.number().min(0),
-	minimum_payout: z.coerce.number().min(1),
-	payouts_enabled: z.boolean(),
-	convenience_fee_calculation_method: z.enum(['buyer_pays', 'organizer_absorbs']),
-});
 
 const categorySchema = z.object({
 	name: z.string().trim().min(2, 'Informe ao menos 2 caracteres').max(60),
@@ -37,13 +31,6 @@ const categorySchema = z.object({
 		.nullable()
 		.optional(),
 	sort: z.coerce.number().int().min(0).nullable().optional(),
-});
-
-const organizerQuery = z.object({
-	page: z.coerce.number().int().positive().default(1),
-	limit: z.coerce.number().int().min(1).max(100).default(20),
-	search: z.string().trim().default(''),
-	status: z.enum(['active', 'pending', 'archived']).optional(),
 });
 
 const transactionQuery = z.object({
@@ -64,6 +51,7 @@ export async function superAdminRoutes(
 	const { clients, payments } = options;
 	const auth = createSupabaseAuthService(clients);
 	const service = new SuperAdminService(new SupabaseSuperAdminRepository(clients), payments);
+	const support = new OrganizerSupportService(new SupabaseOrganizerSupportRepository(clients));
 	const brandingAssets = new BrandingAssetService(new SupabaseMediaRepository(clients));
 	app.post('/api/super-admin/settings/branding/assets', async (request, reply) => {
 		const context = await requireSuperAdmin(request, auth);
@@ -88,20 +76,31 @@ export async function superAdminRoutes(
 
 	app.get('/api/super-admin/organizers', async (request) => {
 		await requireSuperAdmin(request, auth);
-		return service.listOrganizers(organizerQuery.parse(request.query));
+		return support.list(organizerAdminQuerySchema.parse(request.query));
 	});
 
-	app.patch('/api/super-admin/organizers/:id/status', async (request) => {
+	app.get('/api/super-admin/organizers/:id', async (request) => {
+		await requireSuperAdmin(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		return support.detail(id);
+	});
+	app.get('/api/super-admin/organizers/:id/records', async (request) => {
+		await requireSuperAdmin(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		return support.records(id, organizerRecordQuerySchema.parse(request.query));
+	});
+	for (const path of ['/api/super-admin/organizers/:id', '/api/super-admin/organizers/:id/status']) {
+		app.patch(path, async (request) => {
+			const admin = await requireSuperAdmin(request, auth);
+			const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+			return support.update(id, admin.user.id, organizerAdminUpdateSchema.parse(request.body), auditContext(request));
+		});
+	}
+	app.post('/api/super-admin/organizers/:id/notes', async (request, reply) => {
 		const admin = await requireSuperAdmin(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		const input = z
-			.object({
-				status: z.enum(['active', 'pending', 'archived']).optional(),
-				payout_status: z.enum(['not_configured', 'pending_review', 'enabled', 'blocked']).optional(),
-			})
-			.refine((value) => value.status || value.payout_status, 'Informe um status para atualizar.')
-			.parse(request.body);
-		return service.updateOrganizerStatus(admin.user.id, id, input, auditContext(request));
+		const { note } = organizerSupportNoteSchema.parse(request.body);
+		return reply.code(201).send(await support.addNote(id, admin.user.id, note, auditContext(request)));
 	});
 
 	app.get('/api/super-admin/finance/transactions', async (request) => {

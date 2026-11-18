@@ -90,13 +90,49 @@ function buildService(options: { coupons?: CouponApplier } = {}) {
 		options.coupons,
 	);
 
-	return { registrations, repository, service, tickets };
+	return { registrations, repository, service, tickets, gateway };
 }
 
 const logger = { error: () => {} };
 const buyer = { name: 'Ana', email: 'Ana@events.local', document: '39053344705' };
 
 describe('PaymentService.checkout: ingressos por unidade', () => {
+	it('preserves pending nomination and a different attendee in Pix installments', async () => {
+		const { service, repository, gateway, tickets, registrations } = buildService();
+		Object.assign(repository, {
+			findTicketForInstallments: vi.fn().mockResolvedValue({
+				...event.tickets[0],
+				allow_installments: true,
+				max_installments: 3,
+				event_id: { ...event, status: 'published' },
+			}),
+			createInstallments: vi.fn(async (rows) =>
+				rows.map((row: object, index: number) => ({ ...row, id: `i-${index}` })),
+			),
+			setInstallmentCharge: vi.fn().mockResolvedValue(undefined),
+		});
+		Object.assign(gateway, {
+			createPixCharge: vi
+				.fn()
+				.mockResolvedValue({ id: 'pix-1', qrCodeBase64: 'QR', copyPasteCode: 'PIX', expiresAt: null }),
+		});
+		await service.createInstallmentCheckout(
+			TEST_USER_ID,
+			{
+				ticket_id: TICKET_ID,
+				quantity: 2,
+				installments: 2,
+				participant_name: buyer.name,
+				participant_email: buyer.email,
+				attendees: [null, { name: 'Bia', email: 'bia@events.local' }],
+			},
+			logger,
+		);
+		expect(registrations[0]).toMatchObject({ participant_name: buyer.name, participant_email: buyer.email });
+		expect(tickets[0]).toMatchObject({ attendee_name: null, attendee_email: null, named_at: null, is_buyer: false });
+		expect(tickets[1]).toMatchObject({ attendee_name: 'Bia', attendee_email: 'bia@events.local', is_buyer: false });
+	});
+
 	it('issues one ticket per unit and hands the first to the buyer when nobody was named', async () => {
 		const { service, tickets } = buildService();
 

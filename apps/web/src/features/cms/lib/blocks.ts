@@ -52,6 +52,12 @@ export const BLOCK_TYPES: BlockTypeMeta[] = [
 		description: 'Um formulário criado em "Formulários" para captar contatos.',
 		icon: GalleryHorizontal,
 	},
+	{
+		collection: 'block_event_highlight',
+		label: 'Destaque de evento',
+		description: 'Eventos recentes em destaque único ou slider, com imagem e botão de ingressos.',
+		icon: LayoutPanelTop,
+	},
 ];
 
 const byCollection = Object.fromEntries(BLOCK_TYPES.map((type) => [type.collection, type])) as Record<
@@ -68,6 +74,8 @@ export function blockSummary(block: CmsBlockRow): string {
 	switch (block.collection) {
 		case 'block_hero':
 			return block.item.headline;
+		case 'block_event_highlight':
+			return block.item.display_mode === 'single' ? 'Evento mais recente' : `Últimos ${block.item.max_items} eventos`;
 		case 'block_richtext':
 			return block.item.headline || stripHtml(block.item.content).slice(0, 80) || 'Sem título';
 		case 'block_gallery':

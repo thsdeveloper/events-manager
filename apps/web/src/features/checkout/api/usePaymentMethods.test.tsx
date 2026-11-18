@@ -29,3 +29,17 @@ it('shares a single fresh request between checkout consumers', async () => {
 	expect(network.mock.calls.filter(([, init]) => !init?.signal?.aborted)).toHaveLength(1);
 	expect(result.current[0].methods).toEqual(['CARD']);
 });
+
+it('scopes methods to the event and preserves an empty list while approval is pending', async () => {
+	mockFetch([['/api/payments/methods?eventId=event-pending', () => jsonResponse({ methods: [] })]]);
+	const { result } = renderHookWithProviders(() => usePaymentMethods('event-pending'));
+	await waitFor(() => expect(result.current.isLoading).toBe(false));
+	expect(result.current.methods).toEqual([]);
+});
+
+it('offers boleto when enabled for the event', async () => {
+	mockFetch([['/api/payments/methods?eventId=event-boleto', () => jsonResponse({ methods: ['BOLETO'] })]]);
+	const { result } = renderHookWithProviders(() => usePaymentMethods('event-boleto'));
+	await waitFor(() => expect(result.current.isLoading).toBe(false));
+	expect(result.current.methods).toEqual(['BOLETO']);
+});

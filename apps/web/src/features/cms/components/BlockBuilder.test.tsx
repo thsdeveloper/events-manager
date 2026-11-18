@@ -61,14 +61,14 @@ describe('BlockBuilder', () => {
 		expect(items[1]).toHaveTextContent('Como funciona');
 	});
 
-	it('offers the seven block types and opens the matching form when one is picked', async () => {
+	it('offers the eight block types and opens the matching form when one is picked', async () => {
 		mockFetch([]);
 		const { user } = renderWithProviders(<BlockBuilder pageId={pageId} blocks={blocks} />);
 
 		await user.click(screen.getByRole('button', { name: /adicionar bloco/i }));
 		const picker = await screen.findByRole('dialog', { name: /escolha o tipo de bloco/i });
 		const types = within(picker).getByRole('list', { name: /tipos de bloco/i });
-		expect(within(types).getAllByRole('button')).toHaveLength(7);
+		expect(within(types).getAllByRole('button')).toHaveLength(8);
 
 		await user.click(within(types).getByRole('button', { name: /texto rico/i }));
 

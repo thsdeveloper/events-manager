@@ -1,3 +1,4 @@
+import { AdminEventScope } from '@/features/event-scope/components/AdminEventScope';
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '@/test';
@@ -42,4 +43,23 @@ it('groups participant criteria in one sheet and applies the whole selection at 
 		registrationStatus: ['confirmed'],
 		hasCheckedIn: false,
 	});
+});
+
+it('usa o evento do Header e mantém apenas os filtros internos de participantes', async () => {
+	const { user } = renderWithProviders(
+		<AdminEventScope
+			scopeKey="user:org"
+			selection={{ events: [{ id: 'e1', title: 'Congresso' }], selectedEventId: 'e1' }}
+		>
+			<ParticipantFilters
+				filters={filters}
+				onChange={vi.fn()}
+				eventOptions={[{ id: 'e1', title: 'Congresso' }]}
+				ticketTypeOptions={[{ id: 't1', title: 'Inteira' }]}
+			/>
+		</AdminEventScope>,
+	);
+	await user.click(screen.getByRole('button', { name: /Filtros/ }));
+	expect(screen.queryByRole('group', { name: 'Eventos' })).not.toBeInTheDocument();
+	expect(screen.getByRole('checkbox', { name: 'Inteira' })).toBeInTheDocument();
 });

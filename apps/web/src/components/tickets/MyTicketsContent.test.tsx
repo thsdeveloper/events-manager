@@ -76,6 +76,7 @@ describe('MyTicketsContent', () => {
 
 		expect(screen.getAllByText('EVT-7D5F942FFF94')).not.toHaveLength(0);
 		expect(screen.getByText('Participante a informar')).toBeInTheDocument();
+		expect(screen.getByText('Pendente de nomeação')).toBeInTheDocument();
 		expect(screen.getByText('Comprado por Carlos Dias')).toBeInTheDocument();
 	});
 

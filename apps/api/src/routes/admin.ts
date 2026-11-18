@@ -53,7 +53,7 @@ export async function adminRoutes(
 
 	app.get('/api/admin/dashboard', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return dashboard.execute(context.organizer.id);
+		return dashboard.execute(context.organizer.id, context.eventId ?? undefined);
 	});
 
 	app.get('/api/admin/event-configurations', async (request) => {
@@ -63,12 +63,15 @@ export async function adminRoutes(
 
 	app.get('/api/admin/ingressos/filter-options', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return admin.eventFilterOptions(context.organizer.id);
+		return admin.eventFilterOptions(context.organizer.id, context.eventId ?? undefined);
 	});
 
 	app.get('/api/admin/ingressos', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return admin.listTickets(context.organizer.id, ticketQuery.parse(request.query));
+		return admin.listTickets(context.organizer.id, {
+			...ticketQuery.parse(request.query),
+			...(context.eventId ? { eventIds: context.eventId } : {}),
+		});
 	});
 
 	app.post('/api/admin/ingressos', async (request, reply) => {
@@ -97,12 +100,15 @@ export async function adminRoutes(
 
 	app.get('/api/admin/participantes/filter-options', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return admin.participantFilterOptions(context.organizer.id);
+		return admin.participantFilterOptions(context.organizer.id, context.eventId ?? undefined);
 	});
 
 	app.get('/api/admin/participantes', async (request) => {
 		const context = await requireOrganizer(request, auth);
-		return admin.listParticipants(context.organizer.id, participantQuery.parse(request.query));
+		return admin.listParticipants(context.organizer.id, {
+			...participantQuery.parse(request.query),
+			...(context.eventId ? { eventIds: context.eventId } : {}),
+		});
 	});
 
 	app.get('/api/admin/participantes/export', async (request, reply) => {
@@ -110,13 +116,18 @@ export async function adminRoutes(
 		return reply
 			.type('text/csv; charset=utf-8')
 			.header('content-disposition', 'attachment; filename="participantes.csv"')
-			.send(await admin.exportParticipants(context.organizer.id));
+			.send(
+				await admin.exportParticipants(context.organizer.id, {
+					...participantQuery.parse(request.query),
+					...(context.eventId ? { eventIds: context.eventId } : {}),
+				}),
+			);
 	});
 
 	app.get('/api/admin/participantes/:id', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-		return admin.getParticipant(context.organizer.id, id);
+		return admin.getParticipant(context.organizer.id, id, context.eventId ?? undefined);
 	});
 
 	app.patch('/api/admin/participantes/:id/edit', async (request) => {

@@ -1,8 +1,11 @@
 'use client';
 
+import { CARD_SETTLEMENT_PERIODS, readGatewayFees, type CardSettlementPeriod } from '@events-manager/contracts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowRight, Info } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import {
 	calculateFeesForMethod,
@@ -12,39 +15,44 @@ import {
 	type PublicFeeTable,
 } from '@/lib/fees';
 import { cn } from '@/lib/utils';
-import { usePublicFees } from '../api/usePublicFees';
+import { usePublicFees } from '@/hooks/usePublicFees';
 
 type FeeMode = 'passed_to_buyer' | 'absorbed';
 
 const percent = (value: number) => `${value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
 
 function feeRows(fees: PublicFeeTable) {
+	const gateway = readGatewayFees({ ...fees });
+
 	return [
 		{
 			label: 'Taxa de serviço da plataforma',
-			value:
-				percent(fees.platform_fee_percentage) +
-				' do ingresso' +
-				(Number(fees.platform_fee_minimum ?? 0) > 0
-					? ' · mínimo ' + formatCurrency(Number(fees.platform_fee_minimum)) + ' por ingresso'
-					: ''),
+			value: `${percent(fees.platform_fee_percentage)} do ingresso · mínimo ${formatCurrency(fees.platform_fee_minimum ?? 0)} por ingresso pago`,
 		},
-		{ label: 'PIX', value: `${formatCurrency(fees.pix_fee_fixed)} por transação` },
+		{ label: 'Pix recebido', value: `${formatCurrency(gateway.pix_fee_fixed)} por transação` },
+		{ label: 'Boleto pago', value: `${formatCurrency(gateway.boleto_fee_fixed)} por boleto pago` },
+		{ label: 'Boleto pago pelo Pix', value: `${formatCurrency(gateway.pix_fee_fixed)} (taxa do Pix)` },
+		...CARD_SETTLEMENT_PERIODS.map((period) => ({
+			label: `Crédito em ${period} (1x a 12x)`,
+			value: `${percent(gateway.card_rates[period][0])} a ${percent(gateway.card_rates[period][11])} + ${formatCurrency(gateway.card_fee_fixed)}`,
+		})),
 		{
-			label: 'Cartão à vista',
-			value: `${percent(fees.card_fee_percentage)} + ${formatCurrency(fees.card_fee_fixed)} por transação`,
-		},
-		{
-			label: 'Cartão em 2 a 6 vezes',
-			value: `${percent(fees.card_installment_2_6_percentage)} + ${formatCurrency(fees.card_fee_fixed)} por transação`,
+			label: 'Débito em D+1',
+			value: `${percent(gateway.debit_fee_percentage)} + ${formatCurrency(gateway.debit_fee_fixed)}`,
 		},
 		{
-			label: 'Cartão em 7 a 12 vezes',
-			value: `${percent(fees.card_installment_7_12_percentage)} + ${formatCurrency(fees.card_fee_fixed)} por transação`,
+			label: `Saque Pix: primeiros ${gateway.payout_pix_monthly_limit} no mês`,
+			value: formatCurrency(gateway.payout_fee_fixed),
 		},
-		{ label: 'Boleto', value: `${formatCurrency(fees.boleto_fee_fixed)} por transação` },
-		{ label: 'Repasse para sua chave PIX', value: `${formatCurrency(fees.payout_fee_fixed)} por repasse` },
-		{ label: 'Valor mínimo de repasse', value: formatCurrency(fees.minimum_payout) },
+		{
+			label: `Saque Pix: a partir do ${gateway.payout_pix_monthly_limit + 1}º`,
+			value: formatCurrency(gateway.payout_pix_excess_fee),
+		},
+		{ label: 'TED', value: formatCurrency(gateway.ted_fee_fixed) },
+		{ label: 'Mensalidade do gateway', value: formatCurrency(gateway.monthly_fee) },
+		{ label: 'Gerar QR Code Pix', value: formatCurrency(gateway.pix_qr_fee) },
+		{ label: 'Gerar boleto', value: formatCurrency(gateway.boleto_issue_fee) },
+		{ label: 'Valor mínimo de repasse (não é taxa)', value: formatCurrency(fees.minimum_payout) },
 	];
 }
 
@@ -69,11 +77,16 @@ export function FeeCalculator() {
 	const [quantity, setQuantity] = useState('1');
 	const [mode, setMode] = useState<FeeMode>('passed_to_buyer');
 	const [method, setMethod] = useState<PaymentMethod>('card');
+	const [period, setPeriod] = useState<CardSettlementPeriod>('D+1');
+	const [installments, setInstallments] = useState(1);
 	const { fees, isFallback } = usePublicFees();
 
 	const amount = Number(price.replace(',', '.'));
 	const count = Math.max(1, Math.floor(Number(quantity) || 1));
-	const result = Number.isFinite(amount) && amount > 0 ? calculateFeesForMethod(amount, mode, method, fees) : null;
+	const result =
+		Number.isFinite(amount) && amount > 0
+			? calculateFeesForMethod(amount, mode, method, fees, { period, installments })
+			: null;
 
 	return (
 		<div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
@@ -81,18 +94,12 @@ export function FeeCalculator() {
 				<div className="grid gap-5 sm:grid-cols-2">
 					<div className="space-y-2">
 						<Label htmlFor={`${id}-price`}>Valor do ingresso</Label>
-						<div className="relative">
-							<span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-500">
-								R$
-							</span>
-							<Input
-								id={`${id}-price`}
-								inputMode="decimal"
-								value={price}
-								onChange={(event) => setPrice(event.target.value.replace(/[^\d.,]/g, ''))}
-								className="h-11 pl-10 tabular-nums"
-							/>
-						</div>
+						<CurrencyInput
+							id={`${id}-price`}
+							value={price}
+							onValueChange={(value) => setPrice(String(value))}
+							className="h-11 tabular-nums"
+						/>
 					</div>
 					<div className="space-y-2">
 						<Label htmlFor={`${id}-quantity`}>Quantidade de ingressos</Label>
@@ -116,7 +123,7 @@ export function FeeCalculator() {
 								{
 									value: 'passed_to_buyer',
 									label: 'Repasso ao comprador',
-									hint: 'O preço final sobe e você recebe o valor cheio.',
+									hint: 'O comprador paga a taxa da plataforma; o gateway é descontado do organizador.',
 								},
 								{ value: 'absorbed', label: 'Eu absorvo a taxa', hint: 'O comprador paga o preço anunciado.' },
 							] as const
@@ -160,6 +167,44 @@ export function FeeCalculator() {
 						))}
 					</div>
 				</fieldset>
+				{method === 'card' ? (
+					<div className="grid gap-4 sm:grid-cols-2">
+						<div className="space-y-2">
+							<Label htmlFor={`${id}-period`}>Prazo de recebimento</Label>
+							<Select value={period} onValueChange={(value: CardSettlementPeriod) => setPeriod(value)}>
+								<SelectTrigger id={`${id}-period`}>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{CARD_SETTLEMENT_PERIODS.map((value) => (
+										<SelectItem key={value} value={value}>
+											{value}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor={`${id}-installments`}>Parcelas no cartão</Label>
+							<Select value={String(installments)} onValueChange={(value) => setInstallments(Number(value))}>
+								<SelectTrigger id={`${id}-installments`}>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{Array.from({ length: 12 }, (_, index) => (
+										<SelectItem key={index} value={String(index + 1)}>
+											{index + 1}x
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<p className="text-xs text-muted-foreground sm:col-span-2">
+							Antecipação incluída na taxa. O valor integral é disponibilizado no prazo escolhido. Os meios efetivamente
+							disponíveis dependem da configuração da organização e da habilitação no gateway.
+						</p>
+					</div>
+				) : null}
 			</div>
 
 			<div className="space-y-4">
@@ -211,6 +256,9 @@ export function FeeCalculator() {
 					) : (
 						<p className="mt-4 text-sm text-slate-600 dark:text-slate-300">Informe um valor maior que zero.</p>
 					)}
+					<p className="mt-3 text-xs text-muted-foreground">
+						Projeção de uma compra por ingresso. Compras com vários ingressos compartilham a tarifa fixa do gateway.
+					</p>
 					<p className="mt-4 flex gap-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
 						<Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
 						{isFallback

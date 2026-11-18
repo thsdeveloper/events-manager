@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
 	Sparkles,
 	Ticket,
@@ -148,7 +149,7 @@ export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsSte
 
 					<div className="mt-6 space-y-6">
 						{/* Bloco 1: Tipo de ingresso */}
-						<Card className="p-4">
+						<Card className="space-y-5 p-4">
 							<div className="mb-4 flex items-start justify-between gap-4">
 								<div>
 									<h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -162,7 +163,12 @@ export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsSte
 								<TooltipProvider delayDuration={200}>
 									<Tooltip>
 										<TooltipTrigger asChild>
-											<Button variant="ghost" type="button" className="h-auto whitespace-normal">
+											<Button
+												aria-label="Sobre o tipo de ingresso"
+												variant="ghost"
+												type="button"
+												className="h-auto whitespace-normal"
+											>
 												<Info className="size-4" />
 											</Button>
 										</TooltipTrigger>
@@ -179,20 +185,27 @@ export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsSte
 							<div className="grid gap-4 md:grid-cols-2">
 								<Button
 									variant={isFree ? 'secondary' : 'outline'}
+									aria-label="Evento gratuito"
 									aria-pressed={isFree}
 									type="button"
 									onClick={() => form.setValue('is_free', true, { shouldDirty: true, shouldValidate: true })}
-									className="h-auto flex-col items-stretch gap-3 whitespace-normal p-4 text-left"
+									className="h-auto flex-col items-stretch gap-3 whitespace-normal border p-4 text-left aria-pressed:border-violet-500 aria-pressed:bg-violet-50 aria-pressed:text-violet-950"
 								>
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
 											<div
 												className={cn(
-													'flex size-10 items-center justify-center rounded-lg transition-all',
-													isFree ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+													'flex size-20 items-center justify-center rounded-lg transition-all',
+													isFree ? 'bg-violet-100 text-violet-700' : 'bg-muted text-muted-foreground',
 												)}
 											>
-												<Ticket className="size-5" />
+												<Image
+													src="/illustrations/event-creation/ticket-free.png"
+													alt=""
+													width={80}
+													height={80}
+													className="size-20 max-w-none object-contain"
+												/>
 											</div>
 											<div>
 												<p className="text-sm font-semibold">Evento gratuito</p>
@@ -216,20 +229,27 @@ export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsSte
 
 								<Button
 									variant={!isFree ? 'secondary' : 'outline'}
+									aria-label="Evento pago"
 									aria-pressed={!isFree}
 									type="button"
 									onClick={() => form.setValue('is_free', false, { shouldDirty: true, shouldValidate: true })}
-									className="h-auto flex-col items-stretch gap-3 whitespace-normal p-4 text-left"
+									className="h-auto flex-col items-stretch gap-3 whitespace-normal border p-4 text-left aria-pressed:border-violet-500 aria-pressed:bg-violet-50 aria-pressed:text-violet-950"
 								>
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
 											<div
 												className={cn(
-													'flex size-10 items-center justify-center rounded-lg transition-all',
-													!isFree ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+													'flex size-20 items-center justify-center rounded-lg transition-all',
+													!isFree ? 'bg-violet-100 text-violet-700' : 'bg-muted text-muted-foreground',
 												)}
 											>
-												<DollarSign className="size-5" />
+												<Image
+													src="/illustrations/event-creation/ticket-paid.png"
+													alt=""
+													width={80}
+													height={80}
+													className="size-20 max-w-none object-contain"
+												/>
 											</div>
 											<div>
 												<p className="text-sm font-semibold">Evento pago</p>
@@ -253,7 +273,7 @@ export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsSte
 						</Card>
 
 						{/* Bloco: tipos de ingresso */}
-						<Card className="p-4">
+						<Card className="space-y-5 p-4">
 							<div className="mb-4 flex items-start justify-between gap-4">
 								<div>
 									<h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -322,7 +342,7 @@ export function TicketsStep({ manageTicketsHref, draftOnly = false }: TicketsSte
 						</Card>
 
 						{/* Bloco 2: Capacidade */}
-						<Card className="p-4">
+						<Card className="space-y-5 p-4">
 							<div className="mb-4">
 								<h3 className="flex items-center gap-2 text-sm font-semibold">
 									<Users className="size-4 text-primary" />

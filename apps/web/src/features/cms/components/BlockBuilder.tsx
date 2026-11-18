@@ -103,7 +103,9 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 			{blocks.length === 0 ? (
 				<Empty className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted px-6 py-12 text-center">
 					<p className="font-medium text-foreground">Comece adicionando um bloco</p>
-					<p className="text-sm text-muted-foreground">Hero, texto, galeria, planos, posts, eventos ou formulário.</p>
+					<p className="text-sm text-muted-foreground">
+						Hero, texto, galeria, planos, posts, eventos, formulário ou destaque de evento.
+					</p>
 				</Empty>
 			) : (
 				<ol className="space-y-2">
@@ -159,19 +161,21 @@ export function BlockBuilder({ pageId, blocks }: BlockBuilderProps) {
 										<p className="truncate font-medium text-foreground">{blockSummary(block)}</p>
 									</div>
 									<div className="flex items-center gap-1">
-										<Button
-											size="icon"
-											variant="ghost"
-											onClick={() => patch(block, { background: block.background === 'dark' ? 'light' : 'dark' })}
-											aria-label={
-												block.background === 'dark'
-													? `Usar fundo claro em ${meta.label}`
-													: `Usar fundo escuro em ${meta.label}`
-											}
-											title={block.background === 'dark' ? 'Fundo escuro' : 'Fundo claro'}
-										>
-											{block.background === 'dark' ? <Moon className="size-4" /> : <Sun className="size-4" />}
-										</Button>
+										{block.collection !== 'block_event_highlight' && (
+											<Button
+												size="icon"
+												variant="ghost"
+												onClick={() => patch(block, { background: block.background === 'dark' ? 'light' : 'dark' })}
+												aria-label={
+													block.background === 'dark'
+														? `Usar fundo claro em ${meta.label}`
+														: `Usar fundo escuro em ${meta.label}`
+												}
+												title={block.background === 'dark' ? 'Fundo escuro' : 'Fundo claro'}
+											>
+												{block.background === 'dark' ? <Moon className="size-4" /> : <Sun className="size-4" />}
+											</Button>
+										)}
 										<Button
 											size="icon"
 											variant="ghost"
