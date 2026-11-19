@@ -1,8 +1,8 @@
 # Ambiente de desenvolvimento na nuvem
 
 O push da `main` executa `.github/workflows/ci-deploy.yml`. Pull requests executam somente validação, sem credenciais de
-infraestrutura. O deploy segue a ordem: validação → migrations → API → frontend. A concorrência serializa os deploys;
-não interrompa uma execução durante uma migration.
+infraestrutura. O deploy segue a ordem: validação da aplicação + banco isolado → migrations remotas → API → frontend. A
+concorrência serializa os deploys; não interrompa uma execução durante uma migration.
 
 | Serviço                        | Destino                                                                                                         |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
@@ -32,6 +32,31 @@ Docker. O workflow manual `Cobertura (limiares existentes)` aplica os limiares o
 quando falha. A API e o frontend já estavam abaixo desses limiares antes deste pipeline; eles não foram reduzidos. Esse
 workflow ainda não bloqueia o deploy e deve virar um gate obrigatório depois de resolver a dívida de cobertura
 existente.
+
+O job `database` desabilita o seed de demonstração somente na cópia do runner antes de `db start`, pois esse comando
+também executa o seed por padrão. Ele inicia apenas o Postgres, recria o banco **local do CI** com todas as migrations e
+`--no-seed`, e executa `supabase test db --local`. Ele não recebe credenciais de infraestrutura e também roda em pull
+requests. O banco descartável é encerrado mesmo quando algum teste falha. Os testes SQL criam seus próprios usuários,
+pedidos e organizações dentro de transações com rollback; por isso devem rodar nesse ambiente isolado. Esse fluxo segue
+a [orientação oficial de testes no GitHub Actions do Supabase](https://supabase.com/docs/guides/deployment/ci/testing).
+
+O job `migrate` exige sucesso tanto de `validate` quanto de `database`. No projeto remoto, ele apenas vincula o projeto
+e aplica migrations pendentes, em etapas separadas para distinguir falhas de conexão de falhas de SQL. Não execute
+`supabase test db --linked` no deploy: a conexão temporária usada pela CLI para migrations não tem os privilégios
+necessários para criar fixtures em `auth.users` nem para acessar todas as tabelas da suíte.
+
+### Falha de testes após migrations aplicadas
+
+Na execução [#5](https://github.com/thsdeveloper/events-manager/actions/runs/44612062945), o comando `db push` concluiu
+as sete migrations pendentes. A falha seguinte foi `permission denied for schema auth` /
+`permission denied for table pages` durante os testes SQL remotos; não foi uma falha de login ou de aplicação de
+migrations. O deploy da API e do frontend foi bloqueado pela dependência desse job. A execução #4 já apresentava o mesmo
+problema.
+
+As migrations aplicadas permanecem no banco. Após corrigir o workflow, `db push --linked` consulta o histórico e aplica
+somente as que ainda faltarem; não é necessário resetar o banco, reparar o histórico ou ampliar privilégios para testes.
+O teste de regressão `apps/api/test/deployment-workflow.test.ts` verifica a separação dos testes, os pré-requisitos do
+deploy e a ausência de reset/seed no banco remoto.
 
 ## Máquina Fly e ociosidade
 
