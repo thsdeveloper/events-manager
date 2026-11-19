@@ -46,6 +46,9 @@ const asDraft = (ticket: EventTicket): TicketDraft => ({
 	min_quantity_per_purchase: ticket.min_quantity_per_purchase ?? 1,
 	max_quantity_per_purchase: ticket.max_quantity_per_purchase ?? 5,
 	allow_installments: ticket.allow_installments ?? false,
+	allow_pix_installments: ticket.allow_pix_installments ?? false,
+	max_pix_installments: ticket.max_pix_installments ?? null,
+	min_amount_for_pix_installments: ticket.min_amount_for_pix_installments ?? 0,
 	max_installments: ticket.max_installments,
 	min_amount_for_installments: ticket.min_amount_for_installments,
 });

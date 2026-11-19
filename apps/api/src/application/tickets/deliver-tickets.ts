@@ -34,6 +34,7 @@ export interface PurchaseConfirmationNotice {
 	buyerName: string;
 	eventDate: string | null;
 	eventTitle: string;
+	locationName: string | null;
 	receiptUrl: string | null;
 	tickets: DeliverableTicket[];
 }
@@ -115,6 +116,7 @@ export class DeliverTickets implements TicketDelivery {
 							buyerName: first.buyerName,
 							eventDate: first.event.startDate,
 							eventTitle: first.event.title,
+							locationName: first.event.locationName,
 							receiptUrl: first.receiptUrl,
 							tickets,
 						},

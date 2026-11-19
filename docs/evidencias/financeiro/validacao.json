@@ -1,0 +1,49 @@
+{
+  "browser": {
+    "colors": {
+      "Pago": {
+        "background": "rgb(236, 253, 245)",
+        "text": "rgb(6, 95, 70)"
+      },
+      "Pendente": {
+        "background": "rgb(255, 251, 235)",
+        "text": "rgb(146, 64, 14)"
+      },
+      "Falhou": {
+        "background": "rgb(255, 241, 242)",
+        "text": "rgb(159, 18, 57)"
+      },
+      "Reembolsado": {
+        "background": "rgb(245, 243, 255)",
+        "text": "rgb(91, 33, 182)"
+      }
+    },
+    "rowClick": true,
+    "keyboard": true,
+    "escape": true,
+    "mobileOverflow": false
+  },
+  "readOnlyPurchaseCheck": {
+    "registrationId": "397c3c17-97d8-40d4-ba46-81716cf00457",
+    "paidTransactions": 2,
+    "pendingTransactions": 0,
+    "amount": 250,
+    "status": "succeeded",
+    "settlement": "pending",
+    "installments": [
+      {
+        "number": 1,
+        "amount": 250,
+        "status": "paid"
+      },
+      {
+        "number": 2,
+        "amount": 250,
+        "status": "paid"
+      }
+    ],
+    "ticketCount": 5,
+    "unconfirmedFundsExcluded": true
+  },
+  "browserScope": "Componentes reais com dados de exemplo e rede simulada. Conferência do pedido real separada, somente leitura."
+}

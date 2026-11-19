@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { buildDefaultEventPageLayout, type Event, type EventPageRecord } from '@events-manager/contracts';
 import { authenticatedBackendFetch, BackendRequestError } from '@/lib/backend-auth';
-import { EventLandingPage } from '@/features/event-page/components/EventLandingPage';
+import { EventPageRenderer } from '@/features/event-page/puck/EventPageRenderer';
 
 export const metadata: Metadata = { title: 'Prévia do evento', robots: { index: false, follow: false } };
 export default async function EventPreviewPage({ params }: { params: Promise<{ evento_id: string }> }) {
@@ -21,7 +21,7 @@ export default async function EventPreviewPage({ params }: { params: Promise<{ e
 					title="Prévia do evento"
 					description="Somente você pode acessar esta prévia. A compra está desativada."
 				/>
-				<EventLandingPage event={event} layout={page?.draft ?? buildDefaultEventPageLayout(event)} mode="preview" />
+				<EventPageRenderer event={event} layout={page?.draft ?? buildDefaultEventPageLayout(event)} mode="preview" />
 			</div>
 		);
 	} catch (error) {

@@ -1,4 +1,5 @@
 import type { CreateTransparentInput, TransparentCharge } from '../../application/payments/payment-gateway.js';
+import { ApiError } from '../../shared/errors.js';
 import type {
 	CreateCheckoutInput,
 	CreateCustomerInput,
@@ -10,6 +11,9 @@ import type {
 } from '../../application/payments/payment-gateway.js';
 
 export class MockPaymentGateway implements PaymentGateway {
+	async simulateTransparentPixPayment(_chargeId: string): Promise<void> {
+		throw new ApiError('O provedor mock confirma pagamentos automaticamente.', 403, 'PAYMENT_SIMULATION_DISABLED');
+	}
 	async createTransparentCharge(input: CreateTransparentInput): Promise<TransparentCharge> {
 		return {
 			id: `mock_${input.externalId}`,

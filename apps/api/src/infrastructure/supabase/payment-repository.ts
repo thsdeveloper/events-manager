@@ -123,6 +123,15 @@ export class SupabasePaymentRepository implements PaymentRepository {
 		if (error) throw error;
 	}
 
+	async settleReconciledInstallment(input: { chargeId: string; installmentId: string; registrationId: string }) {
+		const { error } = await this.clients.admin.rpc('settle_reconciled_installment', {
+			target_charge_id: input.chargeId,
+			target_installment_id: input.installmentId,
+			target_registration_id: input.registrationId,
+		});
+		if (error) throw error;
+	}
+
 	async settleInstallmentWebhook(input: {
 		chargeId: string;
 		installmentId: string;

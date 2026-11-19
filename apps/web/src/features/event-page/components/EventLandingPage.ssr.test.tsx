@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { buildDefaultEventPageLayout, type Event, type EventPageLayout } from '@events-manager/contracts';
-import { EventLandingPage } from './EventLandingPage';
+import { EventPageRenderer as EventLandingPage } from '../puck/EventPageRenderer';
 
 vi.mock('next/link', () => ({
 	default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
@@ -212,4 +212,42 @@ it('shows group, subgroup and admission labels for tickets', () => {
 	const markup = renderToStaticMarkup(<EventLandingPage event={grouped} layout={layout()} />);
 	expect(markup).toContain('Pista / Lote antecipado');
 	expect(markup).toContain('Meia-entrada');
+});
+
+describe('published page discovery and sharing', () => {
+	it('offers sharing and other organization events without replacing authored sections', () => {
+		const markup = renderToStaticMarkup(
+			<EventLandingPage
+				event={event}
+				layout={layout()}
+				relatedEvents={[{ ...event, id: 'e-2', slug: 'outro', title: 'Outro congresso' }]}
+			/>,
+		);
+		expect(markup).toContain('Compartilhar no WhatsApp');
+		expect(markup).toContain('href="/eventos/outro"');
+		expect(markup).toContain('Três dias de encontros.');
+	});
+	it('does not add live sharing actions or discovery links to the editor preview', () => {
+		const markup = renderToStaticMarkup(
+			<EventLandingPage
+				event={event}
+				layout={layout()}
+				mode="preview"
+				relatedEvents={[{ ...event, id: 'e-2', slug: 'outro' }]}
+			/>,
+		);
+		expect(markup).not.toContain('Compartilhar no WhatsApp');
+		expect(markup).not.toContain('href="/eventos/outro"');
+	});
+});
+
+it('includes the presentation video and anchor in a custom page without loading an iframe on the server', () => {
+	const markup = renderToStaticMarkup(
+		<EventLandingPage event={{ ...event, video_url: 'https://youtu.be/M7lc1UVf-VE' }} layout={layout()} />,
+	);
+	expect(markup).toContain('href="#video"');
+	expect(markup).toContain('id="video"');
+	expect(markup).toContain('Conheça o evento em vídeo');
+	expect(markup).toContain('Assistir ao vídeo');
+	expect(markup).not.toContain('<iframe');
 });

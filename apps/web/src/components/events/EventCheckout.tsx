@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, Globe, Mail, MapPin, QrCode, ShieldCheck } from 'lucide-react';
-import type { CheckoutQuote, EventTicket, MediaFile } from '@events-manager/contracts';
+import {
+	getCheckoutProfileMissingFields,
+	type AppUser,
+	type CheckoutQuote,
+	type EventTicket,
+	type MediaFile,
+} from '@events-manager/contracts';
 import TicketSelection, { getInitialTicketSelection, TicketSelectionItem } from './TicketSelection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,14 +22,12 @@ import MediaImage from '@/components/shared/MediaImage';
 import { AttendeeCards, type AttendeeDraft, type AttendeeUnit } from '@/features/checkout/components/AttendeeCards';
 import { CouponField } from '@/features/checkout/components/CouponField';
 import { TransparentCheckoutForm } from '@/features/checkout/components/TransparentCheckoutForm';
+import { CheckoutBuyerProfile } from '@/features/checkout/components/CheckoutBuyerProfile';
 import { TransparentPaymentResult } from '@/features/checkout/components/TransparentPaymentResult';
 import { usePaymentMethods, type PaymentMethod } from '@/features/checkout/api/usePaymentMethods';
 import { formatEventDateRange, formatEventLocation } from '@/lib/event-schedule';
 import { formatCurrency } from '@/lib/formatters';
 import { useCoupon } from '@/features/checkout/api/useCoupon';
-import { Input } from '@/components/ui/input';
-import { maskDocument, maskPhone } from '@/lib/br-documents';
-import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCheckout } from '@/hooks/useCheckout';
@@ -44,12 +48,8 @@ interface EventCheckoutProps {
 	eventTitle: string;
 	tickets: EventTicket[];
 	userId?: string;
-	defaultParticipantInfo?: {
-		name: string;
-		email: string;
-		phone?: string | null;
-		document?: string | null;
-	};
+	buyerProfile: AppUser;
+	canAutoConfirmPhone?: boolean;
 }
 
 const STEPS = [
@@ -71,7 +71,8 @@ export default function EventCheckout({
 	tickets,
 	ticketGroups = [],
 	userId,
-	defaultParticipantInfo,
+	buyerProfile,
+	canAutoConfirmPhone,
 }: EventCheckoutProps) {
 	const router = useRouter();
 	const [selectedTickets, setSelectedTickets] = useState<TicketSelectionItem[]>(() =>
@@ -87,11 +88,18 @@ export default function EventCheckout({
 	const paymentMethod = availableMethods.includes(chosenPaymentMethod)
 		? chosenPaymentMethod
 		: (availableMethods[0] ?? 'PIX');
+	const [profile, setProfile] = useState(buyerProfile);
+	const [paymentSubmitContainer, setPaymentSubmitContainer] = useState<HTMLDivElement | null>(null);
+	const [profileEditing, setProfileEditing] = useState(() => getCheckoutProfileMissingFields(buyerProfile).length > 0);
+	useEffect(() => {
+		setProfile(buyerProfile);
+	}, [buyerProfile]);
+	const profileIncomplete = getCheckoutProfileMissingFields(profile).length > 0;
 	const participantInfo = {
-		name: defaultParticipantInfo?.name || '',
-		email: defaultParticipantInfo?.email || '',
-		phone: defaultParticipantInfo?.phone ?? '',
-		document: defaultParticipantInfo?.document ?? '',
+		name: [profile.first_name?.trim(), profile.last_name?.trim()].filter(Boolean).join(' '),
+		email: profile.email ?? '',
+		phone: profile.phone ?? '',
+		document: profile.document ?? '',
 	};
 
 	// Quem vai usar cada unidade. A chave é `${ticketId}:${índice}`; a primeira
@@ -159,7 +167,7 @@ export default function EventCheckout({
 		isLoading: isInstallmentLoading,
 		error: installmentError,
 	} = useInstallmentCheckout({
-		onSuccess: (data) => router.push(`/my-registrations/${data.registration_id}/pay`),
+		onSuccess: (data) => router.push(`/perfil/ingressos/${data.registration_id}`),
 	});
 
 	const isLoading = isPaymentLoading || isInstallmentLoading;
@@ -217,7 +225,7 @@ export default function EventCheckout({
 
 	const handleDetailsSubmit = (event: React.FormEvent) => {
 		event.preventDefault();
-		if (!participantInfo.name.trim() || !participantInfo.email.trim()) return;
+		if (profileIncomplete || profileEditing) return;
 		const errors: Record<string, string> = {};
 		attendeeUnits.forEach((unit, index) => {
 			const draft = draftFor(unit, index);
@@ -260,6 +268,7 @@ export default function EventCheckout({
 				step === 'tickets' ? 'Continuar para seus dados' : step === 'details' ? 'Continuar para pagamento' : undefined
 			}
 			actionForm={step === 'details' ? 'details-form' : undefined}
+			actionSlot={step === 'payment' ? <div ref={setPaymentSubmitContainer} className="flex" /> : undefined}
 			coupon={summaryCoupon}
 			footnote={
 				step === 'payment' ? (
@@ -291,7 +300,7 @@ export default function EventCheckout({
 				)
 			}
 			isActionLoading={isLoading}
-			isActionDisabled={step === 'details' && (participantInfo.name.trim().length < 2 || !participantInfo.email.trim())}
+			isActionDisabled={step === 'details' && (profileIncomplete || profileEditing)}
 			items={summaryItems}
 			onAction={step === 'tickets' ? () => setStep('details') : undefined}
 			onRemoveCoupon={coupon.clear}
@@ -308,7 +317,7 @@ export default function EventCheckout({
 
 	if (checkout.attempt)
 		return (
-			<Container className="py-8">
+			<Container className="py-6 sm:py-10">
 				<Heading as="h1" level="h2" className="mb-6">
 					{eventTitle}
 				</Heading>
@@ -330,7 +339,13 @@ export default function EventCheckout({
 		<Container className={cn('grid gap-8 py-8 lg:grid-cols-3 lg:items-start', step === 'tickets' && 'pb-28 lg:pb-8')}>
 			<div className="min-w-0 space-y-8 lg:col-span-2">
 				<div className="space-y-4">
-					<CheckoutSteps currentStep={step} onStepSelect={(id) => setStep(id as typeof step)} steps={STEPS} />
+					<CheckoutSteps
+						currentStep={step}
+						onStepSelect={(id) =>
+							setStep(id === 'payment' && (profileIncomplete || profileEditing) ? 'details' : (id as typeof step))
+						}
+						steps={STEPS}
+					/>
 
 					{/* A capa horizontal acompanha os dados do evento e fica acima deles no celular. */}
 					<div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-start">
@@ -372,6 +387,18 @@ export default function EventCheckout({
 					</div>
 				</div>
 
+				{profileIncomplete && step === 'tickets' ? (
+					<div role="alert" className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+						<p className="font-medium">Complete seu cadastro para comprar</p>
+						<p className="text-sm leading-relaxed text-muted-foreground">
+							Precisamos de nome, sobrenome, data de nascimento, e-mail, CPF e telefone confirmado. Você pode completar
+							tudo aqui, sem perder a seleção de ingressos.
+						</p>
+						<Button type="button" variant="outline" onClick={() => setStep('details')}>
+							Completar meus dados
+						</Button>
+					</div>
+				) : null}
 				<div className="space-y-6">
 					{step === 'tickets' ? (
 						<section aria-labelledby="tickets-title" className="space-y-4">
@@ -399,69 +426,13 @@ export default function EventCheckout({
 								<CardDescription>Quem está comprando e quem vai usar cada ingresso.</CardDescription>
 							</CardHeader>
 							<CardContent>
-								<form onSubmit={handleDetailsSubmit} className="space-y-6" id="details-form">
-									<div className="space-y-2 rounded-lg bg-muted p-4 text-sm">
-										<p>
-											Estes são os dados do comprador, vinculados à sua conta. Os dados de quem vai usar cada ingresso
-											são informados em Participantes.
-										</p>
-										<div className="flex flex-wrap items-center gap-3">
-											<Link
-												href="/perfil?section=personal"
-												target="_blank"
-												rel="noopener noreferrer"
-												className="font-medium text-primary hover:underline"
-											>
-												Atualizar meu perfil
-											</Link>
-											<Button type="button" variant="outline" size="sm" onClick={() => router.refresh()}>
-												Atualizar dados do perfil
-											</Button>
-										</div>
-									</div>
-									<div className="space-y-4">
-										<div className="space-y-2">
-											<Label htmlFor="name">Nome completo *</Label>
-											<Input
-												id="name"
-												type="text"
-												value={participantInfo.name}
-												readOnly
-												required
-												disabled={isLoading}
-											/>
-										</div>
-
-										<div className="space-y-2">
-											<Label htmlFor="email">E-mail *</Label>
-											<Input
-												id="email"
-												type="email"
-												value={participantInfo.email}
-												readOnly
-												required
-												disabled={isLoading}
-											/>
-										</div>
-
-										<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-											<div className="space-y-2">
-												<Label htmlFor="phone">Telefone</Label>
-												<Input id="phone" value={maskPhone(participantInfo.phone)} readOnly disabled={isLoading} />
-											</div>
-
-											<div className="space-y-2">
-												<Label htmlFor="document">CPF</Label>
-												<Input
-													id="document"
-													value={maskDocument(participantInfo.document)}
-													readOnly
-													disabled={isLoading}
-												/>
-											</div>
-										</div>
-									</div>
-
+								<CheckoutBuyerProfile
+									profile={profile}
+									canAutoConfirmPhone={canAutoConfirmPhone}
+									onSaved={setProfile}
+									onEditingChange={setProfileEditing}
+								/>
+								<form onSubmit={handleDetailsSubmit} className="mt-6 space-y-6" id="details-form">
 									<section aria-labelledby="attendees-title" className="space-y-3 border-t pt-6">
 										<div>
 											<Heading as="h3" level="h4" id="attendees-title">
@@ -499,6 +470,7 @@ export default function EventCheckout({
 										participantInfo,
 										couponCode: coupon.applied?.code,
 									}}
+									submitContainer={paymentSubmitContainer}
 									checkout={checkout}
 									onQuote={setServerQuote}
 									method={paymentMethod}

@@ -79,6 +79,7 @@ export class SupabaseTransparentAttemptRepository implements TransparentAttemptR
 		const { data, error } = await this.db
 			.from('checkout_attempts')
 			.select('*')
+			.is('charge->>developmentSimulation', null)
 			.or(
 				'status.in.(processing,pending,disputed),and(status.eq.confirmed,fee_confirmed.eq.false),and(status.eq.confirmed,charge->>status.eq.APPROVED)',
 			)

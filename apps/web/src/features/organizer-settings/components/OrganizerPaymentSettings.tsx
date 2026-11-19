@@ -99,7 +99,7 @@ export function OrganizerPaymentSettings() {
 		PIX: `${formatCurrency(gateway.pix_fee_fixed)} por transação paga. Disponível na hora.`,
 		BOLETO: `${formatCurrency(gateway.boleto_fee_fixed)} por boleto pago, em até 3 dias úteis. Se pago pelo Pix: ${formatCurrency(gateway.pix_fee_fixed)}, na hora.`,
 		CARD: `De 1x a 12x, conforme o ingresso. Escolha abaixo o prazo de recebimento e confira as taxas.`,
-		DEBIT: `${percent(gateway.debit_fee_percentage)} + ${formatCurrency(gateway.debit_fee_fixed)} por transação. D+1. Habilitação pendente: o checkout atual ainda não oferece débito separado.`,
+		DEBIT: `${percent(gateway.debit_fee_percentage)} + ${formatCurrency(gateway.debit_fee_fixed)} por transação. D+1. Indisponível neste checkout. A seleção registra apenas sua preferência.`,
 	};
 
 	return (
@@ -127,6 +127,8 @@ export function OrganizerPaymentSettings() {
 							{methods.map(({ value, label, Icon }) => (
 								<div
 									key={value}
+									role="group"
+									aria-label={label}
 									className="flex items-start gap-3 rounded-lg border p-4 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
 								>
 									<Checkbox
@@ -143,6 +145,19 @@ export function OrganizerPaymentSettings() {
 											{label}
 										</span>
 										<span className="block text-sm font-normal leading-6 text-muted-foreground">{hints[value]}</span>
+										{values.accepted_payment_methods.includes(value) ? (
+											<Badge
+												variant={
+													query.data?.available_methods.some((method) => method === value) ? 'secondary' : 'outline'
+												}
+											>
+												{draft
+													? 'Alteração não salva'
+													: query.data?.available_methods.some((method) => method === value)
+														? 'Disponível no checkout'
+														: 'Indisponível no checkout'}
+											</Badge>
+										) : null}
 									</Label>
 								</div>
 							))}
@@ -195,9 +210,9 @@ export function OrganizerPaymentSettings() {
 									))}
 								</RadioGroup>
 								<p className="text-sm text-muted-foreground">
-									Sua escolha registra o prazo solicitado. O crédito só será oferecido aos participantes após a
-									habilitação e a compatibilidade com o prazo da conta de pagamentos. Os outros meios disponíveis
-									continuam funcionando.
+									{query.data?.test_mode
+										? 'Ambiente de teste: o crédito pode ser testado com qualquer prazo selecionado. Para pagamentos reais, o prazo deve coincidir com o da conta de pagamentos.'
+										: `Sua escolha registra o prazo solicitado. Para oferecer crédito, selecione o prazo disponível na conta de pagamentos (${query.data?.gateway_card_settlement_period}) ou solicite a alteração à plataforma. Os outros meios disponíveis continuam funcionando.`}
 								</p>
 							</div>
 						) : null}
@@ -207,9 +222,11 @@ export function OrganizerPaymentSettings() {
 								role="status"
 								className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"
 							>
-								{method === 'CARD' && reason === 'settlement'
-									? `Crédito pendente: o prazo solicitado (${query.data?.settings.credit_card_settlement_period}) aguarda compatibilidade com a conta de pagamentos. Os demais meios disponíveis continuam ativos.`
-									: `${methods.find((item) => item.value === method)?.label} pendente: ${reason === 'integration' ? 'aguardando disponibilidade no checkout.' : 'aguardando habilitação na conta de pagamentos.'}`}
+								{reason === 'integration'
+									? 'Cartão de débito indisponível: este checkout aceita cartão de crédito, mas não oferece débito separado. Marcar esta preferência não habilita o débito.'
+									: method === 'CARD' && reason === 'settlement'
+										? `Crédito pendente: o prazo solicitado (${query.data?.settings.credit_card_settlement_period}) difere do prazo disponível (${query.data?.gateway_card_settlement_period}). Selecione o prazo disponível para habilitar o crédito ou solicite a alteração à plataforma.`
+										: `${methods.find((item) => item.value === method)?.label} pendente: aguardando habilitação na conta de pagamentos.`}
 							</p>
 						))}
 						<p className="text-sm text-muted-foreground">

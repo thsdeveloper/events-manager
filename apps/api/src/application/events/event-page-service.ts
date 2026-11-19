@@ -14,6 +14,7 @@ export type EventPageRow = EventPageRecord;
 
 export interface EventPageRepository {
 	find(eventId: string): Promise<EventPageRow | null>;
+	disable(eventId: string): Promise<EventPageRow | null>;
 	upsert(eventId: string, patch: Partial<Omit<EventPageRow, 'event_id' | 'date_updated'>>): Promise<EventPageRow>;
 }
 
@@ -76,9 +77,11 @@ export class EventPageService {
 	}
 
 	async unpublish(userId: string, eventId: string): Promise<EventPageRow> {
-		await this.events.getForUser(userId, eventId);
+		const event = await this.events.getForUser(userId, eventId);
 
-		return this.repository.upsert(eventId, { enabled: false });
+		// Atualizar somente a flag preserva inclusive um rascunho salvo simultaneamente.
+		// Um upsert sem draft falha no NOT NULL antes de resolver o conflito da chave.
+		return (await this.repository.disable(eventId)) ?? emptyRecord(eventId, buildDefaultEventPageLayout(event));
 	}
 }
 

@@ -1,0 +1,20 @@
+{
+  "environment": "Next.js 15.5.29 production build in isolated fixture, using repository fetchEventBySlug and backendFetch",
+  "browser": "Chromium",
+  "browserCacheCleared": false,
+  "checks": {
+    "legacyCachedPriceAfterUpdate": 50,
+    "updatedPriceOnNormalReload": 75,
+    "updatedPriceOnClientNavigation": 90,
+    "checkoutPrice": 90,
+    "metadataUpdated": true,
+    "unpublishedStatus": 404,
+    "dynamicResponseCacheControl": "private, no-cache, no-store, max-age=0, must-revalidate"
+  },
+  "realEventReadOnlyCheck": {
+    "slug": "dfasgfdsgfsdg-fdsg-sdf-gsdf-gf-gcz4cj",
+    "apiPrice": 100,
+    "htmlPrice": 100,
+    "apiCacheControl": "private, no-store"
+  }
+}

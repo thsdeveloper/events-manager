@@ -7,6 +7,7 @@ import {
 	CMS_CONTENT_CACHE_TAG,
 	eventCacheTag,
 	fetchEventBySlug,
+	fetchOrganizationEvents,
 	fetchPageData,
 	fetchPaginatedPosts,
 	fetchPostBySlug,
@@ -40,8 +41,8 @@ describe('content fetchers', () => {
 			tags: [CMS_CONTENT_CACHE_TAG],
 		});
 		expect(backendFetch).toHaveBeenNthCalledWith(5, '/api/content/redirects', { tags: [CMS_CONTENT_CACHE_TAG] });
-		// Cada evento tem a própria tag: publicar a landing page derruba só o cache dele.
-		expect(backendFetch).toHaveBeenNthCalledWith(6, '/api/events/slug/festival', { tags: [eventCacheTag('festival')] });
+		// Os eventos têm dados de compra que precisam estar atuais em cada visita.
+		expect(backendFetch).toHaveBeenNthCalledWith(6, '/api/events/slug/festival', { cache: 'no-store', revalidate: 0 });
 		expect(eventCacheTag('festival')).toBe('event:festival');
 	});
 
@@ -67,5 +68,20 @@ describe('content fetchers', () => {
 
 		await expect(fetchSiteData()).resolves.toEqual({ globals: { id: 's' } });
 		expect(backendFetch).toHaveBeenCalledWith('/api/content/site', { tags: [SITE_DATA_CACHE_TAG] });
+	});
+});
+
+describe('events from the same organization', () => {
+	it('requests a fresh, limited list excluding the current event', async () => {
+		backendFetch.mockResolvedValue({ data: [{ id: 'other' }] });
+		await expect(fetchOrganizationEvents('org', 'current')).resolves.toEqual([{ id: 'other' }]);
+		expect(backendFetch).toHaveBeenCalledWith('/api/events/public?organizer_id=org&exclude_id=current&limit=4', {
+			cache: 'no-store',
+			revalidate: 0,
+		});
+	});
+	it('keeps the event purchasable if recommendations are unavailable', async () => {
+		backendFetch.mockRejectedValue(new Error('offline'));
+		await expect(fetchOrganizationEvents('org', 'current')).resolves.toEqual([]);
 	});
 });

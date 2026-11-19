@@ -55,7 +55,7 @@ export default async function EventsPage({
 	const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 	const response = await backendFetch<EventListResponse>(
 		`/api/events/public?${new URLSearchParams({ page: String(page), limit: '12', search }).toString()}`,
-		{ revalidate: 30 },
+		{ cache: 'no-store', revalidate: 0 },
 	);
 
 	return (

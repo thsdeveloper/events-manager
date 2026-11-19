@@ -24,7 +24,7 @@ export function receivingError(error: { message: string } | null) {
 			'Envie o documento do responsável, o comprovante de titularidade e, para CNPJ, o comprovante da empresa.',
 		],
 		ACCOUNT_HOLDER_MISMATCH: [422, 'A conta deve pertencer ao CPF/CNPJ da organização.'],
-		RECEIVING_REVIEW_FORBIDDEN: [403, 'A análise deve ser feita por outro superadministrador ativo.'],
+		RECEIVING_REVIEW_FORBIDDEN: [403, 'Você não tem permissão para analisar os dados de recebimento.'],
 		ORGANIZER_ARCHIVED: [409, 'Reative a organização antes de analisar os dados de recebimento.'],
 		PAYOUT_ACCOUNT_DISABLED: [422, 'Os dados de recebimento precisam estar aprovados para criar um repasse.'],
 		MANUAL_PAYOUT_CHANGED: [409, 'Este repasse já foi concluído ou cancelado. Atualize a página.'],

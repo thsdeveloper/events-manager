@@ -353,9 +353,37 @@ export class SupabaseAuthRepository implements AuthRepository {
 		if (error) throw providerError(error);
 	}
 
-	async verifyPhoneChange(phoneE164: string, token: string) {
-		const { error } = await this.clients.public.auth.verifyOtp({ phone: phoneE164, token, type: 'phone_change' });
+	async verifyPhoneChange(phoneE164: string, token: string, userId: string) {
+		const { data, error } = await this.clients.public.auth.verifyOtp({ phone: phoneE164, token, type: 'phone_change' });
 		if (error) throw providerError(error);
+		if (data.user?.id !== userId || data.user.phone?.replace(/\D/g, '') !== phoneE164.replace(/\D/g, ''))
+			throw new AuthProviderError('Phone confirmation does not belong to this account.', 400);
+	}
+
+	async requestEmailCompletion(session: SessionTokens, email: string) {
+		const client = this.clients.forAccessToken(session.accessToken);
+		const { error: sessionError } = await client.auth.setSession({
+			access_token: session.accessToken,
+			refresh_token: session.refreshToken,
+		});
+		if (sessionError) throw providerError(sessionError);
+		const { error } = await client.auth.updateUser({ email });
+		if (error) throw providerError(error);
+	}
+	async verifyEmailCompletion(userId: string, email: string, token: string) {
+		const { data, error } = await this.clients.public.auth.verifyOtp({ email, token, type: 'email_change' });
+		if (error) throw providerError(error);
+		if (
+			data.user?.id !== userId ||
+			data.user.email?.toLowerCase() !== email.toLowerCase() ||
+			!data.user.email_confirmed_at
+		)
+			throw new AuthProviderError('Email confirmation does not belong to this account.', 400);
+		const { error: profileError } = await this.clients.admin
+			.from('profiles')
+			.update({ email: data.user.email })
+			.eq('id', userId);
+		if (profileError) throw profileError;
 	}
 
 	async markPhoneVerified(userId: string, phoneDigits: string) {

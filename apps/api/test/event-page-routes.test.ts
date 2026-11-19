@@ -114,3 +114,56 @@ describe('PUT /api/events/:id/page', () => {
 		expect(response.json().draft.sections).toHaveLength(3);
 	});
 });
+
+describe('POST /api/events/:id/page/unpublish', () => {
+	it('returns to the standard layout without losing the draft', async () => {
+		const app = await buildApp({ saving: true });
+		const response = await app.inject({
+			method: 'POST',
+			url: `/api/events/${TEST_EVENT_ID}/page/unpublish`,
+			headers: sessionCookie(),
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject({ enabled: false, draft: JSON.parse(JSON.stringify(storedPage.draft)) });
+	});
+	it('is safe to repeat when the page was never saved', async () => {
+		const app = await buildApp();
+		const response = await app.inject({
+			method: 'POST',
+			url: `/api/events/${TEST_EVENT_ID}/page/unpublish`,
+			headers: sessionCookie(),
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json().enabled).toBe(false);
+		expect(response.json().draft.sections.map((section: { type: string }) => section.type)).toEqual([
+			'hero',
+			'about',
+			'tickets',
+		]);
+	});
+	it.each([
+		{ user: false, status: 401 },
+		{ owned: false, status: 404 },
+	])('protects the event from unauthorized changes ($status)', async ({ status, ...options }) => {
+		const app = await buildApp(options);
+		const response = await app.inject({
+			method: 'POST',
+			url: `/api/events/${TEST_EVENT_ID}/page/unpublish`,
+			headers: sessionCookie(),
+		});
+		await app.close();
+		expect(response.statusCode).toBe(status);
+	});
+	it('validates the event identifier', async () => {
+		const app = await buildApp();
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/events/invalid/page/unpublish',
+			headers: sessionCookie(),
+		});
+		await app.close();
+		expect(response.statusCode).toBe(422);
+	});
+});

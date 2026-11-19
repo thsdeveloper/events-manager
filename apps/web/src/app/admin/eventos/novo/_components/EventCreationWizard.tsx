@@ -186,7 +186,7 @@ const stepFieldGroups: Array<(keyof EventWizardFormValues)[]> = [
 		'location_postal_code',
 	],
 	['is_free', 'tickets', 'max_attendees', 'status', 'visibility', 'featured', 'publish_after_create'],
-	['cover_image', 'cover_image_alt'],
+	['cover_image', 'cover_image_alt', 'video_url'],
 	[
 		'title',
 		'category_id',
@@ -252,6 +252,9 @@ function ticketDraft(ticket: EventTicket): TicketDraft {
 		min_quantity_per_purchase: ticket.min_quantity_per_purchase ?? 1,
 		max_quantity_per_purchase: ticket.max_quantity_per_purchase ?? 5,
 		allow_installments: ticket.allow_installments ?? false,
+		allow_pix_installments: ticket.allow_pix_installments ?? false,
+		max_pix_installments: ticket.max_pix_installments ?? null,
+		min_amount_for_pix_installments: ticket.min_amount_for_pix_installments ?? 0,
 		max_installments: ticket.max_installments ?? null,
 	};
 }

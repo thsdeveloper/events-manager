@@ -102,8 +102,8 @@ describe('PaymentService.checkout: ingressos por unidade', () => {
 		Object.assign(repository, {
 			findTicketForInstallments: vi.fn().mockResolvedValue({
 				...event.tickets[0],
-				allow_installments: true,
-				max_installments: 3,
+				allow_pix_installments: true,
+				max_pix_installments: 3,
 				event_id: { ...event, status: 'published' },
 			}),
 			createInstallments: vi.fn(async (rows) =>

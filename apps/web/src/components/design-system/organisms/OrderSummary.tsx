@@ -24,6 +24,7 @@ export interface OrderSummaryItem {
 export function OrderSummary({
 	actionForm,
 	actionLabel,
+	actionSlot,
 	children,
 	coupon,
 	footnote,
@@ -35,6 +36,7 @@ export function OrderSummary({
 }: {
 	actionForm?: string;
 	actionLabel?: string;
+	actionSlot?: ReactNode;
 	children?: ReactNode;
 	coupon?: AppliedCoupon | null;
 	footnote?: ReactNode;
@@ -121,7 +123,9 @@ export function OrderSummary({
 				) : null}
 			</dl>
 
-			{actionLabel ? (
+			{actionSlot ? (
+				<div className="mt-5">{actionSlot}</div>
+			) : actionLabel ? (
 				<Button
 					className="mt-5 w-full"
 					disabled={isEmpty || isActionLoading || isActionDisabled}

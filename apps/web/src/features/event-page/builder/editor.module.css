@@ -1,0 +1,20 @@
+.editor {
+	--puck-color-interactive: #743df5;
+	--puck-color-interactive-hover: #6430db;
+	--puck-color-interactive-active: #5425ba;
+	--puck-color-interactive-subtle: #e7ddff;
+	--puck-color-interactive-soft: #f4efff;
+	--puck-color-interactive-soft-hover: #e7ddff;
+	--puck-color-focus-ring: #743df5;
+	--puck-color-selection-bg: #743df520;
+	--puck-color-selection-border: #743df5;
+	--puck-font-family: var(--font-dm-sans, 'DM Sans'), system-ui, sans-serif;
+	--puck-radius-m: 8px;
+	border: 1px solid hsl(var(--border));
+	border-radius: 12px;
+	overflow: clip;
+	min-width: 0;
+}
+.editor :global(.Puck) {
+	min-height: 600px;
+}

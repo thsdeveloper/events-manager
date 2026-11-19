@@ -1,3 +1,4 @@
+import { presentFinanceTransaction, presentTransactionDetails, record } from './finance-transaction.js';
 import { csvCell } from '../security/csv.js';
 import { ApiError } from '../../shared/errors.js';
 
@@ -52,6 +53,9 @@ export interface FinancePayout extends Record<string, unknown> {
 }
 
 export interface FinanceRepository {
+	findTransaction(id: string, registrationIds: string[]): Promise<unknown | null>;
+	listRegistrationTransactions(registrationId: string): Promise<unknown[]>;
+	listRegistrationTickets(registrationId: string): Promise<unknown[]>;
 	listEvents(organizerId: string): Promise<FinanceEvent[]>;
 	listInstallments(registrationIds: string[]): Promise<FinanceInstallment[]>;
 	listPayouts(organizerId: string): Promise<FinancePayout[]>;
@@ -165,7 +169,7 @@ export class FinanceService {
 			status: query.status,
 		});
 		return {
-			data: result.data,
+			data: result.data.map(presentFinanceTransaction),
 			pagination: {
 				page: query.page,
 				limit: query.limit,
@@ -174,6 +178,22 @@ export class FinanceService {
 			},
 			summary: { status: {} },
 		};
+	}
+
+	async transaction(organizerId: string, id: string, eventId?: string) {
+		const registrationIds = (await this.repository.listRegistrations(organizerId))
+			.filter((row) => !eventId || row.event_id?.id === eventId)
+			.map((row) => row.id);
+		const value = registrationIds.length ? await this.repository.findTransaction(id, registrationIds) : null;
+		const registrationId = record(record(value).registration_id).id;
+		if (!value || typeof registrationId !== 'string' || !registrationIds.includes(registrationId))
+			throw new ApiError('Transação não encontrada.', 404, 'TRANSACTION_NOT_FOUND');
+		const [installments, tickets, movements] = await Promise.all([
+			this.repository.listInstallments([registrationId]),
+			this.repository.listRegistrationTickets(registrationId),
+			this.repository.listRegistrationTransactions(registrationId),
+		]);
+		return presentTransactionDetails(value, installments, tickets, movements);
 	}
 
 	async payouts(organizerId: string, payoutStatus: unknown) {

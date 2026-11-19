@@ -26,7 +26,7 @@ export const nominalTicketSelection = `
   date_updated,
   registration:event_registrations!inner(
     id,user_id,participant_name,participant_email,participant_phone,participant_document,
-    status,payment_status,payment_method,total_amount,quantity,receipt_url,notes,date_created,cancelled_at
+    status,payment_status,payment_method,total_amount,quantity,receipt_url,notes,date_created,cancelled_at,additional_info,is_installment_payment,total_installments,installment_plan_status
   ),
   event:events!inner(
     id,title,slug,start_date,end_date,location_name,location_address,event_type,online_url,organizer_id,
@@ -36,7 +36,10 @@ export const nominalTicketSelection = `
 `;
 
 export function mapNominalTicket(row: Record<string, unknown>): NominalTicket {
-	const registration = row.registration as NominalTicket['registration'];
+	const { additional_info, ...registration } = row.registration as NominalTicket['registration'] & {
+		additional_info?: Record<string, unknown>;
+	};
+	const metadata = additional_info ?? {};
 	const money = (value: unknown) => Number(value ?? 0);
 
 	return {
@@ -58,6 +61,13 @@ export function mapNominalTicket(row: Record<string, unknown>): NominalTicket {
 		date_updated: String(row.date_updated),
 		registration: {
 			...registration,
+			payment_method:
+				registration.payment_method ??
+				(['PIX', 'CARD', 'BOLETO'].includes(String(metadata.payment_method_requested))
+					? String(metadata.payment_method_requested).toLowerCase()
+					: null),
+			checkout_group_id: typeof metadata.checkout_group_id === 'string' ? metadata.checkout_group_id : null,
+			card_installments: typeof metadata.card_installments === 'number' ? metadata.card_installments : null,
 			total_amount: registration.total_amount === null ? null : Number(registration.total_amount),
 			user: registration.user ?? null,
 		},

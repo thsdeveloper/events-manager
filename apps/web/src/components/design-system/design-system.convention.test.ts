@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const EVENT_PAGE = 'src/app/(event)/eventos/[slug]/page.tsx';
+const EVENT_PAGE = 'src/features/event-page/components/DefaultEventPage.tsx';
 const EVENT_HERO = 'src/components/design-system/organisms/EventHero.tsx';
 const OVERLAY_BADGE = 'src/components/design-system/molecules/OverlayBadge.tsx';
 

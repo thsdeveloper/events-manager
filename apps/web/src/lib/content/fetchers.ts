@@ -45,13 +45,15 @@ export function fetchPageData(permalink: string, postPage = 1, previewToken?: st
 	return backendFetch<Page>(`/api/content/pages?${query}`, cache);
 }
 
-/** Tag de cache de um evento público; publicar a landing page a derruba. */
+/** Invalida também cópias criadas antes de a leitura do evento passar a ser dinâmica. */
 export function eventCacheTag(slug: string) {
 	return `event:${slug}`;
 }
 
 export function fetchEventBySlug(slug: string) {
-	return backendFetch<Event>(`/api/events/slug/${encodeURIComponent(slug)}`, { tags: [eventCacheTag(slug)] });
+	// Preço, estoque, status e programação precisam refletir a API em cada acesso,
+	// inclusive no checkout e nos metadados. Não herdar os 30s usados pelo CMS.
+	return backendFetch<Event>(`/api/events/slug/${encodeURIComponent(slug)}`, { cache: 'no-store', revalidate: 0 });
 }
 
 export function fetchPostBySlug(slug: string): Promise<{ post: Post | null; relatedPosts: Post[] }> {
@@ -77,6 +79,21 @@ export async function fetchTotalPostCount(): Promise<number> {
 export async function fetchRedirects(): Promise<Pick<Redirect, 'url_from' | 'url_to' | 'response_code'>[]> {
 	try {
 		return await backendFetch('/api/content/redirects', { tags: [CMS_CONTENT_CACHE_TAG] });
+	} catch {
+		return [];
+	}
+}
+
+/** Recomendações não bloqueiam a compra se o catálogo estiver temporariamente indisponível. */
+export async function fetchOrganizationEvents(organizerId: string, excludeId: string): Promise<Event[]> {
+	const query = new URLSearchParams({ organizer_id: organizerId, exclude_id: excludeId, limit: '4' });
+	try {
+		const result = await backendFetch<{ data: Event[] }>(`/api/events/public?${query}`, {
+			cache: 'no-store',
+			revalidate: 0,
+		});
+
+		return result.data;
 	} catch {
 		return [];
 	}

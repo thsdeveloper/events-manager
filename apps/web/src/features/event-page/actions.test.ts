@@ -8,5 +8,7 @@ it('invalidates the event, catalogue and sitemap together after publication chan
 	expect(revalidateTag).toHaveBeenCalledWith(eventCacheTag('meu-evento'));
 	expect(revalidateTag).toHaveBeenCalledWith(CMS_CONTENT_CACHE_TAG);
 	expect(revalidatePath).toHaveBeenCalledWith('/eventos');
+	expect(revalidatePath).toHaveBeenCalledWith('/eventos/meu-evento');
+	expect(revalidatePath).toHaveBeenCalledWith('/eventos/meu-evento/checkout');
 	expect(revalidatePath).toHaveBeenCalledWith('/sitemap.xml');
 });

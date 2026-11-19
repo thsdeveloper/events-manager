@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
 	Search,
@@ -15,17 +15,17 @@ import {
 	LayoutGrid,
 	type LucideIcon,
 } from 'lucide-react';
-import { isPast, isFuture } from 'date-fns';
+import { isFuture } from 'date-fns';
 import type { NominalTicket } from '@events-manager/contracts';
 import { AccountEmptyState } from '@/components/account/AccountEmptyState';
-import { NameAttendeeDialog } from '@/features/tickets/components/NameAttendeeDialog';
 import { Ticket as AnimatedTicket } from '@/components/animate-ui/icons/ticket';
 import { Button } from '@/components/ui/button';
 import { FilterSheet } from '@/components/shared/FilterSheet';
 import { FilterInput, FilterSelect } from '@/components/shared/FilterFields';
-import { TicketCard } from './TicketCard';
-import { TicketDetailsModal } from './TicketDetailsModal';
+import { PurchaseCard } from '@/features/tickets/components/PurchaseCard';
+import { groupTicketPurchases } from '@/features/tickets/purchases';
 import { emptyIllustrations } from '@/lib/illustrations';
+import { getTicketAccess } from '@/features/tickets/ticket-access';
 
 interface MyTicketsContentProps {
 	tickets: NominalTicket[];
@@ -74,24 +74,14 @@ function StatCard({
 
 /** A pessoa pagou por este ingresso: ele é dela ou ela pode nomear quem vai. */
 function boughtByMe(ticket: NominalTicket) {
-	return Boolean(ticket.can_edit_attendee || ticket.is_buyer);
+	return ticket.purchased_by_me ?? Boolean(ticket.can_edit_attendee || ticket.is_buyer);
 }
 
 export function MyTicketsContent({ tickets: initialTickets }: MyTicketsContentProps) {
 	const [selectedTab, setSelectedTab] = useState<TabType>('upcoming');
 	const [searchQuery, setSearchQuery] = useState('');
 	const [viewMode, setViewMode] = useState<ViewMode>('grid');
-	const [selectedTicket, setSelectedTicket] = useState<NominalTicket | null>(null);
-	const [editingTicket, setEditingTicket] = useState<NominalTicket | null>(null);
-	// Cópia local: nomear um participante troca o ingresso no lugar, sem recarregar.
-	const [tickets, setTickets] = useState(initialTickets);
-	useEffect(() => setTickets(initialTickets), [initialTickets]);
-
-	const handleAttendeeSaved = (updated: NominalTicket) => {
-		setTickets((current) => current.map((ticket) => (ticket.id === updated.id ? updated : ticket)));
-		setSelectedTicket((current) => (current?.id === updated.id ? updated : current));
-		setEditingTicket(null);
-	};
+	const tickets = initialTickets;
 
 	// Categorize tickets
 	const categorizedTickets = useMemo(() => {
@@ -100,7 +90,7 @@ export function MyTicketsContent({ tickets: initialTickets }: MyTicketsContentPr
 		const cancelled: NominalTicket[] = [];
 
 		tickets.forEach((ticket) => {
-			if (ticket.registration.status === 'cancelled') {
+			if (ticket.registration.status === 'cancelled' || ticket.registration.payment_status === 'refunded') {
 				cancelled.push(ticket);
 
 				return;
@@ -144,11 +134,21 @@ export function MyTicketsContent({ tickets: initialTickets }: MyTicketsContentPr
 		});
 	}, [categorizedTickets, selectedTab, searchQuery]);
 
+	const filteredPurchases = useMemo(() => {
+		const matched = new Set(filteredTickets.map((ticket) => ticket.id));
+
+		return groupTicketPurchases(tickets).filter((purchase) =>
+			purchase.tickets.some((ticket) => matched.has(ticket.id)),
+		);
+	}, [tickets, filteredTickets]);
+
 	// Calculate stats. "Investido" soma só o que a pessoa pagou: um ingresso
 	// comprado por outra pessoa em nome dela conta como ingresso, não como gasto.
 	const stats = useMemo(() => {
 		const totalTickets = tickets.length;
-		const totalSpent = tickets.filter(boughtByMe).reduce((sum, ticket) => sum + Number(ticket.total_amount || 0), 0);
+		const totalSpent = tickets
+			.filter((ticket) => boughtByMe(ticket) && getTicketAccess(ticket).paymentConfirmed)
+			.reduce((sum, ticket) => sum + Number(ticket.total_amount || 0), 0);
 		const upcomingEvents = categorizedTickets.upcoming.length;
 		const checkedIn = tickets.filter((ticket) => ticket.check_in_date !== null).length;
 
@@ -268,33 +268,10 @@ export function MyTicketsContent({ tickets: initialTickets }: MyTicketsContentPr
 				</div>
 			) : (
 				<div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-2'}>
-					{filteredTickets.map((ticket) => (
-						<TicketCard
-							key={ticket.id}
-							ticket={ticket}
-							onViewDetails={setSelectedTicket}
-							onChangeAttendee={setEditingTicket}
-							variant={viewMode}
-						/>
+					{filteredPurchases.map((purchase) => (
+						<PurchaseCard key={purchase.id} purchase={purchase} variant={viewMode} />
 					))}
 				</div>
-			)}
-
-			{/* Details Modal */}
-			{selectedTicket && (
-				<TicketDetailsModal
-					ticket={selectedTicket}
-					onClose={() => setSelectedTicket(null)}
-					onChangeAttendee={setEditingTicket}
-				/>
-			)}
-
-			{editingTicket && (
-				<NameAttendeeDialog
-					ticket={editingTicket}
-					onClose={() => setEditingTicket(null)}
-					onSaved={handleAttendeeSaved}
-				/>
 			)}
 		</div>
 	);

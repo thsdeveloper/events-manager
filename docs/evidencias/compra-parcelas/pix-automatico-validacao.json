@@ -1,0 +1,27 @@
+{
+  "viewportChecks": [
+    {
+      "width": 1440,
+      "automaticFirstPix": true,
+      "admissionQrHidden": true,
+      "overflow": false,
+      "participantButtonColor": "rgb(116, 61, 245)"
+    },
+    {
+      "width": 390,
+      "automaticFirstPix": true,
+      "admissionQrHidden": true,
+      "overflow": false,
+      "participantButtonColor": "rgb(116, 61, 245)"
+    },
+    {
+      "width": 768,
+      "automaticFirstPix": true,
+      "admissionQrHidden": true,
+      "overflow": false,
+      "participantButtonColor": "rgb(116, 61, 245)"
+    }
+  ],
+  "inlineParticipantSaved": true,
+  "scope": "Componentes reais em preview local com respostas simuladas da API; nenhuma cobrança ou e-mail real enviado."
+}

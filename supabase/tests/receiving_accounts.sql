@@ -1,5 +1,5 @@
 begin;
-select '1..1';
+select '1..2';
 create function pg_temp.receiving_docs(org uuid,owner uuid,company boolean default false) returns uuid[] language plpgsql as $$
 declare ids uuid[]:=array[]::uuid[]; kind text; doc_id uuid;
 begin
@@ -24,7 +24,7 @@ begin
  assert j->>'status'='pending' and jsonb_array_length(j->'documents')=2,'owner submission retains documents';
  assert not (j->'documents'->0 ? 'storage_path'),'storage paths stay private';
  assert (select production_approved_at is null and payout_status='pending_review' from public.organizers where id=org),'first submission does not approve production';
- begin perform public.review_receiving_account(org,first_id,owner_id,'approved','Self approval'); raise exception 'self approval allowed'; exception when others then if sqlerrm<>'RECEIVING_REVIEW_FORBIDDEN' then raise; end if; end;
+ begin perform public.review_receiving_account(org,first_id,owner_id,'approved','Owner without review permission'); raise exception 'unauthorized owner approval allowed'; exception when others then if sqlerrm<>'RECEIVING_REVIEW_FORBIDDEN' then raise; end if; end;
  perform public.review_receiving_account(org,first_id,reviewer,'approved','Documentação e titularidade conferidas');
  select production_approved_at into production_at from public.organizers where id=org;
  assert production_at is not null,'approval unlocks production';
@@ -58,5 +58,34 @@ begin
  assert not has_function_privilege('authenticated','public.review_receiving_account(uuid,uuid,uuid,text,text)','execute'),'no direct client approvals';
  assert not (select public from storage.buckets where id='organizer-verification'),'documents are private';
 end; $$;
-select 'ok 1 - receiving verification requires documents, independent review and immutable history';
+select 'ok 1 - receiving verification requires documents, review permission and immutable history';
+do $$
+declare
+ owner_id uuid:=gen_random_uuid(); org uuid:=gen_random_uuid(); request_id uuid; result jsonb;
+ pix jsonb:='{"method":"pix","holder_name":"Titular","holder_document":"52998224725","pix_key_type":"EMAIL","pix_key":"titular@example.com"}';
+begin
+ insert into auth.users(id,email) values(owner_id,owner_id||'@receiving.test');
+ update public.profiles set role='super_admin',status='active' where id=owner_id;
+ insert into public.organizers(id,user_id,name,email,document,status)
+ values(org,owner_id,'Organização do super-admin','owner@receiving.test','52998224725','pending');
+ result:=public.submit_receiving_account(org,owner_id,pix,pg_temp.receiving_docs(org,owner_id),null);
+ request_id:=(result->>'id')::uuid;
+
+ update public.profiles set status='suspended' where id=owner_id;
+ begin
+  perform public.review_receiving_account(org,request_id,owner_id,'approved','Documentos conferidos');
+  raise exception 'suspended super-admin approval allowed';
+ exception when others then if sqlerrm<>'RECEIVING_REVIEW_FORBIDDEN' then raise; end if; end;
+ assert (select status='pending' and reviewed_by is null from public.organizer_receiving_requests where id=request_id),'denied review leaves the request pending';
+ assert not exists(select 1 from public.audit_logs where resource_id=org::text and action='receiving.approved'),'denied review creates no approval audit';
+
+ update public.profiles set status='active' where id=owner_id;
+ result:=public.review_receiving_account(org,request_id,owner_id,'approved','Documentos e titularidade conferidos');
+ assert result->>'status'='approved' and result->'account'=pix,'active super-admin can approve their own receiving account';
+ assert (select submitted_by=owner_id and reviewed_by=owner_id and reviewed_at is not null from public.organizer_receiving_requests where id=request_id),'self approval records the actual reviewer';
+ assert (select status='active' and production_approved_at is not null and payout_status='enabled' and payout_pix_key='titular@example.com' from public.organizers where id=org),'self approval activates production and the reviewed destination';
+ assert (select role='super_admin' from public.profiles where id=owner_id),'self approval preserves the super-admin role';
+ assert exists(select 1 from public.audit_logs where resource_id=org::text and action='receiving.approved' and actor_id=owner_id and after_data->>'request_id'=request_id::text and metadata->>'reason'='Documentos e titularidade conferidos'),'self approval is audited with actor, request and reason';
+end; $$;
+select 'ok 2 - active super-admin can approve their own organization with audit history';
 rollback;

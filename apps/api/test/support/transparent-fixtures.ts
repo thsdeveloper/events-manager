@@ -51,7 +51,12 @@ export const event = {
 } as unknown as CheckoutEvent;
 
 export function buildService(
-	options: { coupons?: CouponApplier; methods?: CheckoutMethod[]; provider?: 'abacatepay' | 'mock' } = {},
+	options: {
+		coupons?: CouponApplier;
+		methods?: CheckoutMethod[];
+		provider?: 'abacatepay' | 'mock';
+		testMode?: boolean;
+	} = {},
 ) {
 	const registrations: Database['public']['Tables']['event_registrations']['Insert'][] = [];
 	const repository = partialMock<PaymentRepository>({
@@ -112,6 +117,8 @@ export function buildService(
 		() => new Date('2026-09-15T12:00:00.000Z'),
 		options.coupons,
 		options.methods,
+		undefined,
+		options.testMode,
 	);
 
 	return { gateway, registrations, repository, service };

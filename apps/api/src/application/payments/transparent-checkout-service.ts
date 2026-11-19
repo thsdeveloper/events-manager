@@ -56,6 +56,7 @@ export function publicPayment(charge: TransparentPayment): TransparentPayment {
 		barcode: charge.barcode,
 		boletoUrl: charge.boletoUrl,
 		expiresAt: charge.expiresAt,
+		...(charge.developmentSimulation ? { developmentSimulation: true } : {}),
 	};
 }
 function result(row: TransparentAttempt): TransparentCheckoutResult {
@@ -75,7 +76,17 @@ export class TransparentCheckoutService {
 		private readonly gateway: PaymentGateway,
 		private readonly devMode: boolean,
 		private readonly delivery?: TicketDelivery,
+		private readonly simulationEnabled = false,
 	) {}
+	private get allowsSimulation() {
+		return this.simulationEnabled && this.devMode && this.gateway.provider === 'abacatepay';
+	}
+	private result(row: TransparentAttempt): TransparentCheckoutResult {
+		return {
+			...result(row),
+			canSimulatePayment: this.allowsSimulation && row.status === 'pending' && Boolean(row.provider_id),
+		};
+	}
 	async create(userId: string, input: TransparentCheckoutInput, logger: PaymentOperationLogger) {
 		const { token, requestId, ...cart } = input;
 		const fingerprint = createHash('sha256').update(JSON.stringify(cart)).digest('hex');
@@ -92,7 +103,7 @@ export class TransparentCheckoutService {
 				409,
 				'CHECKOUT_REQUEST_CONFLICT',
 			);
-		if (!claim.created) return result(claim.attempt);
+		if (!claim.created) return this.result(claim.attempt);
 		let submitted = false;
 		try {
 			const created = await this.payment.checkout(userId, input, logger, {
@@ -120,7 +131,7 @@ export class TransparentCheckoutService {
 					confirmed: true,
 				});
 			}
-			return result((await this.repository.find(requestId, userId))!);
+			return this.result((await this.repository.find(requestId, userId))!);
 		} catch (error) {
 			if (error instanceof ApiError && error.statusCode < 500 && (!submitted || error.code === 'PAYMENT_DECLINED')) {
 				await this.repository.fail(requestId, error.message);
@@ -128,7 +139,7 @@ export class TransparentCheckoutService {
 			}
 			// Do not retry an upstream mutation after a timeout or persistence failure.
 			logger.error({ attemptId: requestId }, 'Transparent payment awaits reconciliation');
-			return result((await this.repository.find(requestId, userId)) ?? claim.attempt);
+			return this.result((await this.repository.find(requestId, userId)) ?? claim.attempt);
 		}
 	}
 	async status(userId: string, id: string) {
@@ -142,7 +153,38 @@ export class TransparentCheckoutService {
 				/* Existing state remains authoritative on provider failures. */
 			}
 		}
-		return result(row);
+		return this.result(row);
+	}
+	async simulatePayment(userId: string, id: string) {
+		if (!this.allowsSimulation)
+			throw new ApiError('Simulação disponível apenas no ambiente de testes.', 403, 'PAYMENT_SIMULATION_DISABLED');
+		const row = await this.repository.find(id, userId);
+		if (!row || row.user_id !== userId) throw new ApiError('Compra não encontrada.', 404, 'CHECKOUT_NOT_FOUND');
+		if (row.status === 'confirmed') return this.result(row);
+		if (row.status !== 'pending' || !row.provider_id)
+			throw new ApiError('A simulação exige um pagamento pendente.', 409, 'PAYMENT_NOT_PENDING');
+		const charge = await this.gateway.findTransparentCharge({ id: row.provider_id });
+		if (!charge) throw new ApiError('Cobrança não encontrada.', 404, 'PAYMENT_NOT_FOUND');
+		this.validate(row, charge);
+		if (charge.status === 'PENDING') {
+			if (row.method === 'PIX') {
+				await this.gateway.simulateTransparentPixPayment(row.provider_id);
+				await this.reconcile(row);
+			} else {
+				// The provider has no boleto/card simulation endpoint. Keep this local sandbox
+				// confirmation identifiable and never invent a settled fee or withdrawable balance.
+				await this.apply(
+					row,
+					{ ...charge, status: 'PAID', developmentSimulation: true, providerFeeInCents: null, receiptUrl: null },
+					'development.simulated',
+				);
+			}
+		} else if (['PAID', 'APPROVED'].includes(charge.status)) {
+			await this.apply(row, charge);
+		} else {
+			throw new ApiError('Esta cobrança não está mais pendente.', 409, 'PAYMENT_NOT_PENDING');
+		}
+		return this.result((await this.repository.find(id, userId)) ?? row);
 	}
 	private validate(row: TransparentAttempt, charge: TransparentCharge) {
 		if (!Number.isSafeInteger(charge.amountInCents) || charge.amountInCents !== row.amount)
@@ -168,13 +210,17 @@ export class TransparentCheckoutService {
 	private async apply(row: TransparentAttempt, charge: TransparentCharge, event?: string) {
 		this.validate(row, charge);
 		await this.repository.settle(row.id, charge, event);
-		if (['PAID', 'APPROVED'].includes(charge.status) && (!event || event === 'transparent.completed')) {
+		if (
+			['PAID', 'APPROVED'].includes(charge.status) &&
+			(!event || event === 'transparent.completed' || event === 'development.simulated')
+		) {
 			const current = await this.repository.find(row.id, row.user_id);
 			if (current?.status === 'confirmed')
 				await this.delivery?.execute(current.registration_ids).catch(() => undefined);
 		}
 	}
 	async reconcile(row: TransparentAttempt) {
+		if (row.charge?.developmentSimulation) return;
 		const charge = await this.gateway.findTransparentCharge(
 			row.provider_id ? { id: row.provider_id } : { attemptId: row.id, createdAt: row.created_at },
 		);
@@ -195,6 +241,7 @@ export class TransparentCheckoutService {
 		const metadata = raw.metadata as Record<string, string> | undefined;
 		const row = await this.repository.findForProvider(raw.id, metadata?.checkout_attempt_id);
 		if (!row) return null;
+		if (row.charge?.developmentSimulation) return { received: true };
 		if (
 			![
 				'transparent.completed',

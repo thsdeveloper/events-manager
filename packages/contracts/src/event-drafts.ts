@@ -17,6 +17,9 @@ const draftTicketSchema = z.object({
 	min_quantity_per_purchase: z.number().int().nonnegative().optional(),
 	max_quantity_per_purchase: z.number().int().nonnegative().optional(),
 	allow_installments: z.boolean().optional(),
+	allow_pix_installments: z.boolean().optional(),
+	max_pix_installments: z.number().int().min(2).max(12).nullable().optional(),
+	min_amount_for_pix_installments: z.number().finite().nonnegative().nullable().optional(),
 	max_installments: z.number().int().min(0).max(12).nullable().optional(),
 	min_amount_for_installments: z.number().finite().nonnegative().nullable().optional(),
 	group_id: z.string().uuid().nullable().optional(),
@@ -58,6 +61,7 @@ export const eventDraftValuesSchema = z
 		publish_after_create: z.boolean().optional(),
 	})
 	.merge(eventMetadataSchema)
+	.extend({ video_url: text(2048) })
 	.transform(migrateEventSalesPeriod);
 export const eventDraftInputSchema = z.object({
 	values: eventDraftValuesSchema,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { eventVideoUrlSchema } from './event-video.js';
 import { addPhysicalLocationIssues } from './brazil-address.js';
 import { categoryIdSchema } from './category-id.js';
 import { eventTicketGroupDraftSchema, addTicketGroupIssues } from './ticket-groups.js';
@@ -188,6 +189,7 @@ export function isOnlinePlatformUrl(platform: string | null | undefined, value: 
 }
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 export const eventMetadataSchema = z.object({
+	video_url: eventVideoUrlSchema.nullable().optional(),
 	cover_image_alt: optionalText(240),
 	description_en: z.string().max(100000).nullable().optional(),
 	description_es: z.string().max(100000).nullable().optional(),
@@ -303,6 +305,9 @@ const ticketFieldsSchema = z.object({
 	min_quantity_per_purchase: z.number().int().positive().optional(),
 	max_quantity_per_purchase: z.number().int().positive().optional(),
 	allow_installments: z.boolean().optional(),
+	allow_pix_installments: z.boolean().optional(),
+	max_pix_installments: z.number().int().min(2).max(12).nullable().optional(),
+	min_amount_for_pix_installments: z.number().finite().nonnegative().nullable().optional(),
 	max_installments: z.number().int().min(2).max(12).nullable().optional(),
 	min_amount_for_installments: z.number().finite().nonnegative().nullable().optional(),
 	group_id: z.string().uuid().nullable().optional(),
@@ -320,6 +325,13 @@ function addTicketIssues(ticket: Omit<z.infer<typeof ticketFieldsSchema>, 'event
 			code: 'custom',
 			message: 'O máximo por compra deve ser maior ou igual ao mínimo.',
 			path: ['max_quantity_per_purchase'],
+		});
+	}
+	if (ticket.allow_pix_installments && !ticket.max_pix_installments) {
+		context.addIssue({
+			code: 'custom',
+			message: 'Informe entre 2 e 12 parcelas no Pix.',
+			path: ['max_pix_installments'],
 		});
 	}
 	if (ticket.allow_installments && !ticket.max_installments) {

@@ -157,6 +157,7 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 			organizerProfile: user.organizer,
 			organizerStatus,
 			hasPendingOrganizerRequest: organizerStatus === 'pending',
+			canAutoConfirmPhone: env.APP_ENV === 'development',
 		};
 	});
 
@@ -223,6 +224,23 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 		}
 	});
 
+	app.post('/api/user/email/request', async (request) => {
+		const context = await requireUser(request, auth);
+		const { email } = resendEmailConfirmationSchema.strict().parse(request.body);
+		const refreshToken = request.cookies.refresh_token;
+		if (!refreshToken) throw new ApiError('Sessão incompleta. Entre novamente.', 401, 'MISSING_REFRESH_TOKEN');
+		await limit('user-email-request', context.user.id, 5, 900);
+		await auth.requestMissingEmail(context.user, { accessToken: context.accessToken, refreshToken }, email);
+		return { success: true };
+	});
+	app.post('/api/user/email/confirm', async (request) => {
+		const context = await requireUser(request, auth);
+		const { email, token } = emailConfirmationSchema.strict().parse(request.body);
+		await limit('user-email-confirm', context.user.id, 10, 900);
+		const user = await auth.confirmMissingEmail(context.user, email, token);
+		return { success: true, user };
+	});
+
 	app.post('/api/user/phone/request', async (request) => {
 		const context = await requireUser(request, auth);
 		const { phone } = phoneVerificationRequestSchema.parse(request.body);
@@ -231,7 +249,7 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 		await limit('user-phone-request', context.user.id, 5, 900);
 		// Em desenvolvimento não há provedor de SMS: o clique confirma na hora, para
 		// que o resto do fluxo (cadastro completo, organizador) possa ser testado.
-		if (env.NODE_ENV === 'development') {
+		if (env.APP_ENV === 'development') {
 			const user = await auth.confirmPhoneWithoutCode(context.user, phone);
 			return { success: true, verified: true, user, message: 'Telefone confirmado automaticamente (desenvolvimento).' };
 		}

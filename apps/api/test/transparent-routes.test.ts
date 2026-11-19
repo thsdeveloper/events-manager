@@ -8,7 +8,8 @@ import {
 	sessionCookie,
 	TEST_USER_ID,
 } from './support/index.js';
-import { event, cart } from './support/transparent-fixtures.js';
+import { event, cart as baseCart } from './support/transparent-fixtures.js';
+const cart = { ...baseCart, participantInfo: { ...baseCart.participantInfo, name: 'Ana Silva' } };
 async function setup(authenticated = true, attempt: unknown = null, profile: Record<string, unknown> = {}) {
 	return buildRouteTestApp(paymentRoutes, {
 		env: createTestEnv(),
@@ -20,6 +21,9 @@ async function setup(authenticated = true, attempt: unknown = null, profile: Rec
 					data: {
 						id: TEST_USER_ID,
 						first_name: 'Ana',
+						last_name: 'Silva',
+						birth_date: '1990-05-20',
+						phone_verified_at: '2026-11-19T10:00:00Z',
 						phone: '11999999999',
 						document: '52998224725',
 						status: 'active',
@@ -165,3 +169,32 @@ it('returns a confirmed purchase to its authenticated buyer', async () => {
 	expect((await anonymous.inject({ url: `/api/payments/attempts/${id}` })).statusCode).toBe(401);
 	await anonymous.close();
 });
+
+it.each(['first_name', 'last_name', 'birth_date', 'document', 'phone', 'phone_verified_at'])(
+	'blocks every checkout method before charging when the account lacks %s',
+	async (field) => {
+		const app = await setup(true, null, { [field]: null });
+		for (const [url, payload] of [
+			['/api/payments/checkout/quote', cart],
+			['/api/payments/checkout', { ...cart, requestId: TEST_USER_ID, expectedAmountInCents: 10000 }],
+			[
+				'/api/checkout/installments',
+				{
+					ticket_id: cart.tickets[0].ticketId,
+					quantity: 1,
+					installments: 2,
+					participant_name: cart.participantInfo.name,
+					participant_email: cart.participantInfo.email,
+				},
+			],
+		] as const) {
+			const res = await app.inject({ method: 'POST', url, headers: sessionCookie(), payload });
+			expect(res.statusCode).toBe(422);
+			expect(res.json()).toMatchObject({
+				title: 'CHECKOUT_PROFILE_INCOMPLETE',
+				context: { missingFields: expect.arrayContaining([field]) },
+			});
+		}
+		await app.close();
+	},
+);

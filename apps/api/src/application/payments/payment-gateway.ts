@@ -89,6 +89,7 @@ export interface PaymentRefund {
 }
 
 export interface PaymentGateway {
+	simulateTransparentPixPayment(chargeId: string): Promise<void>;
 	createTransparentCharge(input: CreateTransparentInput): Promise<TransparentCharge>;
 	findTransparentCharge(
 		lookup: { id: string } | { attemptId: string; createdAt: string },

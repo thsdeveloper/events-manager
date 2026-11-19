@@ -1,0 +1,60 @@
+{
+	"date": "2026-11-19",
+	"scope": "Componentes reais em preview Vite local, com vídeo de demonstração apenas no fixture; nenhum vídeo atribuído ao evento do cliente.",
+	"checks": [
+		{
+			"width": 1440,
+			"headerBottom": 77.640625,
+			"navTop": 76.640625,
+			"navBottom": 138.640625,
+			"videoTop": 154.140625,
+			"playerWidth": 768,
+			"playerHeight": 432,
+			"overflow": false,
+			"iframes": 0
+		},
+		{
+			"width": 768,
+			"headerBottom": 77.640625,
+			"navTop": 77.640625,
+			"navBottom": 139.640625,
+			"videoTop": 156.015625,
+			"playerWidth": 654,
+			"playerHeight": 367.875,
+			"overflow": false,
+			"iframes": 0
+		},
+		{
+			"width": 390,
+			"headerBottom": 77.640625,
+			"navTop": 77.640625,
+			"navBottom": 187.640625,
+			"videoTop": 204.109375,
+			"playerWidth": 316,
+			"playerHeight": 177.75,
+			"overflow": false,
+			"iframes": 0
+		},
+		{
+			"width": 320,
+			"headerBottom": 77.640625,
+			"navTop": 77.640625,
+			"navBottom": 187.640625,
+			"videoTop": 203.84375,
+			"playerWidth": 246,
+			"playerHeight": 138.375,
+			"overflow": false,
+			"iframes": 0
+		},
+		{
+			"iframeSource": "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1&rel=0",
+			"fullscreen": "",
+			"anchor": "location"
+		}
+	],
+	"visual": {
+		"previewBeforeClearing": 1,
+		"previewAfterClearing": 0,
+		"overflow": false
+	}
+}

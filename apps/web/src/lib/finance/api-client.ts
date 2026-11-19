@@ -1,11 +1,11 @@
 'use client';
+import { mapTransactionRow } from './transactions';
 
 import type {
 	AppliedFilters,
 	OverviewMetrics,
 	PaginationState,
 	PayoutSummary,
-	TransactionRow,
 	TransactionsResult,
 } from '@/lib/finance/server-fetchers';
 
@@ -116,27 +116,6 @@ export async function fetchFinanceOverview(filters: AppliedFilters, signal?: Abo
 	}
 }
 
-function mapTransactionRow(transaction: any): TransactionRow {
-	const registration = transaction?.registration_id ?? {};
-	const event = registration?.event_id ?? {};
-
-	return {
-		id: transaction?.id ?? '',
-		date: transaction?.date_created ?? '',
-		status: transaction?.status ?? 'pending',
-		transactionId: transaction?.provider_object_id ?? transaction?.provider_event_id ?? '',
-		eventTitle: event?.title ?? 'Evento não informado',
-		participantName: registration?.participant_name ?? '—',
-		participantEmail: registration?.participant_email ?? '',
-		quantity: Number(registration?.quantity ?? 0),
-		gross: Number(registration?.total_amount ?? transaction?.amount ?? 0),
-		fee: Number(registration?.service_fee ?? 0),
-		net: Number(registration?.payment_amount ?? 0),
-		paymentStatus: registration?.payment_status ?? 'pending',
-		paymentIntentId: registration?.provider_transaction_id ?? '',
-	};
-}
-
 export async function fetchTransactions(
 	filters: AppliedFilters,
 	pagination: Pick<PaginationState, 'page' | 'limit'>,
@@ -172,12 +151,9 @@ export async function fetchTransactions(
 	}
 
 	try {
-		const data = await fetchJson<TransactionsResponse>(
-			`/api/organizer/finance/transactions?${params.toString()}`,
-			{
-				signal,
-			},
-		);
+		const data = await fetchJson<TransactionsResponse>(`/api/organizer/finance/transactions?${params.toString()}`, {
+			signal,
+		});
 
 		return {
 			data: (data.data ?? []).map(mapTransactionRow),

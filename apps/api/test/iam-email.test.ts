@@ -13,16 +13,22 @@ function fixture(shouldSend = true) {
 		markFailed: vi.fn().mockResolvedValue(undefined),
 	});
 	const gateway: EmailGateway = { send: vi.fn().mockResolvedValue({ messageId: 'sent' }) };
-	const service = new EmailService(deliveries, gateway, 'Flouvi <suporte@example.test>', {
-		load: async () => ({
-			accentColor: '#6644ff',
-			logoUrl: null,
-			siteName: 'Flouvi',
-			siteUrl: 'https://flouvi.example',
-			supportEmail: null,
-			tagline: null,
-		}),
-	});
+	const service = new EmailService(
+		deliveries,
+		gateway,
+		'Flouvi <suporte@example.test>',
+		{
+			load: async () => ({
+				accentColor: '#6644ff',
+				logoUrl: null,
+				siteName: 'Flouvi',
+				siteUrl: 'https://flouvi.example',
+				supportEmail: null,
+				tagline: null,
+			}),
+		},
+		{ render: vi.fn() },
+	);
 	return { deliveries, gateway, service };
 }
 const notice = { id: 'invite', email: 'guest@example.test', url, expiresAt: '2026-12-01' };

@@ -1,0 +1,67 @@
+{
+	"data": "2026-11-19",
+	"pagina": "/eventos/dfasgfdsgfsdg-fdsg-sdf-gsdf-gf-gcz4cj",
+	"ambiente": "Next.js local, dados públicos reais da API",
+	"largurasSemTransbordamento": [320, 375, 390, 768, 1024, 1440],
+	"capa": {
+		"carregada": true,
+		"ajuste": "contain",
+		"tituloForaDaImagem": true
+	},
+	"compraDesktop": {
+		"acompanhaRolagem": true,
+		"top": 112
+	},
+	"compraMobile": {
+		"fixaNoRodape": true,
+		"altura": 73
+	},
+	"checkout": "/eventos/dfasgfdsgfsdg-fdsg-sdf-gsdf-gf-gcz4cj/checkout",
+	"outroEventoNavegado": "/eventos/conferencia-de-jovens-da-umadeb-2027-1ke5wt",
+	"compartilhamento": [
+		"WhatsApp",
+		"Facebook",
+		"LinkedIn",
+		"X",
+		"Copiar link",
+		"Compartilhamento nativo quando disponível"
+	],
+	"restauracao": {
+		"eventId": "b395d1b2-9fd0-4147-be73-d3a6975aafd0",
+		"enabled": false,
+		"rascunhoPreservado": true,
+		"copiaPublicadaPreservada": true
+	},
+	"errosJavaScriptNaNavegacao": [],
+	"compartilhamentoPorCopiaValidadoNoNavegador": true,
+	"alinhamentoDesktop": {
+		"header": 112,
+		"bordaDaCapa": 112,
+		"footer": 112
+	},
+	"rodapeMobileLivreDaBarraDeCompra": true,
+	"paginaPersonalizada": {
+		"capaInteira": true,
+		"compartilhamento": true,
+		"eventosRelacionados": true,
+		"semTransbordamento": [390, 1440]
+	},
+	"testes": {
+		"api": 1217,
+		"web": 1126
+	},
+	"cobertura": {
+		"api": {
+			"statements": 81.42,
+			"branches": 77.7,
+			"functions": 83.63,
+			"lines": 83.44
+		},
+		"web": {
+			"statements": 76.6,
+			"branches": 71.55,
+			"functions": 76.68,
+			"lines": 78.16
+		}
+	}
+}

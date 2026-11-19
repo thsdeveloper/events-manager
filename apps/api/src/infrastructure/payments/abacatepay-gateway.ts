@@ -68,6 +68,14 @@ export class AbacatePayGateway implements PaymentGateway {
 	findTransparentCharge(lookup: { id: string } | { attemptId: string; createdAt: string }) {
 		return new AbacatePayTransparent(this.apiKey, this.baseUrl).find(lookup);
 	}
+	async simulateTransparentPixPayment(chargeId: string): Promise<void> {
+		if (!this.apiKey.startsWith('abc_dev_'))
+			throw new ApiError('Simulação disponível apenas no ambiente de testes.', 403, 'PAYMENT_SIMULATION_DISABLED');
+		await this.request(`/transparents/simulate-payment?${new URLSearchParams({ id: chargeId })}`, {
+			method: 'POST',
+			body: JSON.stringify({}),
+		});
+	}
 	async createProduct(input: CreateProductInput): Promise<PaymentProduct> {
 		const product = await this.request<{ id: string; externalId: string }>('/products/create', {
 			method: 'POST',

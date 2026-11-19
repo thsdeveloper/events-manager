@@ -9,7 +9,7 @@ import { useCallback, useEffect, useId, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
@@ -42,6 +42,9 @@ const ticketFormSchema = z
 		min_quantity_per_purchase: z.coerce.number<number>().int().min(1, 'Mínimo de 1').max(100, 'Máximo de 100'),
 		max_quantity_per_purchase: z.coerce.number<number>().int().min(1, 'Mínimo de 1').max(100, 'Máximo de 100'),
 		allow_installments: z.boolean(),
+		allow_pix_installments: z.boolean(),
+		max_pix_installments: z.coerce.number<number>().int().min(2).max(12).optional(),
+		min_amount_for_pix_installments: z.coerce.number<number>().min(0),
 		max_installments: z.coerce.number<number>().int().min(2, 'Mínimo de 2').max(12, 'Máximo de 12').optional(),
 	})
 	.superRefine((values, context) => {
@@ -61,6 +64,13 @@ const ticketFormSchema = z
 				code: 'custom',
 				message: 'O fim das vendas deve ser depois do início',
 				path: ['sale_end_date'],
+			});
+		}
+		if (values.allow_pix_installments && !values.max_pix_installments) {
+			context.addIssue({
+				code: 'custom',
+				message: 'Informe o número de parcelas no Pix',
+				path: ['max_pix_installments'],
 			});
 		}
 		if (values.allow_installments && !values.max_installments) {
@@ -84,6 +94,9 @@ const emptyValues: TicketFormValues = {
 	min_quantity_per_purchase: 1,
 	max_quantity_per_purchase: 5,
 	allow_installments: false,
+	allow_pix_installments: false,
+	max_pix_installments: undefined,
+	min_amount_for_pix_installments: 0,
 	max_installments: undefined,
 };
 
@@ -104,6 +117,9 @@ function toFormValues(ticket: TicketDraft | null): TicketFormValues {
 		min_quantity_per_purchase: ticket.min_quantity_per_purchase ?? 1,
 		max_quantity_per_purchase: ticket.max_quantity_per_purchase ?? 5,
 		allow_installments: ticket.allow_installments ?? false,
+		allow_pix_installments: ticket.allow_pix_installments ?? false,
+		max_pix_installments: ticket.max_pix_installments ?? undefined,
+		min_amount_for_pix_installments: ticket.min_amount_for_pix_installments ?? 0,
 		max_installments: ticket.max_installments ?? undefined,
 	};
 }
@@ -156,6 +172,7 @@ export function TicketFormSheet({
 	// the whole sheet on every keystroke in any field.
 	const price = useWatch({ control: form.control, name: 'price' });
 	const serviceFeeType = useWatch({ control: form.control, name: 'service_fee_type' });
+	const allowPixInstallments = useWatch({ control: form.control, name: 'allow_pix_installments' });
 	const allowInstallments = useWatch({ control: form.control, name: 'allow_installments' });
 	const maxInstallments = useWatch({ control: form.control, name: 'max_installments' });
 	const numericPrice = useMemo(() => (isFree ? 0 : Number(price) || 0), [isFree, price]);
@@ -192,6 +209,9 @@ export function TicketFormSheet({
 				sale_end_date: values.sale_end_date ? new Date(values.sale_end_date).toISOString() : null,
 				min_quantity_per_purchase: values.min_quantity_per_purchase,
 				max_quantity_per_purchase: values.max_quantity_per_purchase,
+				allow_pix_installments: !isFree && values.allow_pix_installments,
+				max_pix_installments: !isFree && values.allow_pix_installments ? values.max_pix_installments : null,
+				min_amount_for_pix_installments: values.min_amount_for_pix_installments,
 				allow_installments: isFree ? false : values.allow_installments,
 				max_installments: !isFree && values.allow_installments ? values.max_installments : null,
 			};
@@ -418,14 +438,16 @@ export function TicketFormSheet({
 									control={form.control}
 									name="allow_installments"
 									render={({ field }) => (
-										<FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3">
-											<FormControl>
-												<Checkbox checked={field.value} onCheckedChange={field.onChange} />
-											</FormControl>
-											<div className="space-y-0.5">
+										<FormItem className="flex items-center justify-between gap-4 space-y-0 rounded-xl border p-4">
+											<div className="min-w-0 flex-1 space-y-1">
 												<FormLabel className="cursor-pointer">Permitir parcelamento no cartão</FormLabel>
-												<FormDescription>O comprador pode dividir o valor em mais de uma parcela.</FormDescription>
+												<FormDescription>
+													O comprador parcela na fatura. O ingresso é liberado após a aprovação do cartão.
+												</FormDescription>
 											</div>
+											<FormControl>
+												<Switch checked={field.value} onCheckedChange={field.onChange} />
+											</FormControl>
 										</FormItem>
 									)}
 								/>
@@ -451,6 +473,58 @@ export function TicketFormSheet({
 										)}
 									/>
 								)}
+
+								<FormField
+									control={form.control}
+									name="allow_pix_installments"
+									render={({ field }) => (
+										<FormItem className="flex items-center justify-between gap-4 space-y-0 rounded-xl border p-4">
+											<div className="min-w-0 flex-1 space-y-1">
+												<FormLabel className="cursor-pointer">Permitir parcelamento no Pix</FormLabel>
+												<FormDescription>
+													Os ingressos serão liberados somente após o pagamento de todas as parcelas.
+												</FormDescription>
+											</div>
+											<FormControl>
+												<Switch checked={field.value} onCheckedChange={field.onChange} />
+											</FormControl>
+										</FormItem>
+									)}
+								/>
+								{allowPixInstallments && (
+									<div className="grid gap-4 sm:grid-cols-2">
+										<FormField
+											control={form.control}
+											name="max_pix_installments"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Máximo de parcelas no Pix</FormLabel>
+													<FormControl>
+														<Input {...field} value={field.value ?? ''} type="number" min="2" max="12" />
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="min_amount_for_pix_installments"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Compra mínima para parcelar no Pix</FormLabel>
+													<FormControl>
+														<CurrencyInput value={field.value} onValueChange={field.onChange} />
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+									</div>
+								)}
+								<p className="text-xs text-muted-foreground">
+									Boleto é sempre à vista. As opções de parcelamento dependem também dos meios de pagamento habilitados
+									pela organização.
+								</p>
 							</section>
 						)}
 

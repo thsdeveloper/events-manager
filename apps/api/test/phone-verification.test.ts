@@ -82,7 +82,7 @@ describe('AuthService phone verification', () => {
 			new AuthService(repository).confirmPhoneVerification(identity, PHONE, '123456'),
 		).resolves.toMatchObject({ phone: PHONE });
 
-		expect(repository.verifyPhoneChange).toHaveBeenCalledWith(E164, '123456');
+		expect(repository.verifyPhoneChange).toHaveBeenCalledWith(E164, '123456', TEST_USER_ID);
 		expect(repository.markPhoneVerified).toHaveBeenCalledWith(TEST_USER_ID, PHONE);
 	});
 
@@ -129,7 +129,8 @@ describe('SupabaseAuthRepository phone verification', () => {
 	it('verifies the code as a phone_change OTP', async () => {
 		const { clients, verifyOtp } = createSupabaseClientsStub({ user: identity });
 
-		await new SupabaseAuthRepository(clients).verifyPhoneChange(E164, '123456');
+		verifyOtp.mockResolvedValue({ data: { user: { ...identity, phone: E164.slice(1) }, session: null }, error: null });
+		await new SupabaseAuthRepository(clients).verifyPhoneChange(E164, '123456', TEST_USER_ID);
 
 		expect(verifyOtp).toHaveBeenCalledWith({ phone: E164, token: '123456', type: 'phone_change' });
 	});
@@ -138,9 +139,9 @@ describe('SupabaseAuthRepository phone verification', () => {
 		const { clients, verifyOtp } = createSupabaseClientsStub({ user: identity });
 		verifyOtp.mockResolvedValue({ data: { user: null, session: null }, error: { message: 'invalid', status: 403 } });
 
-		await expect(new SupabaseAuthRepository(clients).verifyPhoneChange(E164, '000000')).rejects.toBeInstanceOf(
-			AuthProviderError,
-		);
+		await expect(
+			new SupabaseAuthRepository(clients).verifyPhoneChange(E164, '000000', TEST_USER_ID),
+		).rejects.toBeInstanceOf(AuthProviderError);
 	});
 
 	it('exposes when the phone was verified', async () => {
@@ -161,7 +162,7 @@ describe('SupabaseAuthRepository phone verification', () => {
 describe('phone verification routes', () => {
 	it('requires the session cookies to request a code', async () => {
 		const { clients } = createSupabaseClientsStub();
-		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv(), clients });
+		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv({ APP_ENV: 'production' }), clients });
 
 		const response = await app.inject({ method: 'POST', url: '/api/user/phone/request', payload: { phone: PHONE } });
 		await app.close();
@@ -171,7 +172,7 @@ describe('phone verification routes', () => {
 
 	it('sends the code for a signed-in person', async () => {
 		const { clients, sessionAuth } = createSupabaseClientsStub({ user: identity });
-		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv(), clients });
+		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv({ APP_ENV: 'production' }), clients });
 
 		const response = await app.inject({
 			method: 'POST',
@@ -189,7 +190,7 @@ describe('phone verification routes', () => {
 	it('answers a wrong code with a problem on the code field', async () => {
 		const { clients, verifyOtp } = createSupabaseClientsStub({ user: identity });
 		verifyOtp.mockResolvedValue({ data: { user: null, session: null }, error: { message: 'invalid', status: 403 } });
-		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv(), clients });
+		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv({ APP_ENV: 'production' }), clients });
 
 		const response = await app.inject({
 			method: 'POST',
@@ -204,13 +205,14 @@ describe('phone verification routes', () => {
 	});
 
 	it('returns the updated user once the code is confirmed', async () => {
-		const { clients } = createSupabaseClientsStub({
+		const { clients, verifyOtp } = createSupabaseClientsStub({
 			user: identity,
 			tables: {
 				profiles: { data: { id: TEST_USER_ID, phone: PHONE, phone_verified_at: '2026-09-04T19:00:00.000Z' } },
 			},
 		});
-		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv(), clients });
+		verifyOtp.mockResolvedValue({ data: { user: { ...identity, phone: E164.slice(1) }, session: null }, error: null });
+		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv({ APP_ENV: 'production' }), clients });
 
 		const response = await app.inject({
 			method: 'POST',
@@ -253,7 +255,10 @@ describe('development shortcut for phone confirmation', () => {
 			user: identity,
 			tables: { profiles: { data: profile } },
 		});
-		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv({ NODE_ENV: 'production' }), clients });
+		const app = await buildRouteTestApp(authRoutes, {
+			env: createTestEnv({ NODE_ENV: 'production', APP_ENV: 'production' }),
+			clients,
+		});
 
 		const response = await app.inject({
 			method: 'POST',
@@ -266,5 +271,50 @@ describe('development shortcut for phone confirmation', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.json()).not.toHaveProperty('verified');
 		expect(sessionAuth.updateUser).toHaveBeenCalledWith({ phone: E164 });
+	});
+});
+
+describe('checkout phone confirmation security', () => {
+	it.each([
+		{ APP_ENV: 'development' as const, NODE_ENV: 'production' as const, auto: true },
+		{ APP_ENV: 'production' as const, NODE_ENV: 'development' as const, auto: false },
+	])('uses APP_ENV for the automatic confirmation button and server shortcut: %j', async ({ auto, ...env }) => {
+		const { clients, sessionAuth } = createSupabaseClientsStub({
+			user: identity,
+			tables: { profiles: { data: { id: TEST_USER_ID, phone: PHONE, phone_verified_at: null } } },
+		});
+		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv(env), clients });
+		const me = await app.inject({ url: '/api/auth/me', headers: sessionCookie() });
+		expect(me.json().canAutoConfirmPhone).toBe(auto);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/user/phone/request',
+			headers: sessionCookie('access-token', 'refresh-token'),
+			payload: { phone: PHONE },
+		});
+		expect(response.statusCode).toBe(200);
+		expect(response.json().verified === true).toBe(auto);
+		expect(sessionAuth.updateUser).toHaveBeenCalledTimes(auto ? 0 : 1);
+		await app.close();
+	});
+	it('does not accept an SMS code belonging to another account', async () => {
+		const { clients, verifyOtp } = createSupabaseClientsStub({ user: identity });
+		verifyOtp.mockResolvedValue({
+			data: {
+				user: { id: 'another-user', phone: E164.slice(1), phone_confirmed_at: '2026-11-19T10:00:00Z' },
+				session: null,
+			},
+			error: null,
+		});
+		const app = await buildRouteTestApp(authRoutes, { env: createTestEnv({ APP_ENV: 'production' }), clients });
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/user/phone/confirm',
+			headers: sessionCookie(),
+			payload: { phone: PHONE, token: '123456' },
+		});
+		expect(response.statusCode).toBe(400);
+		expect(response.json().title).toBe('INVALID_PHONE_CODE');
+		await app.close();
 	});
 });

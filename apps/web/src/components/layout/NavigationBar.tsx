@@ -57,6 +57,7 @@ const NavigationBar = forwardRef<HTMLElement, NavigationBarProps>(({ navigation,
 
 	return (
 		<header
+			data-site-header
 			ref={ref}
 			className={`sticky top-0 z-50 w-full transition-all duration-300 ${
 				scrolled ? 'bg-background/95 backdrop-blur-lg shadow-sm border-b border-border' : 'bg-transparent'

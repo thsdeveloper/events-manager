@@ -107,7 +107,7 @@ describe('receiving account boundaries', () => {
 		const r = await app.inject({ method: 'POST', url: ownerUrl, headers: sessionCookie(), payload: body });
 		expect(r.statusCode).toBe(409);
 	});
-	it('loads documents/history for super-admin and permits only a decision about a specific version', async () => {
+	it('lets a super-admin load history and approve a specific version for their own organization', async () => {
 		const { app, stub } = await setup('super_admin');
 		expect((await app.inject({ method: 'GET', url: adminUrl, headers: sessionCookie() })).statusCode).toBe(200);
 		const r = await app.inject({
@@ -121,6 +121,21 @@ describe('receiving account boundaries', () => {
 			'review_receiving_account',
 			expect.objectContaining({ target_request: requestId, target_actor: TEST_USER_ID, target_decision: 'approved' }),
 		);
+	});
+	it('explains a denied review as missing permission without requiring a different reviewer', async () => {
+		const { app, stub } = await setup('super_admin');
+		stub.rpc.mockResolvedValue({ data: null, error: { message: 'RECEIVING_REVIEW_FORBIDDEN' } });
+		const response = await app.inject({
+			method: 'POST',
+			url: `${adminUrl}/${requestId}/review`,
+			headers: sessionCookie(),
+			payload: { decision: 'approved', documents_checked: true, reason: 'Documentos e titularidade conferidos' },
+		});
+		expect(response.statusCode).toBe(403);
+		expect(response.json()).toMatchObject({
+			title: 'RECEIVING_REVIEW_FORBIDDEN',
+			detail: 'Você não tem permissão para analisar os dados de recebimento.',
+		});
 	});
 	it.each(['organizer', null])('protects admin decisions from %s', async (role) => {
 		const { app } = await setup(role);

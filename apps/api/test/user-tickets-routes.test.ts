@@ -60,6 +60,7 @@ function buildApp(options: { user?: boolean; found?: boolean; listing?: boolean 
 				? [{ data: [ticketRow] }, { data: [] }]
 				: [{ data: found ? ticketRow : null }, { data: ticketRow }],
 			email_deliveries: { data: null },
+			payment_installments: { data: [] },
 		},
 	});
 
@@ -110,5 +111,41 @@ describe('PATCH /api/user/tickets/:id/attendee', () => {
 		});
 
 		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe('GET /api/user/purchases/:id', () => {
+	it('requires authentication', async () => {
+		const app = await buildApp({ user: false });
+		expect((await app.inject({ url: '/api/user/purchases/' + ticketRow.registration.id })).statusCode).toBe(401);
+		await app.close();
+	});
+	it('validates the purchase identifier', async () => {
+		const app = await buildApp();
+		expect((await app.inject({ url: '/api/user/purchases/invalid', headers: sessionCookie() })).statusCode).toBe(422);
+		await app.close();
+	});
+	it('returns the authenticated buyer’s purchase and installments', async () => {
+		const app = await buildApp({ listing: true });
+		const response = await app.inject({
+			url: '/api/user/purchases/' + ticketRow.registration.id,
+			headers: sessionCookie(),
+		});
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject({
+			id: ticketRow.registration.id,
+			tickets: [{ id: TICKET_ID }],
+			installments: [],
+		});
+		await app.close();
+	});
+	it('does not reveal another purchase', async () => {
+		const app = await buildApp({ listing: true });
+		const response = await app.inject({
+			url: '/api/user/purchases/00000000-0000-4000-8000-000000000099',
+			headers: sessionCookie(),
+		});
+		expect(response.statusCode).toBe(404);
+		await app.close();
 	});
 });

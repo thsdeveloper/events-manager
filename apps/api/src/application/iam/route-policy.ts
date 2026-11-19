@@ -127,6 +127,7 @@ export function organizationRoutePolicy(method: string, route: string, input: un
 			'/api/organizer/finance/events',
 			'/api/organizer/finance/overview',
 			'/api/organizer/finance/transactions',
+			'/api/organizer/finance/transactions/:id',
 		].includes(route)
 	)
 		return list('finance.read');

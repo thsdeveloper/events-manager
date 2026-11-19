@@ -39,6 +39,7 @@ interface DataTableProps<TData, TValue> {
 	paginate?: boolean;
 	showToolbar?: boolean;
 	emptyMessage?: React.ReactNode;
+	onRowClick?: (row: TData) => void;
 	getRowId?: (row: TData, index: number) => string;
 	toolbar?: (table: ReturnType<typeof useReactTable<TData>>) => React.ReactNode;
 }
@@ -53,6 +54,7 @@ export function DataTable<TData, TValue>({
 	showToolbar = true,
 	emptyMessage = 'Nenhum resultado encontrado.',
 	getRowId,
+	onRowClick,
 	serverPagination,
 	serverSorting,
 }: DataTableProps<TData, TValue>) {
@@ -185,7 +187,24 @@ export function DataTable<TData, TValue>({
 					<TableBody>
 						{table.getRowModel().rows?.length ? (
 							table.getRowModel().rows.map((row) => (
-								<TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+								<TableRow
+									key={row.id}
+									data-state={row.getIsSelected() && 'selected'}
+									className={onRowClick ? 'cursor-pointer' : undefined}
+									onClick={
+										onRowClick
+											? (event) => {
+													if (
+														(event.target as Element).closest(
+															'button,a,input,select,textarea,[role="button"],[role="checkbox"]',
+														)
+													)
+														return;
+													onRowClick(row.original);
+												}
+											: undefined
+									}
+								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
 									))}

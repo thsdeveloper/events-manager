@@ -9,6 +9,9 @@ import type { PaymentMethod } from '../api/usePaymentMethods';
 
 export interface InstallmentTicketConfig {
 	allow_installments?: boolean | null;
+	allow_pix_installments?: boolean | null;
+	max_pix_installments?: number | null;
+	min_amount_for_pix_installments?: number | null;
 	max_installments?: number | null;
 	min_amount_for_installments?: number | null;
 }
@@ -66,7 +69,7 @@ export function PaymentMethodSection({
 						value === 'PIX'
 							? 'Aprovação em segundos. À vista ou em parcelas via Pix, quando o ingresso permite.'
 							: value === 'BOLETO'
-								? 'Pague o boleto no banco ou pelo QR Code Pix. A compensação bancária pode levar até 3 dias úteis.'
+								? 'Pagamento sempre à vista. Pague o boleto no banco ou pelo QR Code Pix. A compensação bancária pode levar até 3 dias úteis.'
 								: maxCardInstallments > 1
 									? `Parcele em até ${maxCardInstallments}x no formulário seguro desta página.`
 									: 'Pagamento à vista no formulário seguro desta página.';
@@ -92,9 +95,9 @@ export function PaymentMethodSection({
 			{method === 'PIX' && availableMethods.includes('PIX') && ticket ? (
 				<InstallmentOptions
 					totalAmount={totalAmount}
-					maxInstallments={ticket.max_installments || 4}
-					minAmountForInstallments={ticket.min_amount_for_installments || 50}
-					allowInstallments={ticket.allow_installments || false}
+					maxInstallments={ticket.max_pix_installments ?? 2}
+					minAmountForInstallments={ticket.min_amount_for_pix_installments ?? 0}
+					allowInstallments={ticket.allow_pix_installments ?? false}
 					selectedInstallments={selectedInstallments}
 					onInstallmentChange={onInstallmentChange}
 				/>

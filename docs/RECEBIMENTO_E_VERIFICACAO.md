@@ -17,9 +17,11 @@ as solicitações na aba **Recebimento e documentos** de `/super-admin/organizad
 5. Uma rejeição mantém repasses bloqueados, sem restaurar uma chave anterior. O organizador corrige e reenvia.
    Histórico, documentos e pareceres permanecem.
 
-A análise exige um super-admin ativo diferente do titular da organização. Versões já decididas/substituídas não podem
-ser reaprovadas. A confirmação da versão ocorre sob bloqueio transacional, junto à auditoria. Os dados de uma versão
-enviada são imutáveis. O CPF/CNPJ da organização também deixa de ser editável após o primeiro envio de documentos.
+A análise exige a permissão ativa `platform_receiving.review`, já concedida aos super-admins ativos. O analista pode ser
+o próprio titular da organização; a decisão registra sua identidade e o parecer na auditoria. Ser apenas titular não
+concede permissão de análise. Versões já decididas/substituídas não podem ser reaprovadas. A confirmação da versão
+ocorre sob bloqueio transacional, junto à auditoria. Os dados de uma versão enviada são imutáveis. O CPF/CNPJ da
+organização também deixa de ser editável após o primeiro envio de documentos.
 
 `production_approved_at` controla a primeira liberação. Checkouts e novos planos parcelados reais verificam a liberação
 e o status ativo antes de criar pagamentos. O provedor `mock` continua permitindo simulações locais. Alterar o status da
@@ -72,6 +74,9 @@ gateway é utilizada para PIX.
 Migrations `202611180005_receiving_account_verification.sql`, `202611180006_verified_payout_destinations.sql` e
 `202611180007_preserve_receiving_identity.sql`. Não há variáveis de ambiente novas.
 
+A migration `202611190001_allow_receiving_owner_review.sql` permite analisar a própria organização, mantendo a
+verificação de permissão da plataforma e o acesso à função restrito à API.
+
 Chaves antigas são preservadas como histórico legado e exigem envio de documentos para nova aprovação. A migration não
 presume uma validação documental anterior; repasses antigos permanecem no histórico. Vendas reais dependem da nova
 primeira aprovação. Aplique as migrations antes do deploy da API/frontend.
@@ -97,7 +102,7 @@ no navegador usa contas, documentos e repasse fictícios locais, removidos ao fi
 
 Na validação de 18/11/2026, passaram 258 testes de contratos, 754 da API e 847 do frontend. O lint, a verificação de
 tipos e os builds passaram. O build web foi executado em uma cópia isolada para preservar o servidor de desenvolvimento.
-As suítes completas foram executadas por `pnpm test:coverage --maxWorkers=4` na API e no frontend e
-`pnpm test:coverage` nos contratos. Os limites dos contratos passaram e foram elevados. Os limites globais já pendentes
-da API e do frontend continuam reprovando a etapa de cobertura; nenhum limite foi reduzido. A cobertura de branches da
-API subiu de 71,95% para 72,43%; no frontend, de 62,82% para 62,96%, com linhas de 69,81% para 70,55%.
+As suítes completas foram executadas por `pnpm test:coverage --maxWorkers=4` na API e no frontend e `pnpm test:coverage`
+nos contratos. Os limites dos contratos passaram e foram elevados. Os limites globais já pendentes da API e do frontend
+continuam reprovando a etapa de cobertura; nenhum limite foi reduzido. A cobertura de branches da API subiu de 71,95%
+para 72,43%; no frontend, de 62,82% para 62,96%, com linhas de 69,81% para 70,55%.

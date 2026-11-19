@@ -7,6 +7,7 @@ export type AuthUser = AppUser & { email: string };
 export type OrganizerProfile = Organizer;
 
 export interface AuthState {
+	canAutoConfirmPhone?: boolean;
 	user: AuthUser;
 	isOrganizer: boolean;
 	isSuperAdmin: boolean;

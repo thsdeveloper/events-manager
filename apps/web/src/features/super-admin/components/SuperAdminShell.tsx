@@ -3,9 +3,12 @@ import { usePlatformPermissions } from '@/features/platform-access/PlatformPermi
 import { canVisitPlatformPath, preferredPlatformPath } from '@/features/platform-access/policy';
 
 import { WorkspaceSwitcher } from '@/components/admin/WorkspaceSwitcher';
+import { SidebarSubmenu } from '@/components/admin/SidebarSubmenu';
 import { SidebarNavLink } from '@/components/admin/SidebarNavLink';
 import {
 	BarChart3,
+	Plus,
+	ExternalLink,
 	Building2,
 	CalendarDays,
 	FileText,
@@ -37,6 +40,8 @@ import {
 	SidebarFooter,
 	SidebarGroup,
 	SidebarGroupLabel,
+	SidebarGroupAction,
+	SidebarGroupContent,
 	SidebarHeader,
 	SidebarInset,
 	SidebarMenu,
@@ -129,7 +134,7 @@ function SuperAdminWorkspace({
 
 	return (
 		<>
-			<Sidebar collapsible="icon">
+			<Sidebar collapsible="icon" variant="inset">
 				<SidebarHeader>
 					<SidebarTrigger className="self-end md:hidden" aria-label="Fechar navegação" />
 					<SidebarMenu>
@@ -151,13 +156,38 @@ function SuperAdminWorkspace({
 						{groups.map((group) => (
 							<SidebarGroup key={group.label}>
 								<SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-								<SidebarMenu>
-									{group.items.map((item) => (
-										<SidebarMenuItem key={item.href}>
-											<SidebarNavLink href={item.href} label={item.label} icon={item.icon} active={active(item)} />
-										</SidebarMenuItem>
-									))}
-								</SidebarMenu>
+								{group.label === 'Conteúdo' && (
+									<SidebarGroupAction
+										render={<Link href="/" onClick={() => setOpenMobile(false)} />}
+										aria-label="Ver site público"
+										title="Ver site público"
+									>
+										<ExternalLink aria-hidden="true" />
+									</SidebarGroupAction>
+								)}
+								<SidebarGroupContent>
+									<SidebarMenu>
+										{group.label === 'Conteúdo' ? (
+											<SidebarSubmenu
+												label="Conteúdo do site"
+												icon={LayoutTemplate}
+												items={group.items}
+												pathname={pathname}
+												action={
+													canVisitPlatformPath(access, '/super-admin/conteudo/blog/novo')
+														? { label: 'Novo post', href: '/super-admin/conteudo/blog/novo', icon: Plus }
+														: undefined
+												}
+											/>
+										) : (
+											group.items.map((item) => (
+												<SidebarMenuItem key={item.href}>
+													<SidebarNavLink href={item.href} label={item.label} icon={item.icon} active={active(item)} />
+												</SidebarMenuItem>
+											))
+										)}
+									</SidebarMenu>
+								</SidebarGroupContent>
 							</SidebarGroup>
 						))}
 					</nav>

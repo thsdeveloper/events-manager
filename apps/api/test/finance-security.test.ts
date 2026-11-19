@@ -103,7 +103,7 @@ describe('finance data isolation and accounting', () => {
 		const { service, repository } = setup(rows);
 		const query = { page: 1, limit: 20, sort_direction: 'desc' as const, event_id: 'owned', search: 'ANA' };
 		vi.mocked(repository.listTransactions).mockResolvedValue({ data: [{ id: 'payment' }], total: 1 });
-		expect((await service.transactions('owner', query)).data).toEqual([{ id: 'payment' }]);
+		expect((await service.transactions('owner', query)).data).toEqual([expect.objectContaining({ id: 'payment' })]);
 		expect(repository.listTransactions).toHaveBeenCalledWith(['paid'], expect.objectContaining({ limit: 20 }));
 		vi.mocked(repository.listTransactions).mockClear();
 		expect((await service.transactions('owner', { ...query, event_id: 'foreign' })).data).toEqual([]);

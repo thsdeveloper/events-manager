@@ -62,6 +62,12 @@ export async function financeRoutes(
 		});
 	});
 
+	app.get('/api/organizer/finance/transactions/:id', async (request) => {
+		const context = await requireOrganizer(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		return financeFor(request).transaction(context.organizer.id, id, context.eventId ?? undefined);
+	});
+
 	app.get('/api/organizer/finance/payouts', async (request) => {
 		const context = await requireOrganizer(request, auth);
 		if (context.eventId) return { balance: null, payouts: [] };

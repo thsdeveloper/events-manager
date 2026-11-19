@@ -4,6 +4,7 @@ import type { EventWizardFormValues } from './types';
 
 export const contentDefaults = {
 	cover_image_alt: '',
+	video_url: '',
 	description_en: '',
 	description_es: '',
 	location_tbd: false,
@@ -22,6 +23,7 @@ export function contentFromEvent(event: Event) {
 	return {
 		...contentDefaults,
 		cover_image_alt: event.cover_image_alt ?? '',
+		video_url: event.video_url ?? '',
 		description_en: event.description_en ?? '',
 		description_es: event.description_es ?? '',
 		location_tbd: event.location_tbd ?? false,
@@ -71,6 +73,7 @@ export function contentPayload(values: EventWizardFormValues) {
 
 	return {
 		cover_image_alt: nullable(values.cover_image_alt),
+		video_url: nullable(values.video_url),
 		description_en: nullable(values.description_en),
 		description_es: nullable(values.description_es),
 		location_tbd: values.location_tbd ?? false,

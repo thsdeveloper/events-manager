@@ -139,3 +139,33 @@ describe('ticket creation rules', () => {
 		expect(saved).not.toHaveBeenCalled();
 	});
 });
+
+it('saves independent limits for Pix and credit, with the Pix release condition', async () => {
+	const { user, saved } = setup({
+		title: 'Inteira',
+		price: 100,
+		quantity: 20,
+		service_fee_type: 'absorbed',
+		visibility: 'public',
+		min_quantity_per_purchase: 1,
+		max_quantity_per_purchase: 5,
+		allow_installments: true,
+		max_installments: 6,
+	});
+	await user.click(screen.getByRole('switch', { name: /Permitir parcelamento no Pix/i }));
+	const max = screen.getByRole('spinbutton', { name: /Máximo de parcelas no Pix/i });
+	await user.clear(max);
+	await user.type(max, '3');
+	expect(screen.getByText(/ingressos.*após.*todas as parcelas/i)).toBeInTheDocument();
+	await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+	await waitFor(() =>
+		expect(saved).toHaveBeenCalledWith(
+			expect.objectContaining({
+				allow_installments: true,
+				max_installments: 6,
+				allow_pix_installments: true,
+				max_pix_installments: 3,
+			}),
+		),
+	);
+});

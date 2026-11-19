@@ -3,9 +3,9 @@
  * para os dados, escolhe cartão e finaliza. O que sai para a API precisa
  * refletir a escolha, e o parcelamento via Pix não pode vazar para o cartão.
  */
-import { describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
-import type { EventTicket } from '@events-manager/contracts';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, screen, waitFor, within } from '@testing-library/react';
+import type { AppUser, EventTicket } from '@events-manager/contracts';
 import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
 import { Toaster } from '@/components/ui/toaster';
 import EventCheckout from './EventCheckout';
@@ -28,7 +28,9 @@ const tickets = [
 		max_quantity_per_purchase: 5,
 		allow_installments: true,
 		max_installments: 3,
-		min_amount_for_installments: 50,
+		allow_pix_installments: true,
+		max_pix_installments: 3,
+		min_amount_for_pix_installments: 50,
 	},
 ] as unknown as EventTicket[];
 
@@ -41,9 +43,9 @@ function renderCheckout(
 		name: 'Ana Souza',
 		email: 'ana@events.local',
 	},
+	profileOverrides: Partial<AppUser> = {},
 ) {
 	sessionStorage.clear();
-	vi.stubGlobal('location', { ...window.location, href: '' });
 	const fetchMock = mockFetch([
 		['/api/payments/methods', () => jsonResponse({ methods: ['PIX', 'CARD'] })],
 		[
@@ -67,6 +69,17 @@ function renderCheckout(
 		['/api/payments/checkout', checkoutResponse],
 		['/api/checkout/installments', () => jsonResponse({ registration_id: 'reg-1', success: true })],
 	]);
+	const buyerProfile: AppUser = {
+		id: 'buyer',
+		first_name: buyer.name.split(' ')[0],
+		last_name: buyer.name.split(' ').slice(1).join(' '),
+		email: buyer.email,
+		phone: buyer.phone ?? '11999990000',
+		document: buyer.document ?? '52998224725',
+		birth_date: '1990-05-20',
+		phone_verified_at: '2026-11-19T10:00:00Z',
+		...profileOverrides,
+	};
 	const view = renderWithProviders(
 		<>
 			<EventCheckout
@@ -80,7 +93,7 @@ function renderCheckout(
 				eventId="e-1"
 				eventTitle="Congresso"
 				tickets={checkoutTickets}
-				defaultParticipantInfo={buyer}
+				{...{ buyerProfile, canAutoConfirmPhone: true }}
 			/>
 			<Toaster />
 		</>,
@@ -89,7 +102,67 @@ function renderCheckout(
 	return { ...view, fetchMock };
 }
 
+afterEach(() => {
+	delete window.AbacatePay;
+});
+
 describe('EventCheckout', () => {
+	it.each(['PIX', 'BOLETO', 'CARD'])(
+		'pays with %s from the purchase summary, with a single payment button',
+		async (method) => {
+			const { user, fetchMock } = renderCheckout(undefined, { methods: [method] });
+			await reachPaymentStep(user);
+			const summary = screen.getByRole('region', { name: 'Resumo da compra' });
+			const pay = await within(summary).findByRole('button', { name: /Pagar R\$\s?100,00/ });
+			expect(screen.getAllByRole('button', { name: /Pagar R\$/ })).toHaveLength(1);
+			await user.click(pay);
+			await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/payments/checkout', expect.anything()));
+			const call = fetchMock.mock.calls.find(([url]) => url === '/api/payments/checkout');
+			expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+				paymentMethod: method,
+				expectedAmountInCents: 10000,
+			});
+		},
+	);
+
+	it('confirms a free registration from the purchase summary', async () => {
+		const { user, fetchMock } = renderCheckout(undefined, { amountInCents: 0, methods: [] });
+		await reachPaymentStep(user);
+		const summary = screen.getByRole('region', { name: 'Resumo da compra' });
+		await user.click(await within(summary).findByRole('button', { name: 'Confirmar inscrição gratuita' }));
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/payments/checkout', expect.anything()));
+		const call = fetchMock.mock.calls.find(([url]) => url === '/api/payments/checkout');
+		expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({ expectedAmountInCents: 0 });
+	});
+
+	it('keeps the summary payment button disabled while authenticating the card', async () => {
+		let finishTokenizing!: (value: { token: string }) => void;
+		const tokenize = vi.fn(
+			() =>
+				new Promise<{ token: string }>((resolve) => {
+					finishTokenizing = resolve;
+				}),
+		);
+		window.AbacatePay = {
+			create: () => ({ mount: vi.fn().mockResolvedValue(undefined), destroy: vi.fn(), tokenize, canTokenize: true }),
+		};
+		const { user, fetchMock } = renderCheckout(undefined, { methods: ['CARD'], mock: false, publicKey: 'pk_test' });
+		await reachPaymentStep(user);
+		const summary = screen.getByRole('region', { name: 'Resumo da compra' });
+		const pay = await within(summary).findByRole('button', { name: /Pagar R\$/ });
+		await waitFor(() => expect(pay).toBeEnabled());
+		await user.click(pay);
+		const processing = within(summary).getByRole('button', { name: 'Autenticando cartão…' });
+		expect(processing).toBeDisabled();
+		await user.click(processing);
+		expect(tokenize).toHaveBeenCalledTimes(1);
+		expect(fetchMock.mock.calls.some(([url]) => url === '/api/payments/checkout')).toBe(false);
+		await act(async () => {
+			finishTokenizing({ token: 'ctok_summary' });
+		});
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/payments/checkout', expect.anything()));
+	});
+
 	it('continues to payment from the summary and removes the redundant back button', async () => {
 		const { user } = renderCheckout();
 		await continueToDetails(user);
@@ -312,11 +385,12 @@ describe('EventCheckout', () => {
 		expect(await screen.findByRole('radio', { name: /cartão de crédito/i })).toBeInTheDocument();
 	});
 
-	it('requires completing missing buyer data in the profile before payment', async () => {
+	it('lets the buyer complete missing account data inside checkout before payment', async () => {
 		const { user } = renderCheckout(undefined, {}, tickets, { name: '', email: 'ana@events.local' });
 
 		await continueToDetails(user);
-		expect(screen.getByRole('link', { name: 'Atualizar meu perfil' })).toBeInTheDocument();
+		expect(screen.getByRole('form', { name: 'Completar dados do comprador' })).toBeInTheDocument();
+		expect(screen.queryByRole('link', { name: 'Atualizar meu perfil' })).not.toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Continuar para pagamento' })).toBeDisabled();
 		await user.click(screen.getByRole('button', { name: 'Continuar para pagamento' }));
 
@@ -348,7 +422,7 @@ describe('EventCheckout', () => {
 				ticketId: 'ticket-a',
 				quantity: 2,
 				attendees: [
-					{ name: 'Ana Souza', email: 'ana@events.local' },
+					{ name: 'Ana Souza', email: 'ana@events.local', phone: '11999990000', document: '52998224725' },
 					{ name: 'Bia Lima', email: 'bia@events.local' },
 				],
 			},
@@ -369,7 +443,7 @@ describe('EventCheckout', () => {
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/payments/checkout', expect.anything()));
 		const call = fetchMock.mock.calls.find(([url]) => url === '/api/payments/checkout');
 		expect(JSON.parse(String(call?.[1]?.body)).tickets[0].attendees).toEqual([
-			{ name: 'Ana Souza', email: 'ana@events.local' },
+			{ name: 'Ana Souza', email: 'ana@events.local', phone: '11999990000', document: '52998224725' },
 			null,
 		]);
 	});
@@ -408,7 +482,7 @@ describe('EventCheckout', () => {
 		expect(JSON.parse(String(checkoutCall?.[1]?.body))).toMatchObject({
 			paymentMethod: 'CARD',
 			tickets: [{ ticketId: 'ticket-a', quantity: 1 }],
-			participantInfo: { name: 'Ana Souza', email: 'ana@events.local' },
+			participantInfo: { name: 'Ana Souza', email: 'ana@events.local', phone: '11999999999', document: '52998224725' },
 		});
 	});
 
@@ -434,5 +508,67 @@ describe('EventCheckout', () => {
 
 		expect(await screen.findByText('CPF inválido')).toBeInTheDocument();
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+	});
+});
+
+it('informs the buyer about missing data on entry and keeps the selected tickets while completing the account', async () => {
+	const { user } = renderCheckout(undefined, {}, tickets, undefined, { last_name: null, phone_verified_at: null });
+	expect(screen.getByRole('alert')).toHaveTextContent('Complete seu cadastro para comprar');
+	await user.click(screen.getByRole('button', { name: 'Completar meus dados' }));
+	expect(screen.getByRole('form', { name: 'Completar dados do comprador' })).toBeInTheDocument();
+	expect(screen.getByRole('region', { name: 'Resumo da compra' })).toHaveTextContent('Inteira');
+	expect(screen.getByRole('button', { name: 'Continuar para pagamento' })).toBeDisabled();
+	expect(screen.queryByRole('radio', { name: /cartão de crédito/i })).not.toBeInTheDocument();
+});
+
+it('keeps the cart and named attendees after saving missing details and confirming the phone inside checkout', async () => {
+	const { user, fetchMock } = renderCheckout(undefined, {}, tickets, undefined, {
+		last_name: null,
+		birth_date: null,
+		phone_verified_at: null,
+	});
+	const original = fetchMock.getMockImplementation()!;
+	const saved = {
+		id: 'buyer',
+		first_name: 'Ana',
+		last_name: 'Silva',
+		birth_date: '1990-05-20',
+		email: 'ana@events.local',
+		phone: '11999990000',
+		document: '52998224725',
+		phone_verified_at: '2026-11-19T10:00:00Z',
+	};
+	fetchMock.mockImplementation((url, init) => {
+		if (String(url) === '/api/user/phone/request')
+			return Promise.resolve(jsonResponse({ verified: true, user: { ...saved, last_name: null, birth_date: null } }));
+		if (String(url) === '/api/user/profile') return Promise.resolve(jsonResponse({ user: saved }));
+
+		return original(url, init);
+	});
+	await user.click(screen.getByRole('button', { name: 'Adicionar um ingresso Inteira' }));
+	await user.click(screen.getByRole('button', { name: 'Completar meus dados' }));
+	const second = screen.getByRole('group', { name: 'Inteira · ingresso 2 de 2' });
+	await user.type(within(second).getByLabelText('Nome completo'), 'Bia Lima');
+	await user.type(within(second).getByLabelText('E-mail'), 'bia@events.local');
+	await user.type(screen.getByLabelText('Sobrenome *'), 'Silva');
+	await user.type(screen.getByLabelText('Data de nascimento *'), '20051990');
+	await user.click(screen.getByRole('button', { name: 'Confirmar telefone (desenvolvimento)' }));
+	await screen.findByText('Telefone confirmado');
+	await user.click(screen.getByRole('button', { name: 'Salvar dados' }));
+	await waitFor(() => expect(screen.getByRole('button', { name: 'Continuar para pagamento' })).toBeEnabled());
+	expect(within(second).getByLabelText('Nome completo')).toHaveValue('Bia Lima');
+	await user.click(screen.getByRole('button', { name: 'Continuar para pagamento' }));
+	await user.click(await screen.findByRole('button', { name: /Pagar R\$/ }));
+	await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/payments/checkout', expect.anything()));
+	const request = fetchMock.mock.calls.find(([url]) => url === '/api/payments/checkout');
+	expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+		participantInfo: { name: 'Ana Silva' },
+		tickets: [
+			{
+				ticketId: 'ticket-a',
+				quantity: 2,
+				attendees: [{ name: 'Ana Silva' }, { name: 'Bia Lima', email: 'bia@events.local' }],
+			},
+		],
 	});
 });

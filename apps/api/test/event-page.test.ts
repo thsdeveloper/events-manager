@@ -29,7 +29,9 @@ function build(row: EventPageRow | null = null) {
 	const rows: EventPageRow[] = [];
 	const repository = partialMock<EventPageRepository>({
 		find: vi.fn().mockResolvedValue(row),
+		disable: vi.fn().mockResolvedValue(row ? { ...row, enabled: false } : null),
 		upsert: vi.fn(async (eventId: string, patch: Partial<EventPageRow>) => {
+			if (!patch.draft) throw new Error('null value in column "draft" violates not-null constraint');
 			const saved = {
 				event_id: eventId,
 				enabled: false,
@@ -138,8 +140,16 @@ describe('EventPageService.unpublish', () => {
 			date_updated: '2026-09-16T12:00:00.000Z',
 		});
 
-		await service.unpublish(TEST_USER_ID, TEST_EVENT_ID);
+		const page = await service.unpublish(TEST_USER_ID, TEST_EVENT_ID);
 
-		expect(repository.upsert).toHaveBeenCalledWith(TEST_EVENT_ID, { enabled: false });
+		expect(page).toMatchObject({ enabled: false, draft, published: draft });
+		expect(repository.upsert).not.toHaveBeenCalled();
+	});
+
+	it('returns the standard layout when no customized page has ever been saved', async () => {
+		const { service } = build();
+		const page = await service.unpublish(TEST_USER_ID, TEST_EVENT_ID);
+		expect(page.enabled).toBe(false);
+		expect(page.draft.sections.map((section) => section.type)).toEqual(['hero', 'about', 'tickets']);
 	});
 });

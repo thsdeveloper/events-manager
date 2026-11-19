@@ -118,8 +118,8 @@ export default function InstallmentOptions({
 				<Alert>
 					<Info className="size-4" />
 					<AlertDescription className="text-sm">
-						Você pagará a primeira parcela agora via Pix. As demais parcelas vencerão mensalmente e você receberá
-						lembretes por e-mail.
+						Você pagará a primeira parcela agora via Pix. As demais parcelas vencerão mensalmente. Os ingressos serão
+						liberados somente após o pagamento de todas as parcelas.
 					</AlertDescription>
 				</Alert>
 			)}

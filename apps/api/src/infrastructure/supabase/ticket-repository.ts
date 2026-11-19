@@ -1,8 +1,7 @@
+import type { PurchaseInstallment } from '@events-manager/contracts';
 import type { AttendeePatch, TicketRepository } from '../../application/tickets/ticket-service.js';
 import type { SupabaseClients } from './clients.js';
 import { mapNominalTicket, nominalTicketSelection } from './ticket-selection.js';
-
-const VISIBLE_PAYMENT_STATUSES = ['paid', 'free', 'pending'];
 
 export class SupabaseTicketRepository implements TicketRepository {
 	constructor(private readonly clients: SupabaseClients) {}
@@ -17,7 +16,6 @@ export class SupabaseTicketRepository implements TicketRepository {
 				.from('registration_tickets')
 				.select(nominalTicketSelection)
 				.eq('registration.user_id', userId)
-				.in('registration.payment_status', VISIBLE_PAYMENT_STATUSES)
 				.order('date_created', { ascending: false }),
 			this.clients.admin
 				.from('registration_tickets')
@@ -40,6 +38,22 @@ export class SupabaseTicketRepository implements TicketRepository {
 		return rows
 			.map((row) => mapNominalTicket(row as unknown as Record<string, unknown>))
 			.sort((left, right) => right.date_created.localeCompare(left.date_created) || left.sequence - right.sequence);
+	}
+
+	async listInstallments(registrationIds: string[], userId: string): Promise<PurchaseInstallment[]> {
+		const { data, error } = await this.clients.admin
+			.from('payment_installments')
+			.select(
+				'id,registration_id,installment_number,total_installments,amount,due_date,status,paid_at,registration:event_registrations!inner(user_id)',
+			)
+			.in('registration_id', registrationIds)
+			.eq('registration.user_id', userId)
+			.order('installment_number');
+		if (error) throw error;
+		return (data ?? []).map(({ registration: _registration, ...row }) => ({
+			...row,
+			amount: Number(row.amount),
+		})) as PurchaseInstallment[];
 	}
 
 	async findForBuyer(ticketId: string, userId: string) {

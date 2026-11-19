@@ -1,3 +1,4 @@
+import type { PublicEventQuery } from '../../application/events/event-service.js';
 import { memberOrganizations } from './member-organizations.js';
 import type { Event, EventInput } from '@events-manager/contracts';
 import { type EventRepository, type EventStorageInput } from '../../application/events/event-service.js';
@@ -42,14 +43,14 @@ export async function resolveEventOrganizer(
 }
 
 export const publicEventSelection = `
-  id,status,visibility,sort,date_created,date_updated,title,slug,description,description_en,description_es,cover_image_alt,short_description,event_type,start_date,end_date,
+  id,status,visibility,sort,date_created,date_updated,title,slug,description,description_en,description_es,cover_image_alt,video_url,short_description,event_type,start_date,end_date,
   location_name,location_address,location_tbd,show_map,online_platform,location_street,location_number,location_complement,location_neighborhood,location_city,location_state,location_postal_code,latitude,longitude,max_attendees,registration_start,registration_end,is_free,tags,featured,
   cover_image:media_files(id,bucket,path,filename,title,type,filesize,width,height,description,metadata,date_created),
   organizer_id:organizers(id,name,email,phone,description,logo,website),
   category_id:event_categories(id,sort,name,slug,description,icon,color),
   page:event_pages(enabled,published),
   ticket_groups:event_ticket_groups(id,event_id,title,parent_id,sort),
-  tickets:event_tickets(id,event_id,group_id,admission_type,title,description,status,quantity,quantity_sold,price,service_fee_type,buyer_price,sale_start_date,sale_end_date,min_quantity_per_purchase,max_quantity_per_purchase,visibility,allow_installments,max_installments,min_amount_for_installments,sort,date_created,date_updated)
+  tickets:event_tickets(id,event_id,group_id,admission_type,title,description,status,quantity,quantity_sold,price,service_fee_type,buyer_price,sale_start_date,sale_end_date,min_quantity_per_purchase,max_quantity_per_purchase,visibility,allow_installments,max_installments,min_amount_for_installments,allow_pix_installments,max_pix_installments,min_amount_for_pix_installments,sort,date_created,date_updated)
 `;
 
 const publicEventListSelection = `
@@ -103,7 +104,7 @@ export class SupabaseEventRepository implements EventRepository {
 		return data as unknown as Event | null;
 	}
 
-	async listPublic(query: { limit: number; page: number; search: string }) {
+	async listPublic(query: PublicEventQuery) {
 		const from = (query.page - 1) * query.limit;
 		let builder = this.clients.admin
 			.from('events')
@@ -112,6 +113,8 @@ export class SupabaseEventRepository implements EventRepository {
 			.eq('visibility', 'public')
 			.gte('end_date', new Date().toISOString());
 		if (query.search) builder = builder.ilike('title', `%${query.search}%`);
+		if (query.organizer_id) builder = builder.eq('organizer_id', query.organizer_id);
+		if (query.exclude_id) builder = builder.neq('id', query.exclude_id);
 		const { data, count, error } = await builder
 			.order('start_date', { ascending: true })
 			.range(from, from + query.limit - 1);

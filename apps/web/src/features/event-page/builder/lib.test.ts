@@ -5,14 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { buildDefaultEventPageLayout, type EventPageRecord } from '@events-manager/contracts';
-import {
-	canAddSectionType,
-	describePageStatus,
-	duplicateSection,
-	isProtectedSection,
-	moveSection,
-	sectionSummary,
-} from './lib';
+import { describePageStatus } from './lib';
 
 const layout = () =>
 	buildDefaultEventPageLayout({ title: 'Congresso', description: '<p>Oi</p>', short_description: 'Encontro' });
@@ -43,41 +36,39 @@ describe('describePageStatus', () => {
 			}),
 		).toMatchObject({ kind: 'changed' });
 	});
-});
-
-describe('sections', () => {
-	it('protects the tickets section from removal and hiding, and keeps single-use types unique', () => {
-		const sections = layout().sections;
-
-		expect(isProtectedSection(sections[2])).toBe(true);
-		expect(isProtectedSection(sections[1])).toBe(false);
-		expect(canAddSectionType('tickets', sections)).toBe(false);
-		expect(canAddSectionType('hero', sections)).toBe(false);
-		expect(canAddSectionType('faq', sections)).toBe(true);
-		expect(canAddSectionType('richtext', [...sections, { ...sections[1], type: 'richtext', id: 'x' } as never])).toBe(
-			true,
-		);
+	it('reconhece uma publicação idêntica independentemente da ordem das propriedades do JSONB', () => {
+		const draft = layout();
+		const published = {
+			...draft,
+			header: Object.fromEntries(Object.entries(draft.header).reverse()) as typeof draft.header,
+		};
+		expect(
+			describePageStatus({
+				event_id: 'event',
+				draft,
+				published,
+				enabled: true,
+				published_at: '2026-11-19T12:00:00Z',
+				date_updated: '',
+			}).kind,
+		).toBe('published');
 	});
 
-	it('moves a section within bounds and duplicates it with a fresh id and anchor', () => {
-		const sections = layout().sections;
-
-		expect(moveSection(sections, 0, 1).map((section) => section.type)).toEqual(['about', 'hero', 'tickets']);
-		expect(moveSection(sections, 0, -1)).toBe(sections);
-
-		const copy = duplicateSection(sections[1], sections);
-		expect(copy.id).not.toBe(sections[1].id);
-		expect(copy.anchor).toBe('sobre-2');
-		expect(copy).toMatchObject({ type: 'about', title: 'Sobre o evento' });
-	});
-
-	it('summarizes each section by its title or by what it holds', () => {
-		const sections = layout().sections;
-
-		expect(sectionSummary(sections[0])).toBe('Congresso');
-		expect(sectionSummary({ ...sections[1], title: undefined, content: '<p>Três dias</p>' } as never)).toBe(
-			'Três dias',
-		);
-		expect(sectionSummary({ id: 'f', anchor: 'faq', hidden: false, type: 'faq', items: [] })).toBe('Sem itens');
+	it('continua exibindo o status enquanto um campo obrigatório está sendo editado', () => {
+		const published = layout();
+		const draft = {
+			...published,
+			sections: published.sections.map((section, index) => (index === 0 ? { ...section, anchor: '' } : section)),
+		};
+		expect(
+			describePageStatus({
+				event_id: 'event',
+				draft,
+				published,
+				enabled: true,
+				published_at: '2026-11-19T12:00:00Z',
+				date_updated: '',
+			}).kind,
+		).toBe('changed');
 	});
 });

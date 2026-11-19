@@ -115,8 +115,13 @@ export function TicketFeeDetails({
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
-				<Button type="button" variant="outline" size="sm" className="mt-4">
-					<Info className="size-4" />
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					className="mt-4 h-auto min-h-9 w-full whitespace-normal border-[#743DF5]/25 bg-white text-[#743DF5] hover:border-[#743DF5]/50 hover:bg-[#F3EEFF] hover:text-[#743DF5] focus-visible:ring-[#743DF5]"
+				>
+					<Info className="size-4 shrink-0" aria-hidden="true" />
 					Entender taxas e recebimento
 				</Button>
 			</DialogTrigger>

@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import type { EmailGateway } from '../../application/email/email-service.js';
+import type { EmailGateway, EmailMessage } from '../../application/email/email-service.js';
 
 export class NodemailerGateway implements EmailGateway {
 	private readonly transport;
@@ -14,8 +14,16 @@ export class NodemailerGateway implements EmailGateway {
 		});
 	}
 
-	async send(input: { from: string; html: string; subject: string; text: string; to: string }) {
-		const result = await this.transport.sendMail(input);
+	async send(input: EmailMessage) {
+		const result = await this.transport.sendMail({
+			...input,
+			attachments: input.attachments?.map((attachment) => ({
+				filename: attachment.filename,
+				contentType: attachment.contentType,
+				content: Buffer.from(attachment.content),
+				contentDisposition: 'attachment' as const,
+			})),
+		});
 		return { messageId: result.messageId };
 	}
 }

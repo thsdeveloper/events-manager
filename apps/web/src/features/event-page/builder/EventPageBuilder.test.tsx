@@ -1,240 +1,166 @@
-import { renderAsOwner } from '@/test/permissions';
-/**
- * Construtor da página do evento. O organizador monta a landing por seções,
- * vê o resultado ao vivo e só publica um layout coerente. A seção de ingressos
- * é intocável: é por ela que se chega ao checkout.
- */
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
-import { buildDefaultEventPageLayout, type Event, type EventPageRecord } from '@events-manager/contracts';
-import { jsonResponse, mockFetch, problemResponse } from '@/test';
-import { EventPageBuilder } from './EventPageBuilder';
-
-vi.mock('next/link', () => ({
-	default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
-		<a href={href} {...props}>
-			{children}
-		</a>
-	),
+import { buildDefaultEventPageLayout, type EventPageRecord } from '@events-manager/contracts';
+import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
+import { renderAsOwner, TestPermissions, ownerAccess } from '@/test/permissions';
+import { publicEventFixture } from '@/test/event-page-fixtures';
+import { PuckEventPageEditor as EventPageBuilder } from './PuckEventPageEditor';
+import { EventPageBuilder as LazyEventPageBuilder } from './EventPageBuilder';
+vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
+vi.mock('next/image', () => ({
+	default: ({
+		fill: _,
+		priority: __,
+		...props
+	}: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; priority?: boolean }) => <img {...props} />,
 }));
-vi.mock('@/components/admin/ImageUpload', () => ({
-	default: ({ label }: { label: string }) => <div>upload:{label}</div>,
-	PENDING_UPLOAD_VALUE: 'local-file',
-}));
-vi.mock('@/features/cms/components/RichTextEditor', () => ({
-	RichTextEditor: ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
-		<textarea aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} />
-	),
-}));
-const revalidateEventPage = vi.fn();
-vi.mock('@/features/event-page/actions', () => ({ revalidateEventPage: (slug: string) => revalidateEventPage(slug) }));
-vi.mock('@/features/event-page/components/EventLandingPage', () => ({
-	EventLandingPage: ({
-		layout,
-		mode,
-	}: {
-		layout: { sections: Array<{ type: string; anchor: string; hidden: boolean }>; header: { title?: string } };
-		mode: string;
-	}) => (
-		<div data-testid="preview" data-mode={mode}>
-			{layout.header.title}|
-			{layout.sections
-				.map((section) => `${section.type}:${section.anchor}${section.hidden ? '(oculta)' : ''}`)
-				.join(',')}
-		</div>
-	),
-}));
-
-const event = {
-	id: 'e-1',
-	title: 'Congresso',
-	slug: 'congresso',
-	description: '<p>Três dias de encontros.</p>',
-	short_description: 'Encontro anual.',
-	start_date: '2026-09-19T12:00:00.000Z',
-	end_date: '2026-09-21T21:00:00.000Z',
-	organizer_id: { id: 'org-1', name: 'ADEB' },
-	tickets: [],
-} as unknown as Event;
-
-function record(overrides: Partial<EventPageRecord> = {}): EventPageRecord {
+const event = { ...publicEventFixture, cover_image: null };
+function record(): EventPageRecord {
 	return {
-		event_id: 'e-1',
+		event_id: event.id,
 		enabled: false,
 		draft: buildDefaultEventPageLayout(event),
 		published: null,
 		published_at: null,
-		date_updated: '2026-09-17T12:00:00.000Z',
-		...overrides,
+		date_updated: '2026-11-19T12:00:00Z',
 	};
 }
-
-function renderBuilder(page = record(), routes: Parameters<typeof mockFetch>[0] = []) {
+async function setup(page = record(), routes: Parameters<typeof mockFetch>[0] = []) {
 	const fetchMock = mockFetch([
 		...routes,
-		[
-			/\/api\/events\/e-1\/page$/,
-			(_input, init) => jsonResponse({ ...page, draft: JSON.parse(String(init?.body)).draft }),
-		],
+		[/\/page$/, (_input, init) => jsonResponse({ ...page, draft: JSON.parse(String(init?.body)).draft })],
 	]);
-	const view = renderAsOwner(<EventPageBuilder event={event} initialPage={page} autosaveDelayMs={30} />);
+	const view = renderAsOwner(<EventPageBuilder event={event} initialPage={page} autosaveDelayMs={100} />);
+	await view.user.click(await screen.findByTitle('Abrir menu do editor'));
+	await view.user.click(screen.getByTitle('Mostrar ou ocultar propriedades'));
 
-	return { fetchMock, ...view };
+	return { ...view, fetchMock };
 }
-
-const preview = () => screen.getByTestId('preview').textContent ?? '';
-
-describe('EventPageBuilder', () => {
-	it('lists the sections of the draft in order and previews them live', () => {
-		renderBuilder();
-
-		const list = screen.getByRole('list', { name: 'Seções da página' });
-		const items = within(list).getAllByRole('listitem');
-		expect(items.map((item) => item.textContent)).toEqual([
-			expect.stringContaining('Destaque'),
-			expect.stringContaining('Sobre'),
-			expect.stringContaining('Ingressos'),
-		]);
-		expect(preview()).toContain('hero:inicio,about:sobre,tickets:ingressos');
-		expect(screen.getByTestId('preview')).toHaveAttribute('data-mode', 'preview');
+beforeEach(() => {
+	Element.prototype.getAnimations = () => [];
+	window.scrollTo = () => {};
+	document.elementsFromPoint = () => [];
+});
+describe('editor visual Puck da página do evento', { timeout: 20_000 }, () => {
+	it('oferece histórico, catálogo de seções e campos do cabeçalho', async () => {
+		await setup();
+		expect(await screen.findByRole('button', { name: 'Desfazer' })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Refazer' })).toBeDisabled();
+		expect((await screen.findAllByLabelText('Título no cabeçalho'))[0]).toBeInTheDocument();
+		expect(screen.getAllByLabelText('Mostrar cabeçalho')[0]).toBeChecked();
+		expect(screen.getByText('Programação e pessoas')).toBeInTheDocument();
 	});
-
-	it('never lets the tickets section be removed or hidden', () => {
-		renderBuilder();
-
-		const tickets = screen.getByRole('listitem', { name: /Ingressos/ });
-		expect(within(tickets).getByRole('button', { name: /remover/i })).toBeDisabled();
-		expect(within(tickets).getByRole('button', { name: /ocultar/i })).toBeDisabled();
-		expect(within(tickets).queryByRole('button', { name: /duplicar/i })).not.toBeInTheDocument();
-	});
-
-	it('reorders with the move buttons and reflects it in the preview', async () => {
-		const { user } = renderBuilder();
-
-		const about = screen.getByRole('listitem', { name: /Sobre/ });
-		await user.click(within(about).getByRole('button', { name: /mover .* para cima/i }));
-
-		expect(preview()).toContain('about:sobre,hero:inicio,tickets:ingressos');
-	});
-
-	it('adds a section from the picker, but not a second copy of a single-use type', async () => {
-		const { user } = renderBuilder();
-
-		await user.click(screen.getByRole('button', { name: 'Adicionar seção' }));
-		const dialog = screen.getByRole('dialog', { name: 'Adicionar seção' });
-		expect(within(dialog).getByRole('button', { name: /Destaque/ })).toBeDisabled();
-		await user.click(within(dialog).getByRole('button', { name: /Perguntas frequentes/ }));
-
-		expect(preview()).toContain('faq:faq');
-		expect(screen.getByRole('listitem', { name: /Perguntas frequentes/ })).toBeInTheDocument();
-	});
-
-	it('hides and removes an ordinary section', async () => {
-		const { user } = renderBuilder();
-		const about = () => screen.getByRole('listitem', { name: /Sobre/ });
-
-		await user.click(within(about()).getByRole('button', { name: /ocultar/i }));
-		expect(preview()).toContain('about:sobre(oculta)');
-
-		await user.click(within(about()).getByRole('button', { name: /remover/i }));
-		await user.click(screen.getByRole('button', { name: 'Remover seção' }));
-		expect(preview()).not.toContain('about:');
-	});
-
-	it('edits a section in the side panel and applies the change to the draft', async () => {
-		const { user } = renderBuilder();
-
-		await user.click(
-			within(screen.getByRole('listitem', { name: /Destaque/ })).getByRole('button', { name: /editar/i }),
-		);
-		const sheet = await screen.findByRole('dialog', { name: /Destaque/ });
-		const title = within(sheet).getByLabelText('Título da seção');
+	it('salva o título editado sem exigir publicação e permite desfazer', async () => {
+		const { user, fetchMock } = await setup();
+		const title = (await screen.findAllByLabelText('Título no cabeçalho'))[0];
 		await user.clear(title);
-		await user.type(title, 'Bem-vindos');
-		await user.click(within(sheet).getByRole('button', { name: 'Aplicar' }));
-
-		expect(screen.getByRole('listitem', { name: /Destaque/ })).toHaveTextContent('Bem-vindos');
+		await user.type(title, 'Encontro especial');
+		await waitFor(() =>
+			expect(
+				fetchMock.mock.calls.some(
+					([, init]) =>
+						init?.method === 'PUT' && JSON.parse(String(init.body)).draft.header.title === 'Encontro especial',
+				),
+			).toBe(true),
+		);
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Desfazer' })).toBeEnabled());
+		await user.click(screen.getByRole('button', { name: 'Desfazer' }));
+		await waitFor(() =>
+			expect(screen.getAllByLabelText('Título no cabeçalho')[0]).not.toHaveValue('Encontro especial'),
+		);
+		expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/publish'))).toBe(false);
 	});
-
-	it('saves the draft automatically shortly after a change, and on demand', async () => {
-		const { fetchMock, user } = renderBuilder();
-		const puts = () => fetchMock.mock.calls.filter(([, init]) => init?.method === 'PUT');
-
-		await user.click(within(screen.getByRole('listitem', { name: /Sobre/ })).getByRole('button', { name: /ocultar/i }));
-		await waitFor(() => expect(puts()).toHaveLength(1));
-		expect(JSON.parse(String(puts()[0][1]?.body)).draft.sections[1].hidden).toBe(true);
-		expect(await screen.findByText(/salvo/i)).toBeInTheDocument();
-
-		await user.click(screen.getByRole('button', { name: 'Salvar rascunho' }));
-		await waitFor(() => expect(puts()).toHaveLength(2));
-	});
-
-	it('edits the header: title, navigation limited to existing anchors, theme and footer', async () => {
-		const { user } = renderBuilder();
-
-		await user.clear(screen.getByLabelText('Título no cabeçalho'));
-		await user.type(screen.getByLabelText('Título no cabeçalho'), 'Congresso 2026');
-		expect(preview()).toContain('Congresso 2026|');
-
-		await user.click(screen.getByRole('button', { name: 'Adicionar link' }));
-		const links = screen.getAllByRole('combobox', { name: /seção do link/i });
-		expect(links).toHaveLength(3);
-		expect(screen.getByRole('checkbox', { name: 'Mostrar cabeçalho' })).toBeChecked();
-		expect(screen.getByLabelText('Cor de destaque')).toBeInTheDocument();
-		expect(screen.getByRole('checkbox', { name: 'Mostrar organizador no rodapé' })).toBeChecked();
-	});
-
-	it('refuses to publish an incoherent draft and points to the problem, without calling the API', async () => {
+	it('publica um rascunho válido e oferece o link público', async () => {
 		const page = record();
-		page.draft.header.nav = [{ label: 'Palestrantes', anchor: 'palestrantes' }];
-		const { fetchMock, user } = renderBuilder(page);
-
-		await user.click(screen.getByRole('button', { name: 'Publicar' }));
-
-		expect(screen.getByRole('alert')).toHaveTextContent(/Palestrantes/);
-		expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/publish'))).toBe(false);
-	});
-
-	it('publishes a coherent draft, shows it as live and offers the public link', async () => {
-		const base = record();
-		const published = { ...base, enabled: true, published: base.draft, published_at: '2026-09-17T13:00:00.000Z' };
-		const { user } = renderBuilder(base, [[/\/page\/publish$/, () => jsonResponse(published)]]);
-
-		await user.click(screen.getByRole('button', { name: 'Publicar' }));
-
-		expect(await screen.findByText(/Publicada em/)).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'Ver página' })).toHaveAttribute('href', '/eventos/congresso');
-		expect(revalidateEventPage).toHaveBeenCalledWith('congresso');
-	});
-
-	it('shows the problems the API reports when it refuses to publish', async () => {
-		const { user } = renderBuilder(record(), [
+		const { user } = await setup(page, [
 			[
-				/\/page\/publish$/,
+				/\/publish$/,
+				() => jsonResponse({ ...page, enabled: true, published: page.draft, published_at: '2026-11-19T13:00:00Z' }),
+			],
+		]);
+		await user.click(await screen.findByRole('button', { name: 'Publicar' }));
+		expect(await screen.findByText(/Publicada em/)).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Ver página' })).toHaveAttribute('href', `/eventos/${event.slug}`);
+	});
+	it('exibe problemas de navegação antes de fazer requisições de publicação', async () => {
+		const page = record();
+		page.draft.header.nav = [{ label: 'Palestrantes', anchor: 'inexistente' }];
+		const { user, fetchMock } = await setup(page);
+		await user.click(await screen.findByRole('button', { name: 'Publicar' }));
+		expect(await screen.findByRole('alert')).toHaveTextContent(/Palestrantes/);
+		expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/publish'))).toBe(false);
+	});
+	it('não publica quando o salvamento falha e mantém a edição para tentar novamente', async () => {
+		const page = record();
+		page.date_updated = '';
+		const { user, fetchMock } = await setup(page, [
+			[/\/page$/, () => problemResponse(500, 'INTERNAL_ERROR', 'Falha ao salvar.')],
+		]);
+		await user.click(await screen.findByRole('button', { name: 'Publicar' }));
+		expect(await screen.findByRole('alert')).toHaveTextContent(/Falha ao salvar/);
+		expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/publish'))).toBe(false);
+		expect(screen.getByRole('button', { name: 'Publicar' })).toBeEnabled();
+	});
+	it('mostra os problemas de publicação informados pela API', async () => {
+		const { user } = await setup(record(), [
+			[
+				/\/publish$/,
 				() =>
-					problemResponse(422, 'EVENT_PAGE_INVALID', 'A página ainda não pode ser publicada.', {
+					problemResponse(422, 'EVENT_PAGE_INVALID', 'Página inválida.', {
 						issues: [{ code: 'tickets_required', message: 'Falta a seção de ingressos.', path: ['sections'] }],
 					}),
 			],
 		]);
-
-		await user.click(screen.getByRole('button', { name: 'Publicar' }));
-
+		await user.click(await screen.findByRole('button', { name: 'Publicar' }));
 		expect(await screen.findByRole('alert')).toHaveTextContent('Falta a seção de ingressos.');
 	});
-
-	it('goes back to the standard layout only after confirmation', async () => {
-		const live = { ...record(), enabled: true, published: record().draft, published_at: '2026-09-17T13:00:00.000Z' };
-		const { fetchMock, user } = renderBuilder(live, [
-			[/\/page\/unpublish$/, () => jsonResponse({ ...live, enabled: false })],
-		]);
-
-		await user.click(screen.getByRole('button', { name: 'Voltar ao padrão' }));
-		expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/unpublish'))).toBe(false);
-		await user.click(screen.getByRole('button', { name: 'Voltar ao layout padrão' }));
-
-		await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/unpublish'))).toBe(true));
+	it('restaura o layout padrão somente após confirmar e preserva o rascunho', async () => {
+		const page = record();
+		page.enabled = true;
+		page.published = page.draft;
+		page.published_at = '2026-11-19T13:00:00Z';
+		const { user, fetchMock } = await setup(page, [[/\/unpublish$/, () => jsonResponse({ ...page, enabled: false })]]);
+		await user.click(await screen.findByRole('button', { name: 'Voltar ao padrão' }));
+		expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/unpublish'))).toBe(false);
+		const dialog = screen.getByRole('alertdialog');
+		await user.click(within(dialog).getByRole('button', { name: 'Voltar ao layout padrão' }));
 		expect(await screen.findByText('Rascunho')).toBeInTheDocument();
-		expect(revalidateEventPage).toHaveBeenCalledWith('congresso');
+		expect((await screen.findAllByLabelText('Título no cabeçalho'))[0]).toBeInTheDocument();
+	});
+	it('permite apenas consultar quando o acesso não inclui edição e publicação', async () => {
+		renderWithProviders(
+			<TestPermissions access={{ ...ownerAccess, isOwner: false, permissions: ['event_pages.read'] }}>
+				<EventPageBuilder event={event} initialPage={record()} />
+			</TestPermissions>,
+		);
+		expect(await screen.findByText('Modo de consulta')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Publicar' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Salvar rascunho' })).not.toBeInTheDocument();
+		expect((await screen.findAllByLabelText('Título no cabeçalho'))[0]).toHaveAttribute('readonly');
+	});
+	it('duplica pelo Puck com uma nova âncora, sem quebrar os links da página', async () => {
+		const { user, fetchMock } = await setup();
+		await user.click(screen.getByTitle('Mostrar ou ocultar seções'));
+		await user.click(screen.getByText('Estrutura', { exact: true }));
+		await user.hover((await screen.findAllByRole('button', { name: 'Sobre' }))[0]);
+		await user.click((await screen.findAllByTitle('Duplicar seção'))[0]);
+		await waitFor(
+			() => {
+				const save = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PUT').at(-1);
+				const sections = save ? JSON.parse(String(save[1]?.body)).draft.sections : [];
+				expect(sections).toHaveLength(4);
+				expect(sections.map((item: { anchor: string }) => item.anchor)).toEqual([
+					'inicio',
+					'sobre',
+					'sobre-2',
+					'ingressos',
+				]);
+			},
+			{ timeout: 4000 },
+		);
+	});
+	it('carrega o editor pela entrada assíncrona usada na rota administrativa', async () => {
+		renderAsOwner(<LazyEventPageBuilder event={event} initialPage={record()} />);
+		expect((await screen.findAllByLabelText('Título no cabeçalho', {}, { timeout: 5000 }))[0]).toHaveValue(event.title);
 	});
 });

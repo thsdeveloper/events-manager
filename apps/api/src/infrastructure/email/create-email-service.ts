@@ -5,6 +5,7 @@ import { createEmailBrandingReader } from '../supabase/email-branding-repository
 import { SupabaseEmailDeliveryRepository } from '../supabase/email-delivery-repository.js';
 import type { SupabaseClients } from '../supabase/clients.js';
 import { NodemailerGateway } from './nodemailer-gateway.js';
+import { PdfKitTicketRenderer } from '../tickets/pdfkit-ticket-renderer.js';
 
 /**
  * Composition of the e-mail stack, shared by every route that sends mail. It
@@ -27,6 +28,7 @@ export function createEmailService(env: ApiEnv, clients: SupabaseClients) {
 		}),
 		env.EMAIL_FROM,
 		branding,
+		new PdfKitTicketRenderer(),
 	);
 
 	return { branding, email };

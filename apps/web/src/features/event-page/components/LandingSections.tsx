@@ -1,6 +1,6 @@
 import type { EventPageSection, EventTicket } from '@events-manager/contracts';
 import { CalendarDays, Clock, ExternalLink, MapPin, Ticket } from 'lucide-react';
-import Image from 'next/image';
+import { EventCover } from './EventCover';
 import MediaImage from '@/components/shared/MediaImage';
 import Text from '@/components/ui/Text';
 import { EventLocationView } from '@/components/map/EventLocationView';
@@ -21,8 +21,7 @@ interface Props<T extends EventPageSection['type']> {
 export function HeroSection({ context, section }: Props<'hero'>) {
 	const { event } = context;
 	const title = section.title?.trim() || event.title;
-	const image =
-		section.image ?? (event.cover_image && typeof event.cover_image === 'object' ? event.cover_image : null);
+	const image = section.image ?? event.cover_image ?? null;
 	const date = formatEventDateRange(event.start_date, event.end_date);
 	const place = formatEventLocation(
 		event.event_type,
@@ -32,52 +31,36 @@ export function HeroSection({ context, section }: Props<'hero'>) {
 	const centered = section.align === 'center';
 
 	return (
-		<section id={section.anchor} className="relative isolate overflow-hidden">
-			{image || context.previewCoverUrl ? (
-				<div className="absolute inset-0 -z-10">
-					{context.mode === 'preview' && context.previewCoverUrl ? (
-						<Image
-							src={context.previewCoverUrl}
-							alt={event.cover_image_alt ?? ''}
-							fill
-							unoptimized
-							className="object-cover"
-						/>
-					) : image ? (
-						<MediaImage uuid={image} alt={event.cover_image_alt ?? ''} fill priority className="object-cover" />
-					) : null}
-					<div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/55 to-slate-950/30" />
+		<section id={section.anchor} className="relative isolate overflow-hidden bg-[#F3EEFF]/50 dark:bg-white/5">
+			<div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+				<EventCover
+					event={event}
+					image={image}
+					previewUrl={context.mode === 'preview' ? context.previewCoverUrl : null}
+				/>
+				<div className={cn('flex flex-col gap-5 pt-7 sm:pt-10', centered ? 'items-center text-center' : 'items-start')}>
+					<h1 className="max-w-4xl text-balance text-3xl font-bold tracking-tight sm:text-5xl">{title}</h1>
+					{section.subtitle ? <p className="max-w-3xl text-base opacity-75 sm:text-lg">{section.subtitle}</p> : null}
+					<dl className={cn('flex flex-wrap gap-x-6 gap-y-3 text-sm', centered && 'justify-center')}>
+						{section.showDate && date ? (
+							<div className="inline-flex items-center gap-2">
+								<dt className="sr-only">Quando</dt>
+								<CalendarDays className="size-4" aria-hidden />
+								<dd>{date}</dd>
+							</div>
+						) : null}
+						{section.showLocation && place ? (
+							<div className="inline-flex items-center gap-2">
+								<dt className="sr-only">Onde</dt>
+								<MapPin className="size-4" aria-hidden />
+								<dd>{place}</dd>
+							</div>
+						) : null}
+					</dl>
+					<AccentButton context={context} className="mt-2 px-7 py-3.5 text-base">
+						{section.ctaLabel}
+					</AccentButton>
 				</div>
-			) : (
-				<div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
-			)}
-			<div
-				className={cn(
-					'mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-24 text-white sm:px-6 sm:py-32 lg:px-8',
-					centered ? 'items-center text-center' : 'items-start',
-				)}
-			>
-				<h1 className="max-w-3xl text-balance text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">{title}</h1>
-				{section.subtitle ? <p className="max-w-2xl text-lg text-white/85 sm:text-xl">{section.subtitle}</p> : null}
-				<dl className={cn('flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/90', centered && 'justify-center')}>
-					{section.showDate && date ? (
-						<div className="inline-flex items-center gap-2">
-							<dt className="sr-only">Quando</dt>
-							<CalendarDays className="size-4" aria-hidden />
-							<dd>{date}</dd>
-						</div>
-					) : null}
-					{section.showLocation && place ? (
-						<div className="inline-flex items-center gap-2">
-							<dt className="sr-only">Onde</dt>
-							<MapPin className="size-4" aria-hidden />
-							<dd>{place}</dd>
-						</div>
-					) : null}
-				</dl>
-				<AccentButton context={context} className="mt-2 px-7 py-3.5 text-base">
-					{section.ctaLabel}
-				</AccentButton>
 			</div>
 		</section>
 	);

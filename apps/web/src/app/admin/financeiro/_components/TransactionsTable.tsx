@@ -3,12 +3,13 @@
 import { RecordTable } from '@/components/ui/record-table';
 
 import { Spinner } from '@/components/ui/spinner';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { ChevronDown, ChevronUp, Receipt } from 'lucide-react';
 import type { PaginationState, TransactionRow } from '@/lib/finance/server-fetchers';
 import type { TransactionSort, TransactionSortField } from '@/lib/finance/api-client';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { TransactionStatusBadge } from '@/features/finance/components/TransactionStatusBadge';
+import { TransactionDetailsSheet } from '@/features/finance/components/TransactionDetailsSheet';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from '@/components/ui/empty';
 
 interface TransactionsTableProps {
@@ -37,21 +38,6 @@ function formatDate(value: string) {
 	});
 }
 
-function getStatusLabel(status: string) {
-	switch (status) {
-		case 'succeeded':
-			return 'Pago';
-		case 'pending':
-			return 'Pendente';
-		case 'failed':
-			return 'Falhou';
-		case 'refunded':
-			return 'Reembolsado';
-		default:
-			return status ?? '—';
-	}
-}
-
 function SortIcon({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
 	if (!active) {
 		return (
@@ -77,6 +63,7 @@ function TransactionsTable({
 	sort,
 	currencyFormatter,
 }: TransactionsTableProps) {
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const handleSort = (field: TransactionSortField) => {
 		if (sort.field === field) {
 			onSortChange({
@@ -96,6 +83,7 @@ function TransactionsTable({
 	return (
 		<div className="overflow-x-auto">
 			<RecordTable
+				onRowClick={(row) => setSelectedId(row.id)}
 				headers={[
 					<>
 						<Button
@@ -166,9 +154,15 @@ function TransactionsTable({
 									<div key="column-0" className="text-sm text-foreground">
 										{formatDate(row.date)}
 									</div>,
-									<div key="column-1" className="font-medium text-primary">
-										{row.transactionId || '—'}
-									</div>,
+									<Button
+										key="column-1"
+										variant="link"
+										className="h-auto max-w-56 justify-start whitespace-normal break-all p-0 text-left"
+										aria-label={`Ver detalhes da transação ${row.transactionId || row.id}`}
+										onClick={() => setSelectedId(row.id)}
+									>
+										{row.transactionId || row.id}
+									</Button>,
 									<div key="column-2" className="text-sm text-foreground">
 										{row.eventTitle}
 									</div>,
@@ -187,13 +181,13 @@ function TransactionsTable({
 										{currencyFormatter.format(row.gross)}
 									</div>,
 									<div key="column-6" className="text-right text-sm text-foreground">
-										{currencyFormatter.format(row.fee)}
+										{row.fee == null ? 'A confirmar' : currencyFormatter.format(row.fee)}
 									</div>,
 									<div key="column-7" className="text-right text-sm text-muted-foreground ">
-										{currencyFormatter.format(row.net)}
+										{row.net == null ? 'A confirmar' : currencyFormatter.format(row.net)}
 									</div>,
 									<div key="column-8" className="text-right">
-										<Badge variant="secondary">{getStatusLabel(row.status)}</Badge>
+										<TransactionStatusBadge status={row.status} />
 									</div>,
 								],
 							}))
@@ -246,6 +240,7 @@ function TransactionsTable({
 					</div>
 				</div>
 			)}
+			{selectedId ? <TransactionDetailsSheet transactionId={selectedId} onClose={() => setSelectedId(null)} /> : null}
 		</div>
 	);
 }

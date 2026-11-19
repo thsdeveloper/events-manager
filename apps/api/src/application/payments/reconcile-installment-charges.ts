@@ -1,3 +1,4 @@
+import type { TicketDelivery } from '../tickets/deliver-tickets.js';
 import type { PaymentGateway } from './payment-gateway.js';
 
 export interface InstallmentChargeReconciliationCandidate {
@@ -16,6 +17,7 @@ export class ReconcileInstallmentCharges {
 	constructor(
 		private readonly gateway: PaymentGateway,
 		private readonly repository: InstallmentChargeReconciliationRepository,
+		private readonly ticketDelivery?: TicketDelivery,
 	) {}
 
 	async execute(input: { before: Date; batchSize: number }) {
@@ -36,6 +38,7 @@ export class ReconcileInstallmentCharges {
 				const charge = await this.gateway.getPixCharge(candidate.chargeId);
 				if (charge.status === 'PAID') {
 					await this.repository.settlePaid(candidate);
+					await this.ticketDelivery?.execute([candidate.registrationId]).catch(() => undefined);
 					result.paid += 1;
 				} else if (charge.status === 'EXPIRED' || charge.status === 'CANCELLED') {
 					await this.repository.cancel(candidate, charge.status);

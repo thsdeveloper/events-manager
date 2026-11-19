@@ -80,6 +80,7 @@ describe('permissions required by existing operations', () => {
 		['GET', '/api/organizer/finance/payouts', 'payouts.read', 'organization'],
 		['GET', '/api/organizer/finance/events', 'finance.read', 'list'],
 		['GET', '/api/organizer/finance/transactions', 'finance.read', 'list'],
+		['GET', '/api/organizer/finance/transactions/:id', 'finance.read', 'list'],
 		['GET', '/api/organizer/finance/export', 'finance.export', 'list'],
 		['GET', '/api/organizer/analytics', 'reports.read', 'list'],
 		['GET', '/api/organizer/stats', 'finance.read', 'organization'],

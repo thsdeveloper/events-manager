@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { MediaService } from '../application/media/media-service.js';
 import { OrganizerService } from '../application/organizers/organizer-service.js';
 import type { ApiEnv } from '../config/env.js';
+import { paymentCapabilities } from '../config/payment-capabilities.js';
 import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
 import { SupabaseMediaRepository } from '../infrastructure/supabase/media-repository.js';
@@ -44,9 +45,11 @@ export async function organizerRoutes(app: FastifyInstance, options: { env: ApiE
 	const media = new MediaService(mediaRepository);
 	const initialStatus = env.PAYMENTS_MODE === 'mock' ? 'active' : 'pending';
 	const admin = new AdminService(new SupabaseAdminRepository(clients));
+	const capabilities = paymentCapabilities(env);
 	const paymentSettings = new OrganizerPaymentService(
 		new SupabaseOrganizerRepository(clients),
-		env.PAYMENTS_MODE === 'mock' ? ['PIX', 'CARD', 'BOLETO'] : env.ABACATEPAY_METHODS,
+		capabilities.methods,
+		capabilities.testMode,
 	);
 	app.get('/api/organizer/payment-settings', async (request) => {
 		const context = await requireOrganizer(request, auth);

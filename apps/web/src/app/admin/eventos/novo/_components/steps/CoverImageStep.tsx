@@ -2,13 +2,14 @@
 
 import { Card } from '@/components/ui/card';
 import { forwardRef } from 'react';
-import { Wand2 } from 'lucide-react';
+import { Wand2, Video } from 'lucide-react';
 import ImageUpload from '@/components/admin/ImageUpload';
 import type { EventWizardFormValues } from '../types';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { YouTubeVideo } from '@/components/shared/YouTubeVideo';
 import { useToast } from '@/hooks/use-toast';
 
 interface CoverImageStepProps {
@@ -28,6 +29,8 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 		const form = useFormContext<EventWizardFormValues>();
 		const { toast } = useToast();
 		const cover = useWatch({ control: form.control, name: 'cover_image' });
+		const videoUrl = useWatch({ control: form.control, name: 'video_url' });
+		const title = useWatch({ control: form.control, name: 'title' });
 
 		return (
 			<div ref={ref} className="space-y-8">
@@ -130,6 +133,47 @@ export const CoverImageStep = forwardRef<HTMLDivElement, CoverImageStepProps>(
 									</div>
 								</div>
 							</div>
+						</div>
+					</div>
+				</Card>
+				<Card className="overflow-hidden border-primary/15 p-5 sm:p-6">
+					<div className="mb-6 flex items-start gap-3">
+						<span className="rounded-xl bg-primary/10 p-3 text-primary">
+							<Video className="size-5" aria-hidden />
+						</span>
+						<div>
+							<h2 className="text-xl font-semibold">O evento também ganha vida em vídeo</h2>
+							<p className="mt-1 text-sm text-muted-foreground">
+								Apresente a experiência, mostre uma edição anterior ou compartilhe um convite.
+							</p>
+						</div>
+					</div>
+					<div className="space-y-5">
+						<FormField
+							control={form.control}
+							name="video_url"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>URL do vídeo no YouTube (opcional)</FormLabel>
+									<FormControl>
+										<Input
+											{...field}
+											value={field.value ?? ''}
+											type="url"
+											maxLength={2048}
+											placeholder="https://www.youtube.com/watch?v=..."
+										/>
+									</FormControl>
+									<p className="text-sm text-muted-foreground">
+										Aceita links de vídeos, Shorts e transmissões do YouTube. O vídeo aparecerá na seção Vídeo da página
+										pública do evento. Deixe vazio para remover.
+									</p>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<div className="max-w-2xl">
+							<YouTubeVideo url={videoUrl} title={title || 'Seu evento'} />
 						</div>
 					</div>
 				</Card>

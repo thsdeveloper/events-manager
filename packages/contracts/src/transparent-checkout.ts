@@ -68,6 +68,8 @@ export interface CheckoutQuote {
 	mock?: boolean;
 }
 export interface TransparentPayment {
+	/** Confirmação local de sandbox; não representa liquidação no provedor. */
+	developmentSimulation?: boolean;
 	id: string;
 	method: 'PIX' | 'CARD' | 'BOLETO';
 	status: string;
@@ -80,6 +82,8 @@ export interface TransparentPayment {
 }
 export interface TransparentCheckoutResult {
 	attemptId: string;
+	/** Disponibilidade calculada pela API para uma cobrança pendente no ambiente de testes. */
+	canSimulatePayment?: boolean;
 	status: 'processing' | 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'refunded' | 'disputed';
 	payment: TransparentPayment | null;
 	registrationId?: string;

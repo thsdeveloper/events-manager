@@ -7,7 +7,8 @@
 import { describe, expect, it } from 'vitest';
 import { paymentRoutes } from '../src/routes/payments.js';
 import { MockPaymentGateway } from '../src/infrastructure/payments/mock-payment-gateway.js';
-import { buildRouteTestApp, createSupabaseClientsStub, createTestEnv } from './support/index.js';
+import type { PaymentGateway } from '../src/application/payments/payment-gateway.js';
+import { buildRouteTestApp, createSupabaseClientsStub, createTestEnv, partialMock } from './support/index.js';
 
 describe('GET /api/payments/methods', () => {
 	it('lists the methods the store is configured to accept, without requiring a session', async () => {
@@ -43,7 +44,7 @@ it.each([
 ])('offers only effective organization methods for a public event: %j', async (preferences, expected) => {
 	const id = '10000000-0000-4000-8000-000000000001';
 	const app = await buildRouteTestApp(paymentRoutes, {
-		env: createTestEnv(),
+		env: createTestEnv({ APP_ENV: 'production' }),
 		clients: createSupabaseClientsStub({
 			tables: {
 				events: { data: { id, organizer_id: preferences } },
@@ -57,6 +58,47 @@ it.each([
 	expect(response.json()).toEqual({ methods: expected });
 	await app.close();
 });
+
+it.each([
+	['development', 'abc_dev_test', 'pk_test', ['PIX', 'CARD']],
+	['production', 'abc_dev_test', 'pk_test', ['PIX']],
+	['development', 'abc_live_test', 'pk_test', ['PIX']],
+	['development', undefined, 'pk_test', ['PIX']],
+	['development', 'abc_dev_test', undefined, ['PIX']],
+] as const)(
+	'uses safe card availability for %s with key %s and public key %s',
+	async (stage, secret, publicKey, expected) => {
+		const id = '10000000-0000-4000-8000-000000000001';
+		const app = await buildRouteTestApp(paymentRoutes, {
+			env: createTestEnv({
+				APP_ENV: stage,
+				PAYMENTS_MODE: 'abacatepay',
+				ABACATEPAY_API_KEY: secret,
+				ABACATEPAY_PUBLIC_KEY: publicKey,
+				ABACATEPAY_METHODS: ['PIX', 'CARD'],
+			}),
+			payments: partialMock<PaymentGateway>({ provider: 'abacatepay' }),
+			clients: createSupabaseClientsStub({
+				tables: {
+					events: {
+						data: {
+							id,
+							organizer_id: {
+								accepted_payment_methods: ['PIX', 'CARD', 'DEBIT'],
+								credit_card_settlement_period: 'D+30',
+							},
+						},
+					},
+					event_configurations: { data: { gateway_card_settlement_period: 'D+1' } },
+				},
+			}).clients,
+		});
+		const response = await app.inject({ method: 'GET', url: `/api/payments/methods?eventId=${id}` });
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toEqual({ methods: expected });
+		await app.close();
+	},
+);
 it('rejects an invalid event identifier before reading payment preferences', async () => {
 	const app = await buildRouteTestApp(paymentRoutes, {
 		env: createTestEnv(),

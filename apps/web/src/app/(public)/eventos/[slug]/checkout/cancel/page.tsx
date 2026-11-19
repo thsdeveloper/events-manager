@@ -1,3 +1,4 @@
+import Container from '@/components/ui/container';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { XCircle, ArrowLeft, HelpCircle } from 'lucide-react';
@@ -14,8 +15,8 @@ export default async function CheckoutCancelPage({
 	const { checkout_id: checkoutId } = await searchParams;
 
 	return (
-		<div className="min-h-screen flex items-center justify-center p-6">
-			<Card className="max-w-2xl w-full">
+		<Container className="flex min-h-[70vh] items-center py-8">
+			<Card className="w-full">
 				<CardHeader className="text-center">
 					<div className="mx-auto mb-4 size-16 bg-amber-100 rounded-full flex items-center justify-center">
 						<XCircle className="size-10 text-amber-600" />
@@ -64,6 +65,6 @@ export default async function CheckoutCancelPage({
 					</div>
 				</CardContent>
 			</Card>
-		</div>
+		</Container>
 	);
 }

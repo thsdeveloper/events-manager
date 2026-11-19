@@ -1,3 +1,4 @@
+import Container from '@/components/ui/container';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import type { ReceivingAccountOverview } from '@events-manager/contracts';
@@ -13,11 +14,11 @@ export default async function PendingReceivingPage({ params }: { params: Promise
 		const data = await authenticatedBackendFetch<ReceivingAccountOverview>(`/api/organizer/receiving-accounts/${id}`);
 
 		return (
-			<div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+			<Container className="py-8">
 				<ReactQueryProvider>
 					<ReceivingAccountPage key={id} initialData={data} />
 				</ReactQueryProvider>
-			</div>
+			</Container>
 		);
 	} catch (error) {
 		if (error instanceof BackendRequestError && [403, 404].includes(error.status)) notFound();

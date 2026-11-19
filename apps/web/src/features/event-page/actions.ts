@@ -11,6 +11,8 @@ import { eventCacheTag, CMS_CONTENT_CACHE_TAG } from '@/lib/content/fetchers';
 export async function revalidateEventPage(slug: string) {
 	revalidateTag(eventCacheTag(slug));
 	revalidateTag(CMS_CONTENT_CACHE_TAG);
+	revalidatePath(`/eventos/${slug}`);
+	revalidatePath(`/eventos/${slug}/checkout`);
 	revalidatePath('/eventos');
 	revalidatePath('/sitemap.xml');
 }

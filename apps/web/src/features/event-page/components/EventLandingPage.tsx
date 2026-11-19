@@ -1,11 +1,15 @@
-import type { CSSProperties } from 'react';
-import type { Event, EventPageLayout, EventPageSection } from '@events-manager/contracts';
+import type { CSSProperties, ReactNode } from 'react';
+import { getYouTubeVideoId, type Event, type EventPageLayout, type EventPageSection } from '@events-manager/contracts';
 import { Globe, Mail } from 'lucide-react';
 import Link from 'next/link';
 import MediaImage from '@/components/shared/MediaImage';
 import { localizedLayout, type EventDescriptionLanguage } from '../content';
+import { EventVideo } from './EventVideo';
 import { EventLanguageLinks } from './EventLanguageLinks';
 import { EventPreviewSurface } from './EventPreviewSurface';
+import { Container } from '@/components/design-system/atoms/Container';
+import { EventShareActions } from './EventShareActions';
+import { OrganizationEvents } from './OrganizationEvents';
 import { cn } from '@/lib/utils';
 import { organizerOf, type LandingContext, type LandingMode } from './landing-context';
 import { AccentButton, AnchorLink } from './LandingPrimitives';
@@ -31,9 +35,13 @@ export interface EventLandingPageProps {
 	mode?: LandingMode;
 	language?: EventDescriptionLanguage;
 	previewCoverUrl?: string | null;
+	relatedEvents?: Event[];
+	/** Rendering strategy: the public page supplies the Puck RSC renderer. */
+	renderSections?: (context: LandingContext, sections: EventPageSection[]) => ReactNode;
+	children?: ReactNode;
 }
 
-const DEFAULT_ACCENT = '#6644ff';
+const DEFAULT_ACCENT = '#743DF5';
 
 /**
  * Landing page do evento, montada pelo organizador. Sem cabeçalho nem rodapé
@@ -47,9 +55,18 @@ export function EventLandingPage({
 	mode = 'live',
 	language = 'pt',
 	previewCoverUrl,
+	relatedEvents = [],
+	renderSections,
+	children,
 }: EventLandingPageProps) {
 	const layout = localizedLayout(originalLayout, event, language);
 	const visible = layout.sections.filter((section) => !section.hidden);
+	const hasVideo = Boolean(getYouTubeVideoId(event.video_url));
+	let videoAnchor = 'video';
+	while (visible.some((section) => section.anchor === videoAnchor)) videoAnchor += '-evento';
+	const headerLayout = hasVideo
+		? { ...layout, header: { ...layout.header, nav: [...layout.header.nav, { anchor: videoAnchor, label: 'Vídeo' }] } }
+		: layout;
 	const context: LandingContext = {
 		event,
 		mode,
@@ -69,16 +86,34 @@ export function EventLandingPage({
 				dark ? 'dark bg-slate-950 text-white [&_.landing-prose]:prose-invert' : 'bg-white text-slate-900',
 			)}
 		>
-			{layout.header.show ? <LandingHeader context={context} layout={layout} /> : null}
+			{layout.header.show ? <LandingHeader context={context} layout={headerLayout} /> : null}
 			<main lang={language}>
 				{mode === 'live' && (
-					<div className="mx-auto max-w-6xl px-4">
+					<div className="mx-auto max-w-7xl px-4">
 						<EventLanguageLinks event={event} language={language} />
 					</div>
 				)}
-				{visible.map((section) => (
-					<LandingSection key={section.id} context={context} section={section} />
-				))}
+				{children ??
+					(renderSections
+						? renderSections(context, visible)
+						: visible.map((section) => <LandingSection key={section.id} context={context} section={section} />))}
+				{hasVideo && (
+					<Container className="py-8">
+						<EventVideo event={event} id={videoAnchor} />
+					</Container>
+				)}
+				{mode === 'live' && (
+					<Container>
+						<div className="flex flex-wrap items-center justify-between gap-4 border-t border-current/10 py-8">
+							<div>
+								<p className="font-semibold">Convide quem vem com você</p>
+								<p className="mt-1 text-sm opacity-70">Compartilhe este encontro.</p>
+							</div>
+							<EventShareActions title={event.title} slug={event.slug} />
+						</div>
+						<OrganizationEvents events={relatedEvents} organizerName={organizerOf(event)?.name} />
+					</Container>
+				)}
 			</main>
 			<LandingFooter context={context} layout={layout} />
 		</div>
@@ -87,7 +122,7 @@ export function EventLandingPage({
 	return mode === 'preview' ? <EventPreviewSurface>{page}</EventPreviewSurface> : page;
 }
 
-function LandingSection({ context, section }: { context: LandingContext; section: EventPageSection }) {
+export function LandingSection({ context, section }: { context: LandingContext; section: EventPageSection }) {
 	switch (section.type) {
 		case 'hero':
 			return <HeroSection context={context} section={section} />;
@@ -130,7 +165,7 @@ function LandingHeader({ context, layout }: { context: LandingContext; layout: E
 				layout.theme.mode === 'dark' ? 'bg-slate-950/85' : 'bg-white/85',
 			)}
 		>
-			<div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+			<div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
 				<div className="flex min-w-0 items-center gap-3">
 					{logo ? (
 						<span className="relative block h-9 w-28">
@@ -167,7 +202,7 @@ function LandingFooter({ context, layout }: { context: LandingContext; layout: E
 
 	return (
 		<footer className="border-t border-current/10 py-10">
-			<div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 sm:flex-row sm:items-start sm:justify-between sm:px-6 lg:px-8">
+			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 sm:flex-row sm:items-start sm:justify-between sm:px-6 lg:px-8">
 				{layout.footer.showOrganizer && organizer ? (
 					<div className="space-y-2">
 						<p className="text-xs font-semibold uppercase tracking-wide opacity-60">Realização</p>

@@ -6,7 +6,7 @@
 import { screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
+import { renderWithProviders } from '@/test';
 import { buildNominalTicket } from '@/test/nominal-ticket';
 import { MyTicketsContent } from './MyTicketsContent';
 
@@ -71,12 +71,15 @@ describe('MyTicketsContent', () => {
 		expect(screen.getByRole('link', { name: /explorar eventos/i })).toHaveAttribute('href', '/eventos');
 	});
 
-	it('shows one card per ticket, naming who goes on each and who bought a gift', () => {
+	it('shows one card per purchase with the total tickets and links to its details page', () => {
 		renderWithProviders(<MyTicketsContent tickets={[mine, pending, gift]} />);
-
-		expect(screen.getAllByText('EVT-7D5F942FFF94')).not.toHaveLength(0);
-		expect(screen.getByText('Participante a informar')).toBeInTheDocument();
-		expect(screen.getByText('Pendente de nomeação')).toBeInTheDocument();
+		expect(screen.getAllByRole('article')).toHaveLength(2);
+		expect(screen.getByText('2 ingressos')).toBeInTheDocument();
+		expect(screen.getByText('1 participante a informar')).toBeInTheDocument();
+		expect(screen.getAllByRole('link', { name: /Ver detalhes/i }).map((link) => link.getAttribute('href'))).toEqual([
+			'/perfil/ingressos/reg-1',
+			'/perfil/ingressos/reg-2',
+		]);
 		expect(screen.getByText('Comprado por Carlos Dias')).toBeInTheDocument();
 	});
 
@@ -90,22 +93,13 @@ describe('MyTicketsContent', () => {
 		expect(within(stats).getByText('Investido').nextSibling).toHaveTextContent('R$ 724,50');
 	});
 
-	it('lets the buyer name a pending ticket and shows the name without reloading', async () => {
-		mockFetch([
-			[
-				'/api/user/tickets/t-2/attendee',
-				() => jsonResponse({ ...pending, attendee_name: 'Bia Lima', attendee_email: 'bia@events.local' }),
-			],
-		]);
+	it('keeps all units in a purchase when searching for a particular participant or ticket', async () => {
 		const { user } = renderWithProviders(<MyTicketsContent tickets={[mine, pending]} />);
-
-		await user.click(screen.getByRole('button', { name: 'Informar participante' }));
-		await user.type(screen.getByLabelText('Nome completo'), 'Bia Lima');
-		await user.type(screen.getByLabelText('E-mail'), 'bia@events.local');
-		await user.click(screen.getByRole('button', { name: 'Salvar participante' }));
-
-		expect(await screen.findByText('Bia Lima')).toBeInTheDocument();
-		expect(screen.queryByText('Participante a informar')).not.toBeInTheDocument();
+		await user.click(screen.getByRole('button', { name: /Filtros/ }));
+		await user.type(screen.getByLabelText('Buscar ingressos'), 'PENDING');
+		await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }));
+		expect(screen.getByText('2 ingressos')).toBeInTheDocument();
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 	});
 
 	it('offers no attendee change on a ticket someone else bought', () => {
@@ -113,4 +107,18 @@ describe('MyTicketsContent', () => {
 
 		expect(screen.queryByRole('button', { name: /participante/i })).not.toBeInTheDocument();
 	});
+});
+
+it('does not count pending or refunded orders as money already spent', () => {
+	const unpaid = buildNominalTicket({
+		id: 'unpaid',
+		registration: { ...mine.registration, status: 'pending', payment_status: 'pending' },
+	});
+	const refunded = buildNominalTicket({
+		id: 'refunded',
+		registration: { ...mine.registration, status: 'cancelled', payment_status: 'refunded' },
+	});
+	renderWithProviders(<MyTicketsContent tickets={[mine, unpaid, refunded]} />);
+	const stats = screen.getByRole('list', { name: 'Resumo dos ingressos' });
+	expect(within(stats).getByText('Investido').nextSibling).toHaveTextContent('R$ 362,25');
 });

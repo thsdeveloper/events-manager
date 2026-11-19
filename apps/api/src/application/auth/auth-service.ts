@@ -113,8 +113,10 @@ export interface AuthRepository {
 	recordDocumentChange(change: DocumentChange): Promise<void>;
 	/** Pede ao provedor o código de confirmação para o novo telefone (fluxo phone_change). */
 	requestPhoneChange(session: SessionTokens, phoneE164: string): Promise<void>;
+	requestEmailCompletion(session: SessionTokens, email: string): Promise<void>;
+	verifyEmailCompletion(userId: string, email: string, token: string): Promise<void>;
 	/** Confirma o código junto ao provedor; lança AuthProviderError se inválido ou expirado. */
-	verifyPhoneChange(phoneE164: string, token: string): Promise<void>;
+	verifyPhoneChange(phoneE164: string, token: string, userId: string): Promise<void>;
 	/** Grava o telefone confirmado no perfil, com a data da confirmação. */
 	markPhoneVerified(userId: string, phoneDigits: string): Promise<unknown>;
 	confirmEmail(email: string, token: string): Promise<AuthResult>;
@@ -339,7 +341,7 @@ export class AuthService {
 
 	/**
 	 * Atalho de desenvolvimento: marca o telefone como confirmado sem código.
-	 * Só a rota decide quando usá-lo (NODE_ENV=development); nunca chega a
+	 * Só a rota decide quando usá-lo (APP_ENV=development); nunca chega a
 	 * produção, onde o único caminho é o código do provedor.
 	 */
 	confirmPhoneWithoutCode(user: AuthIdentity, phoneDigits: string) {
@@ -348,12 +350,35 @@ export class AuthService {
 
 	async confirmPhoneVerification(user: AuthIdentity, phoneDigits: string, token: string) {
 		try {
-			await this.repository.verifyPhoneChange(toBrazilianE164(phoneDigits), token);
+			await this.repository.verifyPhoneChange(toBrazilianE164(phoneDigits), token, user.id);
 		} catch {
 			throw new ApiError('Código inválido ou expirado.', 400, 'INVALID_PHONE_CODE', { field: 'token' });
 		}
 
 		return this.repository.markPhoneVerified(user.id, phoneDigits);
+	}
+
+	async requestMissingEmail(user: AuthIdentity, session: SessionTokens, email: string) {
+		if (user.email?.trim()) throw new ApiError('Esta conta já possui e-mail de acesso.', 403, 'EMAIL_ALREADY_DEFINED');
+		try {
+			await this.repository.requestEmailCompletion(session, email);
+		} catch (error) {
+			if (error instanceof AuthProviderError && error.status === 429)
+				throw new ApiError('Aguarde um minuto antes de pedir outro código.', 429, 'EMAIL_CODE_RATE_LIMITED');
+			throw new ApiError('Não foi possível enviar o código para este e-mail.', 400, 'EMAIL_CODE_REQUEST_ERROR');
+		}
+	}
+	async confirmMissingEmail(user: AuthIdentity, email: string, token: string) {
+		if (user.email?.trim()) {
+			if (user.email.toLowerCase() === email.toLowerCase()) return this.repository.serialize(user);
+			throw new ApiError('Esta conta já possui e-mail de acesso.', 403, 'EMAIL_ALREADY_DEFINED');
+		}
+		try {
+			await this.repository.verifyEmailCompletion(user.id, email, token);
+		} catch {
+			throw new ApiError('Código de e-mail inválido ou expirado.', 400, 'INVALID_EMAIL_CODE');
+		}
+		return this.repository.serialize({ ...user, email });
 	}
 
 	/**

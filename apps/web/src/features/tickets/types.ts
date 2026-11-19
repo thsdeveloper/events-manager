@@ -23,6 +23,9 @@ export interface TicketDraft {
 	min_quantity_per_purchase: number;
 	max_quantity_per_purchase: number;
 	allow_installments: boolean;
+	allow_pix_installments?: boolean;
+	max_pix_installments?: number | null;
+	min_amount_for_pix_installments?: number | null;
 	max_installments?: number | null;
 	min_amount_for_installments?: number | null;
 }

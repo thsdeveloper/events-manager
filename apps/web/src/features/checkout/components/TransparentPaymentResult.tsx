@@ -1,12 +1,14 @@
 'use client';
-import Link from 'next/link';
+
+import Image from 'next/image';
 import type { TransparentCheckoutResult } from '@events-manager/contracts';
-import { CheckCircle2, Clock3, Copy, ShieldCheck } from 'lucide-react';
+import { Clock3, FlaskConical, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/formatters';
+import { useSimulatePayment } from '../api/useSimulatePayment';
+import { PaymentInstructions } from './PaymentInstructions';
+import { PurchaseSuccess } from './PurchaseSuccess';
+
 export function TransparentPaymentResult({
 	result,
 	onRefresh,
@@ -20,130 +22,138 @@ export function TransparentPaymentResult({
 	isRefreshing?: boolean;
 	statusError?: boolean;
 }) {
-	const confirmed = result.status === 'confirmed';
+	const simulation = useSimulatePayment(result.attemptId, onRefresh);
+	if (result.status === 'confirmed')
+		return <PurchaseSuccess purchaseId={result.attemptId} payment={result.payment} onReset={onReset} />;
 	const ended = ['failed', 'cancelled', 'refunded'].includes(result.status);
 	const payment = result.payment;
-	const title = confirmed
-		? 'Pagamento confirmado'
-		: ended
-			? result.status === 'refunded'
-				? 'Pagamento reembolsado'
-				: 'Pagamento não concluído'
-			: result.status === 'processing'
-				? 'Estamos verificando seu pagamento'
-				: result.status === 'disputed'
-					? 'Pagamento em análise'
-					: payment?.method === 'PIX'
-						? 'Pague com Pix'
-						: payment?.method === 'BOLETO'
-							? 'Pague seu boleto'
-							: 'Aguardando confirmação do cartão';
-	async function copy(value: string) {
-		try {
-			await navigator.clipboard.writeText(value);
-			toast({ title: 'Código copiado' });
-		} catch {
-			toast({
-				title: 'Não foi possível copiar',
-				description: 'Selecione e copie o código abaixo.',
-				variant: 'destructive',
-			});
-		}
-	}
+	const title = ended
+		? result.status === 'refunded'
+			? 'Pagamento reembolsado'
+			: 'Pagamento não concluído'
+		: result.status === 'processing'
+			? 'Estamos verificando seu pagamento'
+			: result.status === 'disputed'
+				? 'Pagamento em análise'
+				: payment?.method === 'PIX'
+					? 'Pague com Pix'
+					: payment?.method === 'BOLETO'
+						? 'Pague seu boleto'
+						: 'Aguardando confirmação do cartão';
 
 	return (
 		<section
 			aria-label="Andamento do pagamento"
-			className="mx-auto max-w-2xl space-y-5 rounded-2xl border bg-card p-6 sm:p-8"
+			className="w-full overflow-hidden rounded-3xl border bg-white shadow-sm"
 		>
-			{confirmed ? <CheckCircle2 className="size-10 text-emerald-600" /> : <Clock3 className="size-10 text-primary" />}
-			<h2 className="text-2xl font-semibold">{title}</h2>
-			{confirmed ? (
-				<>
-					<p>Seus ingressos estão disponíveis na sua conta. A confirmação também será enviada por e-mail.</p>
-					<Button asChild>
-						<Link href="/my-registrations">Ver meus ingressos</Link>
+			<header className="flex flex-wrap items-center gap-4 border-b bg-[#F3EEFF]/40 p-5 sm:gap-5 sm:px-8 sm:py-6">
+				<Image
+					src="/illustrations/checkout/payment-pending.png"
+					alt=""
+					width={88}
+					height={88}
+					className="size-16 object-contain sm:size-20"
+				/>
+				<div className="min-w-0 flex-1">
+					<p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
+						{ended ? 'Andamento da compra' : 'Falta só o pagamento'}
+					</p>
+					<h2 className="text-xl font-semibold tracking-tight text-[#231A33] sm:text-2xl">{title}</h2>
+					<p className="mt-1.5 text-sm text-muted-foreground">
+						{ended ? 'Confira o status abaixo para continuar.' : 'Conclua esta etapa para receber seus ingressos.'}
+					</p>
+				</div>
+				{payment && !ended ? (
+					<dl className="w-full border-t pt-4 sm:ml-auto sm:w-auto sm:border-0 sm:pl-6 sm:pt-0 sm:text-right">
+						<dt className="text-xs text-muted-foreground">Total a pagar</dt>
+						<dd className="mt-1 text-2xl font-semibold tracking-tight text-[#231A33] sm:text-3xl">
+							{formatCurrency(payment.amountInCents / 100)}
+						</dd>
+					</dl>
+				) : null}
+			</header>
+			<div className="space-y-6 p-5 sm:p-8">
+				{payment?.expiresAt && !ended ? (
+					<p className="flex items-center gap-2 text-xs text-muted-foreground">
+						<Clock3 className="size-4" aria-hidden="true" />
+						Vencimento:{' '}
+						<time dateTime={payment.expiresAt} className="font-medium text-foreground">
+							{new Date(payment.expiresAt).toLocaleString('pt-BR')}
+						</time>
+					</p>
+				) : null}
+				{result.message ? (
+					<p role="status" className="text-sm text-muted-foreground">
+						{result.message}
+					</p>
+				) : null}
+				{payment && !ended && result.status !== 'disputed' ? (
+					<PaymentInstructions key={payment.id} payment={payment} />
+				) : null}
+				{ended ? (
+					<Button type="button" onClick={onReset}>
+						Tentar outro pagamento
 					</Button>
-					<Button type="button" variant="outline" onClick={onReset}>
-						Fazer nova compra
-					</Button>
-				</>
-			) : (
-				<>
-					{result.message ? <p>{result.message}</p> : null}
-					{!ended ? (
-						<p className="text-sm text-muted-foreground">
-							A compra será confirmada após a verificação do pagamento. Não refaça a compra enquanto esta tentativa
-							estiver pendente.
-						</p>
-					) : (
-						<Button type="button" onClick={onReset}>
-							Tentar outro pagamento
-						</Button>
-					)}
-					{payment && !ended ? (
-						<>
-							<p className="text-2xl font-semibold">{formatCurrency(payment.amountInCents / 100)}</p>
-							{payment.expiresAt ? (
-								<p className="text-sm">Vencimento: {new Date(payment.expiresAt).toLocaleString('pt-BR')}</p>
-							) : null}
-							{payment.qrCodeBase64 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(payment.qrCodeBase64) ? (
-								<img
-									src={payment.qrCodeBase64}
-									alt="QR Code Pix para pagar esta compra"
-									width={224}
-									height={224}
-									className="mx-auto rounded-lg border bg-white p-3"
-								/>
-							) : null}
-							{payment.copyPasteCode ? (
-								<div className="space-y-2">
-									<Label htmlFor="transparent-pix-code">Pix copia e cola</Label>
-									<Input id="transparent-pix-code" value={payment.copyPasteCode} readOnly />
-									<Button type="button" variant="outline" onClick={() => copy(payment.copyPasteCode!)}>
-										<Copy className="size-4" />
-										Copiar código Pix
-									</Button>
-								</div>
-							) : null}
-							{payment.barcode ? (
-								<div className="space-y-2">
-									<Label htmlFor="transparent-boleto-code">Linha digitável do boleto</Label>
-									<Input id="transparent-boleto-code" value={payment.barcode} readOnly />
-									<Button type="button" variant="outline" onClick={() => copy(payment.barcode!)}>
-										Copiar linha digitável
-									</Button>
-									<p className="text-xs text-muted-foreground">
-										A compensação do boleto pode levar até 3 dias úteis. Se pagar pelo Pix do boleto, não pague também a
-										linha digitável.
-									</p>
-								</div>
-							) : null}
-							{payment.boletoUrl && /^https:\/\/(app\.)?abacatepay\.com\//.test(payment.boletoUrl) ? (
-								<Button asChild variant="outline">
-									<a href={payment.boletoUrl} target="_blank" rel="noopener noreferrer">
-										Abrir boleto para impressão
-									</a>
-								</Button>
-							) : null}
-						</>
-					) : null}
-					{!ended ? (
-						<Button type="button" onClick={onRefresh} disabled={isRefreshing}>
+				) : (
+					<div className="flex flex-col gap-4 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+						<div className="max-w-lg">
+							<p className="flex items-center gap-2 text-sm font-medium">
+								<span aria-hidden="true" className="size-2 rounded-full bg-primary" />A confirmação será atualizada
+								automaticamente
+							</p>
+							<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+								Não refaça a compra enquanto esta tentativa estiver pendente.
+							</p>
+						</div>
+						<Button
+							type="button"
+							variant="outline"
+							className="shrink-0 rounded-xl"
+							onClick={onRefresh}
+							disabled={isRefreshing}
+						>
+							<RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} />
 							{isRefreshing ? 'Verificando…' : 'Verificar pagamento'}
 						</Button>
-					) : null}
-					{statusError ? (
-						<p role="status" className="text-sm text-amber-800">
-							Não foi possível atualizar agora. Sua tentativa foi preservada; verifique novamente em instantes.
-						</p>
-					) : null}
-				</>
-			)}
-			<p className="flex items-center gap-2 text-xs text-muted-foreground">
-				<ShieldCheck className="size-4" />
-				Pagamento processado com segurança pela AbacatePay.
-			</p>
+					</div>
+				)}
+				{statusError ? (
+					<p role="status" className="text-sm text-amber-800">
+						Não foi possível atualizar agora. Sua tentativa foi preservada; verifique novamente em instantes.
+					</p>
+				) : null}
+				{result.canSimulatePayment && result.status === 'pending' ? (
+					<div className="space-y-3 rounded-2xl border border-dashed border-primary/25 bg-[#F3EEFF]/50 p-4">
+						<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<p className="flex items-center gap-2 text-sm font-medium text-primary">
+									<FlaskConical className="size-4" />
+									Ambiente de testes
+								</p>
+								<p className="mt-1 text-xs text-muted-foreground">Confirme esta compra sem movimentar dinheiro.</p>
+							</div>
+							<Button
+								type="button"
+								variant="outline"
+								className="shrink-0 rounded-xl border-primary/20 text-primary"
+								disabled={simulation.isPending}
+								onClick={() => simulation.mutate()}
+							>
+								{simulation.isPending ? 'Confirmando…' : 'Confirmar pagamento de teste'}
+							</Button>
+						</div>
+						{simulation.error ? (
+							<p role="alert" className="text-sm text-destructive">
+								{simulation.error.message}
+							</p>
+						) : null}
+					</div>
+				) : null}
+			</div>
+			<footer className="flex items-center justify-center gap-2 border-t bg-[#F3EEFF]/20 px-5 py-3 text-xs text-muted-foreground">
+				<ShieldCheck className="size-4 shrink-0" />
+				Pagamento protegido e processado pela AbacatePay.
+			</footer>
 		</section>
 	);
 }

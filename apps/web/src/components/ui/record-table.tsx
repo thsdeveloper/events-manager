@@ -15,9 +15,10 @@ interface RecordTableProps {
 	rows: TableRecord[];
 	paginate?: boolean;
 	emptyMessage?: ReactNode;
+	onRowClick?: (row: TableRecord) => void;
 }
 /** Server components can provide rendered cells without shipping their formatters to the browser. */
-export function RecordTable({ headers, rows, paginate = true, emptyMessage }: RecordTableProps) {
+export function RecordTable({ headers, rows, paginate = true, emptyMessage, onRowClick }: RecordTableProps) {
 	const columns = useMemo<ColumnDef<TableRecord>[]>(
 		() =>
 			headers.map((header, index) => ({
@@ -33,6 +34,7 @@ export function RecordTable({ headers, rows, paginate = true, emptyMessage }: Re
 	return (
 		<DataTable
 			columns={columns}
+			onRowClick={onRowClick}
 			data={rows}
 			showToolbar={false}
 			paginate={paginate}

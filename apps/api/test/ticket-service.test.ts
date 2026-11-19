@@ -69,9 +69,14 @@ function ticket(overrides: Partial<NominalTicket> = {}): NominalTicket {
 
 function build(found: NominalTicket | null = ticket()) {
 	const repository = partialMock<TicketRepository>({
-		listForUser: vi.fn().mockResolvedValue([ticket(), ticket({ id: 't-9', registration: { ...ticket().registration, user_id: OTHER_USER } })]),
+		listForUser: vi
+			.fn()
+			.mockResolvedValue([
+				ticket(),
+				ticket({ id: 't-9', registration: { ...ticket().registration, user_id: OTHER_USER } }),
+			]),
 		findForBuyer: vi.fn().mockResolvedValue(found),
-		updateAttendee: vi.fn(async (_id, patch) => ({ ...ticket(), ...patch })),
+		updateAttendee: vi.fn(async (_id, patch) => ({ ...(found ?? ticket()), ...patch })),
 	});
 	const delivery = partialMock<TicketDelivery>({ execute: vi.fn().mockResolvedValue({}) });
 	const service = new TicketService(repository, delivery, () => new Date('2026-09-18T10:00:00.000Z'));
@@ -151,5 +156,90 @@ describe('TicketService.nameAttendee', () => {
 			statusCode: 409,
 			code: 'TICKET_CANCELLED',
 		});
+	});
+});
+
+describe('TicketService: access only after payment', () => {
+	const onlineTicket = () =>
+		ticket({
+			attendee_name: 'Ana',
+			attendee_email: 'ana@events.local',
+			event: { ...ticket().event, online_url: 'https://example.test/transmissao' },
+			registration: { ...ticket().registration, receipt_url: 'https://example.test/comprovante' },
+		});
+	it.each([
+		{ status: 'pending', payment_status: 'pending' },
+		{ status: 'confirmed', payment_status: 'pending' },
+		{ status: 'cancelled', payment_status: 'paid' },
+		{ status: 'confirmed', payment_status: 'refunded' },
+	])('withholds online access and receipts for an unconfirmed or cancelled payment: %j', async (registration) => {
+		const original = onlineTicket();
+		const unpaid = { ...original, registration: { ...original.registration, ...registration } };
+		const { service, repository } = build(unpaid);
+		vi.mocked(repository.listForUser).mockResolvedValue([unpaid]);
+		const [result] = await service.listForUser(TEST_USER_ID, 'ana@events.local');
+		expect(result.registration.payment_status).toBe(registration.payment_status);
+		expect(result.event.online_url).toBeNull();
+		expect(result.registration.receipt_url).toBeNull();
+	});
+	it.each(['paid', 'free'])('preserves online access for a named %s ticket', async (payment_status) => {
+		const original = onlineTicket();
+		const { service, repository } = build();
+		vi.mocked(repository.listForUser).mockResolvedValue([
+			{ ...original, registration: { ...original.registration, payment_status } },
+		]);
+		const [result] = await service.listForUser(TEST_USER_ID, 'ana@events.local');
+		expect(result.event.online_url).toBe(original.event.online_url);
+	});
+	it('naming a participant cannot release online access or a receipt for a pending payment', async () => {
+		const original = onlineTicket();
+		const { service, delivery } = build({
+			...original,
+			registration: { ...original.registration, status: 'pending', payment_status: 'pending' },
+		});
+		const result = await service.nameAttendee(TEST_USER_ID, original.id, { name: 'Bia', email: 'bia@events.local' });
+		expect(result.attendee_name).toBe('Bia');
+		expect(result.event.online_url).toBeNull();
+		expect(result.registration.receipt_url).toBeNull();
+		expect(delivery.execute).not.toHaveBeenCalled();
+	});
+});
+
+it('locks the buyer’s own ticket while preserving purchase ownership', async () => {
+	const own = ticket({ is_buyer: true });
+	const { service, repository } = build(own);
+	vi.mocked(repository.listForUser).mockResolvedValue([own]);
+	expect((await service.listForUser(TEST_USER_ID, 'ana@events.local'))[0]).toMatchObject({
+		can_edit_attendee: false,
+		purchased_by_me: true,
+	});
+	await expect(
+		service.nameAttendee(TEST_USER_ID, own.id, { name: 'Bia', email: 'bia@example.test' }),
+	).rejects.toMatchObject({ code: 'BUYER_TICKET_LOCKED', statusCode: 409 });
+	expect(repository.updateAttendee).not.toHaveBeenCalled();
+});
+it('groups all ticket types from the same purchase and loads only the buyer’s installments', async () => {
+	const first = ticket({ registration: { ...ticket().registration, checkout_group_id: 'purchase-1' } });
+	const second = ticket({
+		id: 't-2',
+		registration: { ...ticket().registration, id: 'r-2', checkout_group_id: 'purchase-1' },
+	});
+	const { service, repository } = build();
+	vi.mocked(repository.listForUser).mockResolvedValue([first, second, ticket({ id: 'other' })]);
+	Object.assign(repository, { listInstallments: vi.fn().mockResolvedValue([{ id: 'i-1', status: 'paid' }]) });
+	const purchase = await service.purchaseDetails(TEST_USER_ID, 'ana@events.local', 'purchase-1');
+	expect(purchase.tickets.map((item) => item.id)).toEqual(['t-1', 't-2']);
+	expect(purchase.installments).toEqual([{ id: 'i-1', status: 'paid' }]);
+	expect(repository.listInstallments).toHaveBeenCalledWith(['r-1', 'r-2'], TEST_USER_ID);
+});
+it('never loads purchaser payments for a recipient, and hides unknown purchases', async () => {
+	const gift = ticket({ registration: { ...ticket().registration, user_id: OTHER_USER } });
+	const { service, repository } = build();
+	vi.mocked(repository.listForUser).mockResolvedValue([gift]);
+	Object.assign(repository, { listInstallments: vi.fn() });
+	expect((await service.purchaseDetails(TEST_USER_ID, 'ana@events.local', 'r-1')).installments).toEqual([]);
+	expect(repository.listInstallments).not.toHaveBeenCalled();
+	await expect(service.purchaseDetails(TEST_USER_ID, 'ana@events.local', 'missing')).rejects.toMatchObject({
+		statusCode: 404,
 	});
 });

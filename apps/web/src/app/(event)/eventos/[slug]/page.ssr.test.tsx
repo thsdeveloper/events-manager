@@ -1,11 +1,12 @@
+import { buildDefaultEventPageLayout, type Event } from '@events-manager/contracts';
 /**
  * Página pública do evento. A escolha de ingressos acontece no checkout: aqui a
- * pessoa lê sobre o evento e encontra um único caminho para comprar. Repetir a
- * lista de ingressos nesta tela cria dois lugares para a mesma decisão.
+ * pessoa consulta informações e condições dos ingressos antes de comprar.
+ * A seleção de quantidades e participantes continua exclusiva do checkout.
  */
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import EventPage, { generateMetadata } from './page';
 
 vi.mock('next/link', () => ({
@@ -26,8 +27,14 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/components/map/EventLocationView', () => ({ EventLocationView: () => <div>mapa</div> }));
 
 const fetchEventBySlug = vi.fn();
+const fetchOrganizationEvents = vi.fn().mockResolvedValue([]);
+beforeEach(() => {
+	vi.useFakeTimers({ toFake: ['Date'] });
+	vi.setSystemTime(new Date('2026-09-18T12:00:00Z'));
+});
 vi.mock('@/lib/content/fetchers', () => ({
 	fetchEventBySlug: (slug: string) => fetchEventBySlug(slug),
+	fetchOrganizationEvents: (organizerId: string, excludeId: string) => fetchOrganizationEvents(organizerId, excludeId),
 	fetchSiteData: async () => ({
 		globals: { title: 'Flouvi' },
 		headerNavigation: { items: [] },
@@ -38,14 +45,10 @@ vi.mock('@/lib/content/fetchers', () => ({
 vi.mock('@/components/layout/SiteLayout', () => ({
 	default: ({ children }: { children: ReactNode }) => <div data-site-layout>{children}</div>,
 }));
-vi.mock('@/features/event-page/components/EventLandingPage', () => ({
-	EventLandingPage: ({ layout }: { layout: { sections: unknown[] } }) => (
-		<div data-landing>{layout.sections.length} seções</div>
-	),
-}));
 
 const event = {
 	id: 'e-1',
+	organizer_id: 'org-1',
 	slug: 'congresso',
 	title: 'Congresso de Jovens',
 	description: '<p>Três dias de encontros.</p>',
@@ -77,11 +80,12 @@ async function renderPage() {
 }
 
 describe('EventPage', () => {
-	it('sends the buyer to the checkout instead of listing tickets on the event page', async () => {
+	it('shows ticket conditions and sends the buyer to checkout to select quantities', async () => {
 		const markup = await renderPage();
 
 		expect(markup).toMatch(/<a[^>]*href="\/eventos\/congresso\/checkout"[^>]*>[^<]*Comprar ingressos/);
-		expect(markup).not.toContain('Meia Entrada');
+		expect(markup).toContain('Meia Entrada');
+		expect(markup).toContain('Para estudantes');
 		expect(markup).not.toContain('Selecionar');
 		expect(markup).not.toMatch(/<h2[^>]*>(?:(?!<\/h2>).)*Ingressos<\/span>/);
 	});
@@ -116,21 +120,15 @@ describe('EventPage', () => {
 	it('renders the organizer\u2019s landing page alone, without the site header, when one is published', async () => {
 		fetchEventBySlug.mockResolvedValue({
 			...event,
-			page: {
-				version: 1,
-				theme: { mode: 'light' },
-				header: { show: true, nav: [] },
-				footer: {},
-				sections: [{ type: 'tickets' }],
-			},
+			page: buildDefaultEventPageLayout(event as unknown as Event),
 		});
 
 		const markup = renderToStaticMarkup(await EventPage({ params: Promise.resolve({ slug: 'congresso' }) }));
 
-		expect(markup).toContain('data-landing');
-		expect(markup).toContain('1 seções');
+		expect(markup).toContain('data-theme="light"');
+		expect(markup).toContain('Três dias de encontros.');
 		expect(markup).not.toContain('data-site-layout');
-		expect(markup).not.toContain('Sobre o evento');
+		expect(markup).toContain('href="/eventos/congresso/checkout"');
 	});
 });
 

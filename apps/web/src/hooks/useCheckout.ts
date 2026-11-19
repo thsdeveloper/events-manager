@@ -12,6 +12,7 @@ export function useCheckout({ eventId, userId }: { eventId: string; userId?: str
 	const [local, setLocal] = useState<TransparentCheckoutResult | null>(null);
 	const [isLoading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [restored, setRestored] = useState(false);
 	const locked = useRef(false);
 	const currentId = useRef<string | null>(null);
 	const client = useQueryClient();
@@ -20,11 +21,13 @@ export function useCheckout({ eventId, userId }: { eventId: string; userId?: str
 		setAttemptId(null);
 		setLocal(null);
 		setError(null);
+		setRestored(false);
 		try {
 			const id = sessionStorage.getItem(storageKey);
 			if (id && /^[0-9a-f-]{36}$/i.test(id)) {
 				currentId.current = id;
 				setAttemptId(id);
+				setRestored(true);
 				setLocal({ attemptId: id, status: 'processing', payment: null });
 			}
 		} catch {
@@ -43,7 +46,28 @@ export function useCheckout({ eventId, userId }: { eventId: string; userId?: str
 		},
 		refetchInterval: (query) => (terminal.has(query.state.data?.status ?? '') ? false : 4000),
 	});
-	const attempt = query.data ?? local;
+	const current = query.data ?? local;
+	useEffect(() => {
+		// A recovered payment still pending now belongs to this visit: celebrate when it completes.
+		if (restored && query.isFetchedAfterMount && query.data && query.data.status !== 'confirmed') setRestored(false);
+	}, [restored, query.isFetchedAfterMount, query.data]);
+	// Keep this visit's success visible, but never reopen a completed purchase on a later visit.
+	const attempt = restored && current?.status === 'confirmed' ? null : current;
+	useEffect(() => {
+		if (current?.status !== 'confirmed') return;
+		try {
+			if (sessionStorage.getItem(storageKey) === current.attemptId) sessionStorage.removeItem(storageKey);
+		} catch {
+			/* The next visit will verify and discard this completed attempt again. */
+		}
+		if (restored) {
+			currentId.current = null;
+			setAttemptId(null);
+			setLocal(null);
+			setError(null);
+			setRestored(false);
+		}
+	}, [current?.status, current?.attemptId, restored, storageKey]);
 	async function createCheckoutSession(
 		tickets: CheckoutQuoteInput['tickets'],
 		participantInfo: CheckoutQuoteInput['participantInfo'],
@@ -56,6 +80,7 @@ export function useCheckout({ eventId, userId }: { eventId: string; userId?: str
 		setLoading(true);
 		setError(null);
 		const id = crypto.randomUUID();
+		setRestored(false);
 		currentId.current = id;
 		try {
 			sessionStorage.setItem(storageKey, id);

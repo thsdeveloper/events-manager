@@ -26,6 +26,7 @@ describe('TicketFeeSummary', () => {
 			<TicketFeeSummary price={100} serviceFeeType="passed_to_buyer" feeConfig={feeConfig} isFallback={false} />,
 		);
 
+		expect(screen.getByRole('heading', { name: 'Prévia por ingresso' })).toBeInTheDocument();
 		expect(screen.getByText(/comprador paga/i).nextElementSibling).toHaveTextContent(/R\$\s?105,00/);
 		expect(screen.getByText(/você recebe/i).nextElementSibling).toHaveTextContent(/R\$\s?95,73/);
 		expect(screen.getByText(/taxa de conveniência/i).nextElementSibling).toHaveTextContent(/R\$\s?5,00/);

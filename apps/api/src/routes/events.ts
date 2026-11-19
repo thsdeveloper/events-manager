@@ -70,6 +70,8 @@ export async function eventRoutes(app: FastifyInstance, options: { clients: Supa
 				limit: z.coerce.number().int().min(1).max(48).default(12),
 				page: z.coerce.number().int().positive().default(1),
 				search: z.string().trim().max(100).default(''),
+				organizer_id: z.string().uuid().optional(),
+				exclude_id: z.string().uuid().optional(),
 			})
 			.parse(request.query);
 		return events.listPublic(query);

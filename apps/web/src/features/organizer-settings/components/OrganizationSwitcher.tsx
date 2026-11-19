@@ -1,5 +1,6 @@
 'use client';
 
+import { SidebarMenuButton } from '@/components/ui/sidebar';
 import { Spinner } from '@/components/ui/spinner';
 import { Building2, Check, ChevronsUpDown, Plus } from 'lucide-react';
 import Image from 'next/image';
@@ -51,9 +52,16 @@ function OrganizationMark({ organization, className }: { organization: Organizat
 interface OrganizationSwitcherProps {
 	organizations: OrganizationOption[];
 	activeId: string;
+	sidebar?: boolean;
+	onNavigate?: () => void;
 }
 
-export function OrganizationSwitcher({ organizations, activeId }: OrganizationSwitcherProps) {
+export function OrganizationSwitcher({
+	organizations,
+	activeId,
+	sidebar = false,
+	onNavigate,
+}: OrganizationSwitcherProps) {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [switching, setSwitching] = useState<string | null>(null);
@@ -71,6 +79,7 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 				if (!response.ok) throw new Error('Não foi possível trocar de organização.');
 				// Every admin screen is scoped to the active organization, so the whole
 				// tree is refetched rather than patched piecemeal.
+				onNavigate?.();
 				router.replace('/admin');
 				router.refresh();
 			} catch (error) {
@@ -83,26 +92,29 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 				setSwitching(null);
 			}
 		},
-		[router, toast],
+		[router, toast, onNavigate],
 	);
 
 	if (!active) return null;
+	const Trigger = sidebar ? SidebarMenuButton : 'button';
 
 	return (
 		<>
 			<DropdownMenu>
-				<DropdownMenuTrigger
-					aria-label={`Organização: ${active.name}`}
-					className="flex w-full items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-muted group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0"
-				>
-					<OrganizationMark organization={active} className="group-data-[collapsible=icon]:size-8" />
-					<div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-						<p className="truncate text-sm font-semibold text-foreground">{active.name}</p>
-						<p className="text-xs text-muted-foreground">
-							{organizations.length > 1 ? `${organizations.length} organizações` : 'Workspace do organizador'}
-						</p>
-					</div>
-					<ChevronsUpDown className="size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
+				<DropdownMenuTrigger asChild>
+					<Trigger
+						aria-label={`Organização: ${active.name}`}
+						className="flex h-auto min-h-12 w-full items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-muted group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:!p-0"
+					>
+						<OrganizationMark organization={active} className="group-data-[collapsible=icon]:size-8" />
+						<div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+							<p className="truncate text-sm font-semibold text-foreground">{active.name}</p>
+							<p className="text-xs text-muted-foreground">
+								{organizations.length > 1 ? `${organizations.length} organizações` : 'Workspace do organizador'}
+							</p>
+						</div>
+						<ChevronsUpDown className="size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
+					</Trigger>
 				</DropdownMenuTrigger>
 
 				<DropdownMenuContent align="start" className="w-64">
@@ -132,7 +144,10 @@ export function OrganizationSwitcher({ organizations, activeId }: OrganizationSw
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						disabled={Boolean(switching)}
-						onSelect={() => router.push('/perfil/organizador/novo')}
+						onSelect={() => {
+							onNavigate?.();
+							router.push('/perfil/organizador/novo');
+						}}
 						className="gap-2 py-2"
 					>
 						<Plus className="size-4" aria-hidden="true" />

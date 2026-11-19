@@ -15,6 +15,7 @@ import { ReconcileInstallmentCharges } from '../application/payments/reconcile-i
 import { EnforceRateLimit } from '../application/security/rate-limit.js';
 import { DeliverTickets } from '../application/tickets/deliver-tickets.js';
 import type { ApiEnv } from '../config/env.js';
+import { paymentCapabilities } from '../config/payment-capabilities.js';
 import { createEmailService } from '../infrastructure/email/create-email-service.js';
 import { verifyAbacatePayWebhook, verifyWebhookSecret } from '../infrastructure/payments/abacatepay-gateway.js';
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
@@ -121,6 +122,7 @@ export async function paymentRoutes(
 	options: { env: ApiEnv; clients: SupabaseClients; payments: PaymentGateway },
 ) {
 	const { env, clients, payments } = options;
+	const capabilities = paymentCapabilities(env, payments.provider);
 	const auth = createSupabaseAuthService(clients);
 	const inventory = new ManageTicketInventory(new SupabaseTicketInventoryRepository(clients.admin));
 	const checkoutReconciliation = new SupabaseCheckoutReconciliationRepository(clients.admin);
@@ -142,8 +144,9 @@ export async function paymentRoutes(
 		env.WEB_URL,
 		undefined,
 		new CouponService(new SupabaseCouponRepository(clients)),
-		env.ABACATEPAY_METHODS,
+		capabilities.methods,
 		ticketDelivery,
+		capabilities.testMode,
 	);
 	const attempts = new TransparentCheckoutService(
 		new SupabaseTransparentAttemptRepository(clients.admin),
@@ -151,6 +154,7 @@ export async function paymentRoutes(
 		payments,
 		payments.provider === 'mock' || Boolean(env.ABACATEPAY_API_KEY?.startsWith('abc_dev_')),
 		ticketDelivery,
+		env.APP_ENV === 'development',
 	);
 	const requestLimit = new EnforceRateLimit(new SupabaseRateLimitRepository(clients.admin));
 	async function guard(scope: string, userId: string, ip: string, limit: number) {
@@ -164,11 +168,12 @@ export async function paymentRoutes(
 		}
 	}
 	const effectiveMethods = (methods: string[]) =>
-		payments.provider === 'mock' || env.ABACATEPAY_PUBLIC_KEY ? methods : methods.filter((method) => method !== 'CARD');
+		methods.filter((method) => capabilities.methods.some((available) => available === method));
 	const reconcileCheckouts = new ReconcileCheckouts(payments, checkoutReconciliation, ticketDelivery);
 	const reconcileInstallments = new ReconcileInstallmentCharges(
 		payments,
 		new SupabaseInstallmentReconciliationRepository(clients.admin),
+		ticketDelivery,
 	);
 	let reconciliationTimer: ReturnType<typeof setInterval> | undefined;
 	let reconciliationRunning = false;
@@ -215,7 +220,7 @@ export async function paymentRoutes(
 				? effectiveMethods(await payment.availableMethods(eventId))
 				: payments.provider === 'mock'
 					? ['PIX', 'CARD']
-					: env.ABACATEPAY_METHODS,
+					: capabilities.methods,
 		};
 	});
 
@@ -267,6 +272,15 @@ export async function paymentRoutes(
 		await guard('checkout-status', context.user.id, request.ip, 60);
 		return attempts.status(context.user.id, id);
 	});
+	app.post('/api/payments/attempts/:id/simulate-payment', async (request) => {
+		const context = await requireUser(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		z.object({})
+			.strict()
+			.parse(request.body ?? {});
+		await guard('checkout-simulation', context.user.id, request.ip, 8);
+		return attempts.simulatePayment(context.user.id, id);
+	});
 
 	app.post('/api/checkout/installments', async (request) => {
 		const context = await requireUser(request, auth);
@@ -288,6 +302,15 @@ export async function paymentRoutes(
 			},
 			request.log,
 		);
+	});
+
+	app.post('/api/installments/:id/simulate-payment', async (request) => {
+		const context = await requireUser(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		z.object({})
+			.strict()
+			.parse(request.body ?? {});
+		return payment.simulateInstallmentPayment(context.user.id, id);
 	});
 
 	app.post('/api/installments/:id/generate-pix', async (request) => {

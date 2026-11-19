@@ -57,14 +57,6 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 		);
 	}
 
-	// Pré-preencher dados do participante com informações do usuário autenticado
-	const defaultParticipantInfo = {
-		name: `${auth.user.first_name || ''} ${auth.user.last_name || ''}`.trim(),
-		email: auth.user.email,
-		phone: auth.user.phone,
-		document: auth.user.document,
-	};
-
 	return (
 		<EventCheckout
 			event={{
@@ -80,7 +72,9 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 			eventTitle={event.title}
 			tickets={activeTickets}
 			ticketGroups={event.ticket_groups ?? []}
-			defaultParticipantInfo={defaultParticipantInfo}
+			buyerProfile={auth.user}
+			userId={auth.user.id}
+			canAutoConfirmPhone={auth.canAutoConfirmPhone === true}
 		/>
 	);
 }

@@ -82,14 +82,19 @@ export function readOrganizerPayments(value: unknown): OrganizerPaymentSettings 
 	});
 }
 
-export function paymentAvailability(settings: OrganizerPaymentSettings, storeMethods: string[], gatewayPeriod: string) {
+export function paymentAvailability(
+	settings: OrganizerPaymentSettings,
+	storeMethods: string[],
+	gatewayPeriod: string,
+	{ testMode = false }: { testMode?: boolean } = {},
+) {
 	const available_methods: Array<'PIX' | 'CARD' | 'BOLETO'> = [];
 	const pending_methods: Array<{ method: AcceptedPaymentMethod; reason: 'integration' | 'gateway' | 'settlement' }> =
 		[];
 	for (const method of settings.accepted_payment_methods) {
 		if (method === 'DEBIT') pending_methods.push({ method, reason: 'integration' });
 		else if (!storeMethods.includes(method)) pending_methods.push({ method, reason: 'gateway' });
-		else if (method === 'CARD' && settings.credit_card_settlement_period !== gatewayPeriod)
+		else if (method === 'CARD' && !testMode && settings.credit_card_settlement_period !== gatewayPeriod)
 			pending_methods.push({ method, reason: 'settlement' });
 		else available_methods.push(method);
 	}
@@ -98,5 +103,7 @@ export function paymentAvailability(settings: OrganizerPaymentSettings, storeMet
 
 export interface OrganizerPaymentSettingsResponse extends ReturnType<typeof paymentAvailability> {
 	settings: OrganizerPaymentSettings;
+	/** True only for development using a test gateway; does not change real settlement terms. */
+	test_mode?: boolean;
 	gateway_card_settlement_period: import('./payment-fees.js').CardSettlementPeriod;
 }

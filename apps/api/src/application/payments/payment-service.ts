@@ -130,6 +130,11 @@ export interface PaymentRepository {
 	getConfiguration(): Promise<ConfigurationRow>;
 	linkCheckout(registrationIds: string[], checkoutId: string): Promise<void>;
 	recordTransaction(input: Database['public']['Tables']['payment_transactions']['Insert']): Promise<void>;
+	settleReconciledInstallment(input: {
+		chargeId: string;
+		installmentId: string;
+		registrationId: string;
+	}): Promise<void>;
 	settleInstallmentWebhook(input: {
 		chargeId: string;
 		installmentId: string;
@@ -186,6 +191,8 @@ export class PaymentService {
 		private readonly checkoutMethods: CheckoutMethod[] = ['PIX'],
 		/** Manda os ingressos por e-mail quando o pagamento entra. */
 		private readonly ticketDelivery?: TicketDelivery,
+		/** Allows testing any requested settlement period; only the server can enable it for sandbox keys. */
+		private readonly testMode = false,
 	) {}
 
 	async getStatus(userId: string, lookup: { checkoutGroupId: string } | { registrationId: string }) {
@@ -211,6 +218,7 @@ export class PaymentService {
 			settings,
 			this.gateway.provider === 'mock' ? ['PIX', 'CARD', 'BOLETO'] : this.checkoutMethods,
 			configuration.gateway_card_settlement_period ?? 'D+1',
+			{ testMode: this.testMode },
 		).available_methods;
 	}
 
@@ -375,6 +383,7 @@ export class PaymentService {
 					payment_provider: this.gateway.provider,
 					additional_info: {
 						checkout_group_id: checkoutGroupId,
+						...(transparent && paymentMethod === 'CARD' ? { card_installments: transparent.installments } : {}),
 						...(transparent ? { payment_flow: 'transparent', payment_method_requested: paymentMethod } : {}),
 						payment_preferences: {
 							...readOrganizerPayments(typeof event.organizer_id === 'object' ? event.organizer_id : null),
@@ -534,7 +543,7 @@ export class PaymentService {
 	async createInstallmentCheckout(userId: string, input: InstallmentCheckoutInput, logger: PaymentOperationLogger) {
 		await this.limit('installment-checkout', userId, 5);
 		const ticket = await this.repository.findTicketForInstallments(input.ticket_id);
-		if (!ticket || !ticket.allow_installments || input.installments > Number(ticket.max_installments ?? 0)) {
+		if (!ticket || !ticket.allow_pix_installments || input.installments > Number(ticket.max_pix_installments ?? 0)) {
 			throw new ApiError('Parcelamento indisponível para este ingresso.', 422, 'INSTALLMENTS_UNAVAILABLE');
 		}
 		await this.requireProductionApproval(ticket.event_id.id);
@@ -563,7 +572,7 @@ export class PaymentService {
 		const total = item.totalAmount;
 		let amounts: number[];
 		try {
-			amounts = buildInstallmentAmounts(total, input.installments, Number(ticket.min_amount_for_installments ?? 0));
+			amounts = buildInstallmentAmounts(total, input.installments, Number(ticket.min_amount_for_pix_installments ?? 0));
 		} catch (error) {
 			if (error instanceof InstallmentPlanUnavailable)
 				throw new ApiError('O valor não atende aos requisitos para parcelamento.', 422, 'INSTALLMENTS_UNAVAILABLE');
@@ -670,13 +679,42 @@ export class PaymentService {
 		if (!installment) throw new ApiError('Parcela não encontrada.', 404, 'INSTALLMENT_NOT_FOUND');
 		if (installment.status === 'paid') throw new ApiError('Esta parcela já foi paga.', 409, 'INSTALLMENT_ALREADY_PAID');
 		const registration = installment.registration_id;
-		const charge = await this.createCharge(installment, registration, registration.event_id.title);
-		await this.repository.setInstallmentCharge(id, {
-			providerId: charge.id,
-			qrCode: charge.qrCodeBase64,
-			copyPaste: charge.copyPasteCode,
-		});
+		if (
+			installment.status === 'cancelled' ||
+			registration.status === 'cancelled' ||
+			registration.payment_status === 'refunded'
+		)
+			throw new ApiError('Esta parcela não está disponível para pagamento.', 409, 'INSTALLMENT_NOT_PAYABLE');
+		let charge;
+		if (installment.provider_transaction_id && installment.pix_copy_paste) {
+			const current = await this.gateway.getPixCharge(installment.provider_transaction_id);
+			if (current.status === 'PAID') {
+				await this.repository.settleReconciledInstallment({
+					chargeId: current.id,
+					installmentId: id,
+					registrationId: registration.id,
+				});
+				await this.deliverTickets([registration.id]);
+				throw new ApiError('Pagamento recebido. Atualize os detalhes da compra.', 409, 'INSTALLMENT_ALREADY_PAID');
+			}
+			if (current.status === 'PENDING')
+				charge = {
+					id: current.id,
+					qrCodeBase64: installment.pix_qr_code_base64,
+					copyPasteCode: installment.pix_copy_paste,
+					expiresAt: current.expiresAt,
+				};
+		}
+		if (!charge) {
+			charge = await this.createCharge(installment, registration, registration.event_id.title);
+			await this.repository.setInstallmentCharge(id, {
+				providerId: charge.id,
+				qrCode: charge.qrCodeBase64,
+				copyPaste: charge.copyPasteCode,
+			});
+		}
 		return {
+			canSimulatePayment: this.testMode,
 			installment,
 			payment: {
 				provider_transaction_id: charge.id,
@@ -687,6 +725,35 @@ export class PaymentService {
 			},
 			event: { id: registration.event_id.id, name: registration.event_id.title },
 		};
+	}
+
+	async simulateInstallmentPayment(userId: string, id: string) {
+		if (!this.testMode)
+			throw new ApiError('Simulação disponível apenas no ambiente de testes.', 403, 'PAYMENT_SIMULATION_DISABLED');
+		await this.limit('installment-simulation', userId, 8);
+		const installment = await this.repository.findInstallmentForUser(id, userId);
+		if (!installment || installment.registration_id.user_id !== userId)
+			throw new ApiError('Parcela não encontrada.', 404, 'INSTALLMENT_NOT_FOUND');
+		if (installment.status === 'paid') return { confirmed: true };
+		if (
+			installment.status === 'cancelled' ||
+			installment.registration_id.status === 'cancelled' ||
+			installment.registration_id.payment_status === 'refunded' ||
+			!installment.provider_transaction_id
+		)
+			throw new ApiError('A simulação exige uma parcela pendente.', 409, 'PAYMENT_NOT_PENDING');
+		if (this.gateway.provider !== 'mock')
+			await this.gateway.simulateTransparentPixPayment(installment.provider_transaction_id);
+		const charge = await this.gateway.getPixCharge(installment.provider_transaction_id);
+		if (charge.status !== 'PAID')
+			throw new ApiError('Aguardando confirmação do provedor.', 409, 'PAYMENT_NOT_CONFIRMED');
+		await this.repository.settleReconciledInstallment({
+			chargeId: charge.id,
+			installmentId: id,
+			registrationId: installment.registration_id.id,
+		});
+		await this.deliverTickets([installment.registration_id.id]);
+		return { confirmed: true };
 	}
 
 	/**
@@ -850,6 +917,7 @@ export class PaymentService {
 				providerFee,
 				registrationId: registration.id,
 			});
+			await this.deliverTickets([registration.id]);
 		} else if (
 			eventType === 'transparent.refunded' ||
 			eventType === 'transparent.lost' ||

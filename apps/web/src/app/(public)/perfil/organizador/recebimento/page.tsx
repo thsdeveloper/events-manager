@@ -1,3 +1,4 @@
+import Container from '@/components/ui/container';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Organizer } from '@events-manager/contracts';
@@ -12,7 +13,7 @@ export default async function ReceivingOrganizationsPage() {
 	if (organizations.length === 1) redirect(`/perfil/organizador/${organizations[0].id}/recebimento`);
 
 	return (
-		<div className="mx-auto max-w-3xl space-y-5 px-4 py-10">
+		<Container className="space-y-5 py-10">
 			<h1 className="text-2xl font-semibold">Verificação das suas organizações</h1>
 			<p className="text-muted-foreground">Escolha a conta para enviar documentos ou acompanhar sua análise.</p>
 			{organizations.map((o) => (
@@ -31,6 +32,6 @@ export default async function ReceivingOrganizationsPage() {
 					<Link href="/perfil/organizador/novo">Cadastrar organizador</Link>
 				</Button>
 			)}
-		</div>
+		</Container>
 	);
 }

@@ -342,8 +342,8 @@ describe('installment current pricing', () => {
 				...event.tickets[0],
 				price: 2,
 				buyer_price: 2,
-				allow_installments: true,
-				max_installments: 3,
+				allow_pix_installments: true,
+				max_pix_installments: 3,
 				event_id: {
 					id: TEST_EVENT_ID,
 					title: 'Evento',
@@ -377,8 +377,8 @@ describe('installment current pricing', () => {
 				price: 10,
 				buyer_price: 10.5,
 				service_fee_type: 'passed_to_buyer',
-				allow_installments: true,
-				max_installments: 3,
+				allow_pix_installments: true,
+				max_pix_installments: 3,
 				event_id: {
 					id: TEST_EVENT_ID,
 					title: 'Evento',
@@ -455,4 +455,33 @@ describe('project discounted fee snapshots', () => {
 			service_fee: fee,
 		});
 	});
+});
+
+it('refuses Pix installments when only credit installments are enabled', async () => {
+	const { service, repository } = buildService();
+	Object.assign(repository, {
+		findTicketForInstallments: vi
+			.fn()
+			.mockResolvedValue({
+				...event.tickets[0],
+				allow_installments: true,
+				max_installments: 6,
+				allow_pix_installments: false,
+				event_id: { ...event, status: 'published' },
+			}),
+	});
+	await expect(
+		service.createInstallmentCheckout(
+			TEST_USER_ID,
+			{
+				ticket_id: TICKET_ID,
+				quantity: 1,
+				installments: 2,
+				participant_name: 'Ana',
+				participant_email: 'ana@example.com',
+			},
+			logger,
+		),
+	).rejects.toMatchObject({ code: 'INSTALLMENTS_UNAVAILABLE' });
+	expect(repository.createRegistration).not.toHaveBeenCalled();
 });

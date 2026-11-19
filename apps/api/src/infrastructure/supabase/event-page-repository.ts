@@ -28,6 +28,18 @@ export class SupabaseEventPageRepository implements EventPageRepository {
 
 		return toRow(data);
 	}
+
+	async disable(eventId: string) {
+		const { data, error } = await this.clients.admin
+			.from('event_pages')
+			.update({ enabled: false })
+			.eq('event_id', eventId)
+			.select(columns)
+			.maybeSingle();
+		if (error) throw error;
+
+		return data ? toRow(data) : null;
+	}
 }
 
 function toRow(data: Record<string, unknown>): EventPageRow {

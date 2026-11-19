@@ -10,14 +10,12 @@ function setup(approved: boolean) {
 		findCheckoutEvent: vi.fn().mockResolvedValue({ id: 'event', tickets: [] }),
 		getConfiguration: vi.fn().mockResolvedValue({}),
 		isOrganizerApprovedForEvent: vi.fn().mockResolvedValue(approved),
-		findTicketForInstallments: vi
-			.fn()
-			.mockResolvedValue({
-				id: 'ticket',
-				allow_installments: true,
-				max_installments: 6,
-				event_id: { id: 'event', status: 'published' },
-			}),
+		findTicketForInstallments: vi.fn().mockResolvedValue({
+			id: 'ticket',
+			allow_pix_installments: true,
+			max_pix_installments: 6,
+			event_id: { id: 'event', status: 'published' },
+		}),
 		createRegistration: vi.fn(),
 	});
 	const service = new PaymentService(

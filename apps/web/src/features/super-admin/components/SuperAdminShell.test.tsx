@@ -212,3 +212,53 @@ it('only shows authorized platform modules for a delegated team member', () => {
 	expect(within(nav).queryByRole('link', { name: 'Financeiro' })).not.toBeInTheDocument();
 	expect(within(nav).queryByRole('link', { name: 'Taxas e gateway' })).not.toBeInTheDocument();
 });
+
+it('provides collapsible content, a module counter, and creation actions', async () => {
+	const { user: person } = renderWithProviders(
+		<SuperAdminShell user={user as never} isOrganizer={false}>
+			Content
+		</SuperAdminShell>,
+	);
+	expect(screen.getByLabelText('8 opções de Conteúdo do site')).toHaveTextContent('8');
+	expect(screen.getByRole('link', { name: 'Novo post' })).toHaveAttribute('href', '/super-admin/conteudo/blog/novo');
+	expect(screen.getByRole('link', { name: 'Ver site público' })).toHaveAttribute('href', '/');
+	const content = screen.getByRole('button', { name: 'Conteúdo do site' });
+	await person.click(content);
+	expect(content).toHaveAttribute('aria-expanded', 'false');
+	expect(screen.queryByRole('link', { name: 'Páginas' })).not.toBeInTheDocument();
+	await person.click(content);
+	expect(screen.getByRole('link', { name: 'Páginas' })).toBeInTheDocument();
+});
+it('keeps content destinations and authorized actions reachable in icon mode', async () => {
+	const { user: person } = renderWithProviders(
+		<SuperAdminShell user={user as never} isOrganizer={false} defaultOpen={false}>
+			Content
+		</SuperAdminShell>,
+	);
+	await person.click(screen.getByRole('button', { name: 'Conteúdo do site' }));
+	expect(screen.getByRole('menuitem', { name: 'Páginas' })).toHaveAttribute('href', '/super-admin/conteudo/paginas');
+	expect(screen.getByRole('menuitem', { name: 'Novo post' })).toHaveAttribute(
+		'href',
+		'/super-admin/conteudo/blog/novo',
+	);
+});
+it('filters nested content and its actions using platform permissions', async () => {
+	const { user: person } = renderWithProviders(
+		<PlatformPermissionContext.Provider
+			value={{ userId: 'u1', active: true, isRoot: false, permissions: ['platform_pages.read'] }}
+		>
+			<Shell user={user as never} isOrganizer={false}>
+				Content
+			</Shell>
+		</PlatformPermissionContext.Provider>,
+	);
+	expect(screen.getByLabelText('1 opção de Conteúdo do site')).toHaveTextContent('1');
+	expect(screen.getByRole('link', { name: 'Páginas' })).toBeInTheDocument();
+	expect(screen.queryByRole('link', { name: 'Blog' })).not.toBeInTheDocument();
+	expect(screen.queryByRole('link', { name: 'Novo post' })).not.toBeInTheDocument();
+	await person.click(screen.getByRole('button', { name: 'Alternar navegação' }));
+	await person.click(screen.getByRole('button', { name: 'Conteúdo do site' }));
+	expect(screen.getByRole('menuitem', { name: 'Páginas' })).toBeInTheDocument();
+	expect(screen.queryByRole('menuitem', { name: 'Blog' })).not.toBeInTheDocument();
+	expect(screen.queryByRole('menuitem', { name: 'Novo post' })).not.toBeInTheDocument();
+});

@@ -15,6 +15,14 @@ export interface EventGroupCreator {
 	create(organizerId: string, eventId: string, groups: EventTicketGroupDraft[]): Promise<Record<string, string>>;
 }
 
+export interface PublicEventQuery {
+	limit: number;
+	page: number;
+	search: string;
+	organizer_id?: string;
+	exclude_id?: string;
+}
+
 export interface EventRepository {
 	canPublishForUser(userId: string): Promise<boolean>;
 	getFeeConfiguration(): Promise<{ platform_fee_percentage: number; platform_fee_minimum: number }>;
@@ -23,7 +31,7 @@ export interface EventRepository {
 	findForUser(userId: string, id: string): Promise<Event | null>;
 	findPublicBySlug(slug: string): Promise<Event | null>;
 	listCategories(): Promise<unknown[]>;
-	listPublic(query: { limit: number; page: number; search: string }): Promise<{ data: unknown[]; total: number }>;
+	listPublic(query: PublicEventQuery): Promise<{ data: unknown[]; total: number }>;
 	listForUser(userId: string): Promise<Event[]>;
 	updateForUser(userId: string, id: string, input: Partial<EventInput>): Promise<Event | null>;
 }
@@ -91,7 +99,7 @@ export class EventService {
 		return this.repository.listForUser(userId);
 	}
 
-	async listPublic(query: { limit: number; page: number; search: string }) {
+	async listPublic(query: PublicEventQuery) {
 		const result = await this.repository.listPublic(query);
 		return {
 			data: result.data,

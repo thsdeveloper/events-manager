@@ -334,6 +334,34 @@
 	}
 }
 
+.purchase-confetti {
+	position: absolute;
+	top: -24px;
+	width: 9px;
+	height: 15px;
+	opacity: 0;
+	animation: purchase-confetti-fall 5s cubic-bezier(0.25, 0.4, 0.65, 1) forwards;
+}
+@keyframes purchase-confetti-fall {
+	0% {
+		opacity: 0;
+		transform: translate3d(0, -20px, 0) rotate(0deg);
+	}
+	8%,
+	75% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translate3d(var(--confetti-drift), 110vh, 0) rotate(720deg);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.purchase-confetti {
+		animation: none;
+	}
+}
+
 .event-creation-confetti {
 	position: absolute;
 	top: -24px;

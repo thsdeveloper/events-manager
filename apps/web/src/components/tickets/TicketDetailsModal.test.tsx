@@ -55,3 +55,31 @@ describe('TicketDetailsModal', () => {
 		expect(onChangeAttendee).toHaveBeenCalledWith(pending);
 	});
 });
+
+it.each([
+	{ status: 'pending', payment_status: 'pending', label: 'Aguardando pagamento' },
+	{ status: 'confirmed', payment_status: 'pending', label: 'Aguardando pagamento' },
+	{ status: 'partial_payment', payment_status: 'pending', label: 'Aguardando pagamento' },
+	{ status: 'cancelled', payment_status: 'paid', label: 'Cancelado' },
+	{ status: 'confirmed', payment_status: 'refunded', label: 'Reembolsado' },
+])('does not issue an entry pass before payment or after cancellation: %j', async ({ label, ...registration }) => {
+	const ticket = buildNominalTicket();
+	const { user } = renderWithProviders(
+		<TicketDetailsModal
+			ticket={{
+				...ticket,
+				registration: { ...ticket.registration, ...registration },
+				event: { ...ticket.event, online_url: 'https://example.test/transmissao' },
+			}}
+			onClose={vi.fn()}
+		/>,
+	);
+	expect(screen.getByText(label, { exact: true })).toBeInTheDocument();
+	expect(screen.getByRole('button', { name: 'PDF' })).toBeDisabled();
+	await user.click(screen.getByRole('button', { name: 'PDF' }));
+	expect(screen.queryByRole('img', { name: 'QR Code do Ingresso' })).not.toBeInTheDocument();
+	expect(screen.queryByRole('button', { name: 'Copiar código do ingresso' })).not.toBeInTheDocument();
+	expect(screen.queryByRole('link', { name: /Abrir transmissão/ })).not.toBeInTheDocument();
+	expect(screen.queryByText('Apresente este código na entrada do evento')).not.toBeInTheDocument();
+	expect(screen.queryByRole('link', { name: 'Comprovante' })).not.toBeInTheDocument();
+});

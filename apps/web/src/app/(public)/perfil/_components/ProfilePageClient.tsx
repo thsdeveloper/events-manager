@@ -1,5 +1,7 @@
 'use client';
 
+import Container from '@/components/ui/container';
+
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CreditCard, Loader2, Ticket } from 'lucide-react';
@@ -107,7 +109,7 @@ export function ProfilePageClient({ initialUser }: ProfilePageClientProps) {
 	// the top one.
 	return (
 		<div className="border-y border-slate-100 bg-slate-50/80 dark:border-slate-900 dark:bg-slate-950">
-			<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+			<Container className="py-8 sm:py-10 lg:py-12">
 				<div className="grid items-start gap-6 lg:grid-cols-[250px_minmax(0,1fr)] xl:gap-8">
 					<ProfileNavigation
 						user={user}
@@ -204,7 +206,7 @@ export function ProfilePageClient({ initialUser }: ProfilePageClientProps) {
 						)}
 					</div>
 				</div>
-			</div>
+			</Container>
 		</div>
 	);
 }

@@ -1,3 +1,4 @@
+import Container from '@/components/ui/container';
 import type { CheckoutStatus } from '@events-manager/contracts';
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, Tickets, XCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -5,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckoutRegistrationList } from '@/features/checkout/components/CheckoutRegistrationList';
+import { PurchaseSuccess } from '@/features/checkout/components/PurchaseSuccess';
 import { authenticatedBackendFetch } from '@/lib/backend-auth';
 import { requireAuth } from '@/lib/auth/server-auth';
 
@@ -69,10 +71,22 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Chec
 	const content = STATUS_CONTENT[checkout.status];
 	const StatusIcon = content.icon;
 	const currentUrl = `/eventos/${slug}/checkout/success?${locator}`;
+	if (checkout.status === 'confirmed') {
+		return (
+			<Container className="py-8 sm:py-12">
+				<PurchaseSuccess
+					purchaseId={query.checkout_id ?? query.registration_id!}
+					detailsId={checkout.registrations[0]?.id}
+				>
+					{checkout.registrations.length ? <CheckoutRegistrationList registrations={checkout.registrations} /> : null}
+				</PurchaseSuccess>
+			</Container>
+		);
+	}
 
 	return (
-		<div className="flex min-h-[70vh] items-center justify-center p-6">
-			<Card className="w-full max-w-2xl">
+		<Container className="flex min-h-[70vh] items-center py-8">
+			<Card className="w-full">
 				<CardHeader className="text-center">
 					<div className={`mx-auto mb-4 flex size-16 items-center justify-center rounded-full ${content.iconClass}`}>
 						<StatusIcon className="size-9" aria-hidden="true" />
@@ -105,6 +119,6 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Chec
 					</div>
 				</CardContent>
 			</Card>
-		</div>
+		</Container>
 	);
 }

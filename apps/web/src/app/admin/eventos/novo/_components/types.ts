@@ -18,6 +18,7 @@ export interface EventWizardFormValues {
 	short_description?: string;
 	cover_image?: string;
 	cover_image_alt?: string;
+	video_url?: string;
 	description_en?: string;
 	description_es?: string;
 	location_tbd?: boolean;

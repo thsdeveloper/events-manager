@@ -1,6 +1,8 @@
 import type { EmailBrandingSource } from './email-branding.js';
 import { renderEmail } from './email-template.js';
 import type { AttendeeTicketNotice, PurchaseConfirmationNotice, TicketMailer } from '../tickets/deliver-tickets.js';
+import type { TicketPdfRenderer } from '../tickets/ticket-pdf.js';
+import { formatEventDate } from '../tickets/format-event-date.js';
 
 export interface PasswordChangedNotice {
 	changedAt: Date;
@@ -40,27 +42,23 @@ export interface EmailDeliveryRepository {
 	markSent(id: string, attempts: number, providerMessageId: string): Promise<EmailDelivery>;
 }
 
-export interface EmailGateway {
-	send(input: {
-		from: string;
-		html: string;
-		subject: string;
-		text: string;
-		to: string;
-	}): Promise<{ messageId: string }>;
+export interface EmailAttachment {
+	filename: string;
+	contentType: string;
+	content: Uint8Array;
 }
 
-const eventDateFormatter = new Intl.DateTimeFormat('pt-BR', {
-	dateStyle: 'full',
-	timeStyle: 'short',
-	timeZone: 'America/Sao_Paulo',
-});
+export interface EmailMessage {
+	from: string;
+	html: string;
+	subject: string;
+	text: string;
+	to: string;
+	attachments?: EmailAttachment[];
+}
 
-function formatEventDate(value: string | null) {
-	if (!value) return null;
-	const date = new Date(value);
-
-	return Number.isNaN(date.getTime()) ? null : eventDateFormatter.format(date);
+export interface EmailGateway {
+	send(input: EmailMessage): Promise<{ messageId: string }>;
 }
 
 export class EmailService implements TicketMailer {
@@ -69,6 +67,7 @@ export class EmailService implements TicketMailer {
 		private readonly gateway: EmailGateway,
 		private readonly from: string,
 		private readonly branding: EmailBrandingSource,
+		private readonly ticketPdf: TicketPdfRenderer,
 	) {}
 
 	async sendRegistrationConfirmation(registration: RegistrationForEmail, idempotencyKey: string) {
@@ -253,7 +252,23 @@ export class EmailService implements TicketMailer {
 		if (!delivery.shouldSend) return delivery;
 
 		const branding = await this.branding.load();
-		const pending = notice.tickets.filter((ticket) => !ticket.attendeeName).length;
+		const namedTickets = notice.tickets.flatMap<AttendeeTicketNotice>((ticket) => {
+			if (!ticket.attendeeName?.trim() || !ticket.attendeeEmail?.trim()) return [];
+
+			return [
+				{
+					attendeeName: ticket.attendeeName,
+					attendeeEmail: ticket.attendeeEmail,
+					buyerName: notice.buyerName,
+					eventTitle: notice.eventTitle,
+					eventDate: notice.eventDate,
+					locationName: notice.locationName,
+					ticketCode: ticket.ticketCode,
+					ticketTypeTitle: ticket.ticketTypeTitle,
+				},
+			];
+		});
+		const pending = notice.tickets.length - namedTickets.length;
 		const eventDate = formatEventDate(notice.eventDate);
 		const { html, text } = renderEmail({
 			branding,
@@ -272,6 +287,17 @@ export class EmailService implements TicketMailer {
 						value: ticket.attendeeName ?? 'participante a informar',
 					})),
 				},
+				...(namedTickets.length > 0
+					? ([
+							{
+								type: 'paragraph',
+								text:
+									namedTickets.length === 1
+										? 'Seu ingresso está no PDF em anexo. Salve no celular ou imprima e apresente o QR Code no credenciamento.'
+										: 'Os ingressos já identificados estão nos PDFs em anexo. Cada arquivo contém o nome do participante e seu QR Code. Salve no celular ou imprima para apresentar no credenciamento.',
+							},
+						] as const)
+					: []),
 				...(pending > 0
 					? ([
 							{
@@ -295,12 +321,17 @@ export class EmailService implements TicketMailer {
 			footerNote: 'Guarde esta mensagem: ela reúne os códigos dos seus ingressos.',
 		});
 
-		return this.dispatch(delivery, {
-			to: notice.buyerEmail,
-			subject: `Compra confirmada — ${notice.eventTitle}`,
-			html,
-			text,
-		});
+		return this.dispatch(
+			delivery,
+			{ to: notice.buyerEmail, subject: `Compra confirmada — ${notice.eventTitle}`, html, text },
+			undefined,
+			async () => {
+				const attachments: EmailAttachment[] = [];
+				for (const ticket of namedTickets) attachments.push(await this.createTicketAttachment(ticket));
+
+				return attachments;
+			},
+		);
 	}
 
 	/**
@@ -337,6 +368,10 @@ export class EmailService implements TicketMailer {
 					],
 				},
 				{ type: 'code', label: 'Código do ingresso', value: notice.ticketCode },
+				{
+					type: 'paragraph',
+					text: 'Seu ingresso está no PDF em anexo. Salve no celular ou imprima e apresente o QR Code no credenciamento.',
+				},
 				{ type: 'paragraph', text: 'Apresente este código no credenciamento do evento.' },
 				{
 					type: 'paragraph',
@@ -347,12 +382,20 @@ export class EmailService implements TicketMailer {
 			footerNote: 'Guarde esta mensagem: ela dá acesso ao seu ingresso.',
 		});
 
-		return this.dispatch(delivery, {
-			to: notice.attendeeEmail,
-			subject: `Seu ingresso para ${notice.eventTitle}`,
-			html,
-			text,
-		});
+		return this.dispatch(
+			delivery,
+			{ to: notice.attendeeEmail, subject: `Seu ingresso para ${notice.eventTitle}`, html, text },
+			undefined,
+			async () => [await this.createTicketAttachment(notice)],
+		);
+	}
+
+	private async createTicketAttachment(notice: AttendeeTicketNotice): Promise<EmailAttachment> {
+		return {
+			filename: `ingresso-${notice.ticketCode.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100)}.pdf`,
+			contentType: 'application/pdf',
+			content: await this.ticketPdf.render(notice),
+		};
 	}
 
 	async sendTeamInvitation(
@@ -395,9 +438,11 @@ export class EmailService implements TicketMailer {
 		delivery: EmailDelivery,
 		message: { html: string; subject: string; text: string; to: string },
 		safeError?: string,
+		createAttachments?: () => Promise<EmailAttachment[]>,
 	) {
 		try {
-			const result = await this.gateway.send({ from: this.from, ...message });
+			const attachments = createAttachments ? await createAttachments() : undefined;
+			const result = await this.gateway.send({ from: this.from, ...message, ...(attachments ? { attachments } : {}) });
 			return this.deliveries.markSent(delivery.id, delivery.attempts + 1, result.messageId);
 		} catch (error) {
 			await this.deliveries.markFailed(

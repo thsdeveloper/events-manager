@@ -1,4 +1,5 @@
 import 'server-only';
+import { mapTransactionRow } from './transactions';
 
 import type { OrganizerProfile } from '@/lib/auth/server-auth';
 import { authenticatedBackendFetch } from '@/lib/backend-auth';
@@ -28,10 +29,12 @@ export type TransactionRow = {
 	participantEmail: string;
 	quantity: number;
 	gross: number;
-	fee: number;
-	net: number;
+	fee: number | null;
+	net: number | null;
 	paymentStatus: string;
 	paymentIntentId: string;
+	paymentMethod?: string;
+	settlementStatus?: string;
 };
 
 export type PaginationState = { page: number; limit: number; total: number; pageCount: number };
@@ -72,26 +75,6 @@ function resolveDateWindow(filters: AppliedFilters) {
 	else dateFrom.setDate(dateFrom.getDate() - 29);
 
 	return { dateFrom: dateFrom.toISOString(), dateTo: dateTo.toISOString() };
-}
-
-function mapTransactionRow(transaction: any): TransactionRow {
-	const registration = transaction?.registration_id ?? {};
-
-	return {
-		id: transaction?.id ?? '',
-		date: transaction?.date_created ?? '',
-		status: transaction?.status ?? 'pending',
-		transactionId: transaction?.provider_object_id ?? transaction?.provider_event_id ?? '',
-		eventTitle: registration?.event_id?.title ?? 'Evento não informado',
-		participantName: registration?.participant_name ?? '—',
-		participantEmail: registration?.participant_email ?? '',
-		quantity: Number(registration?.quantity ?? 0),
-		gross: Number(registration?.total_amount ?? transaction?.amount ?? 0),
-		fee: Number(registration?.service_fee ?? 0),
-		net: Number(registration?.payment_amount ?? 0),
-		paymentStatus: registration?.payment_status ?? 'pending',
-		paymentIntentId: registration?.provider_transaction_id ?? '',
-	};
 }
 
 export async function fetchFinanceEvents(_organizer: OrganizerProfile, _accessToken: string): Promise<EventsOption[]> {

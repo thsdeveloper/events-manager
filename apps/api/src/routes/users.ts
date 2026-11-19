@@ -33,6 +33,12 @@ export async function userRoutes(app: FastifyInstance, options: { clients: Supab
 		return tickets.listForUser(context.user.id, context.user.email ?? '');
 	});
 
+	app.get('/api/user/purchases/:id', async (request) => {
+		const context = await requireUser(request, auth);
+		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+		return tickets.purchaseDetails(context.user.id, context.user.email ?? '', id);
+	});
+
 	app.patch('/api/user/tickets/:id/attendee', async (request) => {
 		const context = await requireUser(request, auth);
 		const { id } = z.object({ id: z.string().uuid() }).parse(request.params);

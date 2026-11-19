@@ -37,7 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 					data-admin-theme="neutral"
 				>
 					{/* Sidebar */}
-					<AdminSidebar organizer={organizer} organizations={organizations} />
+					<AdminSidebar organizer={organizer} organizations={organizations} eventCount={selection.events.length} />
 
 					{/* Main Content Area */}
 					<SidebarInset className="min-w-0" id="main-content" tabIndex={-1}>

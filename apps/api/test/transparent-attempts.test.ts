@@ -7,6 +7,7 @@ import { partialMock, TEST_USER_ID } from './support/index.js';
 import type { PaymentService } from '../src/application/payments/payment-service.js';
 import type { PaymentGateway } from '../src/application/payments/payment-gateway.js';
 import { cart } from './support/transparent-fixtures.js';
+import { SupabaseTransparentAttemptRepository } from '../src/infrastructure/supabase/transparent-attempt-repository.js';
 const input = {
 	...cart,
 	requestId: '00000000-0000-4000-8000-000000000009',
@@ -184,4 +185,46 @@ it('confirms a free checkout without a provider mutation', async () => {
 	await service.create(TEST_USER_ID, input, { error: vi.fn() });
 	expect(repo.saveResult).toHaveBeenCalledWith(input.requestId, expect.objectContaining({ confirmed: true }));
 	expect(gateway.findTransparentCharge).not.toHaveBeenCalled();
+});
+it('preserves local development confirmations when the sandbox provider still reports a pending or expired charge', async () => {
+	const simulated = {
+		...attempt,
+		status: 'confirmed' as const,
+		provider_id: 'bole_test',
+		charge: {
+			id: 'bole_test',
+			method: 'BOLETO' as const,
+			status: 'PAID' as const,
+			amountInCents: 10000,
+			copyPasteCode: null,
+			qrCodeBase64: null,
+			barcode: null,
+			boletoUrl: null,
+			expiresAt: null,
+			developmentSimulation: true,
+		},
+	};
+	const { service, repo, gateway } = setup({ findForProvider: vi.fn().mockResolvedValue(simulated) });
+	await service.reconcile(simulated);
+	await service.webhook({
+		event: 'transparent.expired',
+		data: { transparent: { id: 'bole_test', status: 'EXPIRED', amount: 10000, devMode: true } },
+	});
+	expect(gateway.findTransparentCharge).not.toHaveBeenCalled();
+	expect(repo.settle).not.toHaveBeenCalled();
+});
+it('excludes locally simulated purchases from the provider reconciliation queue', async () => {
+	const query = {
+		select: vi.fn().mockReturnThis(),
+		or: vi.fn().mockReturnThis(),
+		is: vi.fn().mockReturnThis(),
+		lt: vi.fn().mockReturnThis(),
+		order: vi.fn().mockReturnThis(),
+		limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+	};
+	const db = partialMock<ConstructorParameters<typeof SupabaseTransparentAttemptRepository>[0]>({
+		from: vi.fn().mockReturnValue(query),
+	});
+	await new SupabaseTransparentAttemptRepository(db).pending(5);
+	expect(query.is).toHaveBeenCalledWith('charge->>developmentSimulation', null);
 });

@@ -8,7 +8,13 @@ import { render, screen, within } from '@testing-library/react';
 import { userEvent } from '@/test';
 import { PaymentMethodSection } from './PaymentMethodSection';
 
-const installmentTicket = { allow_installments: true, max_installments: 3, min_amount_for_installments: 50 };
+const installmentTicket = {
+	allow_installments: true,
+	max_installments: 3,
+	allow_pix_installments: true,
+	max_pix_installments: 3,
+	min_amount_for_pix_installments: 50,
+};
 
 describe('PaymentMethodSection', () => {
 	it('offers only the methods enabled by the organization', () => {
@@ -95,4 +101,34 @@ it('offers only boleto when Pix and credit are disabled by the organizer', () =>
 	expect(screen.getByRole('radio', { name: /boleto/i })).toBeEnabled();
 	expect(screen.queryByRole('radio', { name: /^pix/i })).not.toBeInTheDocument();
 	expect(screen.queryByRole('radio', { name: /cartão de crédito/i })).not.toBeInTheDocument();
+});
+
+it('does not offer Pix installments just because credit installments are enabled', () => {
+	render(
+		<PaymentMethodSection
+			availableMethods={['PIX', 'BOLETO']}
+			method="PIX"
+			onMethodChange={vi.fn()}
+			totalAmount={300}
+			ticket={{ allow_installments: true, max_installments: 6 }}
+			selectedInstallments={1}
+			onInstallmentChange={vi.fn()}
+		/>,
+	);
+	expect(screen.queryByRole('radio', { name: /2x de/i })).not.toBeInTheDocument();
+});
+it('offers Pix installments independently and explains when tickets are released', () => {
+	render(
+		<PaymentMethodSection
+			availableMethods={['PIX']}
+			method="PIX"
+			onMethodChange={vi.fn()}
+			totalAmount={300}
+			ticket={{ allow_installments: false, allow_pix_installments: true, max_pix_installments: 3 }}
+			selectedInstallments={3}
+			onInstallmentChange={vi.fn()}
+		/>,
+	);
+	expect(screen.getByRole('radio', { name: /3x de/i })).toBeInTheDocument();
+	expect(screen.getByText(/ingressos.*após.*todas as parcelas/i)).toBeInTheDocument();
 });

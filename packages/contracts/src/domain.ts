@@ -394,6 +394,8 @@ export interface EventRegistration {
 export type EventVisibility = 'public' | 'unlisted';
 
 export interface Event {
+	/** Public presentation video, separate from the private online access URL. */
+	video_url?: string | null;
 	/** @primaryKey */
 	id: string;
 	status?: 'published' | 'draft' | 'cancelled' | 'archived';
@@ -504,8 +506,12 @@ export interface EventTicket {
 	max_quantity_per_purchase?: number | null;
 	/** @description Visibilidade do ingresso */
 	visibility?: 'public' | 'invited_only' | 'manual' | null;
-	/** @description Permitir parcelamento via Pix para este ingresso? */
+	/** @description Permitir parcelamento no cartão de crédito para este ingresso? */
 	allow_installments?: boolean | null;
+	/** @description Plano mensal no Pix; libera ingressos apenas após quitação integral. */
+	allow_pix_installments?: boolean | null;
+	max_pix_installments?: number | null;
+	min_amount_for_pix_installments?: number | null;
 	/** @description Máximo de parcelas permitidas (ex: 4) */
 	max_installments?: number | null;
 	/** @description Valor mínimo do ingresso para permitir parcelamento */
@@ -919,6 +925,11 @@ export interface NominalTicket extends Omit<RegistrationTicket, 'registration_id
 		payment_method: string | null;
 		total_amount: number | null;
 		quantity: number;
+		checkout_group_id?: string | null;
+		is_installment_payment?: boolean;
+		total_installments?: number | null;
+		installment_plan_status?: string | null;
+		card_installments?: number | null;
 		receipt_url: string | null;
 		notes: string | null;
 		date_created: string | null;
@@ -948,4 +959,16 @@ export interface NominalTicket extends Omit<RegistrationTicket, 'registration_id
 	ticket_type: { id: string; title: string; price: number; description: string | null } | null;
 	/** Só na área da pessoa: ela pode nomear ou corrigir o participante. */
 	can_edit_attendee?: boolean;
+	purchased_by_me?: boolean;
+}
+
+/** Public payment history: no gateway identifiers or provider metadata. */
+export type PurchaseInstallment = Pick<
+	PaymentInstallment,
+	'id' | 'installment_number' | 'total_installments' | 'amount' | 'due_date' | 'status' | 'paid_at'
+> & { registration_id: string };
+export interface TicketPurchaseDetails {
+	id: string;
+	tickets: NominalTicket[];
+	installments: PurchaseInstallment[];
 }

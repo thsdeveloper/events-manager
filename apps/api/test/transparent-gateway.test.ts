@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { AbacatePayGateway } from '../src/infrastructure/payments/abacatepay-gateway.js';
+import { MockPaymentGateway } from '../src/infrastructure/payments/mock-payment-gateway.js';
 const customer = { name: 'Ana Silva', email: 'ana@example.test', taxId: '52998224725', cellphone: '11999999999' };
 const input = {
 	externalId: 'attempt-1',
@@ -10,6 +11,32 @@ const input = {
 	installments: 2,
 };
 afterEach(() => vi.unstubAllGlobals());
+it('simulates a sandbox Pix through the provider endpoint without sending local payment state', async () => {
+	const fetcher = vi.fn().mockResolvedValue(Response.json({ success: true, data: { id: 'pix_test', status: 'PAID' } }));
+	vi.stubGlobal('fetch', fetcher);
+	await new AbacatePayGateway('abc_dev_test').simulateTransparentPixPayment('pix_test');
+	expect(fetcher).toHaveBeenCalledExactlyOnceWith(
+		'https://api.abacatepay.com/v2/transparents/simulate-payment?id=pix_test',
+		expect.objectContaining({
+			method: 'POST',
+			body: '{}',
+			headers: expect.objectContaining({ Authorization: 'Bearer abc_dev_test' }),
+		}),
+	);
+});
+it('rejects simulation with a live key before contacting the provider', async () => {
+	const fetcher = vi.fn();
+	vi.stubGlobal('fetch', fetcher);
+	await expect(new AbacatePayGateway('abc_live_test').simulateTransparentPixPayment('pix_test')).rejects.toMatchObject({
+		code: 'PAYMENT_SIMULATION_DISABLED',
+	});
+	expect(fetcher).not.toHaveBeenCalled();
+});
+it('does not simulate mock charges that are already confirmed automatically', async () => {
+	await expect(new MockPaymentGateway().simulateTransparentPixPayment('mock_test')).rejects.toMatchObject({
+		code: 'PAYMENT_SIMULATION_DISABLED',
+	});
+});
 it('normalizes event titles containing emoji and typographic punctuation accepted by the event editor', async () => {
 	const fetcher = vi.fn().mockImplementation(async (_url, options) => {
 		const description = JSON.parse(options.body).data.description;

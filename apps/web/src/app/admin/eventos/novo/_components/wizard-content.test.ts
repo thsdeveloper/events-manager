@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contentDefaults, contentPayload, eventForPreview } from './wizard-content';
+import { contentDefaults, contentFromEvent, contentPayload, eventForPreview } from './wizard-content';
 import { coverImageSchema, locationSchema } from './validation';
 import type { EventWizardFormValues } from './types';
 describe('event authoring metadata', () => {
@@ -76,4 +76,14 @@ describe('event authoring metadata', () => {
 		expect(preview.ticket_groups).toEqual([expect.objectContaining({ id: group, title: 'Grupo' })]);
 		expect(preview.description).not.toContain('<script>');
 	});
+});
+
+it('keeps the video through editing, preview and submission, and allows removing it', () => {
+	const video_url = 'https://youtu.be/M7lc1UVf-VE';
+	const values = { ...contentDefaults, title: 'Encontro', event_type: 'in_person', video_url } as EventWizardFormValues;
+	expect(contentFromEvent(eventForPreview(values, null, [])).video_url).toBe(video_url);
+	expect(contentPayload(values).video_url).toBe(video_url);
+	expect(contentPayload({ ...values, video_url: ' ' }).video_url).toBeNull();
+	expect(coverImageSchema.safeParse({ video_url: 'https://example.com/video' }).success).toBe(false);
+	expect(coverImageSchema.safeParse({ video_url }).success).toBe(true);
 });

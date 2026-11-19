@@ -16,7 +16,7 @@ const contentSecurityPolicy = `
   object-src 'none';
   form-action 'self';
   script-src 'self' 'unsafe-inline'${developmentScriptPolicy} https://abacatepay.com https://www.abacatepay.com https://assets.abacatepay.com https://pkgs.rinne.com.br https://js.evervault.com;
-  frame-src 'self' https://app.abacatepay.com https://ui-components.evervault.com;
+  frame-src 'self' https://www.youtube-nocookie.com https://app.abacatepay.com https://ui-components.evervault.com;
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data: ${supabaseUrl.origin} ${tileHosts};
   media-src 'self' ${supabaseUrl.origin};

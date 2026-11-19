@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import {
 	eventVisibilitySchema,
+	eventVideoUrlSchema,
 	onlinePlatformSchema,
 	isOnlinePlatformUrl,
 	addPhysicalLocationIssues,
@@ -21,6 +22,7 @@ export const basicInfoSchema = z.object({
 });
 
 export const coverImageSchema = z.object({
+	video_url: eventVideoUrlSchema.optional(),
 	cover_image_alt: z.string().max(240, 'Use até 240 caracteres').optional(),
 	cover_image: z.string().optional().or(z.literal('')),
 });

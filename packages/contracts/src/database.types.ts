@@ -1095,6 +1095,7 @@ export type Database = {
 				Row: {
 					admission_type: string;
 					allow_installments: boolean;
+					allow_pix_installments: boolean;
 					buyer_price: number | null;
 					date_created: string;
 					date_updated: string;
@@ -1103,8 +1104,10 @@ export type Database = {
 					group_id: string | null;
 					id: string;
 					max_installments: number | null;
+					max_pix_installments: number | null;
 					max_quantity_per_purchase: number;
 					min_amount_for_installments: number | null;
+					min_amount_for_pix_installments: number;
 					min_quantity_per_purchase: number;
 					price: number;
 					provider_product_id: string | null;
@@ -1121,6 +1124,7 @@ export type Database = {
 				Insert: {
 					admission_type?: string;
 					allow_installments?: boolean;
+					allow_pix_installments?: boolean;
 					buyer_price?: number | null;
 					date_created?: string;
 					date_updated?: string;
@@ -1129,8 +1133,10 @@ export type Database = {
 					group_id?: string | null;
 					id?: string;
 					max_installments?: number | null;
+					max_pix_installments?: number | null;
 					max_quantity_per_purchase?: number;
 					min_amount_for_installments?: number | null;
+					min_amount_for_pix_installments?: number;
 					min_quantity_per_purchase?: number;
 					price: number;
 					provider_product_id?: string | null;
@@ -1147,6 +1153,7 @@ export type Database = {
 				Update: {
 					admission_type?: string;
 					allow_installments?: boolean;
+					allow_pix_installments?: boolean;
 					buyer_price?: number | null;
 					date_created?: string;
 					date_updated?: string;
@@ -1155,8 +1162,10 @@ export type Database = {
 					group_id?: string | null;
 					id?: string;
 					max_installments?: number | null;
+					max_pix_installments?: number | null;
 					max_quantity_per_purchase?: number;
 					min_amount_for_installments?: number | null;
+					min_amount_for_pix_installments?: number;
 					min_quantity_per_purchase?: number;
 					price?: number;
 					provider_product_id?: string | null;
@@ -1231,6 +1240,7 @@ export type Database = {
 					title: string;
 					user_created: string | null;
 					user_updated: string | null;
+					video_url: string | null;
 					visibility: string;
 				};
 				Insert: {
@@ -1276,6 +1286,7 @@ export type Database = {
 					title: string;
 					user_created?: string | null;
 					user_updated?: string | null;
+					video_url?: string | null;
 					visibility?: string;
 				};
 				Update: {
@@ -1321,6 +1332,7 @@ export type Database = {
 					title?: string;
 					user_created?: string | null;
 					user_updated?: string | null;
+					video_url?: string | null;
 					visibility?: string;
 				};
 				Relationships: [
@@ -3396,6 +3408,7 @@ export type Database = {
 				Returns: {
 					admission_type: string;
 					allow_installments: boolean;
+					allow_pix_installments: boolean;
 					buyer_price: number | null;
 					date_created: string;
 					date_updated: string;
@@ -3404,8 +3417,10 @@ export type Database = {
 					group_id: string | null;
 					id: string;
 					max_installments: number | null;
+					max_pix_installments: number | null;
 					max_quantity_per_purchase: number;
 					min_amount_for_installments: number | null;
+					min_amount_for_pix_installments: number;
 					min_quantity_per_purchase: number;
 					price: number;
 					provider_product_id: string | null;

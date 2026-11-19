@@ -57,15 +57,15 @@ const event = {
 	tickets: [{ id: 't-1', title: 'Inteira', price: 100, quantity: 10 }],
 } as unknown as Event;
 
-function renderEdit() {
+function renderEdit(eventData = event) {
 	const fetchMock = mockFetch([
 		['/api/event-categories', () => jsonResponse({ data: [{ id: CATEGORY_ID, name: 'Religioso' }] })],
 		['/api/organizer/profile', () => jsonResponse({ id: 'org-1', name: 'ADEB', status: 'active' })],
-		['/api/events/e-1', () => jsonResponse({ ...event, title: 'Congresso de Jovens da ADEB' })],
+		['/api/events/e-1', () => jsonResponse(eventData)],
 		['/api/ai/generate-cover', () => jsonResponse({ fileId: '00000000-0000-4000-8000-000000000099' })],
 	]);
 
-	return { fetchMock, ...renderAsOwner(<EventCreationWizard mode="edit" event={event} />) };
+	return { fetchMock, ...renderAsOwner(<EventCreationWizard mode="edit" event={eventData} />) };
 }
 
 describe('EventCreationWizard em modo de edição', () => {
@@ -271,7 +271,7 @@ describe('EventCreationWizard em modo de criação', () => {
 		const price = within(dialog).getByRole('textbox', { name: /Valor do ingresso/ });
 		await user.clear(price);
 		await user.type(price, '5000');
-		await user.click(within(dialog).getByRole('checkbox', { name: /Permitir parcelamento/ }));
+		await user.click(within(dialog).getByRole('switch', { name: /Permitir parcelamento no cartão/ }));
 		await user.type(within(dialog).getByRole('spinbutton', { name: /Máximo de parcelas/ }), '3');
 		await user.click(within(dialog).getByRole('button', { name: 'Adicionar ingresso' }));
 		await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Novo ingresso' })).not.toBeInTheDocument());
@@ -498,3 +498,51 @@ it.each(['draft', 'cancelled', 'archived'] as const)(
 		expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({ draft_id: draftId, status: 'published' });
 	},
 );
+
+it('saves the public YouTube video from Visual and keeps private online access separate', async () => {
+	const { fetchMock, user } = renderEdit();
+	await screen.findByDisplayValue(event.title);
+	await user.click(screen.getByRole('tab', { name: /^Visual:/ }));
+	await user.type(
+		await screen.findByRole('textbox', { name: 'URL do vídeo no YouTube (opcional)' }),
+		'https://youtu.be/M7lc1UVf-VE',
+	);
+	expect(screen.getByRole('button', { name: 'Assistir ao vídeo' })).toBeVisible();
+	await user.click(screen.getByRole('button', { name: 'Continuar' }));
+	await user.click(await screen.findByRole('button', { name: 'Salvar alterações' }));
+	await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(true));
+	const call = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+	expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+		video_url: 'https://youtu.be/M7lc1UVf-VE',
+		online_url: event.online_url,
+	});
+});
+it('keeps an invalid video link on the Visual step and explains how to correct it', async () => {
+	const { fetchMock, user } = renderEdit();
+	await screen.findByDisplayValue(event.title);
+	await user.click(screen.getByRole('tab', { name: /^Visual:/ }));
+	await user.type(
+		await screen.findByRole('textbox', { name: 'URL do vídeo no YouTube (opcional)' }),
+		'https://example.com/video',
+	);
+	await user.click(screen.getByRole('button', { name: 'Continuar' }));
+	expect(await screen.findByText('Informe um link válido de vídeo do YouTube.')).toBeVisible();
+	expect(screen.getByRole('tab', { name: /^Visual:/ })).toHaveAttribute('aria-selected', 'true');
+	expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+});
+
+it('loads the saved video in Visual and lets the organizer remove it', async () => {
+	const { fetchMock, user } = renderEdit({ ...event, video_url: 'https://youtu.be/M7lc1UVf-VE' });
+	await screen.findByDisplayValue(event.title);
+	await user.click(screen.getByRole('tab', { name: /^Visual:/ }));
+	const field = await screen.findByRole('textbox', { name: 'URL do vídeo no YouTube (opcional)' });
+	expect(field).toHaveValue('https://youtu.be/M7lc1UVf-VE');
+	await user.clear(field);
+	expect(screen.queryByRole('button', { name: 'Assistir ao vídeo' })).not.toBeInTheDocument();
+	await user.click(screen.getByRole('button', { name: 'Continuar' }));
+	await user.click(await screen.findByRole('button', { name: 'Salvar alterações' }));
+	await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(true));
+	expect(
+		JSON.parse(String(fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')?.[1]?.body)),
+	).toHaveProperty('video_url', null);
+});

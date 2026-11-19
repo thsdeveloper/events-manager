@@ -205,10 +205,9 @@ describe('EmailService', () => {
 		});
 		const gateway = partialMock<EmailGateway>({ send: vi.fn() });
 
-		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendRegistrationConfirmation(
-			registration,
-			'key',
-		);
+		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding, {
+			render: vi.fn(),
+		}).sendRegistrationConfirmation(registration, 'key');
 		expect(gateway.send).not.toHaveBeenCalled();
 	});
 
@@ -220,7 +219,9 @@ describe('EmailService', () => {
 		});
 		const gateway = partialMock<EmailGateway>({ send: vi.fn().mockResolvedValue({ messageId: 'provider-message' }) });
 
-		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendDocumentChangedNotice(
+		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding, {
+			render: vi.fn(),
+		}).sendDocumentChangedNotice(
 			{ email: 'ana@example.com', name: 'Ana', changedAt: new Date('2026-09-04T15:00:00.000Z') },
 			'document-changed-key',
 		);
@@ -241,10 +242,9 @@ describe('EmailService', () => {
 		});
 		const gateway = partialMock<EmailGateway>({ send: vi.fn().mockResolvedValue({ messageId: 'provider-message' }) });
 
-		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding).sendRegistrationConfirmation(
-			registration,
-			'key',
-		);
+		await new EmailService(deliveries, gateway, 'events@example.com', stubBranding, {
+			render: vi.fn(),
+		}).sendRegistrationConfirmation(registration, 'key');
 		const html = vi.mocked(gateway.send).mock.calls[0][0].html;
 		expect(html).toContain('&lt;Ana &amp; Silva&gt;');
 		expect(html).not.toContain('<Ana & Silva>');

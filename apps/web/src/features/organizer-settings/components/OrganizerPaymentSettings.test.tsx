@@ -1,6 +1,6 @@
 import { renderAsOwner } from '@/test/permissions';
 import { DEFAULT_GATEWAY_FEES } from '@events-manager/contracts';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { jsonResponse, mockFetch, problemResponse } from '@/test';
 import { Toaster } from '@/components/ui/toaster';
@@ -111,9 +111,63 @@ it('keeps a requested debit preference pending and preserves edits if saving fai
 			<Toaster />
 		</>,
 	);
-	expect(await screen.findByText(/Cartão de débito pendente:/)).toBeInTheDocument();
+	expect(await screen.findByText(/Cartão de débito indisponível:/)).toBeInTheDocument();
 	await user.click(screen.getByRole('checkbox', { name: 'Pix' }));
 	await user.click(screen.getByRole('button', { name: 'Salvar formas de pagamento' }));
 	expect(await screen.findByText('A organização foi alterada. Recarregue a página.')).toBeInTheDocument();
 	expect(screen.getByRole('checkbox', { name: 'Pix' })).toBeChecked();
+});
+
+it('identifies credit as available for testing with the requested period and explains the debit limitation', async () => {
+	mockFetch([
+		['/api/content/fees', () => jsonResponse(DEFAULT_GATEWAY_FEES)],
+		[
+			'/api/organizer/payment-settings',
+			() =>
+				jsonResponse({
+					...initial,
+					test_mode: true,
+					settings: { accepted_payment_methods: ['PIX', 'CARD', 'DEBIT'], credit_card_settlement_period: 'D+30' },
+					available_methods: ['PIX', 'CARD'],
+					pending_methods: [{ method: 'DEBIT', reason: 'integration' }],
+				}),
+		],
+	]);
+	renderAsOwner(<OrganizerPaymentSettings />);
+	expect(await screen.findByText(/Ambiente de teste: o crédito pode ser testado/)).toBeInTheDocument();
+	expect(screen.getByRole('checkbox', { name: 'Cartão de crédito' })).toBeChecked();
+	expect(
+		within(screen.getByRole('group', { name: 'Cartão de crédito' })).getByText('Disponível no checkout'),
+	).toBeInTheDocument();
+	expect(screen.getByText(/Cartão de débito indisponível: este checkout aceita cartão de crédito/)).toBeInTheDocument();
+	expect(screen.queryByText(/aguardando disponibilidade no checkout/)).not.toBeInTheDocument();
+});
+
+it('recovers loading and explains when selected credit is unavailable in the payment account', async () => {
+	let unavailable = true;
+	mockFetch([
+		['/api/content/fees', () => jsonResponse(DEFAULT_GATEWAY_FEES)],
+		[
+			'/api/organizer/payment-settings',
+			() =>
+				unavailable
+					? problemResponse(503, 'UNAVAILABLE')
+					: jsonResponse({
+							...initial,
+							settings: { accepted_payment_methods: ['PIX', 'CARD'], credit_card_settlement_period: 'D+1' },
+							pending_methods: [{ method: 'CARD', reason: 'gateway' }],
+						}),
+		],
+	]);
+	const { user } = renderAsOwner(<OrganizerPaymentSettings />);
+	expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar as formas de pagamento.');
+	unavailable = false;
+	await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
+	expect(await screen.findByRole('checkbox', { name: 'Cartão de crédito' })).toBeChecked();
+	expect(
+		within(screen.getByRole('group', { name: 'Cartão de crédito' })).getByText('Indisponível no checkout'),
+	).toBeInTheDocument();
+	expect(
+		screen.getByText('Cartão de crédito pendente: aguardando habilitação na conta de pagamentos.'),
+	).toBeInTheDocument();
 });

@@ -140,3 +140,20 @@ it('distinguishes unsupported integration, disabled gateway and mismatched settl
 		paymentAvailability({ accepted_payment_methods: ['CARD'], credit_card_settlement_period: 'D+7' }, ['CARD'], 'D+7'),
 	).toEqual({ available_methods: ['CARD'], pending_methods: [] });
 });
+
+it('allows test payments with the requested credit period while preserving gateway and debit restrictions', () => {
+	const preferences = {
+		accepted_payment_methods: ['PIX', 'CARD', 'BOLETO', 'DEBIT'] as const,
+		credit_card_settlement_period: 'D+30' as const,
+	};
+	const settings = { ...preferences, accepted_payment_methods: [...preferences.accepted_payment_methods] };
+	expect(paymentAvailability(settings, ['PIX', 'CARD'], 'D+1', { testMode: true })).toEqual({
+		available_methods: ['PIX', 'CARD'],
+		pending_methods: [
+			{ method: 'BOLETO', reason: 'gateway' },
+			{ method: 'DEBIT', reason: 'integration' },
+		],
+	});
+	expect(paymentAvailability(settings, ['PIX'], 'D+1', { testMode: true }).available_methods).toEqual(['PIX']);
+	expect(paymentAvailability(settings, ['PIX', 'CARD'], 'D+1', { testMode: false }).available_methods).toEqual(['PIX']);
+});

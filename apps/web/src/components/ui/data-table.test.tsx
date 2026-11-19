@@ -63,3 +63,20 @@ it('uses the visible column titles in the column chooser', async () => {
 	expect(screen.getByRole('menuitemcheckbox', { name: 'Nome' })).toBeInTheDocument();
 	expect(screen.getByRole('menuitemcheckbox', { name: 'Valor' })).toBeInTheDocument();
 });
+
+it('opens a row from its cells without intercepting an embedded action', async () => {
+	const open = vi.fn();
+	const action = vi.fn();
+	const { user } = renderWithProviders(
+		<DataTable
+			columns={[...columns, { id: 'action', cell: () => <button onClick={action}>Ação própria</button> }]}
+			data={[data[0]]}
+			onRowClick={open}
+		/>,
+	);
+	await user.click(screen.getByText('Zélia'));
+	expect(open).toHaveBeenCalledExactlyOnceWith(data[0]);
+	await user.click(screen.getByRole('button', { name: 'Ação própria' }));
+	expect(action).toHaveBeenCalledOnce();
+	expect(open).toHaveBeenCalledOnce();
+});

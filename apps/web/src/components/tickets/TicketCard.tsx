@@ -9,6 +9,7 @@ import { format, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { NominalTicket } from '@events-manager/contracts';
 import { getMediaAssetUrl } from '@/lib/media';
+import { getTicketAccess } from '@/features/tickets/ticket-access';
 
 interface TicketCardProps {
 	ticket: NominalTicket;
@@ -41,17 +42,24 @@ export function describeAttendee(ticket: NominalTicket) {
 
 export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 'grid' }: TicketCardProps) {
 	const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+	const { paymentConfirmed, canUseTicket, notice } = getTicketAccess(ticket);
 
 	useEffect(() => {
-		if (!ticket.attendee_name) return;
+		setQrCodeUrl('');
+		if (!canUseTicket) return;
+		let active = true;
 		QRCode.toDataURL(ticket.ticket_code, {
 			width: 300,
 			margin: 1,
 			color: { dark: '#6366F1', light: '#FFFFFF' },
 		})
-			.then(setQrCodeUrl)
+			.then((url) => (active ? setQrCodeUrl(url) : undefined))
 			.catch(console.error);
-	}, [ticket.ticket_code, ticket.attendee_name]);
+
+		return () => {
+			active = false;
+		};
+	}, [ticket.ticket_code, canUseTicket]);
 
 	const event = ticket.event;
 	const eventDate = event.start_date ? new Date(event.start_date) : null;
@@ -59,10 +67,17 @@ export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 
 	const isEventPast = eventDate ? isPast(eventDate) : false;
 	const isCheckedIn = ticket.check_in_date !== null;
 
-	const status = isCheckedIn
-		? { tone: STATUS_STYLES.checkedIn, icon: CheckCircle2, label: 'Check-in' }
-		: ticket.registration.status === 'cancelled'
-			? { tone: STATUS_STYLES.cancelled, icon: XCircle, label: 'Cancelado' }
+	const status = notice
+		? {
+				tone:
+					notice.kind === 'pending'
+						? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
+						: STATUS_STYLES.cancelled,
+				icon: notice.kind === 'pending' ? Clock : XCircle,
+				label: notice.label,
+			}
+		: isCheckedIn
+			? { tone: STATUS_STYLES.checkedIn, icon: CheckCircle2, label: 'Check-in' }
 			: !ticket.attendee_name
 				? {
 						tone: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
@@ -80,7 +95,7 @@ export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 
 	const locationName = event.location_name;
 	const ticketTitle = ticket.ticket_type?.title ?? 'Ingresso';
 	const attendee = describeAttendee(ticket);
-	const canChangeAttendee = Boolean(onChangeAttendee && ticket.can_edit_attendee);
+	const canChangeAttendee = Boolean(onChangeAttendee && ticket.can_edit_attendee && !ticket.is_buyer);
 
 	const statusBadge = (
 		<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.tone}`}>
@@ -129,7 +144,7 @@ export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 
 								<span className="truncate">{locationName}</span>
 							</span>
 						)}
-						<span className="font-mono">{ticket.ticket_code}</span>
+						{paymentConfirmed ? <span className="font-mono">{ticket.ticket_code}</span> : null}
 					</div>
 					<div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
 						<span
@@ -213,17 +228,23 @@ export function TicketCard({ ticket, onViewDetails, onChangeAttendee, variant = 
 
 				{/* QR beside the code rather than centred above it: at this size it is a
 				    reference, and the full-size one lives in the details modal. */}
-				<div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-50 p-2 dark:bg-slate-950/50">
-					{qrCodeUrl && !attendee.isPending && (
-						<Image src={qrCodeUrl} alt="QR Code do ingresso" width={40} height={40} className="size-10 rounded" />
-					)}
-					<div className="min-w-0">
-						<p className="text-[10px] uppercase tracking-wide text-slate-400">Código</p>
-						<p className="truncate font-mono text-xs font-semibold text-slate-900 dark:text-slate-100">
-							{ticket.ticket_code}
-						</p>
+				{paymentConfirmed ? (
+					<div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-50 p-2 dark:bg-slate-950/50">
+						{qrCodeUrl && canUseTicket && (
+							<Image src={qrCodeUrl} alt="QR Code do ingresso" width={40} height={40} className="size-10 rounded" />
+						)}
+						<div className="min-w-0">
+							<p className="text-[10px] uppercase tracking-wide text-slate-400">Código</p>
+							<p className="truncate font-mono text-xs font-semibold text-slate-900 dark:text-slate-100">
+								{ticket.ticket_code}
+							</p>
+						</div>
 					</div>
-				</div>
+				) : (
+					<p className="mt-3 rounded-lg bg-slate-50 p-2 text-xs text-slate-600 dark:bg-slate-950/50 dark:text-slate-300">
+						{notice?.message}
+					</p>
+				)}
 
 				<div className="mt-3 flex gap-2">
 					{canChangeAttendee ? (

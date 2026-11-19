@@ -3,7 +3,7 @@
 import { TicketFeeDetails } from './TicketFeeDetails';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, Wallet } from 'lucide-react';
+import { Eye, Wallet } from 'lucide-react';
 import type { OrganizerPaymentSettingsResponse } from '@events-manager/contracts';
 import { memo, useMemo } from 'react';
 import { calculateFees, formatCurrency, type FeeConfig, type PublicFeeTable } from '@/lib/fees';
@@ -40,7 +40,7 @@ export const TicketFeeSummary = memo(function TicketFeeSummary({
 
 	if (!fees) {
 		return (
-			<p className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+			<p className="rounded-xl border border-dashed border-[#743DF5]/25 bg-[#F3EEFF] px-4 py-3 text-xs text-[#625674]">
 				Informe um valor para ver quanto o comprador paga e quanto você recebe.
 			</p>
 		);
@@ -56,60 +56,77 @@ export const TicketFeeSummary = memo(function TicketFeeSummary({
 		);
 
 	return (
-		<Card className="p-4">
-			<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-				<div>
-					<p className="text-xs text-muted-foreground">Comprador paga</p>
-					<p className="text-lg font-bold tabular-nums text-foreground">{formatCurrency(fees.buyerPrice)}</p>
+		<Card className="overflow-hidden rounded-2xl border-[#743DF5]/25 bg-[#F3EEFF] text-[#231A33] shadow-sm">
+			<div className="space-y-4 border-t-4 border-[#743DF5] p-4">
+				<div className="flex items-center gap-3">
+					<div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#FFD09D] text-[#231A33]">
+						<Eye className="size-4" aria-hidden="true" />
+					</div>
+					<div>
+						<h3 className="text-sm font-semibold">Prévia por ingresso</h3>
+						<p className="mt-0.5 text-xs text-[#625674]">Confira os valores antes de salvar.</p>
+					</div>
 				</div>
-				<ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-				<div>
-					<p className="text-xs text-muted-foreground">Você recebe</p>
-					<p className="text-lg font-bold tabular-nums text-muted-foreground">
-						{formatCurrency(fees.organizerReceives)}
+
+				<div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3">
+					<div className="rounded-xl border border-[#743DF5]/10 bg-white p-4">
+						<p className="text-xs font-medium text-[#625674]">Comprador paga</p>
+						<p className="mt-1 break-words text-2xl font-bold tabular-nums tracking-tight">
+							{formatCurrency(fees.buyerPrice)}
+						</p>
+					</div>
+					<div className="rounded-xl bg-[#743DF5] p-4 text-white">
+						<p className="flex items-center gap-1.5 text-xs font-medium">
+							<Wallet className="size-3.5 shrink-0 text-[#FFD09D]" aria-hidden="true" />
+							Você recebe
+						</p>
+						<p className="mt-1 break-words text-2xl font-bold tabular-nums tracking-tight">
+							{formatCurrency(fees.organizerReceives)}
+						</p>
+					</div>
+				</div>
+
+				{paymentSettings ? (
+					<p className="text-xs text-[#625674]">
+						Estimativa para{' '}
+						{paymentSettings.settings.accepted_payment_methods.includes('PIX')
+							? 'Pix'
+							: paymentSettings.settings.accepted_payment_methods[0] === 'CARD'
+								? `crédito em 1x, ${paymentSettings.settings.credit_card_settlement_period}`
+								: paymentSettings.settings.accepted_payment_methods[0] === 'BOLETO'
+									? 'boleto'
+									: 'débito'}
+						.
 					</p>
-				</div>
+				) : null}
 			</div>
+			<div className="border-t border-[#743DF5]/10 bg-white/75 p-4">
+				<dl className="space-y-2 text-xs text-[#625674]">
+					<div className="flex justify-between gap-4">
+						<dt>Taxa de conveniência</dt>
+						<dd className="shrink-0 font-medium tabular-nums text-[#231A33]">{formatCurrency(fees.convenienceFee)}</dd>
+					</div>
+					<div className="flex justify-between gap-4">
+						<dt>Tarifa estimada do gateway</dt>
+						<dd className="shrink-0 font-medium tabular-nums text-[#231A33]">{formatCurrency(fees.providerFee)}</dd>
+					</div>
+				</dl>
 
-			{paymentSettings ? (
-				<p className="mb-3 text-xs text-muted-foreground">
-					Estimativa para{' '}
-					{paymentSettings.settings.accepted_payment_methods.includes('PIX')
-						? 'Pix'
-						: paymentSettings.settings.accepted_payment_methods[0] === 'CARD'
-							? `crédito em 1x, ${paymentSettings.settings.credit_card_settlement_period}`
-							: paymentSettings.settings.accepted_payment_methods[0] === 'BOLETO'
-								? 'boleto'
-								: 'débito'}
-					.
+				<p className="mt-3 text-[11px] leading-4 text-[#625674]">
+					{isFallback
+						? 'Não foi possível carregar as taxas atuais; a estimativa usa os valores padrão. O valor final é recalculado ao salvar.'
+						: 'Estimativa. A tarifa efetiva do gateway é confirmada na liquidação do pagamento.'}
 				</p>
-			) : null}
-			<dl className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
-				<div className="flex justify-between gap-4">
-					<dt>Taxa de conveniência</dt>
-					<dd className="tabular-nums">{formatCurrency(fees.convenienceFee)}</dd>
-				</div>
-				<div className="flex justify-between gap-4">
-					<dt>Tarifa estimada do gateway</dt>
-					<dd className="tabular-nums">{formatCurrency(fees.providerFee)}</dd>
-				</div>
-			</dl>
-
-			<p className="mt-3 flex items-start gap-1.5 text-[11px] leading-4 text-muted-foreground">
-				<Wallet className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-				{isFallback
-					? 'Não foi possível carregar as taxas atuais; a estimativa usa os valores padrão. O valor final é recalculado ao salvar.'
-					: 'Estimativa. A tarifa efetiva do gateway é confirmada na liquidação do pagamento.'}
-			</p>
-			<TicketFeeDetails
-				paymentSettings={paymentSettings}
-				maxInstallments={maxInstallments}
-				price={price}
-				serviceFeeType={serviceFeeType}
-				feeConfig={feeConfig}
-				feeTable={feeTable}
-				isFallback={isFallback}
-			/>
+				<TicketFeeDetails
+					paymentSettings={paymentSettings}
+					maxInstallments={maxInstallments}
+					price={price}
+					serviceFeeType={serviceFeeType}
+					feeConfig={feeConfig}
+					feeTable={feeTable}
+					isFallback={isFallback}
+				/>
+			</div>
 		</Card>
 	);
 });

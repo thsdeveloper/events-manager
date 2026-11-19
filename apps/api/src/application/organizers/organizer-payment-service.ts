@@ -16,6 +16,7 @@ export class OrganizerPaymentService {
 	constructor(
 		private readonly repository: OrganizerPaymentRepository,
 		private readonly storeMethods: string[],
+		private readonly testMode = false,
 	) {}
 	async get(id: string) {
 		const [organizer, period] = await Promise.all([this.repository.findById(id), this.repository.getPaymentPeriod()]);
@@ -34,7 +35,8 @@ export class OrganizerPaymentService {
 		return {
 			settings,
 			gateway_card_settlement_period: period,
-			...paymentAvailability(settings, this.storeMethods, period),
+			test_mode: this.testMode,
+			...paymentAvailability(settings, this.storeMethods, period, { testMode: this.testMode }),
 		};
 	}
 }

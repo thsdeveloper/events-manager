@@ -47,11 +47,17 @@ A integração usa uma conta compartilhada da AbacatePay. A
 checkout não oferece prazo por cobrança.
 
 O organizador escolhe seu prazo solicitado. No super-admin, o campo **Prazo operacional da conta AbacatePay** registra o
-prazo já configurado externamente. Alterá-lo na Flouvi não chama uma API de reconfiguração da AbacatePay. Crédito fica
+prazo já configurado externamente. Alterá-lo na Flouvi não chama uma API de reconfiguração da AbacatePay. Em pagamentos reais, crédito fica
 pendente se o prazo solicitado não coincidir com o operacional ou se `CARD` não estiver habilitado na conta. A
 preferência continua salva e aparece nas simulações, identificada como pendente. Os outros meios efetivos continuam
 funcionando. Pedidos anteriores não são recalculados; os novos pedidos registram as preferências e o prazo operacional
 no seu `additional_info`.
+
+Em desenvolvimento (`APP_ENV=development`) com chave `abc_dev_` ou gateway mock, a diferença entre o prazo solicitado
+e o operacional não impede testar crédito. A seleção de crédito pela organização, a habilitação do método no gateway
+e a chave pública do checkout transparente continuam obrigatórias (esta última é dispensada apenas no mock). Não se
+altera nenhum prazo salvo e a exceção nunca é ativada somente por `NODE_ENV` nem com uma chave real. A API retorna
+`test_mode` nas configurações da organização para explicar a disponibilidade de teste.
 
 ## Disponibilidade no checkout
 
@@ -61,13 +67,20 @@ lista vazia é preservada; o frontend não oferece Pix se o organizador o desabi
 continuam independentes de meios pagos.
 
 Em produção, configure `ABACATEPAY_METHODS=PIX,CARD,BOLETO` **somente** para meios já liberados na conta. O padrão do
-ambiente é `PIX`. No modo mock os três meios são suportados, mas continuam sujeitos às preferências da organização e ao
-prazo.
+ambiente é `PIX`. No modo mock os três meios são suportados e continuam sujeitos às preferências da organização.
+O bloqueio por divergência de prazo se aplica aos pagamentos reais, conforme descrito acima.
 
 O [checkout transparente](CHECKOUT_TRANSPARENTE.md) aceita `PIX`, `CARD` e `BOLETO`. Cartão exige também a chave pública
 do SDK no mesmo ambiente da chave da API. Não oferece uma opção independente `DEBIT`. A preferência de débito e suas
 tarifas podem ser cadastradas, mas ficam pendentes de suporte da integração; não se envia um método inventado nem se
 habilita crédito quando somente débito foi selecionado.
+
+As configurações identificam cada meio selecionado como **Disponível no checkout** ou **Indisponível no checkout**.
+Débito aparece como indisponível, explicando que a seleção registra uma preferência e não habilita essa modalidade.
+A disponibilidade usa a mesma configuração de ambiente tanto no checkout quanto no painel do organizador, incluindo
+a exigência da chave pública para cartão real. Referência conferida em 19/11/2026:
+[criar cobrança de cartão](https://docs.abacatepay.com/pages/transparents/card), documentada como crédito, sem parâmetro
+separado para débito ou prazo de recebimento por cobrança.
 
 ## Demonstrativo e conciliação
 
@@ -147,3 +160,40 @@ removidos ao terminar; nenhum pagamento ou repasse externo foi executado.
 | Web       | 72,06% → 72,82%           | 64,45% → 65,47%         | 72,98% → 73,65%          | 73,55% → 74,30%      |
 
 Nenhum limiar foi reduzido. Os limiares de contratos foram elevados para acompanhar a melhora.
+
+### Correção da disponibilidade de cartão — 19/11/2026
+
+O caso foi reproduzido no evento Conferência de Jovens da UMADEB 2027: crédito selecionado com prazo D+30, conta
+configurada em D+1 e chave de desenvolvimento. A API retornava apenas Pix e boleto. Após a correção, a consulta pública
+desse mesmo evento retorna `PIX`, `BOLETO` e `CARD`, preservando as preferências salvas e a configuração operacional.
+O débito separado continua indisponível na integração e essa limitação agora é explícita no painel.
+
+Regressões: `packages/contracts/src/payment-settings.test.ts`, `apps/api/test/payment-methods.test.ts`,
+`apps/api/test/organizer-payment-settings.test.ts`, `apps/api/test/card-test-settlement.test.ts` (com o helper
+`apps/api/test/support/transparent-fixtures.ts`) e
+`apps/web/src/features/organizer-settings/components/OrganizerPaymentSettings.test.tsx`. O ciclo Red/Green reproduziu a
+ausência do crédito no sandbox e a indicação incorreta de débito pendente. Os testes verificam listagem, cotação e
+criação da cobrança de teste, além de manter os bloqueios com chave real, produção, chave pública ausente e métodos não
+habilitados. A criação mantém a inscrição pendente até a confirmação do pagamento.
+
+Comandos executados:
+
+- `pnpm --filter @events-manager/contracts test:coverage`
+- `pnpm --filter @events-manager/api test:coverage --maxWorkers=4`
+- `pnpm --filter @events-manager/web test:coverage --maxWorkers=4 --testTimeout=15000`
+- `pnpm --filter @events-manager/contracts lint` e `pnpm --filter @events-manager/contracts build`
+- `pnpm --filter @events-manager/api lint` e `pnpm --filter @events-manager/api build`
+- `pnpm --filter @events-manager/web lint` e `pnpm --filter @events-manager/web exec tsc --noEmit`
+- Prettier, lint específico dos componentes alterados e `git diff --check`.
+
+Resultado: **349 testes de contratos, 1.157 da API e 1.056 do frontend passaram**. Builds de contratos/API e TypeScript
+passaram. Cobertura sem regressão: contratos 98,04% statements / 95,27% branches / 99,26% functions / 98,99% lines;
+API 80,78% / 76,83% / 83,18% / 82,86%; frontend 75,38% / 69,14% / 75,74% / 76,93%. Persistem os limiares globais
+anteriores de branches da API e statements/branches/functions do frontend. O lint de contratos/API e dos arquivos
+alterados passou; o lint global do frontend mantém quatro erros anteriores em `AdminSidebar.tsx`, `SidebarSubmenu.tsx`
+e `sidebar.test.tsx`. Nenhum limiar foi reduzido.
+
+Conferência em Chromium no checkout local real, com conta temporária: opção de crédito visível, SDK oficial carregado
+em seu modo de teste e botão Pagar habilitado após preencher cartão de teste válido. Desktop de 1365 px e celular de
+390 px, sem transbordamento horizontal. Nenhuma cobrança foi enviada e as contas temporárias foram removidas. Capturas
+em [evidencias/checkout-cartao](evidencias/checkout-cartao). Sem migration ou alteração de variáveis de ambiente.

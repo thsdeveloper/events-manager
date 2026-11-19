@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { createPortal } from 'react-dom';
 import {
 	brDocumentSchema,
 	brPhoneSchema,
@@ -31,6 +32,7 @@ export function TransparentCheckoutForm({
 	onQuote,
 	ticket,
 	disabled = false,
+	submitContainer,
 }: {
 	cart: CheckoutQuoteInput;
 	checkout: ReturnType<typeof useCheckout>;
@@ -41,6 +43,8 @@ export function TransparentCheckoutForm({
 	onQuote?(quote: CheckoutQuote): void;
 	ticket?: InstallmentTicketConfig;
 	disabled?: boolean;
+	/** Keeps payment state here while placing its action in the purchase summary. */
+	submitContainer?: HTMLElement | null;
 }) {
 	const [cardCount, setCardCount] = useState(1);
 	const [pixCount, setPixCount] = useState<number | null>(1);
@@ -108,7 +112,7 @@ export function TransparentCheckoutForm({
 				activeMethod === 'PIX' &&
 				pixCount &&
 				pixCount > 1 &&
-				ticket?.allow_installments &&
+				ticket?.allow_pix_installments &&
 				!cart.couponCode &&
 				cart.tickets.length === 1
 			) {
@@ -167,6 +171,27 @@ export function TransparentCheckoutForm({
 			</div>
 		);
 
+	const payButton = (
+		<Button
+			type="submit"
+			form="checkout-form"
+			className="flex-1"
+			disabled={
+				busy ||
+				missingProfileData ||
+				(!free && (quote.data.methods.length === 0 || (activeMethod === 'CARD' && !quote.data.mock && !cardReady)))
+			}
+		>
+			{tokenizing
+				? 'Autenticando cartão…'
+				: busy
+					? 'Processando…'
+					: free
+						? 'Confirmar inscrição gratuita'
+						: `Pagar ${formatCurrency(quote.data.amountInCents / 100)}`}
+		</Button>
+	);
+
 	return (
 		<form onSubmit={submit} className="space-y-6" id="checkout-form">
 			<p className="text-lg font-semibold">Total a pagar: {formatCurrency(quote.data.amountInCents / 100)}</p>
@@ -182,7 +207,9 @@ export function TransparentCheckoutForm({
 						}}
 						selectedInstallments={pixCount}
 						onInstallmentChange={setPixCount}
-						ticket={cart.tickets.length === 1 && !cart.couponCode ? ticket : { allow_installments: false }}
+						ticket={
+							cart.tickets.length === 1 && !cart.couponCode ? ticket : { ...ticket, allow_pix_installments: false }
+						}
 						totalAmount={quote.data.amountInCents / 100}
 					/>
 					{activeMethod !== 'PIX' ? (
@@ -266,23 +293,7 @@ export function TransparentCheckoutForm({
 				<Button type="button" variant="outline" onClick={onBack} disabled={busy}>
 					Voltar
 				</Button>
-				<Button
-					type="submit"
-					className="flex-1"
-					disabled={
-						busy ||
-						missingProfileData ||
-						(!free && (quote.data.methods.length === 0 || (activeMethod === 'CARD' && !quote.data.mock && !cardReady)))
-					}
-				>
-					{tokenizing
-						? 'Autenticando cartão…'
-						: busy
-							? 'Processando…'
-							: free
-								? 'Confirmar inscrição gratuita'
-								: `Pagar ${formatCurrency(quote.data.amountInCents / 100)}`}
-				</Button>
+				{submitContainer === undefined ? payButton : submitContainer ? createPortal(payButton, submitContainer) : null}
 			</div>
 		</form>
 	);
