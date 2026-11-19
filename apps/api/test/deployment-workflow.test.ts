@@ -9,6 +9,15 @@ function jobDefinition(name: string): string {
 }
 
 describe('database deployment boundaries', () => {
+	it('synchronizes hosted auth templates only after the matching API and frontend are deployed', () => {
+		const auth = jobDefinition('auth_config');
+		expect(auth).toContain('needs: web');
+		expect(auth).toContain('environment: development');
+		expect(auth).toContain('scripts/sync_supabase_auth.py');
+		expect(auth).toMatch(/--expected-site-url\s+https:\/\/flouvi-dev\.vercel\.app/);
+		expect(auth).not.toMatch(/continue-on-error:\s*true/);
+	});
+
 	it('never runs fixture-based SQL tests against the linked remote database', () => {
 		expect(workflow).not.toMatch(/supabase test db[^\n]*(?:--linked|--db-url)/);
 		expect(jobDefinition('migrate')).not.toContain('supabase test db');

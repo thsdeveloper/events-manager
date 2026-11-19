@@ -20,6 +20,7 @@ const serverAuthOptions = {
 export interface SupabaseClients {
 	public: SupabaseClient;
 	admin: SupabaseClient;
+	createPublicClient: () => SupabaseClient;
 	forAccessToken: (accessToken: string) => SupabaseClient;
 }
 
@@ -27,6 +28,7 @@ export function createSupabaseClients(env: ApiEnv): SupabaseClients {
 	return {
 		public: createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, serverAuthOptions),
 		admin: createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, serverAuthOptions),
+		createPublicClient: () => createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, serverAuthOptions),
 		// O header vale para PostgREST/Storage, onde o RLS lê o JWT da requisição.
 		// Os métodos de `auth.*` NÃO o enxergam: eles usam a sessão interna do
 		// GoTrueClient, vazia aqui por persistSession: false — `auth.updateUser()`

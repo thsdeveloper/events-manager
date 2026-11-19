@@ -11,7 +11,12 @@ import type {
 	SessionTokens,
 	UserProfileInput,
 } from '../../application/auth/auth-service.js';
-import { AuthProviderError, AuthService, DocumentAlreadyInUse } from '../../application/auth/auth-service.js';
+import {
+	AuthProviderError,
+	AuthService,
+	DocumentAlreadyInUse,
+	InvalidPasswordRecovery,
+} from '../../application/auth/auth-service.js';
 import type { SupabaseClients } from './clients.js';
 import { SupabaseMediaRepository } from './media-repository.js';
 
@@ -143,28 +148,29 @@ export class SupabaseAuthRepository implements AuthRepository {
 		if (error) throw providerError(error);
 	}
 
-	/**
-	 * `auth.updateUser()` lê a sessão interna do cliente, que no servidor está sempre
-	 * vazia (persistSession: false) — o header Authorization global não a alimenta e a
-	 * chamada falha com AuthSessionMissingError. O token de recuperação é validado
-	 * explicitamente e a troca é aplicada pelo cliente admin, como em updateProfile.
-	 */
-	async resetPassword(accessToken: string, password: string) {
-		const { data, error } = await this.clients.admin.auth.getUser(accessToken);
-		if (error) throw providerError(error);
-		if (!data.user) throw providerError({ message: 'Token de recuperação inválido.', status: 401 });
-		// Only inspect claims after Auth validates the token's signature and expiry.
-		// A normal login token must not bypass the current-password requirement.
-		const claims = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString('utf8'));
-		if (
-			claims.sub !== data.user.id ||
-			!Array.isArray(claims.amr) ||
-			!claims.amr.some((entry: { method?: unknown }) => entry?.method === 'recovery')
-		)
-			throw providerError({ message: 'Token de recuperação inválido.', status: 401 });
-
-		const { error: updateError } = await this.clients.admin.auth.admin.updateUserById(data.user.id, { password });
-		if (updateError) throw providerError(updateError);
+	/** O propósito é verificado pelo provedor antes de alterar a senha, não inferido do AMR. */
+	async resetPassword(tokenHash: string, password: string) {
+		// verifyOtp cria uma sessão. Um cliente exclusivo evita armazená-la no
+		// cliente compartilhado com outras requisições ou no cliente privilegiado.
+		const recovery = this.clients.createPublicClient();
+		const { data, error } = await recovery.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+		if (error) {
+			if (error.status && error.status >= 400 && error.status < 500 && error.status !== 429)
+				throw new InvalidPasswordRecovery();
+			throw providerError(error);
+		}
+		if (!data.user || !data.session) throw new InvalidPasswordRecovery();
+		try {
+			const { error: updateError } = await this.clients.admin.auth.admin.updateUserById(data.user.id, { password });
+			if (updateError) throw providerError(updateError);
+		} finally {
+			// A sessão temporária nunca sai da API e não deve continuar renovável.
+			try {
+				await this.clients.admin.auth.admin.signOut(data.session.access_token, 'local');
+			} catch {
+				// A falha de limpeza não pode transformar uma senha já salva em erro.
+			}
+		}
 	}
 
 	async updateProfile(user: AuthIdentity, input: UserProfileInput) {

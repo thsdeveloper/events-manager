@@ -196,9 +196,12 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 	app.post('/api/auth/forgot-password', requestPasswordReset);
 
 	app.post('/api/auth/password/reset', async (request) => {
-		const input = z.object({ access_token: z.string(), password: newPasswordSchema }).parse(request.body);
+		const input = z
+			.object({ token_hash: z.string().min(1).max(512), password: newPasswordSchema })
+			.strict()
+			.parse(request.body);
 		await limit('auth-password-reset', request.ip, 5, 600);
-		await auth.resetPassword(input.access_token, input.password);
+		await auth.resetPassword(input.token_hash, input.password);
 		return { success: true };
 	});
 

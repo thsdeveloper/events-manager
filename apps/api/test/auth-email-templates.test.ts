@@ -43,7 +43,8 @@ describe('Supabase auth e-mail templates', () => {
 		const section = templateSection('recovery');
 		const html = templateHtml(section!.contentPath!);
 
-		expect(html).toContain('{{ .ConfirmationURL }}');
+		expect(html).toContain('{{ .SiteURL }}/redefinir-senha#token_hash={{ .TokenHash }}&amp;type=recovery');
+		expect(html).not.toContain('{{ .ConfirmationURL }}');
 		expect(html).not.toContain('{{ .Token }}');
 		expect(html).toMatch(/15 minutos/);
 		expect(html).toMatch(/ignore/i);

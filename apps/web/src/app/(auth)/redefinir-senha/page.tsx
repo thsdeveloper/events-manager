@@ -15,10 +15,10 @@ import { HttpError } from '@/lib/http';
 import { httpClient } from '@/lib/http-client';
 import { resetPasswordSchema, type ResetPasswordValues } from '@/lib/validation/auth';
 
-type ResetState = 'checking' | 'ready' | 'invalid' | 'expired' | 'success';
+type ResetState = 'checking' | 'ready' | 'invalid' | 'expired' | 'unavailable' | 'success';
 
 export default function ResetPasswordPage() {
-	const [accessToken, setAccessToken] = useState('');
+	const [tokenHash, setTokenHash] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
 	const [state, setState] = useState<ResetState>('checking');
 	// O token é lido da URL uma única vez. O Strict Mode do React (ligado no Next
@@ -43,26 +43,25 @@ export default function ResetPasswordPage() {
 
 		const hash = new URLSearchParams(window.location.hash.slice(1));
 		const query = new URLSearchParams(window.location.search);
-		const token = hash.get('access_token') ?? query.get('access_token');
+		const token = hash.get('token_hash') ?? query.get('token_hash');
 		const recoveryType = hash.get('type') ?? query.get('type');
 		const errorCode = hash.get('error_code') ?? query.get('error_code');
 
 		window.history.replaceState({}, document.title, window.location.pathname);
 
-		// O token do e-mail é de uso único: abrir o link duas vezes, ou recarregar
-		// esta página depois que o hash foi limpo, devolve otp_expired. Sem separar
-		// esse caso o usuário lê "link incompleto" e tenta o mesmo link de novo.
+		// Links antigos podem voltar do provedor com otp_expired. O fluxo novo
+		// verifica a prova somente ao enviar a nova senha; abrir a página não a consome.
 		if (errorCode === 'otp_expired' || errorCode === 'access_denied') {
 			setState('expired');
 
 			return;
 		}
-		if (!token || (recoveryType && recoveryType !== 'recovery')) {
+		if (!token || recoveryType !== 'recovery') {
 			setState('invalid');
 
 			return;
 		}
-		setAccessToken(token);
+		setTokenHash(token);
 		setState('ready');
 	}, []);
 
@@ -70,10 +69,10 @@ export default function ResetPasswordPage() {
 		try {
 			await httpClient.post(
 				'/api/auth/password/reset',
-				{ access_token: accessToken, password },
-				{ toastOptions: { suppressCodes: ['PASSWORD_RESET_ERROR'] } },
+				{ token_hash: tokenHash, password },
+				{ toastOptions: { suppressCodes: ['PASSWORD_RESET_ERROR', 'PASSWORD_RESET_UNAVAILABLE'] } },
 			);
-			setAccessToken('');
+			setTokenHash('');
 			setState('success');
 		} catch (error) {
 			// O token vale por tempo limitado: quem demora a enviar o formulário recebe
@@ -81,8 +80,11 @@ export default function ResetPasswordPage() {
 			// novo, orienta melhor do que um toast sobre um formulário que não vai
 			// mais funcionar. Os demais erros continuam no toast do httpClient.
 			if (error instanceof HttpError && error.code === 'PASSWORD_RESET_ERROR') {
-				setAccessToken('');
+				setTokenHash('');
 				setState('expired');
+			} else if (error instanceof HttpError && error.code === 'PASSWORD_RESET_UNAVAILABLE') {
+				setTokenHash('');
+				setState('unavailable');
 			}
 		}
 	};
@@ -100,11 +102,26 @@ export default function ResetPasswordPage() {
 
 	if (state === 'expired') {
 		return (
-			<AuthLayout title="Link expirado" subtitle="Esta recuperação já foi utilizada">
+			<AuthLayout title="Link expirado" subtitle="Solicite um novo link para continuar">
 				<div className="space-y-5">
 					<InlineAlert>
-						Este link só pode ser aberto uma vez e vale por 15 minutos. Solicite uma nova recuperação para receber um
-						link novo.
+						Este link expirou ou a recuperação já foi concluída. O prazo é de 15 minutos. Solicite uma nova recuperação
+						para receber um link válido.
+					</InlineAlert>
+					<Button asChild className="w-full">
+						<Link href="/esqueci-senha">Solicitar novo link</Link>
+					</Button>
+				</div>
+			</AuthLayout>
+		);
+	}
+
+	if (state === 'unavailable') {
+		return (
+			<AuthLayout title="Não foi possível atualizar a senha" subtitle="Solicite um novo link e tente novamente">
+				<div className="space-y-5">
+					<InlineAlert>
+						O serviço não conseguiu concluir a alteração. Sua senha não foi confirmada como atualizada.
 					</InlineAlert>
 					<Button asChild className="w-full">
 						<Link href="/esqueci-senha">Solicitar novo link</Link>

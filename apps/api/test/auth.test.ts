@@ -79,6 +79,7 @@ function createClients() {
 			),
 		},
 		forAccessToken,
+		createPublicClient: vi.fn(() => ({ auth: publicAuth })),
 	};
 
 	return {
@@ -287,33 +288,30 @@ describe('email confirmation during registration', () => {
 		});
 	});
 
-	// auth.updateUser() depende da sessão interna do cliente, que no servidor está
-	// vazia, então a troca passa a validar o token e aplicar a senha pelo admin.
-	it('updates a password only after validating the recovery access token', async () => {
-		const token = recoveryToken();
-		const { clients, adminAuth } = createClients();
-		adminAuth.getUser.mockResolvedValue({ data: { user: authUser }, error: null });
+	it('resets a password using a recovery proof even when Supabase labels its session as otp', async () => {
+		const { clients, publicAuth, adminAuth } = createClients();
+		publicAuth.verifyOtp.mockResolvedValue({
+			data: { user: authUser, session: { ...session, access_token: recoveryToken('otp') } },
+			error: null,
+		});
 		adminAuth.admin.updateUserById.mockResolvedValue({ data: { user: authUser }, error: null });
 		const app = await buildAuthTestApp(clients);
-
 		const response = await app.inject({
 			method: 'POST',
 			url: '/api/auth/password/reset',
-			payload: { access_token: token, password: 'Qsesbs2006#@!' },
+			payload: { token_hash: 'one-time-recovery-proof', password: 'Qsesbs2006#@!' },
 		});
 		await app.close();
-
 		expect(response.statusCode).toBe(200);
-		expect(adminAuth.getUser).toHaveBeenCalledWith(token);
+		expect(publicAuth.verifyOtp).toHaveBeenCalledWith({ token_hash: 'one-time-recovery-proof', type: 'recovery' });
 		expect(adminAuth.admin.updateUserById).toHaveBeenCalledWith(authUser.id, { password: 'Qsesbs2006#@!' });
+		expect(response.json()).toEqual({ success: true });
 	});
 
-	it.each(['password', 'oauth', 'otp'])(
-		'cannot use a normal %s session to bypass the current password check',
+	it.each(['password', 'oauth', 'otp', 'recovery'])(
+		'rejects a %s access token without a one-time recovery proof',
 		async (method) => {
-			const { clients, adminAuth } = createClients();
-			adminAuth.getUser.mockResolvedValue({ data: { user: authUser }, error: null });
-			adminAuth.admin.updateUserById.mockResolvedValue({ data: { user: authUser }, error: null });
+			const { clients, publicAuth, adminAuth } = createClients();
 			const app = await buildAuthTestApp(clients);
 			const response = await app.inject({
 				method: 'POST',
@@ -321,26 +319,107 @@ describe('email confirmation during registration', () => {
 				payload: { access_token: recoveryToken(method), password: 'Qsesbs2006#@!' },
 			});
 			await app.close();
-			expect(response.statusCode).toBe(400);
+			expect(response.statusCode).toBe(422);
+			expect(publicAuth.verifyOtp).not.toHaveBeenCalled();
 			expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
 		},
 	);
 
-	it('rejects a recovery token the provider does not recognise', async () => {
-		const { clients, adminAuth } = createClients();
-		adminAuth.getUser.mockResolvedValue({ data: { user: null }, error: { message: 'invalid token', status: 401 } });
+	it('does not let the caller select a different verification purpose', async () => {
+		const { clients, publicAuth } = createClients();
 		const app = await buildAuthTestApp(clients);
-
 		const response = await app.inject({
 			method: 'POST',
 			url: '/api/auth/password/reset',
-			payload: { access_token: 'expirado', password: 'Qsesbs2006#@!' },
+			payload: { token_hash: 'signup-proof', type: 'email', password: 'Qsesbs2006#@!' },
 		});
 		await app.close();
+		expect(response.statusCode).toBe(422);
+		expect(publicAuth.verifyOtp).not.toHaveBeenCalled();
+	});
 
+	it('rejects expired or reused recovery proofs without changing a password', async () => {
+		const { clients, publicAuth, adminAuth } = createClients();
+		publicAuth.verifyOtp.mockResolvedValue({
+			data: { user: null, session: null },
+			error: { code: 'otp_expired', status: 403, message: 'Token expired' },
+		});
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/password/reset',
+			payload: { token_hash: 'expired-proof', password: 'Qsesbs2006#@!' },
+		});
+		await app.close();
 		expect(response.statusCode).toBe(400);
 		expect(response.json()).toMatchObject({ title: 'PASSWORD_RESET_ERROR' });
 		expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
+	});
+
+	it('reports provider outages separately from an expired recovery proof', async () => {
+		const { clients, publicAuth, adminAuth } = createClients();
+		publicAuth.verifyOtp.mockResolvedValue({
+			data: { user: null, session: null },
+			error: { status: 503, message: 'Unavailable' },
+		});
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/password/reset',
+			payload: { token_hash: 'valid-proof', password: 'Qsesbs2006#@!' },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(503);
+		expect(response.json()).toMatchObject({ title: 'PASSWORD_RESET_UNAVAILABLE' });
+		expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ user: null, session },
+		{ user: authUser, session: null },
+	])('requires both the verified user and recovery session before changing a password', async (data) => {
+		const { clients, publicAuth, adminAuth } = createClients();
+		publicAuth.verifyOtp.mockResolvedValue({ data, error: null });
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/password/reset',
+			payload: { token_hash: 'incomplete-proof', password: 'Qsesbs2006#@!' },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(400);
+		expect(adminAuth.admin.updateUserById).not.toHaveBeenCalled();
+	});
+
+	it('does not report failure after the password was saved when temporary session cleanup is unavailable', async () => {
+		const { clients, publicAuth, adminAuth } = createClients();
+		publicAuth.verifyOtp.mockResolvedValue({ data: { user: authUser, session }, error: null });
+		adminAuth.admin.updateUserById.mockResolvedValue({ data: { user: authUser }, error: null });
+		adminAuth.admin.signOut.mockRejectedValue(new Error('Unavailable'));
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/password/reset',
+			payload: { token_hash: 'valid-proof', password: 'Qsesbs2006#@!' },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(adminAuth.admin.signOut).toHaveBeenCalledWith(session.access_token, 'local');
+	});
+
+	it('does not claim the link expired when saving the new password fails', async () => {
+		const { clients, publicAuth, adminAuth } = createClients();
+		publicAuth.verifyOtp.mockResolvedValue({ data: { user: authUser, session }, error: null });
+		adminAuth.admin.updateUserById.mockResolvedValue({ error: { status: 500, message: 'Database unavailable' } });
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/password/reset',
+			payload: { token_hash: 'valid-proof', password: 'Qsesbs2006#@!' },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(503);
+		expect(response.json()).toMatchObject({ title: 'PASSWORD_RESET_UNAVAILABLE' });
 	});
 });
 
@@ -523,7 +602,7 @@ describe('password policy scope', () => {
 		const response = await app.inject({
 			method: 'POST',
 			url: '/api/auth/password/reset',
-			payload: { access_token: 'recovery-access-token', password: 'senhaantiga' },
+			payload: { token_hash: 'recovery-proof', password: 'senhaantiga' },
 		});
 		await app.close();
 

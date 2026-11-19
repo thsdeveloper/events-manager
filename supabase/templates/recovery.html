@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
 	Supabase renders this file itself and only interpolates its own variables
-	({{ .ConfirmationURL }}, {{ .SiteURL }}, ...) — it cannot read
+	({{ .TokenHash }}, {{ .SiteURL }}, ...) — it cannot read
 	`site_settings`, so the logo is pulled from the API endpoint below, which
 	always redirects to the one the super admin uploaded.
 
@@ -52,14 +52,14 @@
 									Redefina sua senha
 								</h1>
 								<p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6">
-									Recebemos um pedido para redefinir a senha da sua conta. Clique no botão abaixo para escolher uma
-									nova senha. O link vale por 15 minutos e só pode ser usado uma vez.
+									Recebemos um pedido para redefinir a senha da sua conta. Clique no botão abaixo para escolher uma nova
+									senha. O link vale por 15 minutos e só pode ser usado uma vez.
 								</p>
 								<table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px">
 									<tr>
 										<td style="border-radius: 10px; background: #6644ff">
 											<a
-												href="{{ .ConfirmationURL }}"
+												href="{{ .SiteURL }}/redefinir-senha#token_hash={{ .TokenHash }}&amp;type=recovery"
 												style="
 													display: inline-block;
 													padding: 13px 24px;
@@ -78,8 +78,11 @@
 									Se o botão não funcionar, copie e cole este endereço no navegador:
 								</p>
 								<p style="margin: 0; font-size: 13px; line-height: 1.6; word-break: break-all">
-									<a href="{{ .ConfirmationURL }}" style="color: #6644ff; text-decoration: underline">
-										{{ .ConfirmationURL }}
+									<a
+										href="{{ .SiteURL }}/redefinir-senha#token_hash={{ .TokenHash }}&amp;type=recovery"
+										style="color: #6644ff; text-decoration: underline"
+									>
+										{{ .SiteURL }}/redefinir-senha#token_hash={{ .TokenHash }}&amp;type=recovery
 									</a>
 								</p>
 							</td>
@@ -87,8 +90,7 @@
 						<tr>
 							<td style="border-top: 1px solid #e5e7eb; background: #fafafa; padding: 20px 32px">
 								<p style="margin: 0 0 12px; color: #9ca3af; font-size: 12px; line-height: 1.5">
-									Se você não pediu para redefinir a senha, ignore esta mensagem. Sua senha atual continua
-									valendo.
+									Se você não pediu para redefinir a senha, ignore esta mensagem. Sua senha atual continua valendo.
 								</p>
 								<p style="margin: 0 0 8px; font-size: 12px">
 									<a href="{{ .SiteURL }}" style="margin-right: 12px; color: #6644ff; text-decoration: none">

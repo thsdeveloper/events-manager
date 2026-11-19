@@ -11,7 +11,7 @@ vi.mock('next/image', () => ({
 	default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
 }));
 
-const RECOVERY_HASH = '#access_token=recovery-token&refresh_token=r&expires_in=3600&token_type=bearer&type=recovery';
+const RECOVERY_HASH = '#token_hash=recovery-proof&type=recovery';
 
 function openLink(hash: string) {
 	window.history.replaceState({}, '', `/redefinir-senha${hash}`);
@@ -56,13 +56,38 @@ describe('ResetPasswordPage', () => {
 		expect(window.location.hash).toBe('');
 	});
 
-	it('explains that the link was already used when the provider reports an expired code', async () => {
+	it('explains that a link may be expired or used without claiming it was consumed', async () => {
 		openLink('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid');
 
 		renderPage();
 
 		expect(await screen.findByRole('heading', { name: 'Link expirado' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: /solicitar novo link/i })).toHaveAttribute('href', '/esqueci-senha');
+		expect(screen.queryByText('Esta recuperação já foi utilizada')).not.toBeInTheDocument();
+	});
+
+	it('does not consume the recovery proof when the page is merely opened', async () => {
+		openLink(RECOVERY_HASH);
+		const fetchMock = mockFetch([]);
+		renderPage();
+		await screen.findByLabelText('Nova senha');
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('asks for a new link when an old implicit session link is opened', async () => {
+		openLink('#access_token=legacy-session&type=recovery');
+		renderPage();
+		expect(await screen.findByRole('heading', { name: 'Link inválido' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: /solicitar novo link/i })).toBeInTheDocument();
+	});
+
+	it('offers a new recovery without calling an outage an expired link', async () => {
+		openLink(RECOVERY_HASH);
+		mockFetch([['/api/auth/password/reset', () => problemResponse(503, 'PASSWORD_RESET_UNAVAILABLE')]]);
+		const { user } = renderPage();
+		await fillAndSubmit(user);
+		expect(await screen.findByRole('heading', { name: 'Não foi possível atualizar a senha' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: /solicitar novo link/i })).toBeInTheDocument();
 	});
 
 	it('rejects a page opened without a recovery token', async () => {
@@ -84,7 +109,7 @@ describe('ResetPasswordPage', () => {
 		const [url, init] = fetchMock.mock.calls[0];
 		expect(String(url)).toContain('/api/auth/password/reset');
 		expect(init?.method).toBe('POST');
-		expect(JSON.parse(String(init?.body))).toEqual({ access_token: 'recovery-token', password: 'Qsesbs2006#@!' });
+		expect(JSON.parse(String(init?.body))).toEqual({ token_hash: 'recovery-proof', password: 'Qsesbs2006#@!' });
 		expect(screen.getByRole('link', { name: /entrar com a nova senha/i })).toHaveAttribute('href', '/login');
 	});
 

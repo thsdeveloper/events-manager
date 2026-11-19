@@ -1,8 +1,8 @@
 # Ambiente de desenvolvimento na nuvem
 
 O push da `main` executa `.github/workflows/ci-deploy.yml`. Pull requests executam somente validação, sem credenciais de
-infraestrutura. O deploy segue a ordem: validação da aplicação + banco isolado → migrations remotas → API → frontend. A
-concorrência serializa os deploys; não interrompa uma execução durante uma migration.
+infraestrutura. O deploy segue a ordem: validação da aplicação + banco isolado → migrations remotas → API → frontend →
+configuração de autenticação. A concorrência serializa os deploys; não interrompa uma execução durante uma migration.
 
 | Serviço                        | Destino                                                                                                         |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
@@ -153,6 +153,42 @@ A chave também está no `.env` local ignorado pelo Git, como `RESEND_API_KEY`, 
 sozinha não altera o transporte da aplicação: a API lê `SMTP_*`. O localhost continua usando o Mailpit nas portas 55324
 (interface) e 55325 (SMTP), inclusive para os testes das notificações. O MCP é uma ferramenta de administração; os
 envios da aplicação não dependem dele.
+
+### Modelos e códigos de autenticação
+
+Os arquivos `supabase/templates/*.html` e a seção `[auth.email]` do `supabase/config.toml` configuram o Supabase local.
+O projeto hospedado precisa receber esses valores pela Management API; aplicar migrations e configurar SMTP não publica
+os modelos de e-mail.
+
+O job `auth_config` executa `scripts/sync_supabase_auth.py` depois de publicar a API e o frontend. Ele confere o projeto
+pela URL do site, sincroniza os modelos de confirmação, recuperação e troca de e-mail, seus assuntos em português e a
+política de confirmação (6 dígitos, 15 minutos). Uma leitura posterior verifica a persistência. SMTP, credenciais, URLs
+de retorno e limites de envio são preservados. O script usa Python 3.11+ e não precisa de dependências adicionais. Os
+testes de configuração rodam dentro de `pnpm test:api`, com uma API simulada.
+
+O link de recuperação abre `/redefinir-senha#token_hash=...&type=recovery`. Abrir a página não verifica nem consome o
+código. A API recebe a prova somente ao enviar uma nova senha e chama `verifyOtp` com o propósito fixo `recovery`, em um
+cliente isolado. Isso evita inferir o propósito pela declaração `amr`, que pode ser `otp` mesmo em uma recuperação
+válida. A prova não permite nova alteração depois de consumida. Links antigos que já geraram uma sessão exigem uma nova
+solicitação em `/esqueci-senha`; nenhuma senha ou confirmação de conta existente é alterada pelo deploy.
+
+Referência:
+[modelos e pré-carregamento de links no Supabase](https://supabase.com/docs/guides/auth/auth-email-templates).
+
+Validação da correção em 19/11/2026:
+
+- `pnpm --filter @events-manager/api test:coverage --maxWorkers=2`: 1.297 testes passaram, incluindo a execução de cinco
+  casos Python da sincronização; `pnpm --filter @events-manager/web test:coverage --maxWorkers=2`: 1.154 testes
+  passaram.
+- `pnpm lint` e `pnpm --filter @events-manager/web exec tsc --noEmit`: passaram.
+- Recuperação real com conta temporária no Supabase local: nova senha aceita, senha anterior recusada, prova de uso
+  único e sessão compartilhada preservada. A conta temporária foi removida; contas reais não foram alteradas.
+- Cobertura sem regressão: branches da API 78,12% (antes 78,10%); frontend manteve branches 71,86% e funções 77,06%. Os
+  comandos de cobertura ainda retornam erro pelos limites globais preexistentes, que não foram reduzidos.
+
+Regressões cobertas em `apps/api/test/auth.test.ts`, `auth-email-templates.test.ts`, `auth-deployment-config.test.ts`,
+`deployment-workflow.test.ts`, `scripts/tests/test_sync_supabase_auth.py` e
+`apps/web/src/app/(auth)/redefinir-senha/page.test.tsx`.
 
 ### Ativação das notificações
 

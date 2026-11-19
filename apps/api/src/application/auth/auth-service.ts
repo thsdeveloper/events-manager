@@ -56,6 +56,9 @@ export interface UserProfileInput {
 /** O CPF informado já pertence a outra conta. */
 export class DocumentAlreadyInUse extends Error {}
 
+/** A prova de recuperação não existe, expirou ou já foi consumida. */
+export class InvalidPasswordRecovery extends Error {}
+
 export interface DocumentChange {
 	userId: string;
 	previousDocument: string | null;
@@ -138,7 +141,7 @@ export interface AuthRepository {
 	}): Promise<AuthResult>;
 	requestPasswordReset(email: string, redirectTo: string): Promise<void>;
 	resendEmailConfirmation(email: string, redirectTo: string): Promise<void>;
-	resetPassword(accessToken: string, password: string): Promise<void>;
+	resetPassword(tokenHash: string, password: string): Promise<void>;
 	revokeOtherSessions(accessToken: string): Promise<void>;
 	serialize(user: AuthIdentity): Promise<SerializedUser>;
 	signOut(accessToken: string): Promise<void>;
@@ -248,11 +251,17 @@ export class AuthService {
 		return this.repository.requestPasswordReset(email, redirectTo);
 	}
 
-	async resetPassword(accessToken: string, password: string) {
+	async resetPassword(tokenHash: string, password: string) {
 		try {
-			await this.repository.resetPassword(accessToken, password);
-		} catch {
-			throw new ApiError('O link de recuperação é inválido ou expirou.', 400, 'PASSWORD_RESET_ERROR');
+			await this.repository.resetPassword(tokenHash, password);
+		} catch (error) {
+			if (error instanceof InvalidPasswordRecovery)
+				throw new ApiError('O link de recuperação é inválido ou expirou.', 400, 'PASSWORD_RESET_ERROR');
+			throw new ApiError(
+				'Não foi possível atualizar a senha. Solicite um novo link e tente novamente.',
+				503,
+				'PASSWORD_RESET_UNAVAILABLE',
+			);
 		}
 	}
 
