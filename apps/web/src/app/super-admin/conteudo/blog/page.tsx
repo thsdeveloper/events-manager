@@ -1,3 +1,6 @@
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -13,6 +16,8 @@ interface BlogIndexProps {
 }
 
 export default async function BlogIndexPage({ searchParams }: BlogIndexProps) {
+	if (!(await canOpenPlatformPage('/super-admin/conteudo/blog'))) return <AccessDenied scope="platform" />;
+
 	const params = await searchParams;
 	const result = await fetchCmsPosts({
 		page: Number(params.page ?? 1),
@@ -27,12 +32,14 @@ export default async function BlogIndexPage({ searchParams }: BlogIndexProps) {
 				title="Blog"
 				description="Posts publicados aparecem em /blog e no bloco “Posts do blog” das páginas."
 				actions={
-					<Button asChild>
-						<Link href="/super-admin/conteudo/blog/novo">
-							<Plus className="mr-2 size-4" />
-							Novo post
-						</Link>
-					</Button>
+					<PlatformCan permission="platform_posts.update">
+						<Button asChild>
+							<Link href="/super-admin/conteudo/blog/novo">
+								<Plus className="mr-2 size-4" />
+								Novo post
+							</Link>
+						</Button>
+					</PlatformCan>
 				}
 			/>
 			<Suspense>

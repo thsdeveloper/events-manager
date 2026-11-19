@@ -1,4 +1,5 @@
 'use client';
+import { usePlatformPermissions, PlatformWrite } from '@/features/platform-access/PlatformPermissions';
 import {
 	organizerAdminUpdateSchema,
 	organizerSupportNoteSchema,
@@ -32,6 +33,13 @@ export function OrganizerSupportPage({
 	manualPayoutPanel?: ReactNode;
 	initialTab?: string;
 }) {
+	const { can } = usePlatformPermissions();
+	const financial = can('platform_finance.read'),
+		receiving = can('platform_receiving.read');
+	const allowedTab =
+		(!financial && ['transactions', 'payouts'].includes(initialTab)) || (!receiving && initialTab === 'receiving')
+			? 'overview'
+			: initialTab;
 	const { detail, update, addNote } = useOrganizerSupport(initialDetail);
 	const { toast } = useToast();
 	const [note, setNote] = useState('');
@@ -115,30 +123,32 @@ export function OrganizerSupportPage({
 					Não foi possível atualizar os dados. {detail.error.message}
 				</p>
 			)}
-			<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-				{(
-					[
-						['Receita bruta', formatCurrency(metrics.grossRevenue), `${metrics.ticketsSold} ingressos pagos`],
-						['Saldo disponível', formatCurrency(metrics.availableBalance), 'Após taxas e reservas de repasses'],
-						['Repasses reservados', formatCurrency(metrics.reservedPayouts), 'Pendentes ou em processamento'],
-						['Repasses concluídos', formatCurrency(metrics.completedPayouts), 'Valores brutos já repassados'],
-					] as const
-				).map(([title, value, description]) => (
-					<Card key={title} className="p-5">
-						<h2 className="text-sm text-muted-foreground">{title}</h2>
-						<p className="my-2 text-2xl font-semibold">{value}</p>
-						<p className="text-xs text-muted-foreground">{description}</p>
-					</Card>
-				))}
-			</div>
-			<Tabs defaultValue={initialTab} className="space-y-5">
+			{financial && (
+				<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+					{(
+						[
+							['Receita bruta', formatCurrency(metrics.grossRevenue), `${metrics.ticketsSold} ingressos pagos`],
+							['Saldo disponível', formatCurrency(metrics.availableBalance), 'Após taxas e reservas de repasses'],
+							['Repasses reservados', formatCurrency(metrics.reservedPayouts), 'Pendentes ou em processamento'],
+							['Repasses concluídos', formatCurrency(metrics.completedPayouts), 'Valores brutos já repassados'],
+						] as const
+					).map(([title, value, description]) => (
+						<Card key={title} className="p-5">
+							<h2 className="text-sm text-muted-foreground">{title}</h2>
+							<p className="my-2 text-2xl font-semibold">{value}</p>
+							<p className="text-xs text-muted-foreground">{description}</p>
+						</Card>
+					))}
+				</div>
+			)}
+			<Tabs defaultValue={allowedTab} className="space-y-5">
 				<div className="overflow-x-auto">
 					<TabsList className="h-auto w-max">
 						<TabsTrigger value="overview">Cadastro e acesso</TabsTrigger>
-						<TabsTrigger value="receiving">Recebimento e documentos</TabsTrigger>
+						{receiving && <TabsTrigger value="receiving">Recebimento e documentos</TabsTrigger>}
 						<TabsTrigger value="events">Eventos ({metrics.events})</TabsTrigger>
-						<TabsTrigger value="transactions">Transações</TabsTrigger>
-						<TabsTrigger value="payouts">Repasses</TabsTrigger>
+						{financial && <TabsTrigger value="transactions">Transações</TabsTrigger>}
+						{financial && <TabsTrigger value="payouts">Repasses</TabsTrigger>}
 						<TabsTrigger value="activity">Histórico e atendimento</TabsTrigger>
 					</TabsList>
 				</div>
@@ -181,14 +191,16 @@ export function OrganizerSupportPage({
 							Usuário: {organizer.user_id ?? 'Não vinculado'} · Última alteração: {supportDate(organizer.date_updated)}
 						</p>
 					</Card>
-					<div className="grid items-start gap-5 xl:grid-cols-2">
-						<OrganizerContactForm organizer={organizer} save={save} busy={update.isPending} />
-						<div className="space-y-5">
-							<OrganizerStatusForm organizer={organizer} save={save} busy={update.isPending} />
+					<PlatformWrite permission="platform_organizers.update">
+						<div className="grid items-start gap-5 xl:grid-cols-2">
+							<OrganizerContactForm organizer={organizer} save={save} busy={update.isPending} />
+							<div className="space-y-5">
+								<OrganizerStatusForm organizer={organizer} save={save} busy={update.isPending} />
+							</div>
 						</div>
-					</div>
+					</PlatformWrite>
 				</TabsContent>
-				<TabsContent value="receiving">{receivingPanel}</TabsContent>
+				{receiving && <TabsContent value="receiving">{receivingPanel}</TabsContent>}
 				<TabsContent value="events">
 					<Card className="space-y-4 p-5">
 						<h2 className="text-lg font-semibold">Eventos desta organização</h2>
@@ -198,44 +210,52 @@ export function OrganizerSupportPage({
 						<OrganizerSupportRecords id={organizer.id} kind="events" />
 					</Card>
 				</TabsContent>
-				<TabsContent value="transactions">
-					<Card className="space-y-4 p-5">
-						<h2 className="text-lg font-semibold">Transações de pagamento</h2>
-						<p className="text-sm text-muted-foreground">
-							{metrics.failedPayments} transações com falha. Use a referência do pedido e do provedor para investigar.
-						</p>
-						<OrganizerSupportRecords id={organizer.id} kind="transactions" />
-					</Card>
-				</TabsContent>
-				<TabsContent value="payouts" className="space-y-5">
-					{manualPayoutPanel}
-					<Card className="space-y-4 p-5">
-						<h2 className="text-lg font-semibold">Repasses e comprovantes</h2>
-						<p className="text-sm text-muted-foreground">
-							Consulte valores, chave utilizada, falhas e comprovantes antes de solicitar uma nova transferência.
-						</p>
-						<OrganizerSupportRecords id={organizer.id} kind="payouts" />
-					</Card>
-				</TabsContent>
+				{financial && (
+					<TabsContent value="transactions">
+						<Card className="space-y-4 p-5">
+							<h2 className="text-lg font-semibold">Transações de pagamento</h2>
+							<p className="text-sm text-muted-foreground">
+								{metrics.failedPayments} transações com falha. Use a referência do pedido e do provedor para investigar.
+							</p>
+							<OrganizerSupportRecords id={organizer.id} kind="transactions" />
+						</Card>
+					</TabsContent>
+				)}
+				{financial && (
+					<TabsContent value="payouts" className="space-y-5">
+						{manualPayoutPanel}
+						<Card className="space-y-4 p-5">
+							<h2 className="text-lg font-semibold">Repasses e comprovantes</h2>
+							<p className="text-sm text-muted-foreground">
+								Consulte valores, chave utilizada, falhas e comprovantes antes de solicitar uma nova transferência.
+							</p>
+							<OrganizerSupportRecords id={organizer.id} kind="payouts" />
+						</Card>
+					</TabsContent>
+				)}
 				<TabsContent value="activity" className="space-y-5">
 					<Card className="p-5">
-						<form className="space-y-3" onSubmit={submitNote}>
-							<Label className="block space-y-2 text-sm font-medium">
-								Anotação interna
-								<Textarea
-									value={note}
-									onChange={(event) => setNote(event.target.value)}
-									minLength={5}
-									maxLength={4000}
-									required
-									placeholder="Registre a solicitação, as verificações e a solução adotada."
-								/>
-							</Label>
-							<p className="text-xs text-muted-foreground">Visível apenas para superadministradores.</p>
-							<Button type="submit" loading={addNote.isPending}>
-								Registrar atendimento
-							</Button>
-						</form>
+						<PlatformWrite permission="platform_organizers.update">
+							<form className="space-y-3" onSubmit={submitNote}>
+								<Label className="block space-y-2 text-sm font-medium">
+									Anotação interna
+									<Textarea
+										value={note}
+										onChange={(event) => setNote(event.target.value)}
+										minLength={5}
+										maxLength={4000}
+										required
+										placeholder="Registre a solicitação, as verificações e a solução adotada."
+									/>
+								</Label>
+								<p className="text-xs text-muted-foreground">
+									Visível para a equipe autorizada de atendimento da plataforma.
+								</p>
+								<Button type="submit" loading={addNote.isPending}>
+									Registrar atendimento
+								</Button>
+							</form>
+						</PlatformWrite>
 					</Card>
 					<Card className="space-y-4 p-5">
 						<h2 className="text-lg font-semibold">Histórico de alterações e atendimento</h2>

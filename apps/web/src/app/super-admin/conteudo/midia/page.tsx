@@ -1,3 +1,5 @@
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Suspense } from 'react';
 import { fetchCmsMedia } from '@/features/cms/api/server';
 import { CmsPageHeader } from '@/features/cms/components/CmsPageHeader';
@@ -10,6 +12,8 @@ interface MediaPageProps {
 }
 
 export default async function MediaPage({ searchParams }: MediaPageProps) {
+	if (!(await canOpenPlatformPage('/super-admin/conteudo/midia'))) return <AccessDenied scope="platform" />;
+
 	const params = await searchParams;
 	const result = await fetchCmsMedia({ page: Number(params.page ?? 1), search: params.search, limit: 36 });
 

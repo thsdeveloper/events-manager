@@ -52,3 +52,26 @@ describe('accepting team invitation', () => {
 		expect(sessionStorage.getItem('flouvi.iam.invitation')).toBe(token);
 	});
 });
+
+it('accepts platform invitations without changing the active organization', async () => {
+	sessionStorage.setItem('flouvi.platform.invitation', token);
+	const fetchMock = mockFetch([['/api/platform-iam/invitations/accept', () => jsonResponse({ memberId: 'member' })]]);
+	const { user } = renderWithProviders(<AcceptInvitation email="guest@test.com" scope="platform" />);
+	await user.click(await screen.findByRole('button', { name: 'Aceitar convite' }));
+	await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/super-admin'));
+	expect(fetchMock).toHaveBeenCalledWith(
+		'/api/platform-iam/invitations/accept',
+		expect.objectContaining({ body: JSON.stringify({ token }) }),
+	);
+	expect(sessionStorage.getItem('flouvi.platform.invitation')).toBeNull();
+});
+it('keeps platform and organization invitation links separate through login', async () => {
+	history.replaceState(null, '', `/convites/plataforma#token=${token}`);
+	renderWithProviders(<AcceptInvitation scope="platform" />);
+	expect(await screen.findByRole('link', { name: 'Entrar para aceitar' })).toHaveAttribute(
+		'href',
+		'/login?redirect=%2Fconvites%2Fplataforma',
+	);
+	expect(sessionStorage.getItem('flouvi.platform.invitation')).toBe(token);
+	expect(sessionStorage.getItem('flouvi.iam.invitation')).toBeNull();
+});

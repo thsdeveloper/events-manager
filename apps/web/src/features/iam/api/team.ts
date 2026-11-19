@@ -1,9 +1,14 @@
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { usePermissions } from '@/components/auth/PermissionsProvider';
+import { useTeamRuntime } from './team-runtime';
 import { toast } from '@/hooks/use-toast';
-export async function iamRequest<T>(path: string, method?: string, body?: unknown): Promise<T> {
-	const response = await fetch(`/api/organizer/iam/${path}`, {
+export async function iamRequest<T>(
+	path: string,
+	method?: string,
+	body?: unknown,
+	apiBase = '/api/organizer/iam',
+): Promise<T> {
+	const response = await fetch(`${apiBase}/${path}`, {
 		credentials: 'include',
 		cache: 'no-store',
 		...(method ? { method } : {}),
@@ -15,24 +20,24 @@ export async function iamRequest<T>(path: string, method?: string, body?: unknow
 	return result as T;
 }
 export function useTeamQuery<T>(resource: string, enabled: boolean) {
-	const { access } = usePermissions();
+	const runtime = useTeamRuntime();
 
 	return useQuery({
-		queryKey: ['iam', access?.userId, access?.organizationId, resource],
-		queryFn: () => iamRequest<T>(resource),
-		enabled: enabled && Boolean(access?.active),
+		queryKey: ['iam', runtime.userId, runtime.contextId, resource],
+		queryFn: () => iamRequest<T>(resource, undefined, undefined, runtime.apiBase),
+		enabled: enabled && runtime.active,
 		retry: false,
 	});
 }
 export function useTeamMutation() {
 	const client = useQueryClient();
-	const { access } = usePermissions();
+	const runtime = useTeamRuntime();
 
 	return useMutation({
 		mutationFn: ({ path, method, body }: { path: string; method: string; body?: unknown }) =>
-			iamRequest<{ delivery?: string }>(path, method, body),
+			iamRequest<{ delivery?: string }>(path, method, body, runtime.apiBase),
 		onSuccess: async (result) => {
-			await client.invalidateQueries({ queryKey: ['iam', access?.userId, access?.organizationId] });
+			await client.invalidateQueries({ queryKey: ['iam', runtime.userId, runtime.contextId] });
 			toast(
 				result.delivery === 'failed'
 					? {

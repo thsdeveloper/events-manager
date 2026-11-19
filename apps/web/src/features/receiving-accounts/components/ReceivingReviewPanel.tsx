@@ -1,4 +1,5 @@
 'use client';
+import { usePlatformPermissions } from '@/features/platform-access/PlatformPermissions';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ReceivingReview } from '@events-manager/contracts';
@@ -12,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { receivingBase, receivingRequest, useReceivingOverview } from '../api/receiving-account';
 import { ReceivingDetails, ReceivingHistory, receivingStatusLabels } from './ReceivingDetails';
 export function ReceivingReviewPanel({ organizerId }: { organizerId: string }) {
+	const { can } = usePlatformPermissions();
 	const [page, setPage] = useState(1);
 	const query = useReceivingOverview(organizerId, true, page);
 	const { toast } = useToast();
@@ -93,7 +95,7 @@ export function ReceivingReviewPanel({ organizerId }: { organizerId: string }) {
 							</Badge>
 						</div>
 						<ReceivingDetails request={current} organizerId={organizerId} admin />
-						{current.status === 'pending' && (
+						{can('platform_receiving.review') && current.status === 'pending' && (
 							<div className="space-y-4 border-t pt-5">
 								<Label className="block space-y-2 text-sm font-medium">
 									Parecer da análise

@@ -93,7 +93,7 @@ describe('AdminHeader', () => {
 
 	it('opens the administration section for a super admin managing events', async () => {
 		const { user: person } = renderHeader(
-			<AdminHeader user={{ ...user, role: 'super_admin' } as never} organizer={organizer} />,
+			<AdminHeader user={{ ...user, role: 'super_admin', can_access_platform: true } as never} organizer={organizer} />,
 		);
 
 		await person.click(screen.getByRole('button', { name: /conta de ana/i }));
@@ -101,7 +101,9 @@ describe('AdminHeader', () => {
 		expect(await screen.findByText('Administração')).toBeInTheDocument();
 	});
 	it('offers a direct platform switch for superadmins, without opening the account menu', () => {
-		renderHeader(<AdminHeader user={{ ...user, role: 'super_admin' } as never} organizer={organizer} />);
+		renderHeader(
+			<AdminHeader user={{ ...user, role: 'super_admin', can_access_platform: true } as never} organizer={organizer} />,
+		);
 		expect(screen.getByRole('link', { name: 'Painel superadmin' })).toHaveAttribute('href', '/super-admin');
 	});
 	it('does not expose the platform switch to an ordinary organizer', () => {
@@ -122,7 +124,7 @@ describe('seleção de evento no Header', () => {
 		const save = vi.fn((_input: unknown, init?: RequestInit) => {
 			expect(JSON.parse(String(init?.body))).toEqual({ eventId: 'event-a' });
 
-return jsonResponse({ selectedEventId: 'event-a' });
+			return jsonResponse({ selectedEventId: 'event-a' });
 		});
 		mockFetch([['/api/organizer/event-selection', save]]);
 		const { user: person } = renderHeader(

@@ -1,4 +1,5 @@
 'use client';
+import { usePlatformPermissions } from '@/features/platform-access/PlatformPermissions';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReceivingAccount } from '@events-manager/contracts';
@@ -34,6 +35,7 @@ function ManualPayoutItem({
 	organizerId: string;
 	onChange: () => Promise<void>;
 }) {
+	const { can } = usePlatformPermissions();
 	const { toast } = useToast();
 	const [receipt, setReceipt] = useState<string | null>(null),
 		[reference, setReference] = useState(''),
@@ -103,11 +105,13 @@ function ManualPayoutItem({
 					)[payout.status] ?? payout.status}
 				</Badge>
 			</div>
-			<ReceivingDetails
-				organizerId={organizerId}
-				admin
-				request={{ account: payout.bank_account, documents: [], review_reason: null }}
-			/>
+			{payout.bank_account && (
+				<ReceivingDetails
+					organizerId={organizerId}
+					admin
+					request={{ account: payout.bank_account, documents: [], review_reason: null }}
+				/>
+			)}
 			<p className="text-xs leading-5 text-muted-foreground">
 				Estes são os dados aprovados no momento da reserva. A plataforma não executa a transferência bancária
 				automaticamente.
@@ -125,7 +129,7 @@ function ManualPayoutItem({
 			)}
 			{payout.bank_reference && <p className="text-sm">Referência: {payout.bank_reference}</p>}
 			{payout.failure_reason && <p className="text-sm">Motivo: {payout.failure_reason}</p>}
-			{payout.status === 'pending' && (
+			{can('platform_payouts.execute') && payout.status === 'pending' && (
 				<div className="space-y-4 border-t pt-4">
 					{!cancelling ? (
 						<>

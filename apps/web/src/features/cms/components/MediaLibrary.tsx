@@ -1,4 +1,5 @@
 'use client';
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 
 import { Empty } from '@/components/ui/empty';
 import { Card } from '@/components/ui/card';
@@ -119,10 +120,12 @@ function MediaDetailsSheet({
 					<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
 						Cancelar
 					</Button>
-					<Button type="submit" form={id} loading={saving}>
-						<Save className="mr-2 size-4" />
-						Salvar
-					</Button>
+					<PlatformCan permission="platform_media.update">
+						<Button type="submit" form={id} loading={saving}>
+							<Save className="mr-2 size-4" />
+							Salvar
+						</Button>
+					</PlatformCan>
 				</div>
 			</SheetContent>
 		</Sheet>
@@ -157,10 +160,12 @@ export function MediaLibrary({ media }: { media: CmsMedia[] }) {
 	return (
 		<div className="space-y-4">
 			<div className="flex justify-end">
-				<Button onClick={() => setUploadOpen(true)}>
-					<Upload className="mr-2 size-4" />
-					Enviar arquivo
-				</Button>
+				<PlatformCan permission="platform_media.update">
+					<Button onClick={() => setUploadOpen(true)}>
+						<Upload className="mr-2 size-4" />
+						Enviar arquivo
+					</Button>
+				</PlatformCan>
 			</div>
 
 			{media.length === 0 ? (
@@ -197,24 +202,28 @@ export function MediaLibrary({ media }: { media: CmsMedia[] }) {
 											{formatFileSize(file.filesize)} · {formatDateTime(file.date_created)}
 										</p>
 										<div className="flex items-center justify-end gap-1 pt-1">
-											<Button
-												size="icon"
-												variant="ghost"
-												className="size-8"
-												onClick={() => setEditing(file)}
-												aria-label={`Editar ${label}`}
-											>
-												<Pencil className="size-4" />
-											</Button>
-											<Button
-												size="icon"
-												variant="destructive"
-												className="size-8"
-												onClick={() => setToDelete(file)}
-												aria-label={`Excluir ${label}`}
-											>
-												<Trash2 className="size-4" />
-											</Button>
+											<PlatformCan permission="platform_media.update">
+												<Button
+													size="icon"
+													variant="ghost"
+													className="size-8"
+													onClick={() => setEditing(file)}
+													aria-label={`Editar ${label}`}
+												>
+													<Pencil className="size-4" />
+												</Button>
+											</PlatformCan>
+											<PlatformCan permission="platform_media.update">
+												<Button
+													size="icon"
+													variant="destructive"
+													className="size-8"
+													onClick={() => setToDelete(file)}
+													aria-label={`Excluir ${label}`}
+												>
+													<Trash2 className="size-4" />
+												</Button>
+											</PlatformCan>
 										</div>
 									</div>
 								</Card>

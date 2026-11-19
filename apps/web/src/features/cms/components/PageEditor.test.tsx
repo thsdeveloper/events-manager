@@ -1,6 +1,7 @@
+import { renderWithPlatformPermissions as renderWithProviders } from '@/test/platform';
 import { screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch, problemResponse } from '@/test';
 import type { CmsPageDetail } from '../types';
 import { PageEditor } from './PageEditor';
 
@@ -116,4 +117,30 @@ describe('PageEditor', () => {
 		expect(screen.getByRole('button', { name: /excluir página/i })).toBeDisabled();
 		expect(screen.getByText(/página inicial não pode ser excluída/i)).toBeInTheDocument();
 	});
+});
+
+it('allows editing content without changing publication metadata when publishing is not granted', async () => {
+	const fetchMock = mockFetch([[`/api/super-admin/cms/pages/${page.id}`, () => jsonResponse(page)]]);
+	const { user } = renderWithProviders(<PageEditor page={page} activity={[]} siteUrl="https://events.test" />, {
+		userId: 'editor',
+		active: true,
+		isRoot: false,
+		permissions: ['platform_pages.read', 'platform_pages.update'],
+	});
+	await user.click(screen.getByRole('button', { name: /^salvar$/i }));
+	await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+	const input = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+	expect(input).not.toHaveProperty('status');
+	expect(input).not.toHaveProperty('published_at');
+});
+it('hides saving and deletion for a page reader', () => {
+	renderWithProviders(<PageEditor page={page} activity={[]} siteUrl="https://events.test" />, {
+		userId: 'reader',
+		active: true,
+		isRoot: false,
+		permissions: ['platform_pages.read'],
+	});
+	expect(screen.queryByRole('button', { name: /^salvar$/i })).not.toBeInTheDocument();
+	expect(screen.queryByRole('button', { name: 'Excluir página' })).not.toBeInTheDocument();
+	expect(screen.getByRole('button', { name: /pré-visualizar/i })).toBeInTheDocument();
 });

@@ -1,3 +1,4 @@
+import { publicationPatch } from '../application/cms/publication-patch.js';
 import {
 	cmsFormInputSchema,
 	cmsIdSchema,
@@ -100,7 +101,7 @@ export async function cmsRoutes(app: FastifyInstance, options: { clients: Supaba
 		const admin = await requireSuperAdmin(request, auth);
 		const { id } = idParams.parse(request.params);
 		const input = cmsPageInputSchema.parse(request.body);
-		return service.updatePage(admin.user.id, id, input, auditContext(request));
+		return service.updatePage(admin.user.id, id, publicationPatch(input, request.body), auditContext(request));
 	});
 
 	app.delete(`${base}/pages/:id`, async (request) => {
@@ -237,7 +238,7 @@ export async function cmsRoutes(app: FastifyInstance, options: { clients: Supaba
 		const admin = await requireSuperAdmin(request, auth);
 		const { id } = idParams.parse(request.params);
 		const input = cmsPostInputSchema.parse(request.body);
-		return service.updatePost(admin.user.id, id, input, auditContext(request));
+		return service.updatePost(admin.user.id, id, publicationPatch(input, request.body), auditContext(request));
 	});
 
 	app.delete(`${base}/posts/:id`, async (request) => {

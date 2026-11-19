@@ -1,6 +1,7 @@
+import { renderWithPlatformPermissions as renderWithProviders } from '@/test/platform';
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { renderWithProviders, mockFetch, jsonResponse, problemResponse } from '@/test';
+import { mockFetch, jsonResponse, problemResponse } from '@/test';
 import { Toaster } from '@/components/ui/toaster';
 import { ReceivingReviewPanel } from './ReceivingReviewPanel';
 const data = {

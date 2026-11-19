@@ -1,6 +1,7 @@
+import { renderWithPlatformPermissions as renderWithProviders } from '@/test/platform';
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch, problemResponse } from '@/test';
 import { RedirectsManager } from './RedirectsManager';
 
 const refresh = vi.fn();

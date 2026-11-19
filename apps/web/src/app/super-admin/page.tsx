@@ -1,3 +1,6 @@
+import { getPlatformPermissions } from '@/features/platform-access/server';
+import { canVisitPlatformPath, preferredPlatformPath } from '@/features/platform-access/policy';
+import { redirect } from 'next/navigation';
 import { RecordTable } from '@/components/ui/record-table';
 
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
@@ -12,6 +15,9 @@ const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: '
 const compact = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
 
 export default async function SuperAdminOverviewPage() {
+	const access = await getPlatformPermissions();
+	if (!canVisitPlatformPath(access, '/super-admin')) redirect(preferredPlatformPath(access));
+
 	const data = await fetchPlatformOverview();
 
 	return (

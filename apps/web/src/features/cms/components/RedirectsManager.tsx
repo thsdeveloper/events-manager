@@ -1,4 +1,5 @@
 'use client';
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 
 import { RecordTable } from '@/components/ui/record-table';
 
@@ -136,10 +137,12 @@ function RedirectSheet({ open, onOpenChange, redirect, onSaved }: RedirectSheetP
 					<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
 						Cancelar
 					</Button>
-					<Button type="submit" form={id} loading={saving}>
-						<Save className="mr-2 size-4" />
-						Salvar
-					</Button>
+					<PlatformCan permission="platform_redirects.update">
+						<Button type="submit" form={id} loading={saving}>
+							<Save className="mr-2 size-4" />
+							Salvar
+						</Button>
+					</PlatformCan>
 				</div>
 			</SheetContent>
 		</Sheet>
@@ -179,15 +182,17 @@ export function RedirectsManager({ redirects }: { redirects: CmsRedirectRow[] })
 				<p className="text-sm text-muted-foreground">
 					{redirects.length} {redirects.length === 1 ? 'redirecionamento ativo' : 'redirecionamentos ativos'}.
 				</p>
-				<Button
-					onClick={() => {
-						setEditing(null);
-						setSheetOpen(true);
-					}}
-				>
-					<Plus className="mr-2 size-4" />
-					Novo redirecionamento
-				</Button>
+				<PlatformCan permission="platform_redirects.update">
+					<Button
+						onClick={() => {
+							setEditing(null);
+							setSheetOpen(true);
+						}}
+					>
+						<Plus className="mr-2 size-4" />
+						Novo redirecionamento
+					</Button>
+				</PlatformCan>
 			</div>
 
 			{redirects.length === 0 ? (
@@ -235,25 +240,29 @@ export function RedirectsManager({ redirects }: { redirects: CmsRedirectRow[] })
 									{formatDateTime(redirect.date_updated ?? redirect.date_created)}
 								</div>,
 								<div key="column-5" className="text-right">
-									<Button
-										size="icon"
-										variant="ghost"
-										onClick={() => {
-											setEditing(redirect);
-											setSheetOpen(true);
-										}}
-										aria-label={`Editar redirecionamento de ${redirect.url_from}`}
-									>
-										<Pencil className="size-4" />
-									</Button>
-									<Button
-										size="icon"
-										variant="destructive"
-										onClick={() => setToDelete(redirect)}
-										aria-label={`Excluir redirecionamento de ${redirect.url_from}`}
-									>
-										<Trash2 className="size-4" />
-									</Button>
+									<PlatformCan permission="platform_redirects.update">
+										<Button
+											size="icon"
+											variant="ghost"
+											onClick={() => {
+												setEditing(redirect);
+												setSheetOpen(true);
+											}}
+											aria-label={`Editar redirecionamento de ${redirect.url_from}`}
+										>
+											<Pencil className="size-4" />
+										</Button>
+									</PlatformCan>
+									<PlatformCan permission="platform_redirects.update">
+										<Button
+											size="icon"
+											variant="destructive"
+											onClick={() => setToDelete(redirect)}
+											aria-label={`Excluir redirecionamento de ${redirect.url_from}`}
+										>
+											<Trash2 className="size-4" />
+										</Button>
+									</PlatformCan>
 								</div>,
 							],
 						}))}

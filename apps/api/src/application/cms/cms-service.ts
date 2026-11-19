@@ -1,3 +1,4 @@
+import type { PublicationPatch } from './publication-patch.js';
 import {
 	cmsBlockItemSchemas,
 	sanitizeHtml,
@@ -125,7 +126,7 @@ function sanitizeBlockItem(collection: CmsBlockCollection, item: Row): Row {
 	return item;
 }
 
-function stampPublication(input: { status: string; published_at: string | null }, now: Date) {
+function stampPublication(input: { status?: string; published_at?: string | null }, now: Date) {
 	if (input.status === 'published' && !input.published_at) {
 		return { ...input, published_at: now.toISOString() };
 	}
@@ -193,7 +194,7 @@ export class CmsService {
 		return page;
 	}
 
-	async updatePage(actorId: string, id: string, input: CmsPageInput, context: CmsAuditContext) {
+	async updatePage(actorId: string, id: string, input: PublicationPatch<CmsPageInput>, context: CmsAuditContext) {
 		await this.assertPermalinkAvailable(input.permalink, id);
 		const result = await this.repository.updatePage(id, stampPublication(input, this.now()) as Row);
 		if (!result) notFound('Página não encontrada.', 'PAGE_NOT_FOUND');
@@ -362,7 +363,15 @@ export class CmsService {
 		await this.assertValidParent(navigationId, input.parent, itemId);
 		const result = await this.repository.updateNavigationItem(navigationId, itemId, input as Row);
 		if (!result) notFound('Item de menu não encontrado.', 'NAVIGATION_ITEM_NOT_FOUND');
-		await this.audit(actorId, 'cms.navigation.item.update', 'navigation', navigationId, result.before, result.data, context);
+		await this.audit(
+			actorId,
+			'cms.navigation.item.update',
+			'navigation',
+			navigationId,
+			result.before,
+			result.data,
+			context,
+		);
 		return result.data;
 	}
 
@@ -385,7 +394,15 @@ export class CmsService {
 			throw new ApiError('A ordem enviada repete itens.', 422, 'INVALID_ITEM_ORDER');
 		}
 		await this.repository.setNavigationItemOrder(navigationId, parent, order);
-		await this.audit(actorId, 'cms.navigation.item.reorder', 'navigation', navigationId, null, { parent, order }, context);
+		await this.audit(
+			actorId,
+			'cms.navigation.item.reorder',
+			'navigation',
+			navigationId,
+			null,
+			{ parent, order },
+			context,
+		);
 		return { success: true };
 	}
 
@@ -409,7 +426,7 @@ export class CmsService {
 		}
 	}
 
-	private preparePost(input: CmsPostInput) {
+	private preparePost(input: PublicationPatch<CmsPostInput>) {
 		return {
 			...stampPublication(input, this.now()),
 			// `name` é o rótulo interno herdado do template; espelha o título.
@@ -425,7 +442,7 @@ export class CmsService {
 		return post;
 	}
 
-	async updatePost(actorId: string, id: string, input: CmsPostInput, context: CmsAuditContext) {
+	async updatePost(actorId: string, id: string, input: PublicationPatch<CmsPostInput>, context: CmsAuditContext) {
 		await this.assertSlugAvailable(input.slug, id);
 		const result = await this.repository.updatePost(id, this.preparePost(input) as Row);
 		if (!result) notFound('Post não encontrado.', 'POST_NOT_FOUND');
@@ -558,7 +575,15 @@ export class CmsService {
 
 	async updateSiteSettings(actorId: string, input: CmsSiteSettingsInput, context: CmsAuditContext) {
 		const result = await this.repository.updateSiteSettings(input as Row);
-		await this.audit(actorId, 'cms.site.update', 'site_settings', String(result.data.id ?? ''), result.before, result.data, context);
+		await this.audit(
+			actorId,
+			'cms.site.update',
+			'site_settings',
+			String(result.data.id ?? ''),
+			result.before,
+			result.data,
+			context,
+		);
 		return result.data;
 	}
 }

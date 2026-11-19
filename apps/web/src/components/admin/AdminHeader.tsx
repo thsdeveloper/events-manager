@@ -58,8 +58,8 @@ export default function AdminHeader({
 					<EventSwitcher selection={eventSelection} organizationName={organizer.name} />
 				</div>
 				<div className="flex shrink-0 items-center gap-3">
-					<WorkspaceSwitcher area="organizer" isSuperAdmin={user.role === 'super_admin'} isOrganizer />
-					<UserMenu user={user} onLogout={logout} isOrganizer isSuperAdmin={user.role === 'super_admin'} />
+					<WorkspaceSwitcher area="organizer" isSuperAdmin={Boolean(user.can_access_platform)} isOrganizer />
+					<UserMenu user={user} onLogout={logout} isOrganizer isSuperAdmin={Boolean(user.can_access_platform)} />
 				</div>
 			</div>
 		</header>

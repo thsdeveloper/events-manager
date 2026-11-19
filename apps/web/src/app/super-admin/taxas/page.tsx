@@ -1,8 +1,13 @@
+import { PlatformWrite } from '@/features/platform-access/PlatformPermissions';
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 import { fetchPaymentSettings } from '@/features/super-admin/api/server';
 import { PaymentSettingsForm } from '@/features/super-admin/components/PaymentSettingsForm';
 
 export default async function PaymentSettingsPage() {
+	if (!(await canOpenPlatformPage('/super-admin/taxas'))) return <AccessDenied scope="platform" />;
+
 	const data = await fetchPaymentSettings();
 
 	return (
@@ -18,7 +23,9 @@ export default async function PaymentSettingsPage() {
 					</>
 				}
 			/>
-			<PaymentSettingsForm initialSettings={data.settings} runtimeProvider={data.runtimeProvider} />
+			<PlatformWrite permission="platform_settings.update">
+				<PaymentSettingsForm initialSettings={data.settings} runtimeProvider={data.runtimeProvider} />
+			</PlatformWrite>
 		</div>
 	);
 }

@@ -16,6 +16,8 @@ export interface MediaFile {
 }
 
 export interface AppUser {
+	/** Current platform membership, resolved by the API without promoting the identity role. */
+	can_access_platform?: boolean;
 	id: string;
 	email?: string | null;
 	first_name?: string | null;

@@ -1,6 +1,7 @@
+import { renderWithPlatformPermissions as renderWithProviders } from '@/test/platform';
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch } from '@/test';
 import type { CmsMedia } from '../types';
 import { MediaLibrary } from './MediaLibrary';
 

@@ -5,7 +5,16 @@ import { useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-export function AcceptInvitation({ email }: { email?: string }) {
+export function AcceptInvitation({
+	email,
+	scope = 'organization',
+}: {
+	email?: string;
+	scope?: 'organization' | 'platform';
+}) {
+	const platform = scope === 'platform';
+	const storageKey = platform ? 'flouvi.platform.invitation' : 'flouvi.iam.invitation';
+	const acceptPath = platform ? '/convites/plataforma' : '/convites/aceitar';
 	const router = useRouter();
 	const [token, setToken] = useState<string | null>(null);
 	const [ready, setReady] = useState(false);
@@ -13,20 +22,20 @@ export function AcceptInvitation({ email }: { email?: string }) {
 	const [busy, setBusy] = useState(false);
 	useEffect(() => {
 		const fragment = new URLSearchParams(location.hash.slice(1)).get('token');
-		const candidate = fragment ?? sessionStorage.getItem('flouvi.iam.invitation');
+		const candidate = fragment ?? sessionStorage.getItem(storageKey);
 		if (candidate && /^[A-Za-z0-9_-]{43}$/.test(candidate)) {
-			sessionStorage.setItem('flouvi.iam.invitation', candidate);
+			sessionStorage.setItem(storageKey, candidate);
 			setToken(candidate);
 		}
 		if (location.hash) history.replaceState(null, '', location.pathname);
 		setReady(true);
-	}, []);
+	}, [storageKey]);
 	async function accept() {
 		if (!token) return;
 		setBusy(true);
 		setError('');
 		try {
-			const response = await fetch('/api/iam/invitations/accept', {
+			const response = await fetch(platform ? '/api/platform-iam/invitations/accept' : '/api/iam/invitations/accept', {
 				method: 'POST',
 				credentials: 'include',
 				headers: { 'content-type': 'application/json' },
@@ -34,9 +43,9 @@ export function AcceptInvitation({ email }: { email?: string }) {
 			});
 			const result = await response.json();
 			if (!response.ok) throw new Error(result.detail ?? 'Não foi possível aceitar o convite.');
-			sessionStorage.removeItem('flouvi.iam.invitation');
+			sessionStorage.removeItem(storageKey);
 			toast({ title: 'Convite aceito. Bem-vindo à equipe!' });
-			router.replace('/admin');
+			router.replace(platform ? '/super-admin' : '/admin');
 			router.refresh();
 		} catch (cause) {
 			const message = cause instanceof Error ? cause.message : 'Tente novamente.';
@@ -52,7 +61,9 @@ export function AcceptInvitation({ email }: { email?: string }) {
 			<ShieldCheck className="size-10 text-primary" />
 			<h1 className="text-2xl font-semibold">Faça parte da equipe</h1>
 			<p className="text-muted-foreground">
-				O convite concede acesso à organização de acordo com os cargos e eventos definidos pelo responsável.
+				{platform
+					? 'O convite concede acesso à administração da plataforma, limitado aos módulos e permissões definidos pelo responsável.'
+					: 'O convite concede acesso à organização de acordo com os cargos e eventos definidos pelo responsável.'}
 			</p>
 			{!ready ? (
 				<p>Carregando convite…</p>
@@ -74,7 +85,7 @@ export function AcceptInvitation({ email }: { email?: string }) {
 						<>
 							<p className="text-sm">Entre com o mesmo e-mail que recebeu o convite.</p>
 							<Button asChild>
-								<Link href="/login?redirect=%2Fconvites%2Faceitar">Entrar para aceitar</Link>
+								<Link href={`/login?redirect=${encodeURIComponent(acceptPath)}`}>Entrar para aceitar</Link>
 							</Button>
 							<p className="text-sm">
 								<Link className="text-primary underline" href="/register">

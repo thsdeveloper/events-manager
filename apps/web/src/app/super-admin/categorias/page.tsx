@@ -1,8 +1,13 @@
+import { PlatformWrite } from '@/features/platform-access/PlatformPermissions';
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 import { fetchEventCategories } from '@/features/super-admin/api/server';
 import { CategoryManager } from '@/features/super-admin/components/CategoryManager';
 
 export default async function CategoriesPage() {
+	if (!(await canOpenPlatformPage('/super-admin/categorias'))) return <AccessDenied scope="platform" />;
+
 	const { data } = await fetchEventCategories();
 
 	return (
@@ -18,7 +23,9 @@ export default async function CategoriesPage() {
 					</>
 				}
 			/>
-			<CategoryManager initialCategories={data} />
+			<PlatformWrite permission="platform_categories.update">
+				<CategoryManager initialCategories={data} />
+			</PlatformWrite>
 		</div>
 	);
 }

@@ -1,3 +1,5 @@
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { organizerAdminQuerySchema } from '@events-manager/contracts';
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 import { fetchPlatformOrganizers } from '@/features/super-admin/api/server';
@@ -7,6 +9,8 @@ export default async function OrganizersPage({
 }: {
 	searchParams: Promise<Record<string, string | undefined>>;
 }) {
+	if (!(await canOpenPlatformPage('/super-admin/organizadores'))) return <AccessDenied scope="platform" />;
+
 	const query = organizerAdminQuerySchema.parse(await searchParams);
 	const params = new URLSearchParams();
 	for (const [key, value] of Object.entries(query))

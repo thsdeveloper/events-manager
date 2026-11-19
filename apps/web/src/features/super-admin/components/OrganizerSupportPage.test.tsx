@@ -1,7 +1,8 @@
+import { renderWithPlatformPermissions as renderWithProviders } from '@/test/platform';
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { OrganizerSupportDetail } from '@events-manager/contracts';
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch } from '@/test';
 import { Toaster } from '@/components/ui/toaster';
 import { OrganizerSupportPage } from './OrganizerSupportPage';
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));

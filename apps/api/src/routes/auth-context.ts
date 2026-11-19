@@ -46,5 +46,7 @@ export async function requireOrganizer(request: FastifyRequest, auth: AuthServic
 
 export async function requireSuperAdmin(request: FastifyRequest, auth: AuthService) {
 	const context = await requireUser(request, auth);
+	if (request.platformAccess?.active && request.platformAccess.userId === context.user.id)
+		return { ...context, profile: { id: context.user.id, status: 'active' } };
 	return { ...context, profile: await auth.requireSuperAdmin(context.user.id) };
 }

@@ -1,4 +1,5 @@
 'use client';
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
@@ -125,15 +126,19 @@ export function FormEditor({ form, submissions, initialTab = 'campos' }: FormEdi
 				actions={
 					<div className="flex flex-wrap items-center gap-2">
 						{form && (
-							<Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-								<Trash2 className="mr-2 size-4" />
-								Excluir
-							</Button>
+							<PlatformCan permission="platform_forms.update">
+								<Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+									<Trash2 className="mr-2 size-4" />
+									Excluir
+								</Button>
+							</PlatformCan>
 						)}
-						<Button onClick={save} loading={saving}>
-							<Save className="mr-2 size-4" />
-							Salvar
-						</Button>
+						<PlatformCan permission="platform_forms.update">
+							<Button onClick={save} loading={saving}>
+								<Save className="mr-2 size-4" />
+								Salvar
+							</Button>
+						</PlatformCan>
 					</div>
 				}
 			/>

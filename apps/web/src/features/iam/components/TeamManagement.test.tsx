@@ -199,10 +199,10 @@ describe('team access changes and review', () => {
 	it('asks for confirmation and allows cancelling a removal', async () => {
 		const { user, fetchMock } = setup();
 		await user.click(await screen.findByRole('button', { name: 'Remover Operador' }));
-		await user.click(screen.getByRole('button', { name: 'Cancelar', exact: true }));
+		await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 		expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
 		await user.click(screen.getByRole('button', { name: 'Remover Operador' }));
-		await user.click(screen.getByRole('button', { name: 'Confirmar', exact: true }));
+		await user.click(screen.getByRole('button', { name: 'Confirmar' }));
 		await waitFor(() =>
 			expect(fetchMock).toHaveBeenCalledWith(
 				'/api/organizer/iam/members/member',
@@ -229,7 +229,7 @@ describe('team access changes and review', () => {
 	it('shows default roles as read-only', async () => {
 		const { user } = setup();
 		await user.click(screen.getByRole('tab', { name: 'Cargos' }));
-		await user.click(await screen.findByRole('button', { name: 'Ver permissões', exact: true }));
+		await user.click(await screen.findByRole('button', { name: 'Ver permissões' }));
 		expect(screen.getByLabelText('Nome do cargo')).toBeDisabled();
 		expect(screen.getByRole('checkbox', { name: 'Validar entradas' })).toBeChecked();
 		expect(screen.queryByRole('button', { name: 'Salvar cargo' })).not.toBeInTheDocument();
@@ -249,7 +249,7 @@ describe('team access changes and review', () => {
 			),
 		);
 		await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-		await user.click(screen.getByRole('button', { name: 'Excluir', exact: true }));
+		await user.click(screen.getByRole('button', { name: 'Excluir' }));
 		await user.click(screen.getByRole('button', { name: 'Confirmar' }));
 		await waitFor(() =>
 			expect(fetchMock).toHaveBeenCalledWith(

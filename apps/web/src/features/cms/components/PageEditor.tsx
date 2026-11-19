@@ -1,4 +1,5 @@
 'use client';
+import { usePlatformPermissions, PlatformCan, PlatformWrite } from '@/features/platform-access/PlatformPermissions';
 
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
@@ -43,6 +44,7 @@ interface PageEditorProps {
 export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 	const router = useRouter();
 	const { toast } = useToast();
+	const { can } = usePlatformPermissions();
 	const id = useId();
 	const [title, setTitle] = useState(page.title);
 	const [permalink, setPermalink] = useState(page.permalink);
@@ -67,7 +69,14 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 		setErrors(null);
 		setSaving(true);
 		try {
-			await cmsRequest<CmsPageRow>(`/pages/${page.id}`, { method: 'PATCH', body: validation.data });
+			await cmsRequest<CmsPageRow>(`/pages/${page.id}`, {
+				method: 'PATCH',
+				body: can('platform_pages.publish')
+					? validation.data
+					: Object.fromEntries(
+							Object.entries(validation.data).filter(([key]) => !['status', 'published_at'].includes(key)),
+						),
+			});
 			await revalidateCmsContent();
 			toast({ title: 'Página salva', variant: 'success' });
 			router.refresh();
@@ -133,10 +142,12 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 								</Link>
 							</Button>
 						)}
-						<Button onClick={save} loading={saving}>
-							<Save className="mr-2 size-4" />
-							Salvar
-						</Button>
+						<PlatformCan permission="platform_pages.update">
+							<Button onClick={save} loading={saving}>
+								<Save className="mr-2 size-4" />
+								Salvar
+							</Button>
+						</PlatformCan>
 					</div>
 				}
 			/>
@@ -173,7 +184,9 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 								/>
 							</Field>
 						</div>
-						<BlockBuilder pageId={page.id} blocks={page.blocks} />
+						<PlatformWrite permission="platform_pages.update">
+							<BlockBuilder pageId={page.id} blocks={page.blocks} />
+						</PlatformWrite>
 					</SectionCard>
 
 					<SectionCard title="SEO" description="Como a página aparece nos buscadores e ao ser compartilhada.">
@@ -183,13 +196,15 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 
 				<aside className="space-y-6">
 					<SectionCard title="Publicação">
-						<PublishingFields
-							status={status}
-							publishedAt={publishedAt}
-							onStatusChange={setStatus}
-							onPublishedAtChange={setPublishedAt}
-							error={errors?.published_at?.[0]}
-						/>
+						<PlatformWrite permission="platform_pages.publish">
+							<PublishingFields
+								status={status}
+								publishedAt={publishedAt}
+								onStatusChange={setStatus}
+								onPublishedAtChange={setPublishedAt}
+								error={errors?.published_at?.[0]}
+							/>
+						</PlatformWrite>
 					</SectionCard>
 
 					<SectionCard title="Atividade" description="Quem mexeu nesta página e quando.">
@@ -197,10 +212,12 @@ export function PageEditor({ page, activity, siteUrl }: PageEditorProps) {
 					</SectionCard>
 
 					<SectionCard title="Zona de perigo">
-						<Button variant="destructive" className="w-full" disabled={isHome} onClick={() => setDeleteOpen(true)}>
-							<Trash2 className="mr-2 size-4" />
-							Excluir página
-						</Button>
+						<PlatformCan permission="platform_pages.update">
+							<Button variant="destructive" className="w-full" disabled={isHome} onClick={() => setDeleteOpen(true)}>
+								<Trash2 className="mr-2 size-4" />
+								Excluir página
+							</Button>
+						</PlatformCan>
 						<p className="text-xs text-muted-foreground">
 							{isHome
 								? 'A página inicial não pode ser excluída: ela responde na raiz do site. Edite os blocos ou deixe-a como rascunho.'

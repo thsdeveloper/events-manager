@@ -1,6 +1,7 @@
+import { renderWithPlatformPermissions as renderWithProviders } from '@/test/platform';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, problemResponse, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch, problemResponse } from '@/test';
 import type { CmsSiteSettings } from '../types';
 import { SiteSettingsForm } from './SiteSettingsForm';
 

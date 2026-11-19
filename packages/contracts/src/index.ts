@@ -24,3 +24,5 @@ export * from './payment-settings.js';
 export * from './transparent-checkout.js';
 
 export * from './iam.js';
+
+export * from './platform-iam.js';

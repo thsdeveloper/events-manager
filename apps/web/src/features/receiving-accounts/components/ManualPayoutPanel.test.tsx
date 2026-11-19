@@ -1,6 +1,7 @@
+import { renderWithPlatformPermissions as renderWithProviders } from '@/test/platform';
 import { screen, waitFor } from '@testing-library/react';
 import { it, expect } from 'vitest';
-import { renderWithProviders, mockFetch, jsonResponse } from '@/test';
+import { mockFetch, jsonResponse } from '@/test';
 import { ManualPayoutPanel } from './ManualPayoutPanel';
 it('requires a receipt and confirmation before recording a manual transfer as completed', async () => {
 	const fetchMock = mockFetch([

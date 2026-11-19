@@ -273,7 +273,7 @@ describe('POST /api/organizer/request', () => {
 
 		expect(response.statusCode).toBe(409);
 		expect(response.json()).toMatchObject({ title: 'DOCUMENT_IN_USE' });
-		expect(stub.clients.admin.rpc).not.toHaveBeenCalled();
+		expect(stub.clients.admin.rpc).not.toHaveBeenCalledWith('create_organizer_profile', expect.anything());
 	});
 
 	it('selects a newly active account and clears the previous event filter', async () => {
@@ -314,7 +314,7 @@ describe('POST /api/organizer/request', () => {
 			payload: company,
 		});
 		expect(response.statusCode).toBe(403);
-		expect(stub.clients.admin.rpc).not.toHaveBeenCalled();
+		expect(stub.clients.admin.rpc).not.toHaveBeenCalledWith('create_organizer_profile', expect.anything());
 	});
 
 	it('requires a session', async () => {

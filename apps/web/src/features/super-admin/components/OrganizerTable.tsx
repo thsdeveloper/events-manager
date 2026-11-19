@@ -1,4 +1,5 @@
 'use client';
+import { usePlatformPermissions } from '@/features/platform-access/PlatformPermissions';
 import type { OrganizerAdminList, OrganizerAdminQuery } from '@events-manager/contracts';
 import type { ColumnDef, PaginationState, SortingState, Updater } from '@tanstack/react-table';
 import Link from 'next/link';
@@ -72,6 +73,10 @@ function resolve<T>(updater: Updater<T>, previous: T): T {
 	return typeof updater === 'function' ? (updater as (value: T) => T)(previous) : updater;
 }
 export function OrganizerTable({ result, query }: { result: OrganizerAdminList; query: OrganizerAdminQuery }) {
+	const { can } = usePlatformPermissions();
+	const visibleColumns = can('platform_finance.read')
+		? columns
+		: columns.filter((c) => !['ingressos', 'receita'].includes(c.id ?? ''));
 	const router = useRouter();
 	const [pending, startTransition] = useTransition();
 	const [search, setSearch] = useState(query.search);
@@ -135,7 +140,7 @@ export function OrganizerTable({ result, query }: { result: OrganizerAdminList; 
 				{result.pagination.total} organizador(es). Selecione uma conta para consultar dados e registrar o atendimento.
 			</p>
 			<DataTable
-				columns={columns}
+				columns={visibleColumns}
 				data={result.data}
 				getRowId={(row) => row.id}
 				emptyMessage="Nenhum organizador encontrado."

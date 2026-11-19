@@ -1,4 +1,5 @@
 'use client';
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 
 import { Badge } from '@/components/ui/badge';
 import { cmsNavigationInputSchema } from '@events-manager/contracts';
@@ -53,10 +54,12 @@ export function NavigationsList({ navigations }: { navigations: CmsNavigationRow
 	return (
 		<div className="space-y-4">
 			<div className="flex justify-end">
-				<Button onClick={() => setOpen(true)}>
-					<Plus className="mr-2 size-4" />
-					Novo menu
-				</Button>
+				<PlatformCan permission="platform_navigation.update">
+					<Button onClick={() => setOpen(true)}>
+						<Plus className="mr-2 size-4" />
+						Novo menu
+					</Button>
+				</PlatformCan>
 			</div>
 			<ul className="grid gap-3 sm:grid-cols-2">
 				{navigations.map((navigation) => {
@@ -121,9 +124,11 @@ export function NavigationsList({ navigations }: { navigations: CmsNavigationRow
 							<Button type="button" variant="outline" onClick={() => setOpen(false)}>
 								Cancelar
 							</Button>
-							<Button type="submit" loading={saving}>
-								Criar menu
-							</Button>
+							<PlatformCan permission="platform_navigation.update">
+								<Button type="submit" loading={saving}>
+									Criar menu
+								</Button>
+							</PlatformCan>
 						</div>
 					</form>
 				</DialogContent>

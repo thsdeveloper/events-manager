@@ -32,7 +32,7 @@ export class TeamService {
 			...input,
 			tokenHash: createHash('sha256').update(token).digest('hex'),
 		});
-		return this.deliver(invitation, token);
+		return deliverTeamInvitation(this.mailer, this.webUrl, invitation, token);
 	}
 	async resend(userId: string, organizationId: string, id: string) {
 		const token = randomBytes(32).toString('base64url');
@@ -40,26 +40,9 @@ export class TeamService {
 			id,
 			tokenHash: createHash('sha256').update(token).digest('hex'),
 		});
-		return this.deliver(invitation, token);
+		return deliverTeamInvitation(this.mailer, this.webUrl, invitation, token);
 	}
-	private async deliver(invitation: Record<string, unknown>, token: string) {
-		const url = new URL('/convites/aceitar', this.webUrl);
-		url.hash = new URLSearchParams({ token }).toString();
-		try {
-			await this.mailer.send(
-				{
-					id: String(invitation.id),
-					email: String(invitation.email),
-					expiresAt: String(invitation.expires_at),
-					url: url.toString(),
-				},
-				`iam-invite:${invitation.id}:${randomUUID()}`,
-			);
-			return { invitation, delivery: 'sent' as const };
-		} catch {
-			return { invitation, delivery: 'failed' as const };
-		}
-	}
+
 	async members(userId: string, organizationId: string) {
 		await new AuthorizationService(this.repository).require(userId, organizationId, 'users.read');
 		return this.repository.members(organizationId);
@@ -91,5 +74,30 @@ export class TeamService {
 	}
 	async accept(userId: string, token: string) {
 		return this.repository.accept(userId, createHash('sha256').update(token).digest('hex'));
+	}
+}
+
+export async function deliverTeamInvitation(
+	mailer: InvitationMailer,
+	webUrl: string,
+	invitation: Record<string, unknown>,
+	token: string,
+	path = '/convites/aceitar',
+) {
+	const url = new URL(path, webUrl);
+	url.hash = new URLSearchParams({ token }).toString();
+	try {
+		await mailer.send(
+			{
+				id: String(invitation.id),
+				email: String(invitation.email),
+				expiresAt: String(invitation.expires_at),
+				url: url.toString(),
+			},
+			`iam-invite:${invitation.id}:${randomUUID()}`,
+		);
+		return { invitation, delivery: 'sent' as const };
+	} catch {
+		return { invitation, delivery: 'failed' as const };
 	}
 }

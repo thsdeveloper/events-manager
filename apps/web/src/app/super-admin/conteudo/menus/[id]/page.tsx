@@ -1,3 +1,5 @@
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { notFound } from 'next/navigation';
 import { fetchCmsNavigation } from '@/features/cms/api/server';
 import { CmsPageHeader } from '@/features/cms/components/CmsPageHeader';
@@ -7,6 +9,8 @@ import { NavigationTree } from '@/features/cms/components/NavigationTree';
 import { BackendRequestError } from '@/lib/backend-auth';
 
 export default async function MenuEditorPage({ params }: { params: Promise<{ id: string }> }) {
+	if (!(await canOpenPlatformPage('/super-admin/conteudo/menus/[id]'))) return <AccessDenied scope="platform" />;
+
 	const { id } = await params;
 	try {
 		const navigation = await fetchCmsNavigation(id);

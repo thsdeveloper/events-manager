@@ -213,3 +213,8 @@ autenticação.
 A ordem de implantação é migration, API e frontend. O workflow `.github/workflows/ci-deploy.yml` já segue essa ordem
 quando há push na `main`, incluindo testes SQL no Supabase compartilhado. A execução nesse ambiente está sujeita à
 autorização solicitada pelo responsável. A aplicação precisa dessa migration antes de utilizar as novas consultas IAM.
+
+Atualização do ambiente local em 18/11/2026: após a validação isolada, a migration organizacional foi aplicada ao
+Supabase local para corrigir o carregamento da sessão, com backup prévio. O IAM separado da equipe da plataforma e sua
+migration local estão documentados em [IAM_PLATAFORMA.md](IAM_PLATAFORMA.md). O ambiente compartilhado permanece sem
+essas alterações até a autorização de implantação.

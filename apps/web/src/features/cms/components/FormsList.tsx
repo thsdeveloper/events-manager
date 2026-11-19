@@ -1,3 +1,4 @@
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 import { Empty } from '@/components/ui/empty';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,9 +16,11 @@ export function FormsList({ forms }: { forms: CmsFormRow[] }) {
 					<FormInput className="size-6" />
 				</div>
 				<p className="font-medium text-foreground">Nenhum formulário</p>
-				<Button asChild>
-					<Link href="/super-admin/conteudo/formularios/novo">Criar formulário</Link>
-				</Button>
+				<PlatformCan permission="platform_forms.update">
+					<Button asChild>
+						<Link href="/super-admin/conteudo/formularios/novo">Criar formulário</Link>
+					</Button>
+				</PlatformCan>
 			</Empty>
 		);
 	}

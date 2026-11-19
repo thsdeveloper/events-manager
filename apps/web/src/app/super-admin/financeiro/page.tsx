@@ -1,3 +1,6 @@
+import { hasPlatformPermission } from '@events-manager/contracts';
+import { getPlatformPermissions, canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import Link from 'next/link';
 import { RecordTable } from '@/components/ui/record-table';
 
@@ -16,10 +19,16 @@ import { PayoutCreationPanel } from '@/features/super-admin/components/PayoutCre
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default async function PlatformFinancePage() {
+	if (!(await canOpenPlatformPage('/super-admin/financeiro'))) return <AccessDenied scope="platform" />;
+
+	const access = await getPlatformPermissions();
+	const execute =
+		hasPlatformPermission(access, 'platform_payouts.execute') &&
+		hasPlatformPermission(access, 'platform_organizers.read');
 	const [transactions, payouts, organizers] = await Promise.all([
 		fetchPlatformTransactions(),
 		fetchPlatformPayouts(),
-		fetchPlatformOrganizers('limit=100&status=active'),
+		execute ? fetchPlatformOrganizers('limit=100&status=active') : Promise.resolve({ data: [] }),
 	]);
 	const succeeded = transactions.data.filter((item) => item.status === 'succeeded');
 	const gross = succeeded.reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
@@ -68,7 +77,7 @@ export default async function PlatformFinancePage() {
 					tone="blue"
 				/>
 			</section>
-			<PayoutCreationPanel organizers={enabledOrganizers} />
+			{execute && <PayoutCreationPanel organizers={enabledOrganizers} />}
 			<section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
 				<Card className="overflow-hidden">
 					<div className="border-b border-border p-5">

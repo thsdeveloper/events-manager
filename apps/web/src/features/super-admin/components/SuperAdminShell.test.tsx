@@ -1,9 +1,20 @@
+import { platformPermissionDefinitions } from '@events-manager/contracts';
+import { PlatformPermissionContext } from '@/features/platform-access/PlatformPermissions';
 import { screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
-import { SuperAdminShell } from './SuperAdminShell';
+import { SuperAdminShell as Shell } from './SuperAdminShell';
 
+function SuperAdminShell(props: React.ComponentProps<typeof Shell>) {
+	return (
+		<PlatformPermissionContext.Provider
+			value={{ userId: 'u1', active: true, isRoot: true, permissions: platformPermissionDefinitions.map((p) => p.key) }}
+		>
+			<Shell {...props} />
+		</PlatformPermissionContext.Provider>
+	);
+}
 const navigationState = vi.hoisted(() => ({ pathname: '/super-admin' }));
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 
@@ -178,4 +189,26 @@ describe('SuperAdminShell', () => {
 			'/perfil/organizador',
 		);
 	});
+});
+
+it('only shows authorized platform modules for a delegated team member', () => {
+	renderWithProviders(
+		<PlatformPermissionContext.Provider
+			value={{
+				userId: 'u1',
+				active: true,
+				isRoot: false,
+				permissions: ['platform_organizers.read', 'platform_users.read'],
+			}}
+		>
+			<Shell user={user as never} isOrganizer={false}>
+				Content
+			</Shell>
+		</PlatformPermissionContext.Provider>,
+	);
+	const nav = screen.getByRole('navigation', { name: /navegação do super admin/i });
+	expect(within(nav).getByRole('link', { name: 'Equipe' })).toHaveAttribute('href', '/super-admin/equipe');
+	expect(within(nav).getByRole('link', { name: 'Organizadores' })).toBeInTheDocument();
+	expect(within(nav).queryByRole('link', { name: 'Financeiro' })).not.toBeInTheDocument();
+	expect(within(nav).queryByRole('link', { name: 'Taxas e gateway' })).not.toBeInTheDocument();
 });

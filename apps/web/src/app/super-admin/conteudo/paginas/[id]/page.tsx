@@ -1,3 +1,5 @@
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { notFound } from 'next/navigation';
 import { fetchCmsPage, fetchCmsPageActivity } from '@/features/cms/api/server';
 import { PageEditor } from '@/features/cms/components/PageEditor';
@@ -9,6 +11,8 @@ interface PageEditorRouteProps {
 }
 
 export default async function PageEditorRoute({ params }: PageEditorRouteProps) {
+	if (!(await canOpenPlatformPage('/super-admin/conteudo/paginas/[id]'))) return <AccessDenied scope="platform" />;
+
 	const { id } = await params;
 	try {
 		const [page, activity, siteUrl] = await Promise.all([

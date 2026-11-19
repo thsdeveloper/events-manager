@@ -1,4 +1,5 @@
 'use client';
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 
 import { Card } from '@/components/ui/card';
 import { Trash2 } from 'lucide-react';
@@ -47,10 +48,12 @@ export function NavigationDangerZone({ navigationId, title }: { navigationId: st
 					? 'Menus do sistema (principal e rodapé) não podem ser excluídos.'
 					: 'Excluir o menu remove todos os seus itens.'}
 			</p>
-			<Button variant="destructive" disabled={isProtected} onClick={() => setOpen(true)}>
-				<Trash2 className="mr-2 size-4" />
-				Excluir menu
-			</Button>
+			<PlatformCan permission="platform_navigation.update">
+				<Button variant="destructive" disabled={isProtected} onClick={() => setOpen(true)}>
+					<Trash2 className="mr-2 size-4" />
+					Excluir menu
+				</Button>
+			</PlatformCan>
 			<AlertDialog open={open} onOpenChange={setOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>

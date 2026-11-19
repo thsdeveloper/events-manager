@@ -46,7 +46,7 @@ const changePasswordSchema = z.object({
 
 async function sessionPayload(auth: AuthService, user: AuthIdentity) {
 	const serialized = await auth.serialize(user);
-	const isSuperAdmin = serialized.role === 'super_admin';
+	const isSuperAdmin = serialized.can_access_platform === true;
 	const isOrganizer =
 		serialized.role === 'organizer' || serialized.role === 'admin' || serialized.organizer?.status === 'active';
 	return {
@@ -153,7 +153,7 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 		return {
 			user,
 			isOrganizer: user.role === 'admin' || user.role === 'organizer' || organizerStatus === 'active',
-			isSuperAdmin: user.role === 'super_admin',
+			isSuperAdmin: user.can_access_platform === true,
 			organizerProfile: user.organizer,
 			organizerStatus,
 			hasPendingOrganizerRequest: organizerStatus === 'pending',
@@ -286,10 +286,7 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 					`password-changed-${context.user.id}-${Date.now()}`,
 				)
 				.catch((error: unknown) => {
-					request.log.error(
-						{ err: error, userId: context.user.id },
-						'Falha ao enviar o aviso de senha alterada.',
-					);
+					request.log.error({ err: error, userId: context.user.id }, 'Falha ao enviar o aviso de senha alterada.');
 				});
 		}
 

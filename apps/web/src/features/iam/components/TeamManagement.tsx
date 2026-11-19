@@ -1,10 +1,9 @@
 'use client';
 import { useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import type { IamAssignment, IamMember, IamRole, IamInvitation } from '@events-manager/contracts';
+import type { IamAssignment, IamMember, IamInvitation } from '@events-manager/contracts';
 import { Users, UserPlus, ShieldCheck } from 'lucide-react';
-import { usePermissions } from '@/components/auth/PermissionsProvider';
-import { canDelegateRole } from '@/lib/auth/permission-policy';
+import { useTeamRuntime, type TeamRole } from '../api/team-runtime';
 import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,13 +42,13 @@ const actionLabel: Record<string, string> = {
 	'access.denied': 'Acesso negado',
 };
 export function TeamManagement() {
-	const { access, can, canAny } = usePermissions();
+	const { scope, can, canAny, canDelegate } = useTeamRuntime();
 	const [search, setSearch] = useState('');
 	const [status, setStatus] = useState('all');
 	const [page, setPage] = useState(1);
 	const members = useTeamQuery<{ data: IamMember[] }>('members', can('users.read'));
-	const roles = useTeamQuery<{ data: IamRole[] }>('roles', can('roles.read'));
-	const events = useTeamQuery<{ data: TeamEvent[] }>('events', canAny('events.read'));
+	const roles = useTeamQuery<{ data: TeamRole[] }>('roles', can('roles.read'));
+	const events = useTeamQuery<{ data: TeamEvent[] }>('events', scope === 'organization' && canAny('events.read'));
 	const invitations = useTeamQuery<{ data: IamInvitation[] }>('invitations', can('users.read'));
 	const audit = useTeamQuery<{ data: AuditEntry[]; total: number }>(`audit?page=${page}`, can('audit.read'));
 	const mutation = useTeamMutation();
@@ -58,7 +57,7 @@ export function TeamManagement() {
 	const [assignments, setAssignments] = useState<IamAssignment[]>([{ roleId: '', eventId: null }]);
 	const [member, setMember] = useState<IamMember | null>(null);
 	const [memberStatus, setMemberStatus] = useState<'active' | 'suspended'>('active');
-	const [roleDialog, setRoleDialog] = useState<IamRole | 'new' | null>(null);
+	const [roleDialog, setRoleDialog] = useState<TeamRole | 'new' | null>(null);
 	const [confirmation, setConfirmation] = useState<{ path: string; label: string } | null>(null);
 	const roleList = roles.data?.data ?? [];
 	const eventList = events.data?.data ?? [];
@@ -67,14 +66,14 @@ export function TeamManagement() {
 		m.assignments.every((a) => {
 			const role = roleList.find((r) => r.id === a.roleId);
 
-			return role && canDelegateRole(access, role, a.eventId);
+			return role && canDelegate(role, a.eventId);
 		});
 	const validAssignments =
 		assignments.length > 0 &&
 		assignments.every((a) => {
 			const role = roleList.find((r) => r.id === a.roleId);
 
-			return role && canDelegateRole(access, role, a.eventId);
+			return role && canDelegate(role, a.eventId);
 		});
 	const save = (path: string, method: string, body?: unknown, close?: () => void) =>
 		mutation.mutate({ path, method, body }, { onSuccess: () => close?.() });
@@ -85,7 +84,10 @@ export function TeamManagement() {
 			cell: ({ row }) => (
 				<div>
 					<p className="font-medium">
-						{row.original.name || 'Sem nome'} {row.original.isOwner && <Badge variant="secondary">Proprietário</Badge>}
+						{row.original.name || 'Sem nome'}{' '}
+						{row.original.isOwner && (
+							<Badge variant="secondary">{scope === 'platform' ? 'Super-admin principal' : 'Proprietário'}</Badge>
+						)}
 					</p>
 					<p className="text-sm text-muted-foreground">{row.original.email}</p>
 				</div>
@@ -101,7 +103,11 @@ export function TeamManagement() {
 			header: 'Cargos e acesso',
 			cell: ({ row }) =>
 				row.original.isOwner ? (
-					'Toda a organização'
+					scope === 'platform' ? (
+						'Plataforma'
+					) : (
+						'Toda a organização'
+					)
 				) : (
 					<ul className="space-y-1 text-sm">
 						{row.original.assignments.map((a, i) => (
@@ -109,7 +115,9 @@ export function TeamManagement() {
 								{roleList.find((r) => r.id === a.roleId)?.name ?? 'Cargo atribuído'} ·{' '}
 								{a.eventId
 									? (eventList.find((e) => e.id === a.eventId)?.title ?? 'Evento específico')
-									: 'Todos os eventos'}
+									: scope === 'platform'
+										? 'Plataforma'
+										: 'Todos os eventos'}
 							</li>
 						))}
 					</ul>
@@ -163,10 +171,12 @@ export function TeamManagement() {
 				<div>
 					<h1 className="flex items-center gap-2 text-2xl font-semibold">
 						<Users className="size-6" />
-						Equipe e permissões
+						{scope === 'platform' ? 'Equipe da plataforma' : 'Equipe e permissões'}
 					</h1>
 					<p className="mt-2 text-muted-foreground">
-						Defina quem participa da organização e o que cada pessoa pode fazer.
+						{scope === 'platform'
+							? 'Defina quem pode acessar a administração da plataforma e quais informações pode consultar ou alterar.'
+							: 'Defina quem participa da organização e o que cada pessoa pode fazer.'}
 					</p>
 				</div>
 				{can('users.invite') && can('roles.read') && (
@@ -294,9 +304,9 @@ export function TeamManagement() {
 									<div className="flex gap-2">
 										<Button variant="outline" onClick={() => setRoleDialog(role)}>
 											Ver permissões
-											{!role.key && can('roles.update') && canDelegateRole(access, role, null) ? ' e editar' : ''}
+											{!role.key && can('roles.update') && canDelegate(role, null) ? ' e editar' : ''}
 										</Button>
-										{!role.key && can('roles.delete') && canDelegateRole(access, role, null) && (
+										{!role.key && can('roles.delete') && canDelegate(role, null) && (
 											<Button
 												variant="ghost"
 												onClick={() =>
@@ -370,7 +380,7 @@ export function TeamManagement() {
 					<DialogHeader>
 						<DialogTitle>{invite ? 'Convidar membro' : `Editar acesso de ${member?.name}`}</DialogTitle>
 						<DialogDescription>
-							Conceda apenas as permissões necessárias. A suspensão e a remoção interrompem o acesso à organização.
+							Conceda apenas as permissões necessárias. A suspensão e a remoção interrompem este acesso.
 						</DialogDescription>
 					</DialogHeader>
 					<form
@@ -416,7 +426,7 @@ export function TeamManagement() {
 				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
 					<DialogHeader>
 						<DialogTitle>{roleDialog === 'new' ? 'Criar cargo' : 'Permissões do cargo'}</DialogTitle>
-						<DialogDescription>Você só pode conceder permissões que possui em toda a organização.</DialogDescription>
+						<DialogDescription>Você só pode conceder permissões que possui neste ambiente.</DialogDescription>
 					</DialogHeader>
 					{roleDialog && (
 						<RoleEditor
@@ -424,7 +434,7 @@ export function TeamManagement() {
 							role={roleDialog === 'new' ? undefined : roleDialog}
 							readOnly={
 								roleDialog !== 'new' &&
-								(Boolean(roleDialog.key) || !can('roles.update') || !canDelegateRole(access, roleDialog, null))
+								(Boolean(roleDialog.key) || !can('roles.update') || !canDelegate(roleDialog, null))
 							}
 							pending={mutation.isPending}
 							onSave={(input) =>

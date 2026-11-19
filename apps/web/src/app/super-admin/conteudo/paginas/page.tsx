@@ -1,3 +1,5 @@
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Suspense } from 'react';
 import { fetchCmsPages } from '@/features/cms/api/server';
 import { CmsPageHeader } from '@/features/cms/components/CmsPageHeader';
@@ -10,6 +12,8 @@ interface PagesIndexProps {
 }
 
 export default async function PagesIndexPage({ searchParams }: PagesIndexProps) {
+	if (!(await canOpenPlatformPage('/super-admin/conteudo/paginas'))) return <AccessDenied scope="platform" />;
+
 	const params = await searchParams;
 	const result = await fetchCmsPages({
 		page: Number(params.page ?? 1),

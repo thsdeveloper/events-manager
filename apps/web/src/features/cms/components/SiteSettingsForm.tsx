@@ -1,4 +1,5 @@
 'use client';
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
@@ -202,16 +203,18 @@ export function SiteSettingsForm({ settings }: { settings: CmsSiteSettings }) {
 				title="Redes sociais"
 				description="Aparecem no rodapé do site."
 				actions={
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						disabled={socialLinks.length >= 12}
-						onClick={() => setSocialLinks((links) => [...links, { service: 'instagram', url: '' }])}
-					>
-						<Plus className="mr-2 size-4" />
-						Adicionar rede
-					</Button>
+					<PlatformCan permission="platform_site.update">
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							disabled={socialLinks.length >= 12}
+							onClick={() => setSocialLinks((links) => [...links, { service: 'instagram', url: '' }])}
+						>
+							<Plus className="mr-2 size-4" />
+							Adicionar rede
+						</Button>
+					</PlatformCan>
 				}
 			>
 				{socialLinks.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma rede cadastrada.</p>}
@@ -244,26 +247,30 @@ export function SiteSettingsForm({ settings }: { settings: CmsSiteSettings }) {
 								onChange={(event) => updateLink(index, { url: event.target.value })}
 							/>
 						</Field>
-						<Button
-							type="button"
-							size="icon"
-							variant="destructive"
-							className="self-end"
-							onClick={() => setSocialLinks((links) => links.filter((_, i) => i !== index))}
-							aria-label={`Remover ${SOCIAL_LABELS[link.service]}`}
-						>
-							<Trash2 className="size-4" />
-						</Button>
+						<PlatformCan permission="platform_site.update">
+							<Button
+								type="button"
+								size="icon"
+								variant="destructive"
+								className="self-end"
+								onClick={() => setSocialLinks((links) => links.filter((_, i) => i !== index))}
+								aria-label={`Remover ${SOCIAL_LABELS[link.service]}`}
+							>
+								<Trash2 className="size-4" />
+							</Button>
+						</PlatformCan>
 					</div>
 				))}
 			</SectionCard>
 
 			<Card className="sticky bottom-4 flex flex-col gap-3 p-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
 				<p className="text-sm text-muted-foreground">As alterações valem para todo o site assim que salvas.</p>
-				<Button onClick={save} loading={saving}>
-					<Save className="mr-2 size-4" />
-					Salvar configurações
-				</Button>
+				<PlatformCan permission="platform_site.update">
+					<Button onClick={save} loading={saving}>
+						<Save className="mr-2 size-4" />
+						Salvar configurações
+					</Button>
+				</PlatformCan>
 			</Card>
 		</div>
 	);

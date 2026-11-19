@@ -1,6 +1,7 @@
+import { renderWithPlatformPermissions as renderWithProviders } from '@/test/platform';
 import { screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test';
+import { jsonResponse, mockFetch } from '@/test';
 import type { CmsPostRow } from '../types';
 import { PostEditor } from './PostEditor';
 

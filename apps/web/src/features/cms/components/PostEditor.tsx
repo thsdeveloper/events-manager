@@ -1,4 +1,5 @@
 'use client';
+import { usePlatformPermissions, PlatformCan, PlatformWrite } from '@/features/platform-access/PlatformPermissions';
 
 import { PageHeader } from '@/components/design-system/molecules/PageHeader';
 
@@ -44,6 +45,7 @@ interface PostEditorProps {
 export function PostEditor({ post, siteUrl }: PostEditorProps) {
 	const router = useRouter();
 	const { toast } = useToast();
+	const { can } = usePlatformPermissions();
 	const id = useId();
 	const [title, setTitle] = useState(post?.title ?? '');
 	const [slug, setSlug] = useState(post?.slug ?? '');
@@ -87,12 +89,26 @@ export function PostEditor({ post, siteUrl }: PostEditorProps) {
 		setSaving(true);
 		try {
 			if (post) {
-				await cmsRequest<CmsPostRow>(`/posts/${post.id}`, { method: 'PATCH', body: validation.data });
+				await cmsRequest<CmsPostRow>(`/posts/${post.id}`, {
+					method: 'PATCH',
+					body: can('platform_posts.publish')
+						? validation.data
+						: Object.fromEntries(
+								Object.entries(validation.data).filter(([key]) => !['status', 'published_at'].includes(key)),
+							),
+				});
 				await revalidateCmsContent();
 				toast({ title: 'Post salvo', variant: 'success' });
 				router.refresh();
 			} else {
-				const created = await cmsRequest<CmsPostRow>('/posts', { method: 'POST', body: validation.data });
+				const created = await cmsRequest<CmsPostRow>('/posts', {
+					method: 'POST',
+					body: can('platform_posts.publish')
+						? validation.data
+						: Object.fromEntries(
+								Object.entries(validation.data).filter(([key]) => !['status', 'published_at'].includes(key)),
+							),
+				});
 				await revalidateCmsContent();
 				toast({ title: 'Post criado', variant: 'success' });
 				router.push(`/super-admin/conteudo/blog/${created.id}`);
@@ -145,10 +161,12 @@ export function PostEditor({ post, siteUrl }: PostEditorProps) {
 								</Link>
 							</Button>
 						)}
-						<Button onClick={save} loading={saving}>
-							<Save className="mr-2 size-4" />
-							Salvar
-						</Button>
+						<PlatformCan permission="platform_posts.update">
+							<Button onClick={save} loading={saving}>
+								<Save className="mr-2 size-4" />
+								Salvar
+							</Button>
+						</PlatformCan>
 					</div>
 				}
 			/>
@@ -226,20 +244,24 @@ export function PostEditor({ post, siteUrl }: PostEditorProps) {
 
 				<aside className="space-y-6">
 					<SectionCard title="Publicação">
-						<PublishingFields
-							status={status}
-							publishedAt={publishedAt}
-							onStatusChange={setStatus}
-							onPublishedAtChange={setPublishedAt}
-							error={errors?.published_at?.[0]}
-						/>
+						<PlatformWrite permission="platform_posts.publish">
+							<PublishingFields
+								status={status}
+								publishedAt={publishedAt}
+								onStatusChange={setStatus}
+								onPublishedAtChange={setPublishedAt}
+								error={errors?.published_at?.[0]}
+							/>
+						</PlatformWrite>
 					</SectionCard>
 					{post && (
 						<SectionCard title="Zona de perigo">
-							<Button variant="destructive" className="w-full" onClick={() => setDeleteOpen(true)}>
-								<Trash2 className="mr-2 size-4" />
-								Excluir post
-							</Button>
+							<PlatformCan permission="platform_posts.update">
+								<Button variant="destructive" className="w-full" onClick={() => setDeleteOpen(true)}>
+									<Trash2 className="mr-2 size-4" />
+									Excluir post
+								</Button>
+							</PlatformCan>
 							<p className="text-xs text-muted-foreground">O post sai do blog e do sitemap imediatamente.</p>
 						</SectionCard>
 					)}

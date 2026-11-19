@@ -1,4 +1,6 @@
 'use client';
+import { usePlatformPermissions } from '@/features/platform-access/PlatformPermissions';
+import { canVisitPlatformPath, preferredPlatformPath } from '@/features/platform-access/policy';
 
 import { WorkspaceSwitcher } from '@/components/admin/WorkspaceSwitcher';
 import { SidebarNavLink } from '@/components/admin/SidebarNavLink';
@@ -20,6 +22,7 @@ import {
 	Tags,
 	Settings2,
 	ShieldCheck,
+	Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -68,6 +71,7 @@ const navigationGroups: NavigationGroup[] = [
 			{ label: 'Taxas e gateway', href: '/super-admin/taxas', icon: Settings2 },
 			{ label: 'Identidade visual', href: '/super-admin/identidade-visual', icon: Palette },
 			{ label: 'Categorias', href: '/super-admin/categorias', icon: Tags },
+			{ label: 'Equipe', href: '/super-admin/equipe', icon: Users },
 		],
 	},
 	{
@@ -107,6 +111,10 @@ function SuperAdminWorkspace({
 	user: AuthUser;
 	isOrganizer: boolean;
 }) {
+	const { access } = usePlatformPermissions();
+	const groups = navigationGroups
+		.map((group) => ({ ...group, items: group.items.filter((item) => canVisitPlatformPath(access, item.href)) }))
+		.filter((group) => group.items.length);
 	const userName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email;
 	const pathname = usePathname();
 	const router = useRouter();
@@ -127,7 +135,7 @@ function SuperAdminWorkspace({
 					<SidebarMenu>
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild size="lg" tooltip="Events Manager">
-								<Link href="/super-admin" onClick={() => setOpenMobile(false)}>
+								<Link href={preferredPlatformPath(access)} onClick={() => setOpenMobile(false)}>
 									<ShieldCheck />
 									<span className="group-data-[collapsible=icon]:sr-only">
 										<span className="block font-semibold">Events Manager</span>
@@ -140,7 +148,7 @@ function SuperAdminWorkspace({
 				</SidebarHeader>
 				<SidebarContent>
 					<nav aria-label="Navegação do super admin">
-						{navigationGroups.map((group) => (
+						{groups.map((group) => (
 							<SidebarGroup key={group.label}>
 								<SidebarGroupLabel>{group.label}</SidebarGroupLabel>
 								<SidebarMenu>
@@ -182,10 +190,10 @@ function SuperAdminWorkspace({
 						</div>
 					</div>
 					<div className="flex shrink-0 items-center gap-3">
-						<WorkspaceSwitcher area="platform" isSuperAdmin={user.role === 'super_admin'} isOrganizer={isOrganizer} />
+						<WorkspaceSwitcher area="platform" isSuperAdmin={Boolean(access?.active)} isOrganizer={isOrganizer} />
 						<Badge variant="secondary" className="hidden gap-2 sm:flex">
 							<ShieldCheck className="size-4" />
-							Acesso global
+							{access?.isRoot ? 'Super-admin principal' : 'Acesso por permissões'}
 						</Badge>
 						<UserMenu user={user} onLogout={logout} isOrganizer={isOrganizer} isSuperAdmin />
 					</div>

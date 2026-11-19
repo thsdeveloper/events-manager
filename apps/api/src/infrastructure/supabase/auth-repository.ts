@@ -95,7 +95,7 @@ export class SupabaseAuthRepository implements AuthRepository {
 	 * derrubava o login de quem tinha mais de uma organização.
 	 */
 	async serialize(user: AuthIdentity): Promise<SerializedUser> {
-		const [{ data: profile, error: profileError }, organizers, billingActivity] = await Promise.all([
+		const [{ data: profile, error: profileError }, organizers, billingActivity, platform] = await Promise.all([
 			this.clients.admin
 				.from('profiles')
 				.select('*,city:cities(id,state_id,name,state:states(id,uf,name))')
@@ -103,8 +103,10 @@ export class SupabaseAuthRepository implements AuthRepository {
 				.maybeSingle(),
 			this.listOrganizers(user.id),
 			this.hasBillingActivity(user.id),
+			this.clients.admin.rpc('platform_access_context', { actor: user.id }),
 		]);
 		if (profileError) throw profileError;
+		if (platform.error) throw platform.error;
 		const active = organizers.filter((organizer) => organizer.status === 'active');
 		const organizer =
 			active.find((candidate) => candidate.id === profile?.active_organizer_id) ?? active[0] ?? organizers[0] ?? null;
@@ -125,6 +127,7 @@ export class SupabaseAuthRepository implements AuthRepository {
 			// Espelha a regra do caso de uso: CPF já informado e atividade paga.
 			document_locked: Boolean(profile?.document) && billingActivity,
 			role: profile?.role ?? 'attendee',
+			can_access_platform: platform.data?.active === true,
 			status: profile?.status ?? 'active',
 			organizer: (organizer as SerializedUser['organizer']) ?? null,
 		};

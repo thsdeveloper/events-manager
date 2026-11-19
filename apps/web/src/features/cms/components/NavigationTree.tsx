@@ -1,4 +1,5 @@
 'use client';
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 
 import { Empty } from '@/components/ui/empty';
 import { Card } from '@/components/ui/card';
@@ -122,26 +123,30 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 				>
 					{parent && <CornerDownRight className="size-4 text-muted-foreground" />}
 					<div className="flex flex-col">
-						<Button
-							size="icon"
-							variant="ghost"
-							className="size-7"
-							disabled={index === 0}
-							onClick={() => move(siblings, parent?.id ?? null, index, -1)}
-							aria-label={`Mover ${item.title} para cima`}
-						>
-							<ArrowUp className="size-4" />
-						</Button>
-						<Button
-							size="icon"
-							variant="ghost"
-							className="size-7"
-							disabled={index === siblings.length - 1}
-							onClick={() => move(siblings, parent?.id ?? null, index, 1)}
-							aria-label={`Mover ${item.title} para baixo`}
-						>
-							<ArrowDown className="size-4" />
-						</Button>
+						<PlatformCan permission="platform_navigation.update">
+							<Button
+								size="icon"
+								variant="ghost"
+								className="size-7"
+								disabled={index === 0}
+								onClick={() => move(siblings, parent?.id ?? null, index, -1)}
+								aria-label={`Mover ${item.title} para cima`}
+							>
+								<ArrowUp className="size-4" />
+							</Button>
+						</PlatformCan>
+						<PlatformCan permission="platform_navigation.update">
+							<Button
+								size="icon"
+								variant="ghost"
+								className="size-7"
+								disabled={index === siblings.length - 1}
+								onClick={() => move(siblings, parent?.id ?? null, index, 1)}
+								aria-label={`Mover ${item.title} para baixo`}
+							>
+								<ArrowDown className="size-4" />
+							</Button>
+						</PlatformCan>
 					</div>
 					<span className="flex size-9 items-center justify-center rounded-lg bg-accent text-primary">
 						<Icon className="size-4" />
@@ -152,32 +157,38 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 					</div>
 					<div className="flex items-center gap-1">
 						{!parent && (
-							<Button
-								size="sm"
-								variant="ghost"
-								onClick={() => setDialog({ item: null, parent: { id: item.id, title: item.title } })}
-								aria-label={`Adicionar subitem em ${item.title}`}
-							>
-								<Plus className="mr-1 size-4" />
-								Subitem
-							</Button>
+							<PlatformCan permission="platform_navigation.update">
+								<Button
+									size="sm"
+									variant="ghost"
+									onClick={() => setDialog({ item: null, parent: { id: item.id, title: item.title } })}
+									aria-label={`Adicionar subitem em ${item.title}`}
+								>
+									<Plus className="mr-1 size-4" />
+									Subitem
+								</Button>
+							</PlatformCan>
 						)}
-						<Button
-							size="icon"
-							variant="ghost"
-							onClick={() => setDialog({ item, parent: parent ? { id: parent.id, title: parent.title } : null })}
-							aria-label={`Editar ${item.title}`}
-						>
-							<Pencil className="size-4" />
-						</Button>
-						<Button
-							size="icon"
-							variant="destructive"
-							onClick={() => setToDelete(item)}
-							aria-label={`Excluir ${item.title}`}
-						>
-							<Trash2 className="size-4" />
-						</Button>
+						<PlatformCan permission="platform_navigation.update">
+							<Button
+								size="icon"
+								variant="ghost"
+								onClick={() => setDialog({ item, parent: parent ? { id: parent.id, title: parent.title } : null })}
+								aria-label={`Editar ${item.title}`}
+							>
+								<Pencil className="size-4" />
+							</Button>
+						</PlatformCan>
+						<PlatformCan permission="platform_navigation.update">
+							<Button
+								size="icon"
+								variant="destructive"
+								onClick={() => setToDelete(item)}
+								aria-label={`Excluir ${item.title}`}
+							>
+								<Trash2 className="size-4" />
+							</Button>
+						</PlatformCan>
 					</div>
 				</Card>
 				{item.children.length > 0 && (
@@ -206,10 +217,12 @@ export function NavigationTree({ navigation }: { navigation: CmsNavigationDetail
 						<span className="block text-xs text-muted-foreground">Um menu desativado não aparece no site.</span>
 					</span>
 				</Label>
-				<Button onClick={() => setDialog({ item: null, parent: null })}>
-					<Plus className="mr-2 size-4" />
-					Adicionar item
-				</Button>
+				<PlatformCan permission="platform_navigation.update">
+					<Button onClick={() => setDialog({ item: null, parent: null })}>
+						<Plus className="mr-2 size-4" />
+						Adicionar item
+					</Button>
+				</PlatformCan>
 			</Card>
 
 			{navigation.items.length === 0 ? (

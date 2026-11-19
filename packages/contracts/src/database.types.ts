@@ -1,6 +1,31 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
+	graphql_public: {
+		Tables: {
+			[_ in never]: never;
+		};
+		Views: {
+			[_ in never]: never;
+		};
+		Functions: {
+			graphql: {
+				Args: {
+					extensions?: Json;
+					operationName?: string;
+					query?: string;
+					variables?: Json;
+				};
+				Returns: Json;
+			};
+		};
+		Enums: {
+			[_ in never]: never;
+		};
+		CompositeTypes: {
+			[_ in never]: never;
+		};
+	};
 	public: {
 		Tables: {
 			audit_logs: {
@@ -2292,6 +2317,221 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			platform_invitations: {
+				Row: {
+					accepted_at: string | null;
+					accepted_by: string | null;
+					assignments: Json;
+					created_at: string;
+					email: string;
+					expires_at: string;
+					id: string;
+					invited_by: string;
+					status: string;
+					token_hash: string;
+				};
+				Insert: {
+					accepted_at?: string | null;
+					accepted_by?: string | null;
+					assignments: Json;
+					created_at?: string;
+					email: string;
+					expires_at?: string;
+					id?: string;
+					invited_by: string;
+					status?: string;
+					token_hash: string;
+				};
+				Update: {
+					accepted_at?: string | null;
+					accepted_by?: string | null;
+					assignments?: Json;
+					created_at?: string;
+					email?: string;
+					expires_at?: string;
+					id?: string;
+					invited_by?: string;
+					status?: string;
+					token_hash?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'platform_invitations_accepted_by_fkey';
+						columns: ['accepted_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'platform_invitations_invited_by_fkey';
+						columns: ['invited_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			platform_members: {
+				Row: {
+					created_at: string;
+					id: string;
+					status: string;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					created_at?: string;
+					id?: string;
+					status?: string;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					created_at?: string;
+					id?: string;
+					status?: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'platform_members_user_id_fkey';
+						columns: ['user_id'];
+						isOneToOne: true;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			platform_permissions: {
+				Row: {
+					key: string;
+					label: string;
+					module: string;
+				};
+				Insert: {
+					key: string;
+					label: string;
+					module: string;
+				};
+				Update: {
+					key?: string;
+					label?: string;
+					module?: string;
+				};
+				Relationships: [];
+			};
+			platform_role_assignments: {
+				Row: {
+					created_at: string;
+					granted_by: string | null;
+					member_id: string;
+					role_id: string;
+				};
+				Insert: {
+					created_at?: string;
+					granted_by?: string | null;
+					member_id: string;
+					role_id: string;
+				};
+				Update: {
+					created_at?: string;
+					granted_by?: string | null;
+					member_id?: string;
+					role_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'platform_role_assignments_granted_by_fkey';
+						columns: ['granted_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'platform_role_assignments_member_id_fkey';
+						columns: ['member_id'];
+						isOneToOne: false;
+						referencedRelation: 'platform_members';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'platform_role_assignments_role_id_fkey';
+						columns: ['role_id'];
+						isOneToOne: false;
+						referencedRelation: 'platform_roles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			platform_role_permissions: {
+				Row: {
+					permission: string;
+					role_id: string;
+				};
+				Insert: {
+					permission: string;
+					role_id: string;
+				};
+				Update: {
+					permission?: string;
+					role_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'platform_role_permissions_permission_fkey';
+						columns: ['permission'];
+						isOneToOne: false;
+						referencedRelation: 'platform_permissions';
+						referencedColumns: ['key'];
+					},
+					{
+						foreignKeyName: 'platform_role_permissions_role_id_fkey';
+						columns: ['role_id'];
+						isOneToOne: false;
+						referencedRelation: 'platform_roles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			platform_roles: {
+				Row: {
+					created_at: string;
+					created_by: string | null;
+					description: string;
+					id: string;
+					key: string | null;
+					name: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					created_by?: string | null;
+					description?: string;
+					id?: string;
+					key?: string | null;
+					name: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					created_by?: string | null;
+					description?: string;
+					id?: string;
+					key?: string | null;
+					name?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'platform_roles_created_by_fkey';
+						columns: ['created_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
 			posts: {
 				Row: {
 					author: string | null;
@@ -3218,6 +3458,27 @@ export type Database = {
 				Returns: Json;
 			};
 			owns_event: { Args: { target_event: string }; Returns: boolean };
+			platform_accept_invitation: {
+				Args: { actor: string; invitation_hash: string };
+				Returns: Json;
+			};
+			platform_access_context: { Args: { actor: string }; Returns: Json };
+			platform_assert_delegable: {
+				Args: { actor: string; assignments: Json };
+				Returns: undefined;
+			};
+			platform_assert_permission: {
+				Args: { actor: string; permission_key: string };
+				Returns: undefined;
+			};
+			platform_has_permission: {
+				Args: { actor: string; permission_key: string };
+				Returns: boolean;
+			};
+			platform_manage: {
+				Args: { actor: string; input: Json; operation: string };
+				Returns: Json;
+			};
 			prepare_transparent_checkout: {
 				Args: {
 					target_amount: number;
@@ -3424,6 +3685,9 @@ export type CompositeTypes<
 		: never;
 
 export const Constants = {
+	graphql_public: {
+		Enums: {},
+	},
 	public: {
 		Enums: {},
 	},

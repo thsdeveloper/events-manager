@@ -1,3 +1,4 @@
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 import { Empty } from '@/components/ui/empty';
 import { Card } from '@/components/ui/card';
 import { Newspaper } from 'lucide-react';
@@ -17,9 +18,11 @@ export function PostsList({ posts }: { posts: CmsPostListRow[] }) {
 				</div>
 				<p className="font-medium text-foreground">Nenhum post encontrado</p>
 				<p className="text-sm text-muted-foreground">Ajuste a busca ou escreva o primeiro post.</p>
-				<Button asChild>
-					<Link href="/super-admin/conteudo/blog/novo">Escrever post</Link>
-				</Button>
+				<PlatformCan permission="platform_posts.update">
+					<Button asChild>
+						<Link href="/super-admin/conteudo/blog/novo">Escrever post</Link>
+					</Button>
+				</PlatformCan>
 			</Empty>
 		);
 	}

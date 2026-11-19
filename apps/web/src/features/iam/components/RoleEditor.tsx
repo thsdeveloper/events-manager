@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { permissionDefinitions, type IamRole, type Permission, type IamRoleInput } from '@events-manager/contracts';
-import { usePermissions } from '@/components/auth/PermissionsProvider';
+import { useTeamRuntime, type TeamRole, type TeamRoleInput } from '../api/team-runtime';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,15 +11,15 @@ export function RoleEditor({
 	pending,
 	onSave,
 }: {
-	role?: IamRole;
+	role?: TeamRole;
 	readOnly: boolean;
 	pending: boolean;
-	onSave: (input: IamRoleInput) => void;
+	onSave: (input: TeamRoleInput) => void;
 }) {
-	const { can } = usePermissions();
+	const { can, definitions: permissionDefinitions } = useTeamRuntime();
 	const [name, setName] = useState(role?.name ?? '');
 	const [description, setDescription] = useState(role?.description ?? '');
-	const [permissions, setPermissions] = useState<Permission[]>(role?.permissions ?? []);
+	const [permissions, setPermissions] = useState<string[]>(role?.permissions ?? []);
 
 	return (
 		<form

@@ -1,7 +1,8 @@
+import { renderWithPlatformPermissions as renderWithProviders } from '@/test/platform';
 import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { organizerAdminQuerySchema, type OrganizerAdminList } from '@events-manager/contracts';
-import { renderWithProviders } from '@/test';
+
 import { OrganizerTable } from './OrganizerTable';
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));

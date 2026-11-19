@@ -1,8 +1,12 @@
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { fetchCmsRedirects } from '@/features/cms/api/server';
 import { CmsPageHeader } from '@/features/cms/components/CmsPageHeader';
 import { RedirectsManager } from '@/features/cms/components/RedirectsManager';
 
 export default async function RedirectsPage() {
+	if (!(await canOpenPlatformPage('/super-admin/conteudo/redirecionamentos'))) return <AccessDenied scope="platform" />;
+
 	const { data } = await fetchCmsRedirects();
 
 	return (

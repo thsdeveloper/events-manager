@@ -1,4 +1,5 @@
 'use client';
+import { PlatformCan } from '@/features/platform-access/PlatformPermissions';
 
 import { RecordTable } from '@/components/ui/record-table';
 
@@ -18,10 +19,12 @@ export function NewPageButton({ label = 'Nova página' }: { label?: string }) {
 
 	return (
 		<>
-			<Button onClick={() => setOpen(true)}>
-				<Plus className="mr-2 size-4" />
-				{label}
-			</Button>
+			<PlatformCan permission="platform_pages.update">
+				<Button onClick={() => setOpen(true)}>
+					<Plus className="mr-2 size-4" />
+					{label}
+				</Button>
+			</PlatformCan>
 			<NewPageDialog open={open} onOpenChange={setOpen} />
 		</>
 	);

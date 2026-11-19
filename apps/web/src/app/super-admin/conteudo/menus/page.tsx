@@ -1,8 +1,12 @@
+import { canOpenPlatformPage } from '@/features/platform-access/server';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import { fetchCmsNavigations } from '@/features/cms/api/server';
 import { CmsPageHeader } from '@/features/cms/components/CmsPageHeader';
 import { NavigationsList } from '@/features/cms/components/NavigationsList';
 
 export default async function MenusPage() {
+	if (!(await canOpenPlatformPage('/super-admin/conteudo/menus'))) return <AccessDenied scope="platform" />;
+
 	const { data } = await fetchCmsNavigations();
 
 	return (

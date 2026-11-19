@@ -17,7 +17,7 @@ export interface AuthState {
 
 export async function requireSuperAdmin(): Promise<AuthState> {
 	const auth = await requireAuth('/super-admin');
-	if (!auth.isSuperAdmin || auth.user.role !== 'super_admin') redirect('/admin');
+	if (!auth.isSuperAdmin) redirect('/perfil');
 
 	return auth;
 }
