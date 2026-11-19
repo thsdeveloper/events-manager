@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { NodemailerGateway } from '../src/infrastructure/email/nodemailer-gateway.js';
 
 describe('SMTP attachments', () => {
+	it('bounds the SMTP greeting and idle socket wait so a worker can recover', () => {
+		const transport = nodemailer.createTransport({ streamTransport: true, buffer: true });
+		const create = vi.spyOn(nodemailer, 'createTransport').mockReturnValue(transport);
+		new NodemailerGateway({ host: 'unused.example.test', port: 2525, secure: false });
+		expect(create).toHaveBeenLastCalledWith(
+			expect.objectContaining({ connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 20_000 }),
+		);
+	});
 	it('encodes the PDF as a downloadable MIME attachment while preserving the HTML and text bodies', async () => {
 		const transport = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: 'unix' });
 		vi.spyOn(nodemailer, 'createTransport').mockReturnValue(transport);

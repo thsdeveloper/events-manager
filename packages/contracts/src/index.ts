@@ -30,3 +30,4 @@ export * from './platform-iam.js';
 export * from './checkout-profile.js';
 export type { FinanceMovement, FinanceTransactionDetails } from './finance.js';
 export * from './event-video.js';
+export * from './notifications.js';

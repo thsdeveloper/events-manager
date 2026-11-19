@@ -6,6 +6,7 @@ import { Check, Clock3, Languages, Laptop, Moon, Palette, Sun } from 'lucide-rea
 
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { EmailNotificationPreferences } from '@/features/notifications/components/EmailNotificationPreferences';
 
 const timezones = [
 	{ value: 'America/Sao_Paulo', label: 'Brasília — GMT-3' },
@@ -21,7 +22,7 @@ const themeOptions = [
 	{ value: 'dark', label: 'Escuro', description: 'Sempre escuro', icon: Moon },
 ] as const;
 
-export function ProfilePreferences() {
+export function ProfilePreferences({ userId }: { userId: string }) {
 	const { theme, setTheme } = useTheme();
 	const [mounted, setMounted] = useState(false);
 	const [timezone, setTimezone] = useState('America/Sao_Paulo');
@@ -44,6 +45,7 @@ export function ProfilePreferences() {
 
 	return (
 		<div className="space-y-6">
+			<EmailNotificationPreferences scope="user" accountId={userId} />
 			<section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
 				<header className="border-b border-slate-100 px-6 py-5 dark:border-slate-800 sm:px-8 sm:py-6">
 					<div className="flex items-start gap-3">

@@ -20,6 +20,9 @@ import { eventRoutes } from './routes/events.js';
 import { adminRoutes } from './routes/admin.js';
 import { ticketGroupRoutes } from './routes/ticket-groups.js';
 import { emailRoutes } from './routes/email.js';
+import { notificationRoutes } from './routes/notifications.js';
+import { notificationWorkerRoutes } from './routes/notification-worker.js';
+import { createNotificationProcessor } from './infrastructure/email/create-notification-processor.js';
 import { eventPageRoutes } from './routes/event-pages.js';
 import { externalRoutes } from './routes/external.js';
 import { manualPayoutRoutes } from './routes/manual-payouts.js';
@@ -84,6 +87,13 @@ export async function buildApp(env: ApiEnv) {
 	await app.register(cmsRoutes, { clients, env });
 	await app.register(uploadRoutes, { clients });
 	await app.register(emailRoutes, { env, clients });
+	await app.register(notificationRoutes, { clients });
+	await app.register(notificationWorkerRoutes, {
+		runner: createNotificationProcessor(env, clients),
+		enabled: env.EMAIL_NOTIFICATIONS_ENABLED,
+		token: env.NOTIFICATIONS_WORKER_TOKEN,
+		background: env.NODE_ENV !== 'test',
+	});
 	await app.register(externalRoutes, { env, clients });
 
 	return app;

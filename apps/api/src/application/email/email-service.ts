@@ -1,4 +1,6 @@
 import type { EmailBrandingSource } from './email-branding.js';
+import type { NotificationKind } from '@events-manager/contracts';
+import { renderNotification } from '../notifications/notification-template.js';
 import { renderEmail } from './email-template.js';
 import type { AttendeeTicketNotice, PurchaseConfirmationNotice, TicketMailer } from '../tickets/deliver-tickets.js';
 import type { TicketPdfRenderer } from '../tickets/ticket-pdf.js';
@@ -69,6 +71,32 @@ export class EmailService implements TicketMailer {
 		private readonly branding: EmailBrandingSource,
 		private readonly ticketPdf: TicketPdfRenderer,
 	) {}
+
+	async sendNotification(notice: {
+		id: string;
+		kind: NotificationKind;
+		email: string;
+		payload: Record<string, unknown>;
+	}) {
+		const delivery = await this.deliveries.claim({
+			idempotencyKey: `notification-${notice.id}`,
+			template: notice.kind,
+			recipient: notice.email,
+			payload: { notificationId: notice.id },
+		});
+		if (!delivery.shouldSend) {
+			if (delivery.status === 'sent') return delivery;
+			throw new Error('A notificação já está sendo processada.');
+		}
+		let rendered: ReturnType<typeof renderNotification>;
+		try {
+			rendered = renderNotification(notice.kind, notice.payload, await this.branding.load());
+		} catch (error) {
+			await this.deliveries.markFailed(delivery.id, delivery.attempts + 1, 'Não foi possível preparar a notificação.');
+			throw error;
+		}
+		return this.dispatch(delivery, { to: notice.email, ...rendered }, 'Não foi possível enviar a notificação.');
+	}
 
 	async sendRegistrationConfirmation(registration: RegistrationForEmail, idempotencyKey: string) {
 		const eventTitle = registration.event_id?.title ?? 'Events Manager';

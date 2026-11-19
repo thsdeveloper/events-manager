@@ -1,0 +1,44 @@
+name: Notificações de e-mail
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '3,13,23,33,43,53 * * * *'
+
+permissions: {}
+concurrency:
+  group: email-notifications-development
+  cancel-in-progress: false
+
+jobs:
+  process:
+    if: vars.EMAIL_NOTIFICATIONS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    environment: development
+    steps:
+      - name: Processar notificações pendentes
+        env:
+          NOTIFICATIONS_API_URL: ${{ vars.NOTIFICATIONS_API_URL }}
+          NOTIFICATIONS_WORKER_TOKEN: ${{ secrets.NOTIFICATIONS_WORKER_TOKEN }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          from urllib.request import Request, urlopen
+          from urllib.parse import urlparse
+          base = os.environ['NOTIFICATIONS_API_URL'].rstrip('/')
+          token = os.environ['NOTIFICATIONS_WORKER_TOKEN']
+          if urlparse(base).scheme != 'https' or len(token) < 32:
+              sys.exit('Configure a URL HTTPS da API e a credencial exclusiva do agendador.')
+          request = Request(base + '/internal/notifications/process', data=b'{}', method='POST', headers={
+              'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'
+          })
+          try:
+              with urlopen(request, timeout=240) as response:
+                  counts = json.load(response)
+              print(json.dumps({key: counts.get(key, 0) for key in ['sent', 'suppressed', 'failed']}))
+              if counts.get('failed', 0):
+                  sys.exit('Há envios que falharam. A fila preservou as mensagens para nova tentativa.')
+          except Exception:
+              sys.exit('Não foi possível acionar a fila de e-mails. Verifique a API e a configuração do agendador.')
+          PY

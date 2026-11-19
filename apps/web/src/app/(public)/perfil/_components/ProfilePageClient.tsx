@@ -155,7 +155,7 @@ export function ProfilePageClient({ initialUser }: ProfilePageClientProps) {
 						)}
 						{activeSection === 'personal' && <ProfileDetailsForm user={user} onSaved={handleProfileSaved} />}
 						{activeSection === 'security' && <ProfileSecurity user={user} onLogout={auth.logout} />}
-						{activeSection === 'preferences' && <ProfilePreferences />}
+						{activeSection === 'preferences' && <ProfilePreferences userId={user.id} />}
 						{activeSection === 'ingressos' && (
 							// No visible heading: the sidebar entry already names the section, so the
 							// label is exposed to screen readers only.

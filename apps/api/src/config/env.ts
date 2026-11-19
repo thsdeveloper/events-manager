@@ -69,6 +69,14 @@ const envSchema = z
 		SMTP_USER: z.string().optional(),
 		SMTP_PASSWORD: z.string().optional(),
 		EMAIL_FROM: z.string().default('Events Manager <hello@events.local>'),
+		EMAIL_NOTIFICATIONS_ENABLED: z
+			.enum(['true', 'false'])
+			.default('false')
+			.transform((value) => value === 'true'),
+		NOTIFICATIONS_WORKER_TOKEN: z.preprocess(
+			(value) => (value === '' ? undefined : value),
+			z.string().min(32).optional(),
+		),
 	})
 	.superRefine((env, context) => {
 		if (env.NODE_ENV !== 'production') return;

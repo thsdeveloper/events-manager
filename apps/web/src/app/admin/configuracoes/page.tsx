@@ -6,6 +6,8 @@ import { ShieldCheck } from 'lucide-react';
 import { PayoutSettingsCard } from '@/features/organizer-settings/components/PayoutSettingsCard';
 import { OrganizerProfileSettings } from '@/features/organizer-settings/components/OrganizerProfileSettings';
 import { requireOrganizer } from '@/lib/auth/server-auth';
+import { hasPermission } from '@events-manager/contracts';
+import { EmailNotificationPreferences } from '@/features/notifications/components/EmailNotificationPreferences';
 
 export default async function OrganizerSettingsPage() {
 	const [{ organizer }, access] = await Promise.all([requireOrganizer(), getServerPermissions()]);
@@ -25,6 +27,11 @@ export default async function OrganizerSettingsPage() {
 			/>
 			<OrganizerProfileSettings organizer={organizer} />
 			<OrganizerPaymentSettings />
+			<EmailNotificationPreferences
+				scope="organization"
+				accountId={organizer.id}
+				canEdit={hasPermission(access, 'organization.update')}
+			/>
 			{access?.isOwner && <PayoutSettingsCard organizer={organizer} />}
 		</div>
 	);

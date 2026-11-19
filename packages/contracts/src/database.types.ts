@@ -1688,6 +1688,106 @@ export type Database = {
 					},
 				];
 			};
+			notification_event_batches: {
+				Row: {
+					completed: boolean;
+					created_at: string;
+					event_id: string;
+					event_key: string;
+					id: string;
+					kind: string;
+					last_user_id: string | null;
+					payload: Json;
+				};
+				Insert: {
+					completed?: boolean;
+					created_at?: string;
+					event_id: string;
+					event_key: string;
+					id?: string;
+					kind: string;
+					last_user_id?: string | null;
+					payload: Json;
+				};
+				Update: {
+					completed?: boolean;
+					created_at?: string;
+					event_id?: string;
+					event_key?: string;
+					id?: string;
+					kind?: string;
+					last_user_id?: string | null;
+					payload?: Json;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'notification_event_batches_event_id_fkey';
+						columns: ['event_id'];
+						isOneToOne: false;
+						referencedRelation: 'events';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			notification_outbox: {
+				Row: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					event_key: string;
+					id: string;
+					kind: string;
+					last_error: string | null;
+					lease_token: string | null;
+					locked_until: string | null;
+					next_attempt_at: string;
+					organizer_id: string | null;
+					payload: Json;
+					status: string;
+					user_id: string;
+				};
+				Insert: {
+					attempts?: number;
+					completed_at?: string | null;
+					created_at?: string;
+					event_key: string;
+					id?: string;
+					kind: string;
+					last_error?: string | null;
+					lease_token?: string | null;
+					locked_until?: string | null;
+					next_attempt_at?: string;
+					organizer_id?: string | null;
+					payload?: Json;
+					status?: string;
+					user_id: string;
+				};
+				Update: {
+					attempts?: number;
+					completed_at?: string | null;
+					created_at?: string;
+					event_key?: string;
+					id?: string;
+					kind?: string;
+					last_error?: string | null;
+					lease_token?: string | null;
+					locked_until?: string | null;
+					next_attempt_at?: string;
+					organizer_id?: string | null;
+					payload?: Json;
+					status?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'notification_outbox_organizer_id_fkey';
+						columns: ['organizer_id'];
+						isOneToOne: false;
+						referencedRelation: 'organizers';
+						referencedColumns: ['id'];
+					},
+				];
+			};
 			organization_members: {
 				Row: {
 					created_at: string;
@@ -2021,6 +2121,7 @@ export type Database = {
 					description: string | null;
 					document: string | null;
 					email: string;
+					email_preferences: Json;
 					id: string;
 					logo: string | null;
 					name: string;
@@ -2044,6 +2145,7 @@ export type Database = {
 					description?: string | null;
 					document?: string | null;
 					email: string;
+					email_preferences?: Json;
 					id?: string;
 					logo?: string | null;
 					name: string;
@@ -2067,6 +2169,7 @@ export type Database = {
 					description?: string | null;
 					document?: string | null;
 					email?: string;
+					email_preferences?: Json;
 					id?: string;
 					logo?: string | null;
 					name?: string;
@@ -2654,6 +2757,7 @@ export type Database = {
 					description: string | null;
 					document: string | null;
 					email: string | null;
+					email_preferences: Json;
 					first_name: string | null;
 					id: string;
 					last_name: string | null;
@@ -2673,6 +2777,7 @@ export type Database = {
 					description?: string | null;
 					document?: string | null;
 					email?: string | null;
+					email_preferences?: Json;
 					first_name?: string | null;
 					id: string;
 					last_name?: string | null;
@@ -2692,6 +2797,7 @@ export type Database = {
 					description?: string | null;
 					document?: string | null;
 					email?: string | null;
+					email_preferences?: Json;
 					first_name?: string | null;
 					id?: string;
 					last_name?: string | null;
@@ -3272,6 +3378,31 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			claim_email_notifications: {
+				Args: { batch_size?: number };
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					event_key: string;
+					id: string;
+					kind: string;
+					last_error: string | null;
+					lease_token: string | null;
+					locked_until: string | null;
+					next_attempt_at: string;
+					organizer_id: string | null;
+					payload: Json;
+					status: string;
+					user_id: string;
+				}[];
+				SetofOptions: {
+					from: '*';
+					to: 'notification_outbox';
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			claim_pending_checkout_reconciliations: {
 				Args: { target_batch_size?: number; target_before: string };
 				Returns: {
@@ -3327,6 +3458,30 @@ export type Database = {
 					target_values: Json;
 				};
 				Returns: string;
+			};
+			email_notification_recipient: {
+				Args: { job_id: string; token: string };
+				Returns: Json;
+			};
+			enqueue_email_notification: {
+				Args: {
+					available_at?: string;
+					data: Json;
+					event_key: string;
+					k: string;
+					organization: string;
+					recipient: string;
+				};
+				Returns: undefined;
+			};
+			finish_email_notification: {
+				Args: {
+					job_id: string;
+					outcome: string;
+					retry_at?: string;
+					token: string;
+				};
+				Returns: boolean;
 			};
 			finish_manual_payout: {
 				Args: {
@@ -3528,6 +3683,7 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			schedule_email_notifications: { Args: never; Returns: undefined };
 			settle_installment_webhook: {
 				Args: {
 					target_charge_id: string;

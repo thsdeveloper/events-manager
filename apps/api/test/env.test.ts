@@ -11,6 +11,17 @@ import { loadEnv } from '../src/config/env.js';
 
 const base = { SUPABASE_ANON_KEY: 'anon', SUPABASE_SERVICE_ROLE_KEY: 'service' };
 
+describe('notification rollout configuration', () => {
+	it('keeps new notifications disabled until explicitly enabled', () => {
+		expect(loadEnv(base).EMAIL_NOTIFICATIONS_ENABLED).toBe(false);
+		expect(loadEnv({ ...base, EMAIL_NOTIFICATIONS_ENABLED: 'true' }).EMAIL_NOTIFICATIONS_ENABLED).toBe(true);
+	});
+	it('rejects weak scheduler credentials and accepts an empty optional setting', () => {
+		expect(() => loadEnv({ ...base, NOTIFICATIONS_WORKER_TOKEN: 'short' })).toThrow(/NOTIFICATIONS_WORKER_TOKEN/);
+		expect(loadEnv({ ...base, NOTIFICATIONS_WORKER_TOKEN: '' }).NOTIFICATIONS_WORKER_TOKEN).toBeUndefined();
+	});
+});
+
 describe('ABACATEPAY_METHODS', () => {
 	it('allows the example environment to leave the optional public key empty', () => {
 		expect(loadEnv({ ...base, ABACATEPAY_PUBLIC_KEY: '' }).ABACATEPAY_PUBLIC_KEY).toBeUndefined();

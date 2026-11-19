@@ -107,10 +107,59 @@ do ambiente correto, sem reutilizar implicitamente o banco local.
 
 ## Integrações e manutenção
 
-A chave OpenAI, quando configurada, é um secret da API. O ambiente local usa Mailpit; ele não é acessível pelo Fly. Para
-emails de ingressos e demais mensagens transacionais, configure um SMTP real via secrets `SMTP_HOST`, `SMTP_PORT`,
-`SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD` e `EMAIL_FROM`. Configure também SMTP no Supabase Auth para remover as
-restrições do serviço de email padrão.
+A chave OpenAI, quando configurada, é um secret da API. O ambiente local usa Mailpit; ele não é acessível pelo Fly. O
+desenvolvimento publicado usa Resend para os e-mails da API e do Supabase Auth, conforme a configuração abaixo.
+
+### Resend no desenvolvimento publicado
+
+Em 19/11/2026, o SMTP foi configurado no app Fly `flouvi-api-dev` e no Supabase `yqjkujwugetsffldkisd`. O domínio
+`ello4.com.br` já estava verificado, com SPF e DKIM válidos e envio habilitado. O remetente identifica o ambiente:
+`Flouvi Desenvolvimento <flouvi-dev@ello4.com.br>`.
+
+| Configuração da API | Valor                                                    |
+| ------------------- | -------------------------------------------------------- |
+| `SMTP_HOST`         | `smtp.resend.com`                                        |
+| `SMTP_PORT`         | `465`                                                    |
+| `SMTP_SECURE`       | `true` — TLS desde o início da conexão                   |
+| `SMTP_USER`         | `resend`                                                 |
+| `SMTP_PASSWORD`     | Chave Resend armazenada como secret no Fly; nunca no Git |
+| `EMAIL_FROM`        | `Flouvi Desenvolvimento <flouvi-dev@ello4.com.br>`       |
+
+A API continua usando o gateway Nodemailer existente, incluindo os anexos PDF dos ingressos. Não é necessário adicionar
+SDK do Resend à aplicação ou expor a chave ao frontend. O SMTP usa a chave de API como senha, conforme a
+[documentação do Resend](https://resend.com/docs/send-with-smtp).
+
+A conexão TLS e a autenticação SMTP foram verificadas localmente e de dentro da máquina Fly, sem disparar mensagens para
+clientes. O health check da API retornou `200`, com banco conectado, após a aplicação dos secrets.
+
+O Supabase Auth tem configuração própria em **Authentication → Email → SMTP Settings**. Usa o mesmo host, porta,
+usuário, chave e remetente. Seu limite de envio ficou em 30 mensagens por hora para desenvolvimento; confirmação
+obrigatória de e-mail, validade dos códigos e URLs de retorno foram preservadas. Consulte a
+[integração Resend/Supabase](https://resend.com/docs/send-with-supabase-smtp).
+
+Para renovar a chave, atualize o secret `SMTP_PASSWORD` do Fly e a senha SMTP do Supabase. Não coloque a credencial em
+`fly.toml`, `.env.example`, logs ou argumentos de comandos. Prefira entrada padrão para `fly secrets import` e o painel
+ou corpo JSON da API de gerenciamento do Supabase. A configuração persiste nos próximos deploys.
+
+### MCP do Resend e ambiente local
+
+O MCP remoto oficial foi registrado como `resend` em `~/.codex/config.toml`, usando `https://mcp.resend.com/mcp` e
+autenticação Bearer. O arquivo privado tem permissão `0600`; não copie seu conteúdo para issues, commits ou logs. O
+servidor respondeu à inicialização, à listagem de ferramentas e a uma consulta autenticada aos domínios. Novas sessões
+do Codex carregam essa configuração. A [documentação do MCP](https://resend.com/docs/mcp-server) descreve as opções de
+conexão.
+
+A chave também está no `.env` local ignorado pelo Git, como `RESEND_API_KEY`, para uso administrativo. Essa variável
+sozinha não altera o transporte da aplicação: a API lê `SMTP_*`. O localhost continua usando o Mailpit nas portas 55324
+(interface) e 55325 (SMTP), inclusive para os testes das notificações. O MCP é uma ferramenta de administração; os
+envios da aplicação não dependem dele.
+
+### Ativação das notificações
+
+As notificações de conta, organização, pagamento e evento têm fila e preferências próprias. Antes de habilitá-las, siga
+a [ativação de notificações por ambiente](NOTIFICACOES_EMAIL.md#ativação-por-ambiente): aplique a migration, configure o
+SMTP e a credencial do agendador e ative `EMAIL_NOTIFICATIONS_ENABLED`. O workflow `email-notifications.yml` aciona a
+API mesmo quando a máquina do Fly estiver suspensa.
 
 A primeira configuração utilizou CLI/API oficiais autenticadas: o endpoint MCP Supabase recusou a conexão com HTTP 403 e
 o MCP Vercel não estava disponível.

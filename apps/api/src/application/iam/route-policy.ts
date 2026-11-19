@@ -135,6 +135,8 @@ export function organizationRoutePolicy(method: string, route: string, input: un
 	if (route === '/api/organizer/analytics') return list('finance.read', 'reports.read');
 	if (route === '/api/organizer/stats') return org('dashboard.read', 'finance.read');
 	if (route === '/api/organizer/profile') return org(verb === 'GET' ? 'organization.read' : 'organization.update');
+	if (route === '/api/organizer/notification-preferences')
+		return org(verb === 'GET' ? 'organization.read' : 'organization.update');
 	if (route === '/api/organizer/logo') return org('organization.update');
 	if (route === '/api/organizer/payment-settings')
 		return org(verb === 'GET' ? 'organization.read' : 'payments.configure');

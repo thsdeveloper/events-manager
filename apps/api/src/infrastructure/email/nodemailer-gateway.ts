@@ -11,6 +11,8 @@ export class NodemailerGateway implements EmailGateway {
 			secure: config.secure,
 			...(config.user ? { auth: { user: config.user, pass: config.password } } : {}),
 			connectionTimeout: 10_000,
+			greetingTimeout: 10_000,
+			socketTimeout: 20_000,
 		});
 	}
 

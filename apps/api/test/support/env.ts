@@ -28,6 +28,7 @@ export const TEST_ENV: ApiEnv = Object.freeze({
 	SMTP_PORT: 55325,
 	SMTP_SECURE: false,
 	EMAIL_FROM: 'Events Manager <test@events.local>',
+	EMAIL_NOTIFICATIONS_ENABLED: false,
 }) as ApiEnv;
 
 export function createTestEnv(overrides: Partial<ApiEnv> = {}): ApiEnv {
