@@ -177,17 +177,23 @@ Referência:
 
 Validação da correção em 19/11/2026:
 
-- `pnpm --filter @events-manager/api test:coverage --maxWorkers=2`: 1.297 testes passaram, incluindo a execução de cinco
+- `pnpm --filter @events-manager/api test:coverage --maxWorkers=2`: 1.301 testes passaram, incluindo a execução de cinco
   casos Python da sincronização; `pnpm --filter @events-manager/web test:coverage --maxWorkers=2`: 1.154 testes
   passaram.
 - `pnpm lint` e `pnpm --filter @events-manager/web exec tsc --noEmit`: passaram.
 - Recuperação real com conta temporária no Supabase local: nova senha aceita, senha anterior recusada, prova de uso
   único e sessão compartilhada preservada. A conta temporária foi removida; contas reais não foram alteradas.
-- Cobertura sem regressão: branches da API 78,12% (antes 78,10%); frontend manteve branches 71,86% e funções 77,06%. Os
+- Recuperação também validada pelo proxy público de desenvolvimento, depois do deploy: resposta 200, login com a nova
+  senha, recusa da senha anterior e recusa de reutilização da prova. A conta temporária tinha boas-vindas desabilitadas
+  e foi removida ao final; a prova foi gerada administrativamente, sem disparar e-mail.
+- `/api/branding/logo` utiliza o PNG da Flouvi já incluído nos assets da API quando não há logo cadastrada ou a
+  configuração está indisponível. A leitura é compartilhada em memória e a resposta permite cache de cinco minutos.
+  Logos cadastradas continuam tendo preferência. A regressão reproduzia o erro 404 observado em desenvolvimento.
+- Cobertura sem regressão: branches da API 78,18% (antes 78,10%); frontend manteve branches 71,86% e funções 77,06%. Os
   comandos de cobertura ainda retornam erro pelos limites globais preexistentes, que não foram reduzidos.
 
-Regressões cobertas em `apps/api/test/auth.test.ts`, `auth-email-templates.test.ts`, `auth-deployment-config.test.ts`,
-`deployment-workflow.test.ts`, `scripts/tests/test_sync_supabase_auth.py` e
+Regressões cobertas em `apps/api/test/auth.test.ts`, `auth-email-templates.test.ts`, `email-logo.test.ts`,
+`auth-deployment-config.test.ts`, `deployment-workflow.test.ts`, `scripts/tests/test_sync_supabase_auth.py` e
 `apps/web/src/app/(auth)/redefinir-senha/page.test.tsx`.
 
 ### Ativação das notificações

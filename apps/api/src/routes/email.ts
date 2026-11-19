@@ -4,6 +4,7 @@ import { AdminService } from '../application/admin/admin-service.js';
 import { DeliverTickets } from '../application/tickets/deliver-tickets.js';
 import type { ApiEnv } from '../config/env.js';
 import { createEmailService } from '../infrastructure/email/create-email-service.js';
+import { readDefaultEmailLogo } from '../infrastructure/email/default-email-logo.js';
 import { SupabaseAdminRepository } from '../infrastructure/supabase/admin-repository.js';
 import { createSupabaseAuthService } from '../infrastructure/supabase/auth-repository.js';
 import type { SupabaseClients } from '../infrastructure/supabase/clients.js';
@@ -25,16 +26,15 @@ export async function emailRoutes(app: FastifyInstance, options: { env: ApiEnv; 
 	 * Stable logo URL for e-mails Supabase renders from static templates
 	 * (confirmation, recovery). Those templates only interpolate Supabase's own
 	 * variables, so they cannot read `site_settings` — pointing them at this
-	 * endpoint keeps them in sync with whatever the super admin uploaded.
+	 * endpoint keeps them in sync with whatever the super admin uploaded. The
+	 * packaged Flouvi PNG covers environments without a configured logo.
 	 */
 	app.get('/api/branding/logo', async (_request, reply) => {
 		const { logoUrl } = await branding.load();
-		if (!logoUrl) return reply.code(404).send({ detail: 'Nenhuma logo configurada.' });
-
 		// Short cache: e-mail clients proxy images, and the logo changes rarely.
 		reply.header('cache-control', 'public, max-age=300');
 
-		return reply.redirect(logoUrl);
+		return logoUrl ? reply.redirect(logoUrl) : reply.type('image/png').send(await readDefaultEmailLogo());
 	});
 
 	// Reenvia um ingresso nominal: o recibo, se for de quem comprou; senão, o
