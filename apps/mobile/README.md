@@ -55,6 +55,10 @@ O cliente nativo usa `/api/auth/mobile/login`, `/register`, `/register/confirm` 
 ficam separados no Expo SecureStore; renovações simultâneas compartilham uma única chamada. Logout limpa as credenciais
 e o cache privado. Nenhum segredo privilegiado ou cliente de banco vai ao app.
 
+O checkout carrega primeiro `GET /api/auth/mobile/web-session`, um documento público sem credenciais. O app preenche e
+envia seu formulário somente quando a origem e o caminho correspondem a essa página. Isso evita o `Origin: null` do POST
+inicial do WKWebView, mantendo a proteção de origem da API. O token não vai em URL, mensagem ou cookie nativo.
+
 `POST /api/auth/mobile/web-session` recebe uma credencial explícita e um destino permitido. A API verifica a identidade
 e cria uma sessão independente para a WebView. A prova de acesso é gerada e consumida no servidor, sem enviar e-mail. Os
 cookies são HttpOnly; o token nativo não aparece na URL e seu refresh token não é compartilhado com o navegador. A

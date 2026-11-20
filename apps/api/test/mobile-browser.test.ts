@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildRouteTestApp, createSupabaseClientsStub, createTestEnv } from './support/index.js';
 import { authRoutes } from '../src/routes/auth.js';
+import { installHttpSecurity } from '../src/shared/http-security.js';
 
 const userId = '00000000-0000-4000-8000-000000000001';
 async function fixture(active = true) {
@@ -31,16 +32,61 @@ async function fixture(active = true) {
 			}),
 		},
 	});
-	const app = await buildRouteTestApp(authRoutes, { clients: stub.clients, env: createTestEnv() });
+	const app = await buildRouteTestApp(
+		async (instance, options: Parameters<typeof authRoutes>[1]) => {
+			installHttpSecurity(instance, options.env.WEB_URL);
+			await authRoutes(instance, options);
+		},
+		{ clients: stub.clients, env: createTestEnv() },
+	);
 	return { app, stub, admin };
 }
 describe('native checkout browser session', () => {
+	it('serves a credential-free first-party page before the WebView submits its session', async () => {
+		const { app, admin } = await fixture();
+		const response = await app.inject({
+			url: '/api/auth/mobile/web-session?access_token=never-reflect-this&destination=https://evil.test',
+			headers: { origin: 'null', 'sec-fetch-site': 'cross-site' },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.headers['content-type']).toContain('text/html');
+		expect(response.headers['cache-control']).toContain('no-store');
+		// no-referrer turns a WebKit form's Origin into null, even on this site.
+		expect(response.headers['referrer-policy']).toBe('same-origin');
+		expect(response.body).toMatch(/<form[^>]+action="\/api\/auth\/mobile\/web-session"[^>]+method="post"/);
+		expect(response.body).toContain('name="access_token"');
+		expect(response.body).not.toContain('never-reflect-this');
+		expect(response.body).not.toContain('evil.test');
+		expect(response.headers['set-cookie']).toBeUndefined();
+		expect(admin.generateLink).not.toHaveBeenCalled();
+	});
+	it.each(['null', 'https://evil.test'])(
+		'keeps rejecting a session form posted from the untrusted origin %s',
+		async (origin) => {
+			const { app, admin } = await fixture();
+			const response = await app.inject({
+				method: 'POST',
+				url: '/api/auth/mobile/web-session',
+				headers: { origin, 'content-type': 'application/x-www-form-urlencoded' },
+				payload: 'access_token=native-access&destination=%2Fperfil',
+			});
+			await app.close();
+			expect(response.statusCode).toBe(403);
+			expect(response.json().title).toBe('UNTRUSTED_ORIGIN');
+			expect(admin.generateLink).not.toHaveBeenCalled();
+		},
+	);
 	it('opens only a first-party checkout with a separate HttpOnly browser session', async () => {
 		const { app, admin } = await fixture();
 		const response = await app.inject({
 			method: 'POST',
 			url: '/api/auth/mobile/web-session',
-			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			headers: {
+				origin: 'http://localhost:3003',
+				'sec-fetch-site': 'same-origin',
+				'content-type': 'application/x-www-form-urlencoded',
+			},
 			payload: 'access_token=native-access&destination=%2Feventos%2Fcongresso%2Fcheckout',
 		});
 		await app.close();

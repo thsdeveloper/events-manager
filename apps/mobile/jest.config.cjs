@@ -13,10 +13,12 @@ module.exports = {
 		'src/features/events/model.ts',
 		'src/features/events/availability.ts',
 		'src/features/checkout/policy.ts',
+		'src/features/checkout/session-script.ts',
+		'src/features/checkout/BrowserFrame.tsx',
 		'src/features/auth/*Form.tsx',
 		'src/features/account/NotificationForm.tsx',
 		'src/features/tickets/PaymentSummary.tsx',
 		'src/features/tickets/TicketAdmission.tsx',
 	],
-	coverageThreshold: { global: { statements: 80, branches: 75, functions: 80, lines: 80 } },
+	coverageThreshold: { global: { statements: 91, branches: 80, functions: 92, lines: 92 } },
 };

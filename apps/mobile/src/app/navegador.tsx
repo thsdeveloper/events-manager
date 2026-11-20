@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { BrowserFrame } from '../features/checkout/BrowserFrame';
@@ -47,20 +48,22 @@ export default function Browser() {
 		[queries],
 	);
 	return (
-		<Screen title="Flouvi · ambiente seguro" back scroll={false}>
-			{error ? (
-				<View style={{ padding: 24, gap: 16 }}>
-					<Notice message={error} />
-					<Button label="Entrar novamente" onPress={() => router.replace('/login')} />
-				</View>
-			) : token && destination ? (
-				<BrowserFrame accessToken={token} destination={destination} />
-			) : (
-				<Loading />
-			)}
-			<View style={{ padding: 16, paddingBottom: 28 }}>
-				<Button secondary label="Voltar aos meus ingressos" onPress={() => router.replace('/ingressos')} />
-			</View>
-		</Screen>
+		<SafeAreaProvider>
+			<Screen title="Flouvi · ambiente seguro" back scroll={false}>
+				{error ? (
+					<View style={{ padding: 24, gap: 16 }}>
+						<Notice message={error} />
+						<Button label="Entrar novamente" onPress={() => router.replace('/login')} />
+					</View>
+				) : token && destination ? (
+					<BrowserFrame accessToken={token} destination={destination} />
+				) : (
+					<Loading />
+				)}
+				<SafeAreaView edges={['bottom']} style={{ padding: 16 }}>
+					<Button secondary label="Voltar aos meus ingressos" onPress={() => router.replace('/ingressos')} />
+				</SafeAreaView>
+			</Screen>
+		</SafeAreaProvider>
 	);
 }

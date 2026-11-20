@@ -98,6 +98,25 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 	};
 
 	await app.register(async (browser) => {
+		// Load a first-party document before the native WebView submits the form.
+		// WKWebView's initial POST can send Origin: null and must remain blocked
+		// by the same origin checks that protect all browser writes.
+		browser.get('/api/auth/mobile/web-session', async (_request, reply) =>
+			reply
+				.header('cache-control', 'private, no-store')
+				.header('referrer-policy', 'same-origin')
+				.header('x-frame-options', 'DENY')
+				.header(
+					'content-security-policy',
+					"default-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+				)
+				.type('text/html; charset=utf-8').send(`<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Abrindo checkout · Flouvi</title></head>
+<body><p role="status">Preparando sua página segura…</p>
+<form id="flouvi-mobile-session" action="/api/auth/mobile/web-session" method="post" hidden>
+<input type="hidden" name="access_token"><input type="hidden" name="destination">
+</form></body></html>`),
+		);
 		browser.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
 			done(null, Object.fromEntries(new URLSearchParams(String(body))));
 		});
