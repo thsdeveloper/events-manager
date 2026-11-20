@@ -100,6 +100,94 @@ async function buildAuthTestApp(clients: SupabaseClients) {
 	return app;
 }
 
+describe('native session transport', () => {
+	it('returns the authenticated session to the mobile client without browser cookies', async () => {
+		const { clients, publicAuth } = createClients();
+		publicAuth.signInWithPassword.mockResolvedValue({ data: { user: authUser, session }, error: null });
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/mobile/login',
+			payload: { email: authUser.email, password: 'Password7!' },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toMatchObject({
+			user: { id: authUser.id },
+			session: { accessToken: session.access_token, refreshToken: session.refresh_token, expiresIn: 3600 },
+		});
+		expect(response.headers['set-cookie']).toBeUndefined();
+		expect(response.headers['cache-control']).toBe('private, no-store');
+	});
+	it('requires an explicit refresh token and never exposes a browser cookie as a native session', async () => {
+		const { clients, publicAuth } = createClients();
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/mobile/refresh',
+			headers: { cookie: 'refresh_token=browser-secret' },
+			payload: {},
+		});
+		await app.close();
+		expect(response.statusCode).toBe(401);
+		expect(publicAuth.refreshSession).not.toHaveBeenCalled();
+	});
+	it('rotates mobile credentials using the explicit refresh token', async () => {
+		const { clients, publicAuth } = createClients();
+		publicAuth.refreshSession.mockResolvedValue({ data: { user: authUser, session }, error: null });
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/mobile/refresh',
+			payload: { refresh_token: 'native-refresh' },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json().session.refreshToken).toBe(session.refresh_token);
+		expect(publicAuth.refreshSession).toHaveBeenCalledWith({ refresh_token: 'native-refresh' });
+		expect(response.headers['set-cookie']).toBeUndefined();
+	});
+	it('rejects malformed native login and confirmation input', async () => {
+		const { clients } = createClients();
+		const app = await buildAuthTestApp(clients);
+		for (const path of ['login', 'register/confirm', 'register']) {
+			const response = await app.inject({ method: 'POST', url: `/api/auth/mobile/${path}`, payload: {} });
+			expect(response.statusCode).toBe(422);
+		}
+		await app.close();
+	});
+	it('rejects incorrect credentials on mobile', async () => {
+		const { clients, publicAuth } = createClients();
+		publicAuth.signInWithPassword.mockResolvedValue({
+			data: { user: null, session: null },
+			error: { message: 'Invalid credentials', status: 400 },
+		});
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/mobile/login',
+			payload: { email: authUser.email, password: 'Wrong7!' },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(401);
+		expect(response.json().session).toBeUndefined();
+	});
+	it('confirms email and returns native credentials', async () => {
+		const { clients, publicAuth } = createClients();
+		publicAuth.verifyOtp.mockResolvedValue({ data: { user: authUser, session }, error: null });
+		const app = await buildAuthTestApp(clients);
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/auth/mobile/register/confirm',
+			payload: { email: authUser.email, token: '123456' },
+		});
+		await app.close();
+		expect(response.statusCode).toBe(200);
+		expect(response.json().session.accessToken).toBe(session.access_token);
+		expect(response.headers['set-cookie']).toBeUndefined();
+	});
+});
+
 describe('email confirmation during registration', () => {
 	beforeEach(() => vi.clearAllMocks());
 

@@ -25,7 +25,11 @@
 		"db:reset": "supabase db reset",
 		"db:types": "supabase gen types typescript --local > packages/contracts/src/database.types.ts",
 		"admin:promote": "node scripts/promote-super-admin.mjs",
-		"db:migrate": "supabase migration up --local"
+		"db:migrate": "supabase migration up --local",
+		"dev:mobile": "pnpm --filter @events-manager/mobile start",
+		"test:mobile": "pnpm --filter @events-manager/mobile test",
+		"mobile:preview": "pnpm --filter @events-manager/mobile start:tunnel",
+		"mobile:update": "pnpm --filter @events-manager/mobile update:preview"
 	},
 	"devDependencies": {
 		"concurrently": "^9.2.0",
@@ -58,7 +62,10 @@
 			"vite@7": "^7.3.7",
 			"sucrase>glob": "^14.0.2",
 			"@puckeditor/core>@tiptap/html": "3.31.3",
-			"@puckeditor/core>@tiptap/extension-text-align": "3.31.3"
+			"@puckeditor/core>@tiptap/extension-text-align": "3.31.3",
+			"expo-mcp>zod": "^4.6.6",
+			"@expo/mcp-tunnel>zod": "^4.6.6",
+			"@types/react": "19.3.0"
 		}
 	}
 }

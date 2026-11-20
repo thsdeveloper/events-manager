@@ -8,7 +8,7 @@ import {
 	phoneVerificationConfirmSchema,
 	phoneVerificationRequestSchema,
 } from '@events-manager/contracts';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { DocumentAlreadyInUse, type AuthIdentity, type AuthService } from '../application/auth/auth-service.js';
 import type { ApiEnv } from '../config/env.js';
@@ -20,6 +20,7 @@ import { SupabaseRateLimitRepository } from '../infrastructure/supabase/rate-lim
 import { ApiError } from '../shared/errors.js';
 import { readAccessToken, requireUser } from './auth-context.js';
 import { clearSessionCookies, setSessionCookies } from './session-cookies.js';
+import { createMobileBrowserSession } from '../infrastructure/supabase/mobile-browser-session.js';
 
 const compatibleRegisterSchema = registerSchema
 	.partial({ first_name: true, last_name: true })
@@ -83,7 +84,48 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 		}
 	};
 
-	app.post('/api/auth/register', async (request, reply) => {
+	// Native clients keep explicit credentials in secure device storage. Browser
+	// routes retain HttpOnly cookies and never return credentials in their body.
+	const sessionRoute = (
+		path: string,
+		handler: (request: FastifyRequest, reply: FastifyReply, native: boolean) => Promise<unknown>,
+	) => {
+		app.post(path, (request, reply) => handler(request, reply, false));
+		app.post(path.replace('/api/auth/', '/api/auth/mobile/'), (request, reply) => {
+			reply.header('cache-control', 'private, no-store');
+			return handler(request, reply, true);
+		});
+	};
+
+	await app.register(async (browser) => {
+		browser.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
+			done(null, Object.fromEntries(new URLSearchParams(String(body))));
+		});
+		browser.post('/api/auth/mobile/web-session', { bodyLimit: 16_384 }, async (request, reply) => {
+			const input = z
+				.object({
+					access_token: z.string().min(1).max(8192),
+					destination: z
+						.string()
+						.max(300)
+						.regex(/^\/(?:eventos\/[a-z0-9-]+\/checkout|perfil(?:\?section=[a-z-]+|\/ingressos\/[a-f0-9-]{36})?)$/),
+				})
+				.strict()
+				.parse(request.body);
+			await limit('mobile-browser-ip', request.ip, 20, 600);
+			const { user } = await auth.authenticate(input.access_token);
+			await limit('mobile-browser-user', user.id, 10, 600);
+			const profile = await auth.serialize(user);
+			if (profile.status !== 'active') throw new ApiError('Conta indisponível.', 403, 'ACCOUNT_INACTIVE');
+			const session = await createMobileBrowserSession(clients, user.id);
+			setSessionCookies(reply, env, session);
+			reply.header('cache-control', 'private, no-store');
+			reply.header('referrer-policy', 'no-referrer');
+			return reply.code(303).redirect(`${env.WEB_URL}${input.destination}`);
+		});
+	});
+
+	sessionRoute('/api/auth/register', async (request, reply, native) => {
 		const input = compatibleRegisterSchema.parse(request.body);
 		await Promise.all([
 			limit('auth-register-ip', request.ip, 20, 3_600),
@@ -98,12 +140,13 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 			redirectTo: `${env.WEB_URL}/confirmar-email`,
 		});
 		if (result.session) {
-			setSessionCookies(reply, env, result.session);
+			if (!native) setSessionCookies(reply, env, result.session);
 			return reply.code(201).send({
 				success: true,
 				confirmationRequired: false,
 				user: await auth.serialize(result.user),
 				redirect: '/perfil',
+				...(native ? { session: result.session } : {}),
 			});
 		}
 		return reply.code(201).send({
@@ -114,15 +157,15 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 		});
 	});
 
-	app.post('/api/auth/register/confirm', async (request, reply) => {
+	sessionRoute('/api/auth/register/confirm', async (request, reply, native) => {
 		const input = emailConfirmationSchema.parse(request.body);
 		await Promise.all([
 			limit('auth-confirm-ip', request.ip, 30, 600),
 			limit('auth-confirm-account', input.email.toLowerCase(), 10, 600),
 		]);
 		const result = await auth.confirmEmail(input.email, input.token);
-		setSessionCookies(reply, env, result.session);
-		return sessionPayload(auth, result.user);
+		if (!native) setSessionCookies(reply, env, result.session);
+		return { ...(await sessionPayload(auth, result.user)), ...(native ? { session: result.session } : {}) };
 	});
 
 	app.post('/api/auth/register/resend', async (request) => {
@@ -135,15 +178,15 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 		return { success: true, message: 'Enviamos um novo código de confirmação para o seu e-mail.' };
 	});
 
-	app.post('/api/auth/login', async (request, reply) => {
+	sessionRoute('/api/auth/login', async (request, reply, native) => {
 		const input = credentialsSchema.parse(request.body);
 		await Promise.all([
 			limit('auth-login-ip', request.ip, 50, 300),
 			limit('auth-login-account', input.email.toLowerCase(), 10, 300),
 		]);
 		const result = await auth.login(input.email, input.password);
-		setSessionCookies(reply, env, result.session);
-		return sessionPayload(auth, result.user);
+		if (!native) setSessionCookies(reply, env, result.session);
+		return { ...(await sessionPayload(auth, result.user)), ...(native ? { session: result.session } : {}) };
 	});
 
 	app.get('/api/auth/me', async (request) => {
@@ -161,14 +204,14 @@ export async function authRoutes(app: FastifyInstance, options: { env: ApiEnv; c
 		};
 	});
 
-	app.post('/api/auth/refresh', async (request, reply) => {
+	sessionRoute('/api/auth/refresh', async (request, reply, native) => {
 		await limit('auth-refresh', request.ip, 30, 60);
 		const body = z.object({ refresh_token: z.string().optional() }).parse(request.body ?? {});
-		const refreshToken = body.refresh_token ?? request.cookies.refresh_token;
+		const refreshToken = body.refresh_token ?? (native ? undefined : request.cookies.refresh_token);
 		if (!refreshToken) throw new ApiError('Token de atualização ausente.', 401, 'MISSING_REFRESH_TOKEN');
 		const result = await auth.refresh(refreshToken);
-		setSessionCookies(reply, env, result.session);
-		return { success: true, user: await auth.serialize(result.user) };
+		if (!native) setSessionCookies(reply, env, result.session);
+		return { success: true, user: await auth.serialize(result.user), ...(native ? { session: result.session } : {}) };
 	});
 
 	app.post('/api/auth/logout', async (request, reply) => {
