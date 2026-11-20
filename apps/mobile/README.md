@@ -24,10 +24,10 @@ Projeto: [thsdeveloper/flouvi-cliente](https://expo.dev/accounts/thsdeveloper/pr
 `pnpm mobile:update --message "Descrição da atualização" --non-interactive` publica na branch `preview`, usando o
 ambiente EAS `preview`. A CLI é executada com versão fixa via `pnpm dlx`, sem entrar nas dependências do aplicativo.
 
-A configuração de teste utiliza `sdkVersion: 58.0.0`, sem `runtimeVersion`, para compatibilidade com Expo Go. Não
-execute `eas update:configure` sobre esta configuração sem revisar o resultado: ele acrescenta `runtimeVersion`, que
-exige um binário próprio. Antes de distribuição em lojas, configure uma política de runtime e faça builds assinados. Não
-há submissão a lojas neste fluxo.
+A configuração de teste utiliza `sdkVersion: 58.0.0` e a política de runtime `sdkVersion` (`exposdk:58.0.0`),
+correspondente aos módulos incluídos no Expo Go. A CLI adota `appVersion` por padrão; mantenha a política `sdkVersion`
+nesta prévia. Antes de distribuição em lojas, configure uma política de runtime própria e faça builds assinados. Não há
+submissão a lojas neste fluxo.
 
 ## Experiência
 

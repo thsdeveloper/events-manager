@@ -55,6 +55,9 @@
 		"sdkVersion": "58.0.0",
 		"updates": {
 			"url": "https://u.expo.dev/8e8f295f-1517-4574-8f39-3c9fd83077e8"
+		},
+		"runtimeVersion": {
+			"policy": "sdkVersion"
 		}
 	}
 }
